@@ -1,0 +1,1544 @@
+{
+  "manifest_version": 3,
+  "name": "Browser RPC",
+  "version": "3.1.0",
+  "description": "Extract data from social media platforms via WebSocket RPC",
+  "permissions": [
+    "activeTab",
+    "alarms",
+    "storage",
+    "tabs",
+    "scripting",
+    "webRequest",
+    "declarativeNetRequest",
+    "cookies",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "958722251@qq.com",
+      "strict_min_version": "128.0"
+    }
+  },
+  "content_scripts": [
+    {
+      "world": "ISOLATED",
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "bridge/bridge.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "lib/utils.js",
+        "lib/http.js",
+        "lib/rpc-page-transport.js",
+        "lib/client.js",
+        "content/runtime/platform-runtime.js",
+        "content/browser/index.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://chat.deepseek.com/*",
+        "https://*.deepseek.com/*"
+      ],
+      "js": [
+        "content/deepseek/preload.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.xiaohongshu.com/*"
+      ],
+      "js": [
+        "content/xiaohongshu/endpoints.js",
+        "content/xiaohongshu/crypto.js",
+        "content/xiaohongshu/utils.js",
+        "content/xiaohongshu/http.js",
+        "content/xiaohongshu/api.js",
+        "generated/platforms/xhs.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://creator.xiaohongshu.com/*"
+      ],
+      "js": [
+        "content/creator-xhs/endpoints.js",
+        "content/creator-xhs/api.js",
+        "generated/platforms/creator-xhs.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://www.douyin.com/*"
+      ],
+      "js": [
+        "content/douyin/endpoints.js",
+        "content/douyin/utils.js",
+        "content/douyin/api.js",
+        "generated/platforms/douyin.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.facebook.com/*"
+      ],
+      "js": [
+        "content/facebook/endpoints.js",
+        "content/facebook/utils.js",
+        "content/facebook/api.js",
+        "generated/platforms/facebook.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.instagram.com/*"
+      ],
+      "js": [
+        "content/instagram/endpoints.js",
+        "content/instagram/utils.js",
+        "content/instagram/http.js",
+        "content/instagram/api.js",
+        "generated/platforms/instagram.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://shop.tiktok.com/*"
+      ],
+      "js": [
+        "content/tkshop/endpoints.js",
+        "content/tkshop/utils.js",
+        "content/tkshop/api.js",
+        "generated/platforms/tkshop.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://www.tiktok.com/*"
+      ],
+      "js": [
+        "content/tiktok/endpoints.js",
+        "content/tiktok/utils.js",
+        "content/tiktok/api.js",
+        "generated/platforms/tiktok.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.threads.net/*"
+      ],
+      "js": [
+        "content/threads/endpoints.js",
+        "content/threads/utils.js",
+        "content/threads/api.js",
+        "generated/platforms/threads.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.qizhidao.com/*"
+      ],
+      "js": [
+        "content/qizhidao/endpoints.js",
+        "content/qizhidao/utils.js",
+        "content/qizhidao/api.js",
+        "generated/platforms/qizhidao.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.qcc.com/*"
+      ],
+      "js": [
+        "content/qcc/endpoints.js",
+        "content/qcc/utils.js",
+        "content/qcc/api.js",
+        "generated/platforms/qcc.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.zhihu.com/*"
+      ],
+      "js": [
+        "content/zhihu/endpoints.js",
+        "content/zhihu/crypto.js",
+        "content/zhihu/utils.js",
+        "content/zhihu/api.js",
+        "generated/platforms/zhihu.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.x.com/*"
+      ],
+      "js": [
+        "content/twitter/endpoints.js",
+        "content/twitter/crypto.js",
+        "content/twitter/utils.js",
+        "content/twitter/api.js",
+        "generated/platforms/twitter.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://space.bilibili.com/*",
+        "https://www.bilibili.com/*",
+        "https://search.bilibili.com/*"
+      ],
+      "js": [
+        "content/bilibili/endpoints.js",
+        "content/bilibili/crypto.js",
+        "content/bilibili/utils.js",
+        "content/bilibili/api.js",
+        "generated/platforms/bilibili.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://member.bilibili.com/*"
+      ],
+      "js": [
+        "content/creator-bili/endpoints.js",
+        "content/creator-bili/crypto.js",
+        "content/creator-bili/utils.js",
+        "content/creator-bili/api.js",
+        "generated/platforms/creator-bili.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://creator.douyin.com/*"
+      ],
+      "js": [
+        "content/creator-dy/constants.js",
+        "content/creator-dy/endpoints.js",
+        "content/creator-dy/utils.js",
+        "content/creator-dy/api.js",
+        "generated/platforms/dycreator.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://channels.weixin.qq.com/*"
+      ],
+      "js": [
+        "content/creator-tc/constants.js",
+        "content/creator-tc/endpoints.js",
+        "content/creator-tc/utils.js",
+        "content/creator-tc/api.js",
+        "generated/platforms/creator-tc.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://cp.kuaishou.com/*"
+      ],
+      "js": [
+        "content/creator-ks/constants.js",
+        "content/creator-ks/endpoints.js",
+        "content/creator-ks/utils.js",
+        "content/creator-ks/api.js",
+        "generated/platforms/creator-ks.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://www.tiktok.com/tiktokstudio/*"
+      ],
+      "js": [
+        "content/creator-tk/endpoints.js",
+        "content/creator-tk/api.js",
+        "generated/platforms/creator-tk.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://studio.youtube.com/*"
+      ],
+      "js": [
+        "content/creator-ytb/endpoints.js",
+        "content/creator-ytb/utils.js",
+        "content/creator-ytb/api.js",
+        "generated/platforms/creator-ytb.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.zhipin.com/*"
+      ],
+      "js": [
+        "content/zhipin/endpoints.js",
+        "content/zhipin/data.js",
+        "content/zhipin/utils.js",
+        "content/zhipin/api.js",
+        "generated/platforms/zhipin.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.youtube.com/*"
+      ],
+      "js": [
+        "content/youtube/endpoints.js",
+        "content/youtube/utils.js",
+        "content/youtube/api.js",
+        "generated/platforms/youtube.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.github.com/*"
+      ],
+      "js": [
+        "content/github/endpoints.js",
+        "content/github/utils.js",
+        "content/github/api.js",
+        "generated/platforms/github.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.zhaopin.com/*"
+      ],
+      "js": [
+        "content/zhaopin/endpoints.js",
+        "content/zhaopin/utils.js",
+        "content/zhaopin/api.js",
+        "generated/platforms/zhaopin.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.51job.com/*"
+      ],
+      "js": [
+        "content/51job/endpoints.js",
+        "content/51job/data.js",
+        "content/51job/utils.js",
+        "content/51job/api.js",
+        "generated/platforms/51job.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.yupao.com/*"
+      ],
+      "js": [
+        "content/yupao/endpoints.js",
+        "content/yupao/utils.js",
+        "content/yupao/area.js",
+        "content/yupao/api.js",
+        "generated/platforms/yupao.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://skillsmp.com/*"
+      ],
+      "js": [
+        "content/skillsmp/endpoints.js",
+        "content/skillsmp/api.js",
+        "generated/platforms/skillsmp.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.bbs.kanxue.com/*",
+        "https://bbs.kanxue.com/*"
+      ],
+      "js": [
+        "content/kanxue/endpoints.js",
+        "content/kanxue/parser.js",
+        "content/kanxue/api.js",
+        "generated/platforms/kanxue.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.csdn.net/*",
+        "https://*.blog.csdn.net/*",
+        "https://*.so.csdn.net/*"
+      ],
+      "js": [
+        "content/csdn/endpoints.js",
+        "content/csdn/utils.js",
+        "content/csdn/api.js",
+        "generated/platforms/csdn.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.kuaishou.com/*"
+      ],
+      "js": [
+        "content/kuaishou/endpoints.js",
+        "content/kuaishou/utils.js",
+        "content/kuaishou/api.js",
+        "generated/platforms/kuaishou.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.juejin.cn/*"
+      ],
+      "js": [
+        "content/juejin/endpoints.js",
+        "content/juejin/utils.js",
+        "content/juejin/api.js",
+        "generated/platforms/juejin.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.modelscope.cn/*"
+      ],
+      "js": [
+        "content/modelscope/endpoints.js",
+        "content/modelscope/utils.js",
+        "content/modelscope/api.js",
+        "generated/platforms/modelscope.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.jd.com/*",
+        "https://search.jd.com/*",
+        "https://item.jd.com/*",
+        "https://m.jd.com/*"
+      ],
+      "js": [
+        "content/jd/endpoints.js",
+        "content/jd/utils.js",
+        "content/jd/api.js",
+        "generated/platforms/jd.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.goofish.com/*"
+      ],
+      "js": [
+        "content/goofish/endpoints.js",
+        "content/goofish/crypto.js",
+        "content/goofish/utils.js",
+        "content/goofish/api.js",
+        "generated/platforms/goofish.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.52pojie.cn/*",
+        "https://www.52pojie.cn/*"
+      ],
+      "js": [
+        "content/52pojie/endpoints.js",
+        "content/52pojie/utils.js",
+        "content/52pojie/parser.js",
+        "content/52pojie/api.js",
+        "generated/platforms/52pojie.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.liepin.com/*"
+      ],
+      "js": [
+        "content/liepin/endpoints.js",
+        "content/liepin/utils.js",
+        "content/liepin/api.js",
+        "generated/platforms/liepin.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.upwork.com/*"
+      ],
+      "js": [
+        "content/upwork/endpoints.js",
+        "content/upwork/constants.js",
+        "content/upwork/utils.js",
+        "content/upwork/api.js",
+        "generated/platforms/upwork.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://xueqiu.com/*",
+        "https://*.xueqiu.com/*"
+      ],
+      "js": [
+        "content/xueqiu/endpoints.js",
+        "content/xueqiu/api.js",
+        "generated/platforms/xueqiu.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://chat.qwen.ai/*"
+      ],
+      "js": [
+        "content/qwen/endpoints.js",
+        "content/qwen/constants.js",
+        "content/qwen/utils.js",
+        "content/qwen/api.js",
+        "generated/platforms/qwen.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://www.qianwen.com/*"
+      ],
+      "js": [
+        "content/qianwen/endpoints.js",
+        "content/qianwen/constants.js",
+        "content/qianwen/utils.js",
+        "content/qianwen/api.js",
+        "generated/platforms/qwencn.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://chatglm.cn/*",
+        "https://*.chatglm.cn/*"
+      ],
+      "js": [
+        "content/glmcn/endpoints.js",
+        "content/glmcn/constants.js",
+        "content/glmcn/crypto.js",
+        "content/glmcn/utils.js",
+        "content/glmcn/api.js",
+        "generated/platforms/glmcn.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.minimaxi.com/*"
+      ],
+      "js": [
+        "content/minimax/constants.js",
+        "content/minimax/endpoints.js",
+        "content/minimax/utils.js",
+        "content/minimax/api.js",
+        "generated/platforms/minimax.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://22.do/*",
+        "https://*.22.do/*"
+      ],
+      "js": [
+        "content/do22/constants.js",
+        "content/do22/endpoints.js",
+        "content/do22/utils.js",
+        "content/do22/api.js",
+        "generated/platforms/do22.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://gemini.google.com/*"
+      ],
+      "js": [
+        "content/gemini/constants.js",
+        "content/gemini/endpoints.js",
+        "content/gemini/utils.js",
+        "content/gemini/parse.js",
+        "content/gemini/api.js",
+        "generated/platforms/gemini.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.reddit.com/*"
+      ],
+      "js": [
+        "content/reddit/constants.js",
+        "content/reddit/endpoints.js",
+        "content/reddit/api.js",
+        "generated/platforms/reddit.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.weibo.com/*",
+        "https://weibo.com/*"
+      ],
+      "js": [
+        "content/weibo/endpoints.js",
+        "content/weibo/api.js",
+        "generated/platforms/weibo.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://chat.deepseek.com/*",
+        "https://*.deepseek.com/*"
+      ],
+      "js": [
+        "content/deepseek/constants.js",
+        "content/deepseek/endpoints.js",
+        "content/deepseek/proofofwork.js",
+        "content/deepseek/crypto.js",
+        "content/deepseek/utils.js",
+        "content/deepseek/api.js",
+        "generated/platforms/deepseek.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://www.doubao.com/*"
+      ],
+      "js": [
+        "content/doubao/constants.js",
+        "content/doubao/endpoints.js",
+        "content/doubao/utils.js",
+        "content/doubao/api.js",
+        "generated/platforms/doubao.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://dev.to/*",
+        "https://*.dev.to/*"
+      ],
+      "js": [
+        "content/devto/endpoints.js",
+        "content/devto/constants.js",
+        "content/devto/utils.js",
+        "content/devto/api.js",
+        "generated/platforms/devto.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.36kr.com/*"
+      ],
+      "js": [
+        "content/36kr/endpoints.js",
+        "content/36kr/utils.js",
+        "content/36kr/api.js",
+        "generated/platforms/36kr.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.1688.com/*"
+      ],
+      "js": [
+        "content/1688/endpoints.js",
+        "content/1688/utils.js",
+        "content/1688/api.js",
+        "generated/platforms/1688.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.bsky.app/*"
+      ],
+      "js": [
+        "content/bluesky/endpoints.js",
+        "content/bluesky/constants.js",
+        "content/bluesky/api.js",
+        "generated/platforms/bluesky.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.stackoverflow.com/*"
+      ],
+      "js": [
+        "content/stackoverflow/endpoints.js",
+        "content/stackoverflow/constants.js",
+        "content/stackoverflow/api.js",
+        "generated/platforms/stackoverflow.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://news.ycombinator.com/*"
+      ],
+      "js": [
+        "content/hackernews/endpoints.js",
+        "content/hackernews/constants.js",
+        "content/hackernews/api.js",
+        "generated/platforms/hackernews.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.wikipedia.org/*"
+      ],
+      "js": [
+        "content/wikipedia/endpoints.js",
+        "content/wikipedia/constants.js",
+        "content/wikipedia/api.js",
+        "generated/platforms/wikipedia.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.binance.com/*",
+        "https://*.binance.vision/*"
+      ],
+      "js": [
+        "content/binance/endpoints.js",
+        "content/binance/constants.js",
+        "content/binance/api.js",
+        "generated/platforms/binance.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://trends.google.com/*"
+      ],
+      "js": [
+        "content/google-trends/endpoints.js",
+        "content/google-trends/constants.js",
+        "content/google-trends/utils.js",
+        "content/google-trends/api.js",
+        "generated/platforms/google-trends.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://xueshu.baidu.com/*"
+      ],
+      "js": [
+        "content/baidu-scholar/endpoints.js",
+        "content/baidu-scholar/api.js",
+        "generated/platforms/baidu-scholar.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://index.baidu.com/*"
+      ],
+      "js": [
+        "content/baidutrend/endpoints.js",
+        "content/baidutrend/constants.js",
+        "content/baidutrend/utils.js",
+        "content/baidutrend/api.js",
+        "generated/platforms/baidutrend.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://scholar.google.com/*"
+      ],
+      "js": [
+        "content/google-scholar/endpoints.js",
+        "content/google-scholar/api.js",
+        "generated/platforms/google-scholar.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.gitee.com/*"
+      ],
+      "js": [
+        "content/gitee/endpoints.js",
+        "content/gitee/constants.js",
+        "content/gitee/api.js",
+        "generated/platforms/gitee.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.jimeng.jianying.com/*"
+      ],
+      "js": [
+        "content/jimeng/constants.js",
+        "content/jimeng/endpoints.js",
+        "content/jimeng/utils.js",
+        "content/jimeng/api.js",
+        "generated/platforms/jimeng.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.jike.com/*"
+      ],
+      "js": [
+        "content/jike/endpoints.js",
+        "content/jike/api.js",
+        "generated/platforms/jike.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.medium.com/*"
+      ],
+      "js": [
+        "content/medium/endpoints.js",
+        "content/medium/api.js",
+        "generated/platforms/medium.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.podcasts.apple.com/*",
+        "https://*.itunes.apple.com/*"
+      ],
+      "js": [
+        "content/apple-podcasts/endpoints.js",
+        "content/apple-podcasts/constants.js",
+        "content/apple-podcasts/api.js",
+        "generated/platforms/apple-podcasts.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.sina.com.cn/*"
+      ],
+      "js": [
+        "content/sinablog/endpoints.js",
+        "content/sinablog/constants.js",
+        "content/sinablog/api.js",
+        "generated/platforms/sinablog.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.taobao.com/*"
+      ],
+      "js": [
+        "content/taobao/endpoints.js",
+        "content/taobao/utils.js",
+        "content/taobao/api.js",
+        "generated/platforms/taobao.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.hupu.com/*"
+      ],
+      "js": [
+        "content/hupu/endpoints.js",
+        "content/hupu/api.js",
+        "generated/platforms/hupu.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.reuters.com/*"
+      ],
+      "js": [
+        "content/reuters/endpoints.js",
+        "content/reuters/constants.js",
+        "content/reuters/api.js",
+        "generated/platforms/reuters.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.steampowered.com/*"
+      ],
+      "js": [
+        "content/steam/endpoints.js",
+        "content/steam/constants.js",
+        "content/steam/api.js",
+        "generated/platforms/steam.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.v2ex.com/*"
+      ],
+      "js": [
+        "content/v2ex/endpoints.js",
+        "content/v2ex/constants.js",
+        "content/v2ex/api.js",
+        "generated/platforms/v2ex.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.finance.yahoo.com/*"
+      ],
+      "js": [
+        "content/yahoo-finance/endpoints.js",
+        "content/yahoo-finance/constants.js",
+        "content/yahoo-finance/api.js",
+        "generated/platforms/yahoo-finance.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.polymarket.com/*"
+      ],
+      "js": [
+        "content/polymarket/constants.js",
+        "content/polymarket/endpoints.js",
+        "content/polymarket/api.js",
+        "generated/platforms/polymarket.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.producthunt.com/*"
+      ],
+      "js": [
+        "content/producthunt/endpoints.js",
+        "content/producthunt/constants.js",
+        "content/producthunt/api.js",
+        "generated/platforms/producthunt.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.wanfangdata.com.cn/*"
+      ],
+      "js": [
+        "content/wanfang/endpoints.js",
+        "content/wanfang/api.js",
+        "generated/platforms/wanfang.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.toutiao.com/*"
+      ],
+      "js": [
+        "content/toutiao/endpoints.js",
+        "content/toutiao/api.js",
+        "generated/platforms/toutiao.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://*.chatgpt.com/*"
+      ],
+      "js": [
+        "content/chatgpt/constants.js",
+        "content/chatgpt/endpoints.js",
+        "content/chatgpt/utils.js",
+        "content/chatgpt/http.js",
+        "content/chatgpt/proofofwork.js",
+        "content/chatgpt/api.js",
+        "generated/platforms/chatgpt.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://claude.ai/*"
+      ],
+      "js": [
+        "content/claude/utils.js",
+        "generated/platforms/claude.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://yuanbao.tencent.com/*"
+      ],
+      "js": [
+        "content/yuanbao/utils.js",
+        "generated/platforms/yuanbao.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.amazon.com/*",
+        "https://*.amazon.co.uk/*",
+        "https://*.amazon.de/*",
+        "https://*.amazon.fr/*",
+        "https://*.amazon.co.jp/*",
+        "https://*.amazon.ca/*",
+        "https://*.amazon.it/*",
+        "https://*.amazon.es/*",
+        "https://*.amazon.in/*",
+        "https://*.amazon.com.au/*",
+        "https://*.amazon.com.br/*",
+        "https://*.amazon.com.mx/*",
+        "https://*.amazon.nl/*",
+        "https://*.amazon.se/*",
+        "https://*.amazon.pl/*",
+        "https://*.amazon.sg/*",
+        "https://*.amazon.ae/*",
+        "https://*.amazon.sa/*",
+        "https://*.amazon.tr/*",
+        "https://*.amazon.cn/*"
+      ],
+      "js": [
+        "content/amazon/endpoints.js",
+        "content/amazon/utils.js",
+        "content/amazon/api.js",
+        "generated/platforms/amazon.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://tieba.baidu.com/*"
+      ],
+      "js": [
+        "content/tieba/endpoints.js",
+        "content/tieba/utils.js",
+        "content/tieba/api.js",
+        "generated/platforms/tieba.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://search.brave.com/*"
+      ],
+      "js": [
+        "content/brave/endpoints.js",
+        "content/brave/api.js",
+        "generated/platforms/brave.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.ctrip.com/*"
+      ],
+      "js": [
+        "content/ctrip/endpoints.js",
+        "content/ctrip/utils.js",
+        "content/ctrip/api.js",
+        "generated/platforms/ctrip.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.indeed.com/*"
+      ],
+      "js": [
+        "content/indeed/endpoints.js",
+        "content/indeed/utils.js",
+        "content/indeed/api.js",
+        "generated/platforms/indeed.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://hub.docker.com/*"
+      ],
+      "js": [
+        "content/dockerhub/endpoints.js",
+        "content/dockerhub/api.js",
+        "generated/platforms/dockerhub.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://huggingface.co/*"
+      ],
+      "js": [
+        "content/huggingface/endpoints.js",
+        "content/huggingface/utils.js",
+        "content/huggingface/api.js",
+        "generated/platforms/huggingface.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://grok.com/*"
+      ],
+      "js": [
+        "content/grok/constants.js",
+        "content/grok/endpoints.js",
+        "content/grok/utils.js",
+        "content/grok/api.js",
+        "generated/platforms/grok.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://linux.do/*",
+        "https://*.linux.do/*"
+      ],
+      "js": [
+        "content/linuxdo/constants.js",
+        "content/linuxdo/endpoints.js",
+        "content/linuxdo/utils.js",
+        "content/linuxdo/api.js",
+        "generated/platforms/linuxdo.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://haokan.baidu.com/*"
+      ],
+      "js": [
+        "content/haokan/endpoints.js",
+        "content/haokan/utils.js",
+        "content/haokan/api.js",
+        "generated/platforms/haokan.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.10jqka.com.cn/*",
+        "https://10jqka.com.cn/*"
+      ],
+      "js": [
+        "content/ths/endpoints.js",
+        "content/ths/api.js",
+        "generated/platforms/ths.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.eastmoney.com/*",
+        "https://eastmoney.com/*"
+      ],
+      "js": [
+        "content/eastmoney/secid.js",
+        "content/eastmoney/endpoints.js",
+        "content/eastmoney/api.js",
+        "generated/platforms/eastmoney.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://z-library.im/*",
+        "https://www.z-library.im/*"
+      ],
+      "js": [
+        "content/zlibrary/endpoints.js",
+        "content/zlibrary/constants.js",
+        "content/zlibrary/api.js",
+        "generated/platforms/zlibrary.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://weread.qq.com/*",
+        "https://*.weread.qq.com/*"
+      ],
+      "js": [
+        "content/weread/endpoints.js",
+        "content/weread/api.js",
+        "generated/platforms/weread.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://wx.zsxq.com/*",
+        "https://*.zsxq.com/*"
+      ],
+      "js": [
+        "content/zsxq/endpoints.js",
+        "content/zsxq/api.js",
+        "generated/platforms/zsxq.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.nowcoder.com/*"
+      ],
+      "js": [
+        "content/nowcoder/endpoints.js",
+        "content/nowcoder/api.js",
+        "generated/platforms/nowcoder.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://notebook.google.com/*",
+        "https://notebooklm.google.com/*",
+        "https://notebooklm.cloud.google.com/*"
+      ],
+      "js": [
+        "content/notebooklm/constants.js",
+        "content/notebooklm/endpoints.js",
+        "content/notebooklm/utils.js",
+        "content/notebooklm/api.js",
+        "generated/platforms/notebooklm.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://chat.z.ai/*",
+        "https://*.z.ai/*"
+      ],
+      "js": [
+        "content/glm/constants.js",
+        "content/glm/endpoints.js",
+        "content/glm/utils.js",
+        "content/glm/api.js",
+        "generated/platforms/glm.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://aistudio.xiaomimimo.com/*",
+        "https://*.xiaomimimo.com/*"
+      ],
+      "js": [
+        "content/mimo/constants.js",
+        "content/mimo/endpoints.js",
+        "content/mimo/utils.js",
+        "content/mimo/api.js",
+        "generated/platforms/mimo.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://bbs.binmt.cc/*",
+        "https://*.bbs.binmt.cc/*"
+      ],
+      "js": [
+        "content/binmt/endpoints.js",
+        "content/binmt/utils.js",
+        "content/binmt/api.js",
+        "generated/platforms/binmt.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://mp.weixin.qq.com/*"
+      ],
+      "js": [
+        "content/creator-wx/endpoints.js",
+        "content/creator-wx/api.js",
+        "generated/platforms/creator-wx.js",
+        "content/runtime/register-platform.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    }
+  ],
+  "background": {
+    "service_worker": "background/worker.js",
+    "type": "module",
+    "scripts": [
+      "background/rpc-manager.js",
+      "background/browser-actions.js",
+      "background/background.js"
+    ]
+  },
+  "side_panel": {
+    "default_path": "popup/popup.html"
+  },
+  "sidebar_action": {
+    "default_panel": "popup/popup.html",
+    "default_title": "Social Media Crawler RPC",
+    "default_icon": {
+      "16": "static/icon/icon16.png",
+      "32": "static/icon/icon32.png"
+    }
+  },
+  "action": {
+    "default_title": "Social Media Crawler RPC"
+  },
+  "icons": {
+    "16": "static/icon/icon16.png",
+    "32": "static/icon/icon32.png",
+    "48": "static/icon/icon48.png",
+    "128": "static/icon/icon128.png"
+  }
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "网页 JS 补环境"
+  short_description: "Trace 可执行闭环、XHR/fetch 同 Session 与对象形状审计"
+  default_prompt: "使用 $web-js-env-patcher 对网页端 JS 补环境执行 Trace-runtime、XHR/fetch 请求语义、同 Session bridge、对象形状和 WebAPI 矩阵闭环审计，并在真实请求前阻断所有未闭合差异。"

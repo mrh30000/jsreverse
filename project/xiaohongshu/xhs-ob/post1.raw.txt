@@ -1,0 +1,1153 @@
+postmessage_55048610">
+<div class="parsedown-markdown"><h2 id="55048610_ast还原ob混淆">AST还原ob混淆</h2>
+<h3 id="55048610_碎碎念">碎碎念</h3>
+<p>上期说过要出一个AST还原分析，但是拖了好久，为啥呢？因为没劲，为啥会没劲呢？因为还原的意义不大，而且使用古法手工还原不仅费眼睛还慢还会错，扔给AI分析一下，马上就帮你还原好了。在这种时候坚持古法，基本上是吃力不讨好。<br />
+而且这个还原没什么复杂的思维过程(不过也可能是我菜，不知道其中的巧思；如有，还望大佬评论区指点一二)，更多人的卡点是在于不会用语法。就比如看到表达式return 3+4，那肯定知道要还原成7，可是如何使用代码去还原，这个就不会了。再比如看到肯定不会执行的死代码，那肯定知道要删掉啊，可怎么用代码删除呢？不会了。我个人感觉大部分人是被语法卡住了。那么有必要学习语法吗？额，不好说，我个人认为这种直接交给AI就行了，没必要劳神苦思，我古法还原(小部分还是依靠AI)纯粹是过一下还原思路。<br />
+再者就是AST没有一个固定的标准，还原到什么程度算成功？？？答案是无所谓，你觉得OK就行，懂了原理压根儿不用还原，在几个关键位置自己手动算一下就行了，其他的非关键点全是干扰，看都不用看；心大的，挑几个类型还原一下，看着输入了就进入下一阶段开始分析了；胆子小的/强迫症的，不行，必须严格按照流程，所有的混淆都要还原。。。只能说仁者智者，丰俭由君～</p>
+<h2 id="55048610_定位ob混淆位置">定位ob混淆位置</h2>
+<p>因为我们现在要分析的就是s的生成逻辑，很自然在<code>s.window.mnsv2</code>处断住</p>
+<p>
+<ignore_js_op>
+
+<img aid="2842052" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142326g5od1zdfq5fmvz3r.png" file="https://attach.52pojie.cn/forum/202603/29/142326g5od1zdfq5fmvz3r.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842052" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842052_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 8.png</strong> <em class="xg1">(206.49 KB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA1MnwyZjI5NjAyOXwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:23 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>然后单步执行进入mnsv2观察生成逻辑</p>
+<p>
+<ignore_js_op>
+
+<img aid="2842053" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142329fya8hbyb8rgpybzv.png" file="https://attach.52pojie.cn/forum/202603/29/142329fya8hbyb8rgpybzv.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842053" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842053_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 9.png</strong> <em class="xg1">(613.3 KB, 下载次数: 1)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA1M3w1NmFkOTNkMnwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:23 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>嗯，看到这密密麻麻的十六进制表示和数组索引调用，我们就知道这个js被混淆了。。。</p>
+<p>直接copy到本地，我们要开始AST还原喽</p>
+<p>先不要急着还原，让我们来识别一下具体进行了哪些类型的混淆</p>
+<h3 id="55048610_字符串混淆">字符串混淆</h3>
+<h4 id="55048610_缘起">缘起</h4>
+<blockquote>
+<p>这个字符串数组怎么来的？为什么出现这三者意味着字符串混淆？字符串混淆为了啥？</p>
+</blockquote>
+<p>举个例子，假设我们现在在逆向一个<code>login</code>接口，我们只知道接口中存在校验参数<code>X-Sign</code> ，我们按照一贯的套路，肯定是先使用搜索大法(搜索大法未必是最快的定位方式，这里包括之后都为演示需要)，看看能不能定位到<code>X-Sign</code>的生成逻辑</p>
+<p>倘若JS文件中的代码如下o</p>
+<pre><code class="language-jsx">function login(username, password) {
+&nbsp; &nbsp; var token = generateToken(username, password);
+&nbsp; &nbsp; fetch("https://api.xxx.com/login", {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;method: "POST",
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;headers: {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;"X-Sign": token
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;}
+&nbsp; &nbsp; });
+}
+token = func(xxx)</code></pre>
+<p>那么显然，<code>X-Sign</code>的值来自于<code>token</code>，下一步我只需要继续搜索<code>token</code>即可，逆向过程畅通无阻。</p>
+<p>那么作为防护者，肯定是不希望我们这么轻松的逆向出生成逻辑，他就想&#129300;好嘛，你喜欢搜索是吧，好好好，那我就让你搜索不到，是的，就是这么朴实无华。</p>
+<h4 id="55048610_字符串混淆诞生">字符串混淆诞生</h4>
+<p>那么如何让搜索失效呢？不如把这个<code>X-Sign</code>使用base64编码的结果<code>WC1TaWdu</code>替换吧？嗯哼，好像可以诶，这样如果你直接搜索<code>X-Sign</code>啥也搜不出来，然后每次我自己执行的时候我就调用一下base64解码，我发送的时候还是正常请求。因此混淆后的代码就变成了</p>
+<pre><code class="language-jsx">function login(username, password) {
+&nbsp; &nbsp; var token = generateToken(username, password);
+&nbsp; &nbsp; var headerName = atob("WC1TaWdu");
+&nbsp; &nbsp; var requestOptions = {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;method: "POST",
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;headers: {}
+&nbsp; &nbsp; };
+&nbsp; &nbsp; requestOptions.headers[headerName] = token;
+&nbsp; &nbsp; fetch("https://api.xxx.com/login", requestOptions);
+}</code></pre>
+<p>上面是初级混淆，有经验的逆向者一眼看破，不就是调了个base64嘛，轻松还原，你能调我也能调，pass～</p>
+<h4 id="55048610_解密函数诞生">解密函数诞生</h4>
+<p>防守者：“靠，我应该如何继续升级呢？？？上次被破解是因为逆向者发现我调用了base64，完成了定位，我该如何让他发现不了我调用base64呢？</p>
+<p>诶，不如我把base64这个<strong>解密函数</strong>抽离出来吧，我也别叫他atob了，我弄个十六进制的变量名就好了。让这个变量等于atob，但是叫做abto还是会被发现啊，我直接通过方括号属性访问器在<code>window</code>中取值就好了诶，方括号中可以是任意字符串，这里能做文章的地方就多了去了。我可以把<code>atob</code> 这四个字符通过转义字符的方式转换成对应的ASCII码值。所以混淆后的代码如下</p>
+<pre><code class="language-jsx">var _0x4a7f = window['\x61\x74\x6f\x62'];
+
+function login(username, password) {
+&nbsp; &nbsp; var token = generateToken(username, password);
+
+&nbsp; &nbsp; // Step 2: Use the aliased function instead of the original 'atob'
+&nbsp; &nbsp; var headerName = _0x4a7f("WC1TaWdu");
+
+&nbsp; &nbsp; var requestOptions = {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;method: "POST",
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;headers: {}
+&nbsp; &nbsp; };
+
+&nbsp; &nbsp; // Step 3: Assign and send
+&nbsp; &nbsp; requestOptions.headers[headerName] = token;
+&nbsp; &nbsp; fetch("&lt;https://api.xxx.com/login&gt;", requestOptions);
+}</code></pre>
+<p>逆向者：嗯哼，有点意思，所有的类base64字符串之前都跟着一个<code>_0x4a7f</code> ，那么大概率这玩意儿就是解密函数，打点验证一下，嗯，没毛病，pass～</p>
+<p>防守者：。。。靠，我该怎么办，解密函数这里已经穷尽变化了，再怎么变也变不出花来了，那么想要获得最终结果，需要输入&amp;解密函数，那么现在只能在输入上做文章了，逆向的视角每次看到JS中的base64字符串就知道这里要调用解密函数，实在是可恶，我要把JS中所有能用字符串代替的东西都抽离出来，放到一起，这样就算你看到了类base64字符串，你也不知道哪里调用了，而我把那些抽离出来的字符串存放在一个数组中，在调用的地方通过数组索引取到对应的字符串，然后再调用解密函数，这样不就完美了嘛？简单写一下就类似于<code>decrypt(string_array[index])</code></p>
+<p>所以升级完整的代码如下</p>
+<pre><code class="language-jsx">var _0x5a2e = ["WC1TaWdu", "POST", "&lt;https://api.xxx.com/login&gt;"];
+
+var _0x4a7f = window['\x61\x74\x6f\x62']; // window['atob']
+
+function login(username, password) {
+&nbsp; &nbsp; var token = generateToken(username, password);
+
+&nbsp; &nbsp; // _0x5a2e[0] is "WC1TaWdu"
+&nbsp; &nbsp; var headerName = _0x4a7f(_0x5a2e[0]);
+
+&nbsp; &nbsp; var requestOptions = {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;method: _0x5a2e[1], 
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;headers: {}
+&nbsp; &nbsp; };
+
+&nbsp; &nbsp; requestOptions.headers[headerName] = token;
+
+&nbsp; &nbsp; fetch(_0x5a2e[2], requestOptions); 
+}</code></pre>
+<h4 id="55048610_字符串数组&amp;自执行函数诞生">字符串数组&amp;自执行函数诞生</h4>
+<p>但是到这儿也有个问题，就是逆向者只需要根据索引在数组中找到对应的字符串再调用解密函数即可，还是会被比较简单攻破，还有什么方法呢？？？既然薄弱点事因为索引和字符串对应，那么我们直接让索引和字符串不对应，这样逆向者根据索引取到的字符串不就是错误的吗，诶嘿，这样就能增加难度了</p>
+<p>那么如何保证静态分析的时候索引对应错误字符串，但是执行的时候又正常呢？简单，我们可以在代码执行对开始的时候对数组进行初始化，将数组中错误的顺序还原成正确的顺序，然后在之后的计算中就能够正确运行了，概括一下就是</p>
+<pre><code class="language-jsx">string_array=[]
+string_array=sorted(string_array)
+string=decrypt(string_array[index])</code></pre>
+<p>为了继续恶心逆向者，我再把索引改成十六进制，这样一来看起来就让人亚历山大，说不定逆向者扫了一眼就觉得这玩意儿难的一批，直接开摆了，所有最终的代码如下</p>
+<pre><code class="language-jsx">// Step 1: The Scrambled Array (被打乱顺序的字典，故意把 URL 放在了第一位)
+var _0x5a2e = ["&lt;https://api.xxx.com/login&gt;", "WC1TaWdu", "POST"];
+
+// Step 2: The Self-Invoking Restorer Function (自执行还原函数，sorted 逻辑)
+(function(arr, shiftCount) {
+&nbsp; &nbsp; // 当 shiftCount 大于 0 时，不断循环
+&nbsp; &nbsp; while (shiftCount--) {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;// 把数组开头的元素拿出来，塞到数组末尾去
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;arr.push(arr.shift());
+&nbsp; &nbsp; }
+})(_0x5a2e, 0x1); 
+// 0x1 就是数字 1。执行一次后，第一个元素跑到最后，数组就变回了正确的 ["WC1TaWdu", "POST", "&lt;https://api.xxx.com/login&gt;"]
+
+// Step 3: The aliased decrypt function
+var _0x4a7f = window['\x61\x74\x6f\x62']; // window['atob']
+
+function login(username, password) {
+&nbsp; &nbsp; var token = generateToken(username, password);
+
+&nbsp; &nbsp; // Step 4: Use hex indexes to fetch the correctly sorted string, then decrypt
+&nbsp; &nbsp; // 此时的 _0x5a2e[0x0] 已经在上面被还原成了 "WC1TaWdu"
+&nbsp; &nbsp; var headerName = _0x4a7f(_0x5a2e[0x0]);
+
+&nbsp; &nbsp; var requestOptions = {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;// 0x1 就是索引 1，对应 "POST"
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;method: _0x5a2e[0x1], 
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;headers: {}
+&nbsp; &nbsp; };
+
+&nbsp; &nbsp; requestOptions.headers[headerName] = token;
+
+&nbsp; &nbsp; // 0x2 就是索引 2，对应 "&lt;https://api.xxx.com/login&gt;"
+&nbsp; &nbsp; fetch(_0x5a2e[0x2], requestOptions); 
+}</code></pre>
+<p>虽然没有引入什么复杂的魔改算法，或者说引入什么清奇的思路，但是无疑能够恶心新手或者说不懂原理的人。这才是第一步，恶心人足够了。</p>
+<h3 id="55048610_解混淆">解混淆</h3>
+<p>嗯哼，这样以来，字符串混淆的前因后果&amp;原理我们就已经十分清楚了，接下来解混淆不过是倒着依葫芦画瓢。所以这个字符串加密不过是拿来恶心人的，并不会显著增加逆向难度，对于了解了原理的读者来说，这个就是个纸老虎，一戳就破了</p>
+<p>我们的解混淆思路很简单，先获取到索引正确的字符串数组，然后调用解密函数获取对应的字符串即可。</p>
+<p>我们可以简单的输出一下索引正确的字符串数组</p>
+<p>
+<ignore_js_op>
+
+<img aid="2842054" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142332jgg9w7d0m2233j07.png" file="https://attach.52pojie.cn/forum/202603/29/142332jgg9w7d0m2233j07.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842054" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842054_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 10.png</strong> <em class="xg1">(1.68 MB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA1NHw0NGVkMGE0NnwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:23 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>嗯，看来我们的思路没毛病，还看到一个有点意思的玩意儿，黄框标记的就是，我嗅到了控制流平坦化的味道哈哈哈哈哈(此处按下不表，后文会有详细分析)</p>
+<p>然后我们观察一下如何将字符串还原回去</p>
+<p>
+<ignore_js_op>
+
+<img aid="2842055" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142335lctq2cap4zyyyeic.png" file="https://attach.52pojie.cn/forum/202603/29/142335lctq2cap4zyyyeic.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842055" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842055_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 11.png</strong> <em class="xg1">(2.11 MB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA1NXw5OGI0MzQ0ZnwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:23 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>所以混淆后的统一格式就是<code>_0xe762c0(0x1a)</code></p>
+<p>
+<ignore_js_op>
+
+<img aid="2842056" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142338i8rsrazgkz3zszy0.png" file="https://attach.52pojie.cn/forum/202603/29/142338i8rsrazgkz3zszy0.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842056" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842056_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 12.png</strong> <em class="xg1">(483.12 KB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA1NnxlZWU1ZGVkNnwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:23 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>OK，我们厘清一下思路</p>
+<p>通过<code>traverse</code> 遍历代码中所有的<code>CallExpression</code>，如果<code>callee.nam==’_0xe762c0’</code> 说明就是我们要还原的位置，然后我们获取arguments[0]，再传递给解密函数，获取到结果之后使用<code>replaceInline</code> 替换节点。</p>
+<p>因此有代码</p>
+<pre><code class="language-jsx">const handlerDecryptFunc = {
+&nbsp; &nbsp; CallExpression(path) {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;if (path.node.callee.name !== decrypt.name) return;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;const argNode = path.node.arguments[0];
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;if (!argNode) return;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;if (!types.isStringLiteral(argNode) && !types.isNumericLiteral(argNode)) return;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;const arg = argNode.value;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;const decrypted = decrypt(arg);
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;const originalExpr = path.toString();
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;path.replaceInline(types.stringLiteral(decrypted));
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;console.log(`[解密] ${originalExpr} =&gt; "${decrypted}"`);
+&nbsp; &nbsp; }
+}</code></pre>
+<p>运行之后发现。。。没有任何地方被更改？？？什么鬼？？？</p>
+<p>我们输出日志观察一下</p>
+<p>
+<ignore_js_op>
+
+<img aid="2842057" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142341im5aeeia2a5zh5qm.png" file="https://attach.52pojie.cn/forum/202603/29/142341im5aeeia2a5zh5qm.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842057" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842057_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 13.png</strong> <em class="xg1">(1.69 MB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA1N3xkNzI1ZjA2M3wxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:23 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>奇怪，怎么没有任何直接调用解密函数的节点？？？我们再回头分析一下，发现都是间接调用</p>
+<p>
+<ignore_js_op>
+
+<img aid="2842058" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142343tpvcfmtz2ibb2pl1.png" file="https://attach.52pojie.cn/forum/202603/29/142343tpvcfmtz2ibb2pl1.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842058" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842058_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 14.png</strong> <em class="xg1">(1.24 MB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA1OHwxZDU1ZTMyY3wxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:23 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>也就是说我们在进行字符串还原之前还少了一步，验明正身，代码中调用的都是化身。。。</p>
+<p>
+<ignore_js_op>
+
+<img aid="2842059" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142346xjhtcelppr58pttj.png" file="https://attach.52pojie.cn/forum/202603/29/142346xjhtcelppr58pttj.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842059" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842059_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 15.png</strong> <em class="xg1">(439.19 KB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA1OXwwNWI1OGU0ZHwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:23 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>观察可知我们需要遍历所有的<code>VariableDeclarator</code>节点，判断这个变量声明的初始化标识符的name是不是我们的解密函数，如果是的话我们就</p>
+<p>假设解密函数是B，变量声明标识符是A</p>
+<ol>
+<li>获取当前path对应的作用域scope</li>
+<li>在scope中查询B的绑定</li>
+<li>在B的绑定中查询所有对B引用的节点</li>
+<li>对所有引用B的节点进行替换，替换为A</li>
+<li>删除B路径</li>
+</ol>
+<p>很多人可能会问，为啥中间还有个获取binding？？？直接在作用域里查询name的reference不就好了吗？为啥要多此一举？这是因为name只是一个string，而getBinding能够获取到一个实例对象，只有实例对象才有referencePaths属性，因此getBinding是必不可少的</p>
+<p>因此有代码</p>
+<pre><code class="language-jsx">const handlerSameIdentifier = {
+&nbsp; &nbsp; VariableDeclarator(path) {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;if (path.node.init?.name === decrypt.name) {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;var huashenReferencePaths = path.scope.getBinding(path.node.id.name).referencePaths
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;for (const referencePath of huashenReferencePaths) {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; referencePath.replaceWith(types.identifier(path.node.init.name))
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;}
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;path.remove()
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;}
+&nbsp; &nbsp; }
+}</code></pre>
+<p>我们运行后检查输出</p>
+<p>
+<ignore_js_op>
+
+<img aid="2842060" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142348xug4zta3u3u3oz43.png" file="https://attach.52pojie.cn/forum/202603/29/142348xug4zta3u3u3oz43.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842060" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842060_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 16.png</strong> <em class="xg1">(545.46 KB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA2MHxhZWNmYmIwMnwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:23 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>成功删除化身～</p>
+<p>然后我们再配合解密函数还原字符串混淆</p>
+<p>
+<ignore_js_op>
+
+<img aid="2842061" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142351a49sm0cq1yn20g41.png" file="https://attach.52pojie.cn/forum/202603/29/142351a49sm0cq1yn20g41.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1036" id="aimg_2842061" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842061_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 17.png</strong> <em class="xg1">(1.45 MB, 下载次数: 1)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA2MXw4ZDBjN2FkYXwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:23 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>
+<ignore_js_op>
+
+<img aid="2842062" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142354chhxm05znz0x55nx.png" file="https://attach.52pojie.cn/forum/202603/29/142354chhxm05znz0x55nx.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842062" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842062_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 18.png</strong> <em class="xg1">(1.2 MB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA2MnxmMDhiMmIxMHwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:23 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>可以看到输出了一大堆日志，输出文件中也看到了正确的字符串，那么初步判定还原字符串解混淆成功～</p>
+<h3 id="55048610_函数字典还原">函数字典还原</h3>
+<p>
+<ignore_js_op>
+
+<img aid="2842063" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142357enotwnnapw75t232.png" file="https://attach.52pojie.cn/forum/202603/29/142357enotwnnapw75t232.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842063" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842063_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 19.png</strong> <em class="xg1">(1.39 MB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA2M3w1ODBjNDk2ZnwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:23 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>接下来映入眼帘的就是一个超长的字典，键都是字符串，值的类型基本上是函数调用，间或字符串</p>
+<p>
+<ignore_js_op>
+
+<img aid="2842064" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142359eheaaaz0hromaav0.png" file="https://attach.52pojie.cn/forum/202603/29/142359eheaaaz0hromaav0.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="966" id="aimg_2842064" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842064_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 20.png</strong> <em class="xg1">(798.31 KB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA2NHxkZTk1YWM0YnwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:23 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>那这个难度也不高，我们只需要找到所有调用字典的地方，然后手动完成字典查询，再根据值的类型生成对应的节点即可</p>
+<h5 id="55048610_函数调用还原">函数调用还原</h5>
+<p>我们先看一下字典值的类型为函数调用的情况</p>
+<p>
+<ignore_js_op>
+
+<img aid="2842065" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142401vonho8o44jofozzw.png" file="https://attach.52pojie.cn/forum/202603/29/142401vonho8o44jofozzw.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842065" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842065_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 21.png</strong> <em class="xg1">(828.58 KB, 下载次数: 1)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA2NXw4YmE0MjAzN3wxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:24 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>
+<ignore_js_op>
+
+<img aid="2842066" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142404yysd33yujxh0z3wd.png" file="https://attach.52pojie.cn/forum/202603/29/142404yysd33yujxh0z3wd.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842066" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842066_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 22.png</strong> <em class="xg1">(609.24 KB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA2NnwxNzRlMjYyNXwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:24 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>因此我们有思路</p>
+<ol>
+<li>遍历所有的CallExpression</li>
+<li>如果callee.type是MemberExpression且callee.object.name是dict.name</li>
+<li>获取callee.property.value</li>
+<li>获取CallExpression.arguments</li>
+<li>获取当前path的作用域，然后获取dict的绑定，在绑定中获取dict的所有properties</li>
+<li>遍历dict的所有properties，如果key == callee.property.value，获取对应的value</li>
+<li>使用value和arguments重构当前path</li>
+</ol>
+<p>但是先不要着急，我们继续观察，同为函数调用，却又两种不同的形式</p>
+<p>
+<ignore_js_op>
+
+<img aid="2842067" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142406f23mk999o699mk27.png" file="https://attach.52pojie.cn/forum/202603/29/142406f23mk999o699mk27.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842067" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842067_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 23.png</strong> <em class="xg1">(281.91 KB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA2N3w3ZDg1YzZiM3wxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:24 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>当arguments数量≥2时，第一个参数永远是函数名，因此我们再构造节点的时候还需要通过arguments数量来判定传入参数列表的起点。</p>
+<p>我们再观察，虽然同为函数表达式，但是有的却是内部在进行二元运算，这两者在还原的时候肯定是不同的，因此我们再观察</p>
+<p>
+<ignore_js_op>
+
+<img aid="2842068" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142408e3iyecziymk6ueee.png" file="https://attach.52pojie.cn/forum/202603/29/142408e3iyecziymk6ueee.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="826" id="aimg_2842068" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842068_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 24.png</strong> <em class="xg1">(145.15 KB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA2OHw3NDA0MmZiZXwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:24 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>可以看到函数表达式参数的类型不再是CallExpression了，而是BinaryExpression</p>
+<p>因此针对这种分支，我们思路如下</p>
+<ol>
+<li>获取二元运算的操作符operator</li>
+<li>获取传入的参数</li>
+<li>替换原始path</li>
+</ol>
+<p>因此有代码</p>
+<pre><code class="language-jsx">var handlerDict2Func = {
+&nbsp; &nbsp; CallExpression: {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;exit(path) {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;// 确认 callee 是字典的成员访问，如 _0x4d21fc["GoWMj"]
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;if (!types.isMemberExpression(path.node.callee)) return;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;const dictName = path.node.callee.object?.name;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;if ("_0x4d21fc" != dictName) return;
+
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;const binding = path.scope.getBinding(dictName);
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;if (!binding) return;
+
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;const propertyKey = path.node.callee?.property?.value;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;if (!propertyKey) return;
+
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;const properties = binding?.path?.get("init.properties");
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;for (const property of properties) {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; if (property.node.key.value !== propertyKey) continue;
+
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; // 取 return 语句的 argument
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; const returnArgument = property.node.value.body.body[0]?.argument;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; if (!returnArgument) continue;
+
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; const originalExpr = path.toString();
+
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; if (types.isCallExpression(returnArgument)) {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;// 函数调用模式：第一个参数是被调用的函数，其余是实参
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;path.replaceWith(types.callExpression(path.node.arguments[0], path.node.arguments.slice(1)));
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;console.log(`[字典-函数调用] ${originalExpr} =&gt; ${path.toString()}`);
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; } else if (types.isBinaryExpression(returnArgument)) {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;// 二元运算模式：还原运算符和两个操作数
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;const operator = returnArgument.operator;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;path.replaceWith(types.binaryExpression(operator, path.node.arguments[0], path.node.arguments[1]));
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;console.log(`[字典-二元运算] ${originalExpr} =&gt; ${path.toString()}`);
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; }
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; break;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;}
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;}
+&nbsp; &nbsp; }
+}</code></pre>
+<p>运行一下看看效果</p>
+<p>
+<ignore_js_op>
+
+<img aid="2842069" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142411obm1y1q21mlc91qm.png" file="https://attach.52pojie.cn/forum/202603/29/142411obm1y1q21mlc91qm.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842069" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842069_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 25.png</strong> <em class="xg1">(1.77 MB, 下载次数: 1)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA2OXwyOTY1MjJiNnwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:24 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>但是我们观察输出的解混淆文件，发现虽然目标字典已被还原，但是还有大大小小好几个其他的字典文件，咋办呢？其实很简单，我们把所有文件归制成一个列表，然后命中就进行解混淆即可。</p>
+<p><code>dictList **=** ["_0x4d21fc"**,** "_0x52517b"**,** "_0xc2212b"**,** "_0x2c7266"**,** "_0x4f7875"]</code></p>
+<p>嗯哼，还原完成，非常完美</p>
+<h5 id="55048610_字符串还原">字符串还原</h5>
+<p>接下来我们需要还原的就是字典中的值为字符串类型的了</p>
+<p>这个十分的简单，判定是否为还原点位的逻辑和上面一样，然后找到在字典properties中对应的值，直接还原即可。</p>
+<p>有代码</p>
+<pre><code class="language-jsx">// 替换字典中的字符串属性访问
+// 如：_0x4d21fc["XrKsV"] → "hello"（字典中该 key 对应的 value 是字符串字面量）
+var handlerDict2Str = {
+&nbsp; &nbsp; MemberExpression(path) {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;const dictName = path.node.object.name;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;if (!dictList.includes(dictName)) return;
+
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;const binding = path.scope.getBinding(dictName);
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;if (!binding) return;
+
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;const propertyKey = path.node.property?.value;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;if (!propertyKey) return;
+
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;const properties = binding.path.get("init.properties");
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;for (const property of properties) {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;if (property.node.key.value !== propertyKey) continue;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;// 只处理 value 是字符串字面量的属性（函数类型由 handlerDict2Func 处理）
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;// 注意：不加 isStringLiteral 守卫，因为节点经过前面 handler 处理后类型可能有变化
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;const propertyValue = property.node.value.value;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;if (typeof propertyValue !== "string") continue;
+
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;const originalExpr = path.toString();
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;path.replaceWith(types.stringLiteral(propertyValue));
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;console.log(`[字典-字符串] ${originalExpr} =&gt; "${propertyValue}"`);
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;break;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;}
+&nbsp; &nbsp; }
+}</code></pre>
+<p>运行后</p>
+<p>
+<ignore_js_op>
+
+<img aid="2842070" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142414jdy8c9di1hqb01wz.png" file="https://attach.52pojie.cn/forum/202603/29/142414jdy8c9di1hqb01wz.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842070" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842070_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 26.png</strong> <em class="xg1">(1.34 MB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA3MHw1YWU5YzRmMnwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:24 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>
+<ignore_js_op>
+
+<img aid="2842071" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/142416baava7vf9w7431ba.png" file="https://attach.52pojie.cn/forum/202603/29/142416baava7vf9w7431ba.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842071" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842071_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 27.png</strong> <em class="xg1">(642.94 KB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA3MXw2OWViMTliMHwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:24 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<p>看起来还是十分赏心悦目的</p>
+<h5 id="55048610_删除无用字典">删除无用字典</h5>
+<p>量不大甚至可以考虑手动删除，量大了批量删除</p>
+<p>有代码</p>
+<pre><code class="language-jsx">// 删除字典变量声明（在 handlerDict2Func/handlerDict2Str 替换完所有引用后执行）
+var handlerRemoveDict = {
+&nbsp; &nbsp; VariableDeclarator(path) {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;const dictName = path.node.id?.name;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;if (!dictList.includes(dictName)) return;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;path.remove();
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;console.log(`[删除字典] "${dictName}" 声明已移除`);
+&nbsp; &nbsp; }
+};</code></pre>
+<h3 id="55048610_还原控制流平坦化">还原控制流平坦化</h3>
+<pre><code class="language-jsx">function _0x31ad27(_0x541033, _0x534897, _0x12161e, _0x1e583c, _0xaf8777, _0x31bb79, _0x40f090, _0x19443e) {
+&nbsp;&nbsp;var _0x28aafb = "3|1|2|0|4|5".split("|"),
+&nbsp; &nbsp; _0x2577c8 = 0;
+&nbsp;&nbsp;while (true) {
+&nbsp; &nbsp; switch (_0x28aafb[_0x2577c8++]) {
+&nbsp; &nbsp;&nbsp; &nbsp;case "0":
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;for (_0x5f1d55["$" + _0x31ff41] = _0x5f1d55, _0x219876 = 0; _0x219876 &lt; _0x31ff41; _0x219876++) _0x5f1d55[_0x13a1af = "$" + _0x219876] = _0xaf8777[_0x13a1af];
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;continue;
+&nbsp; &nbsp;&nbsp; &nbsp;case "1":
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;null == _0x31bb79 && (_0x31bb79 = this), _0xaf8777 && !_0xaf8777.d && (_0xaf8777.d = 0, _0xaf8777.$0 = _0xaf8777, _0xaf8777[1] = {});
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;continue;
+&nbsp; &nbsp;&nbsp; &nbsp;case "2":
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;var _0x5f1d55 = {},
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; _0x31ff41 = _0x5f1d55.d = _0xaf8777 ? _0xaf8777.d + 1 : 0;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;continue;
+&nbsp; &nbsp;&nbsp; &nbsp;case "3":
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;var _0x13a1af, _0x219876;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;continue;
+&nbsp; &nbsp;&nbsp; &nbsp;case "4":
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;for (_0x219876 = 0, _0x31ff41 = _0x5f1d55.length = _0x1e583c.length; _0x219876 &lt; _0x31ff41; _0x219876++) _0x5f1d55[_0x219876] = _0x1e583c[_0x219876];
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;continue;
+&nbsp; &nbsp;&nbsp; &nbsp;case "5":
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;return _0x19443e && _0x509192[_0x534897], _0x509192[_0x534897], _0x1233dd(_0x541033, _0x534897, _0x12161e, 0, _0x5f1d55, _0x31bb79, null)[1];
+&nbsp; &nbsp; }
+&nbsp; &nbsp; break;
+&nbsp;&nbsp;}
+}</code></pre>
+<p>非常典型的控制流平坦化</p>
+<p>我们看到正确的执行顺序被封装在一个字符串<code>"3|1|2|0|4|5"</code>里，而这个字符串正是之前还原出来的，所以前置的还原步骤还是非常有必要的</p>
+<p>我们通过split进行分割之后按照数字顺序进行执行</p>
+<p>也就是说这段代码的执行顺序是3、1、2、0、4、5</p>
+<p>那么我们的思路就是将switch中的跳转执行代码转换成顺序执行代码</p>
+<p>
+<ignore_js_op>
+
+<img aid="2842078" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/143138qqmsq4zmsivrcqqz.png" file="https://attach.52pojie.cn/forum/202603/29/143138qqmsq4zmsivrcqqz.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842078" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842078_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 2.png</strong> <em class="xg1">(631.04 KB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA3OHxhY2VjMTI4ZXwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:31 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<ol>
+<li>
+<p>识别到这个<code>while</code>块&amp;<code>switch</code>块</p>
+<p>也就是说条件必须是<code>while</code>块中的<code>body[0]</code>必须是<code>switch</code>块</p>
+</li>
+<li>
+<p>获取执行顺序</p>
+<p>我们观察能够发现</p>
+</li>
+</ol>
+<p>
+<ignore_js_op>
+
+<img aid="2842073" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/143121t2888tfroppo8p47.png" file="https://attach.52pojie.cn/forum/202603/29/143121t2888tfroppo8p47.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842073" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842073_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 3.png</strong> <em class="xg1">(196.58 KB, 下载次数: 1)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA3M3xhMjY0OGM0MHwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:31 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<pre><code>所以接下来的任务就是获取`while`节点的兄弟节点
+
+我们可以通过`path.key`来获取`while`节点在其父节点的子节点列表中的索引</code></pre>
+<p>
+<ignore_js_op>
+
+<img aid="2842074" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/143123pyuuy0bbybq4uyu4.png" file="https://attach.52pojie.cn/forum/202603/29/143123pyuuy0bbybq4uyu4.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842074" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842074_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 4.png</strong> <em class="xg1">(138.8 KB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA3NHwwZDI4ZjY5YXwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:31 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<pre><code>那么对应的执行顺序字符串节点的索引就是`path.key -1`
+
+然后我们使用path.getSibling()方法获取到这个执行顺序节点的path
+
+我们对包含执行顺序节点的path中的进行遍历
+
+在遍历的过程中我们遍历所有的`StringLiteral`节点</code></pre>
+<p>
+<ignore_js_op>
+
+<img aid="2842075" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/143126tidwtr8t3rwh4wih.png" file="https://attach.52pojie.cn/forum/202603/29/143126tidwtr8t3rwh4wih.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842075" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842075_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 5.png</strong> <em class="xg1">(643 KB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA3NXwwMGNlYjk1MXwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:31 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<pre><code>如果这个节点存在`”|”`，我们就认为这个节点就是我们要找的执行顺序节点
+
+然后我们拿去对应的value并通过stop停止冒泡
+
+然后通过split方法获取真正的执行顺序序列</code></pre>
+<ol start="3">
+<li>获取switch所有分支
+<ol>
+<li>进入cases</li>
+<li>foreche
+<ol>
+<li>获取key</li>
+<li>获取case中的Statement/Expression</li>
+</ol></li>
+</ol></li>
+</ol>
+<p>
+<ignore_js_op>
+
+<img aid="2842076" src="https://static.52pojie.cn/static/image/common/none.gif" zoomfile="https://attach.52pojie.cn/forum/202603/29/143128rpsskznhlogjlz3s.png" file="https://attach.52pojie.cn/forum/202603/29/143128rpsskznhlogjlz3s.png" class="zoom" onclick="zoom(this, this.src, 0, 0, 0)" width="1080" id="aimg_2842076" inpost="1" />
+
+<div class="tip tip_4 aimg_tip" id="aimg_2842076_menu" style="position: absolute; display: none" disautofocus="true">
+<div class="xs0">
+<p><strong>image 6.png</strong> <em class="xg1">(216.05 KB, 下载次数: 0)</em></p>
+<p>
+<a href="forum.php?mod=attachment&amp;aid=Mjg0MjA3Nnw5ZDFhYTg4ZHwxNzg4ODY3Nzk5fDB8MjEwMDA3Ng%3D%3D&amp;nothumb=yes" target="_blank">下载附件</a>
+
+</p>
+
+<p class="xg1 y">2026-3-29 14:31 上传</p>
+
+</div>
+<div class="tip_horn"></div>
+</div>
+
+</ignore_js_op>
+</p>
+<pre><code>&nbsp; &nbsp; 3. 构建caseMaps</code></pre>
+<ol start="4">
+<li>按执行顺序取元素并添加到数组</li>
+<li>使用数组替换while&amp;switch节点</li>
+<li>删除while的兄弟节点，也就是存储执行顺序的节点</li>
+<li>输出日志</li>
+</ol>
+<p>有代码</p>
+<pre><code class="language-jsx">// 处理控制流平坦化
+var handlerWhileSwitch = {
+&nbsp; &nbsp; WhileStatement(path) {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;// Step 1: Ensure the while loop contains a switch statement
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;let switchNode = path.node.body.body[0];
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;if (!types.isSwitchStatement(switchNode)) return;
+
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;// Step 2: Locate the password book (the string sequence)
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;// We look at the sibling node just before the while loop
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;let prevSibling = path.getSibling(path.key - 1);
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;let sequenceString = "";
+
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;// Extracting "3|1|2|0|4|5" from the variable declaration
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;prevSibling.traverse({
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;StringLiteral(strPath) {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; if (strPath.node.value.includes("|")) {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;sequenceString = strPath.node.value;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;strPath.stop();
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; }
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;}
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;});
+
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;if (!sequenceString) return;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;console.log("[控制流平坦化] 找到执行顺序 =&gt; " + sequenceString);
+
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;// Step 3: Parse the sequence into an array
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;let sequenceArray = sequenceString.split("|");
+
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;// Step 4: Map each case to its corresponding statements
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;let caseMap = {};
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;switchNode.cases.forEach(c =&gt; {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;let key = c.test.value;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;// Filter out 'continue' statements from the block
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;let statements = c.consequent.filter(node =&gt; !types.isContinueStatement(node));
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;caseMap[key] = statements;
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;});
+
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;// Step 5: Reconstruct the execution flow linearly
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;let reconstructedStatements = [];
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;sequenceArray.forEach(key =&gt; {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;if (caseMap[key]) {
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp; reconstructedStatements = reconstructedStatements.concat(caseMap[key]);
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;&nbsp; &nbsp;}
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;});
+
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;// Step 6: Replace the while loop with the flattened statements
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;path.replaceWithMultiple(reconstructedStatements);
+
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;// Step 7: Clean up the useless variables used for the switch dispatch
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;prevSibling.remove();
+
+&nbsp; &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;console.log("[控制流平坦化] Control flow deobfuscation completed successfully!");
+&nbsp; &nbsp; }
+}</code></pre></div>
+<div class="parsedown-markdown-end_FLAG_ZXSQ" style="display:none"></div></td></tr></table>
+
+
+</div>
+<div id="comment_55048610" class="cm">
+</div>
+
+<h3 class="psth xs1"><span class="icon_ring vm"></span>免费评分</h3>
+<dl id="ratelog_55048610" class="rate">
+<dd style="margin:0">
+<div id="post_rate_55048610"></div>
+<table class="ratl">
+<tr>
+<th class="xw1" width="120"><a href="forum.php?mod=misc&amp;action=viewratings&amp;tid=2100076&amp;pid=55048610" onclick="showWindow('viewratings', this.href)" title="查看全部评分"> 参与人数 <span class="xi1">11</span></a></th><th class="xw1" width="80">威望 <i><span class="xi1">+2</span></i></th>
+<th class="xw1" width="80">吾爱币 <i><span class="xi1">+109</span></i></th>
+<th class="xw1" width="80">热心值 <i><span class="xi1">+8</span></i></th>
+<th>
+<a href="javascript:;" onclick="toggleRatelogCollapse('ratelog_55048610', this);" class="y xi2 op">收起</a>
+<i class="txt_h">理由</i>
+</th>
+</tr>
+<tbody class="ratl_l"><tr id="rate_55048610_2501553">
+<td>
+<a href="home.php?mod=space&amp;uid=2501553" target="_blank"><img src="https://avatar.52pojie.cn/data/avatar/002/50/15/53_avatar_small.jpg" onerror="this.onerror=null;this.src='https://avatar.52pojie.cn/images/noavatar_small.gif'" /></a> <a href="home.php?mod=space&amp;uid=2501553" target="_blank">hbygogogo</a>
+</td><td class="xg1"></td>
+<td class="xi1"> + 1</td>
+<td class="xg1"></td>
+<td class="xg1">热心回复！</td>
+</tr>
+<tr id="rate_55048610_2191983">
+<td>
+<a href="home.php?mod=space&amp;uid=2191983" target="_blank"><img src="https://avatar.52pojie.cn/data/avatar/002/19/19/83_avatar_small.jpg" onerror="this.onerror=null;this.src='https://avatar.52pojie.cn/images/noavatar_small.gif'" /></a> <a href="home.php?mod=space&amp;uid=2191983" target="_blank">tianDD</a>
+</td><td class="xg1"></td>
+<td class="xi1"> + 1</td>
+<td class="xi1"> + 1</td>
+<td class="xg1">我很赞同！</td>
+</tr>
+<tr id="rate_55048610_1810700">
+<td>
+<a href="home.php?mod=space&amp;uid=1810700" target="_blank"><img src="https://avatar.52pojie.cn/data/avatar/001/81/07/00_avatar_small.jpg" onerror="this.onerror=null;this.src='https://avatar.52pojie.cn/images/noavatar_small.gif'" /></a> <a href="home.php?mod=space&amp;uid=1810700" target="_blank">junjia215</a>
+</td><td class="xg1"></td>
+<td class="xi1"> + 1</td>
+<td class="xi1"> + 1</td>
+<td class="xg1">用心讨论，共获提升！</td>
+</tr>
+<tr id="rate_55048610_2470174">
+<td>
+<a href="home.php?mod=space&amp;uid=2470174" target="_blank"><img src="https://avatar.52pojie.cn/data/avatar/002/47/01/74_avatar_small.jpg" onerror="this.onerror=null;this.src='https://avatar.52pojie.cn/images/noavatar_small.gif'" /></a> <a href="home.php?mod=space&amp;uid=2470174" target="_blank">libc</a>
+</td><td class="xg1"></td>
+<td class="xi1"> + 1</td>
+<td class="xg1"></td>
+<td class="xg1">我很赞同！</td>
+</tr>
+<tr id="rate_55048610_554715">
+<td>
+<a href="home.php?mod=space&amp;uid=554715" target="_blank"><img src="https://avatar.52pojie.cn/data/avatar/000/55/47/15_avatar_small.jpg" onerror="this.onerror=null;this.src='https://avatar.52pojie.cn/images/noavatar_small.gif'" /></a> <a href="home.php?mod=space&amp;uid=554715" target="_blank">yppsniper</a>
+</td><td class="xg1"></td>
+<td class="xi1"> + 1</td>
+<td class="xi1"> + 1</td>
+<td class="xg1">我很赞同！</td>
+</tr>
+<tr id="rate_55048610_2477210">
+<td>
+<a href="home.php?mod=space&amp;uid=2477210" target="_blank"><img src="https://avatar.52pojie.cn/data/avatar/002/47/72/10_avatar_small.jpg" onerror="this.onerror=null;this.src='https://avatar.52pojie.cn/images/noavatar_small.gif'" /></a> <a href="home.php?mod=space&amp;uid=2477210" target="_blank">ld0x</a>
+</td><td class="xg1"></td>
+<td class="xg1"></td>
+<td class="xi1"> + 1</td>
+<td class="xg1">我很赞同！</td>
+</tr>
+<tr id="rate_55048610_2472278">
+<td>
+<a href="home.php?mod=space&amp;uid=2472278" target="_blank"><img src="https://avatar.52pojie.cn/data/avatar/002/47/22/78_avatar_small.jpg" onerror="this.onerror=null;this.src='https://avatar.52pojie.cn/images/noavatar_small.gif'" /></a> <a href="home.php?mod=space&amp;uid=2472278" target="_blank">1809022887</a>
+</td><td class="xg1"></td>
+<td class="xi1"> + 1</td>
+<td class="xi1"> + 1</td>
+<td class="xg1">用心讨论，共获提升！</td>
+</tr>
+<tr id="rate_55048610_879080">
+<td>
+<a href="home.php?mod=space&amp;uid=879080" target="_blank"><img src="https://avatar.52pojie.cn/data/avatar/000/87/90/80_avatar_small.jpg" onerror="this.onerror=null;this.src='https://avatar.52pojie.cn/images/noavatar_small.gif'" /></a> <a href="home.php?mod=space&amp;uid=879080" target="_blank">涛之雨</a>
+</td><td class="xi1"> + 2</td>
+<td class="xi1"> + 100</td>
+<td class="xi1"> + 1</td>
+<td class="xg1">感谢发布原创作品，吾爱破解论坛因你更精彩！</td>
+</tr>
+<tr id="rate_55048610_1788091">
+<td>
+<a href="home.php?mod=space&amp;uid=1788091" target="_blank"><img src="https://avatar.52pojie.cn/data/avatar/001/78/80/91_avatar_small.jpg" onerror="this.onerror=null;this.src='https://avatar.52pojie.cn/images/noavatar_small.gif'" /></a> <a href="home.php?mod=space&amp;uid=1788091" target="_blank">greendays</a>
+</td><td class="xg1"></td>
+<td class="xi1"> + 1</td>
+<td class="xi1"> + 1</td>
+<td class="xg1">我很赞同！</td>
+</tr>
+<tr id="rate_55048610_2484162">
+<td>
+<a href="home.php?mod=space&amp;uid=2484162" target="_blank"><img src="https://avatar.52pojie.cn/data/avatar/002/48/41/62_avatar_small.jpg" onerror="this.onerror=null;this.src='https://avatar.52pojie.cn/images/noavatar_small.gif'" /></a> <a href="home.php?mod=space&amp;uid=2484162" target="_blank">110077</a>
+</td><td class="xg1"></td>
+<td class="xi1"> + 1</td>
+<td class="xg1"></td>
+<td class="xg1">我很赞同！</td>
+</tr>
+<tr id="rate_55048610_1030820">
+<td>
+<a href="home.php?mod=space&amp;uid=1030820" target="_blank"><img src="https://avatar.52pojie.cn/data/avatar/001/03/08/20_avatar_small.jpg" onerror="this.onerror=null;this.src='https://avatar.52pojie.cn/images/noavatar_small.gif'" /></a> <a href="home.php?mod=space&amp;uid=1030820" target="_blank">helian147</a>
+</td><td class="xg1"></td>
+<td class="xi1"> + 1</td>
+<td class="xi1"> + 1</td>
+<td class="xg1">热心回复！</td>
+</tr>
+</tbody>
+</table>
+<p class="ratc">
+<a href="forum.php?mod=misc&amp;action=viewratings&amp;tid=2100076&amp;pid=55048610" onclick="showWindow('viewratings', this.href)" title="查看全部评分" class="xi2">查看全部评分</a>
+</p>
+</dd>
+</dl>
+</div>
+</div>
+
+</td></tr>
+<tr><td class="plc plm">
+<div id="p_btn" class="mtw mbm hm cl">
+<a class="followp" href="" onclick=showWindow("csu_wechat_scan_qrcode","plugin.php?id=csu_wechat_scan:share&tid=2100076","get",0); return false; ><i><img src="source/plugin/csu_wechat_scan/image/wx.png" >分享到朋友圈</i></a></div>
+<div class="vw50_kfc_pb"><span style="color:#008000;"><p>发帖前要善用<strong>【<a href="//www.52pojie.cn/search.php"target="_blank">论坛搜索</a>】</strong>功能，那里可能会有你要找的答案或者已经有人发布过相同内容了，请勿重复发帖。</p></span></div></td>
+</tr>
+<tr id="_postposition55048610"></tr>
+<tr>
+<td class="pls"></td>
+<td class="plc" style="overflow:visible;">
+<div class="po hin">
+<div class="pob cl">
+<em>
+<a class="fastre" href="forum.php?mod=post&amp;action=reply&amp;fid=5&amp;tid=2100076&amp;reppost=55048610&amp;extra=page%3D1&amp;page=1" rel="nofollow" onclick="showWindow('reply', this.href)">回复</a>
+</em>
+
+<p>
+<a href="javascript:;" onclick="showWindow('miscreport55048610', 'misc.php?mod=report&rtype=post&rid=55048610&tid=2100076&fid=5', 'get', -1);return false;">举报</a>
+</p>
+
+</div>
+</div>
+</td>
+</tr>
+<tr class="ad">
+<td class="pls">
+</td>
+<td class="plc">
+</td>
+</tr>
+</table>
+
+</div><div id="post_55060347" ><table id="pid55060347" class="plhin" summary="pid55060347" cellspacing="0" cellpadding="0">
+<tr>
+ <td class="pls" rowspan="2">
+<div id="favatar55060347" class="pls cl favatar">
+<div class="pi">
+<div class="authi"><a href="home.php?mod=space&amp;uid=238326" target="_blank" rel="nofollow" class="xw1">baswcss</a>
+</div>
+</div>
+<div class="p_pop blk bui card_gender_" id="userinfo55060347" style="display: none; margin-top: -11px;">
+<div class="m z">
+<div id="userinfo55060347_ma"></div>
+</div>
+<div class="i y">
+<div>
+<strong><a href="home.php?mod=space&amp;uid=238326" target="_blank" class="xi2">baswcss</a></strong>
+<em>当前离线</em>
+</div><dt>好友</dt><dd><a href="home.php?mod=space&uid=238326&do=friend&view=me&from=space" target="_blank" class="xi2"></a></dd>
+<dt>阅读权限</dt><dd>10</dd>
+<span style="color:Blue;"><dt>听众</dt><dd><a href="home.php?mod=follow&do=follower&uid=238326" target="_blank" class="xi2"></a></dd>
+<dt>最后登录</dt><dd>1970-1-1</dd>
+<div class="imicn">
+<a href="home.php?mod=space&amp;uid=238326&amp;do=profile" target="_blank" title="查看详细资料"><img src="https://static.52pojie.cn/static/image/common/userinfo.gif" alt="查看详细资料" /></a>
+</div>
+<div id="avatarfeed"><span id="threadsortswait"></span></div>
+</div>
+</div>
+<div>
+<div class="avatar"><a href="home.php?mod=space&amp;uid=238326" class="avtm" target="_blank" rel="nofollow"><img src="https://avatar.52pojie.cn/images/noavatar_middle.gif" /></a></div>
+</div>
+</div>
+</td>
+<td class="plc">
+<div class="pi">
+<strong>
+<a href="forum.php?mod=redirect&goto=findpost&ptid=2100076&pid=55060347"   id="postnum55060347" onclick="setCopy(this.href, '帖子地址复制成功');return false;">
+推荐
+</a>
+</strong>
+<div class="pti">
+<div class="pdbt">
+</div>
+<div class="authi">
+<img class="authicn vm" id="authicon55060347" src="https://static.52pojie.cn/static/image/common/online_member.gif" />
+<span class="res-author"><a href="home.php?mod=space&amp;uid=238326" target="_blank" class="xi2">baswcss</a>
+</span><em id="authorposton55060347"><span class="poston">发表于</span> 2026-3-31 14:31</em>
+</div>
+</div>
+</div><div class="pct"><div class="pcb">
+<div class="t_fsz">
+<table cellspacing="0" cellpadding="0"><tr><td class="t_f" 

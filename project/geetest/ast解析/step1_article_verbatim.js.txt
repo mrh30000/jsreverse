@@ -1,0 +1,66 @@
+// 严格按文章 2.3 + 2.6.1 + 2.6.3 原样实现（bug-compatible，用于验证文章代码是否可跑）
+// 注意：本脚本的 eval 是文章方案的核心机制（在 Node 里直接执行被提取出的解密函数），
+//      输入仅为本目录内手动下载的 gcaptcha4.js，不做网络/文件写入以外的副作用。
+const fs = require('fs');
+const parser = require('@babel/parser');
+const traverse = require('@babel/traverse').default;
+const t = require('@babel/types');
+const generator = require('@babel/generator').default;
+const path = require('path');
+const baseDir = __dirname;
+const js_code = fs.readFileSync(path.join(baseDir, 'code.js'), 'utf-8');
+const ast = parser.parse(js_code, { tokens: true, sourceType: 'module', ranges: true, locations: true });
+
+function get_decryptFunc(ast) {
+  const body = ast.program.body.slice(0, 5); // 取前 N 个代码块
+  const newAst = { type: 'File', program: { type: 'Program', body: body } };
+  const eval_code = generator(newAst).code;
+  const target_decrypt_fn = generator(body[2].expression.left).code;
+  return { eval_code, target_decrypt_fn };
+}
+const { eval_code, target_decrypt_fn } = get_decryptFunc(ast);
+eval(eval_code);
+console.log('[article] target_decrypt_fn =', target_decrypt_fn);
+
+let count = 0;
+const errors = [];
+traverse(ast, {
+  VariableDeclaration(path) {
+    if (path.node.declarations.length !== 3) return;
+    const declarations_array = path.node.declarations;
+    if (declarations_array[0].type !== 'VariableDeclarator') return;
+    if (declarations_array[1].type !== 'VariableDeclarator') return;
+    if (declarations_array[2].type !== 'VariableDeclarator') return;
+    if (!declarations_array[0].init) return;
+    if (declarations_array[0].init.type !== 'MemberExpression') return;
+    const decrypt_name = generator(declarations_array[0].init).code;
+    if (decrypt_name !== target_decrypt_fn) return;
+    const decrypt_fn_a = declarations_array[0].id.name;
+    const decrypt_fn_c = declarations_array[2].id.name;
+
+    const decrypt_fn_a_bind_name = path.scope.getBinding(decrypt_fn_a);
+    const decrypt_fn_c_bind_name = path.scope.getBinding(decrypt_fn_c);
+    eval(path + '');
+    const doOne = (bind) => {
+      if (!bind) { errors.push('binding undefined for ' + decrypt_fn_a + '/' + decrypt_fn_c); return; }
+      // 文章原文用 .map()，此处 .forEach() 行为等价（返回值未被使用）
+      bind.referencePaths.forEach((_path) => {
+        if (!_path.parentPath) return;
+        if (_path.parentPath.node.type !== 'CallExpression') return;
+        if (_path.parentPath.node.arguments.length !== 1) return;
+        if (_path.parentPath.node.arguments[0].type !== 'NumericLiteral') return;
+        const decrypt_value = eval(_path.parentPath + '');
+        _path.parentPath.replaceInline(t.valueToNode(decrypt_value));
+        count++;
+      });
+    };
+    doOne(decrypt_fn_a_bind_name);
+    doOne(decrypt_fn_c_bind_name);
+  },
+});
+
+const code = generator(ast, { compact: false, minified: false, comments: true, retainLines: false, jsescOption: { quotes: 'single' } }).code;
+fs.writeFileSync(path.join(baseDir, 'output.js'), code);
+console.log('[article] 替换调用点数量 count =', count);
+console.log('[article] 作用域绑定缺失 errors =', errors.length ? errors.slice(0, 5) : 'none');
+console.log('[article] output.js bytes =', Buffer.byteLength(code));

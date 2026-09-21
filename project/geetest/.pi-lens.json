@@ -1,0 +1,12 @@
+{
+  "$schema": "https://pi-lens.dev/schema/project.json",
+  "ignore": [
+    "gcaptcha4.js",
+    "ast解析/code.js",
+    "ast解析/output.js",
+    "browsertest/*.js",
+    "browsertest/mode.txt",
+    "browsertest/api_log.jsonl",
+    "**/*.js.txt"
+  ]
+}

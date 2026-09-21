@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crawler RPC</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <header class="header">
+      <h1><span>&#x1F577;&#xFE0F;</span> Crawler RPC</h1>
+      <p>&#x6D4F;&#x89C8;&#x5668;&#x63D2;&#x4EF6;&#x81EA;&#x52A8;&#x5316;&#x63A7;&#x5236;&#x4E2D;&#x5FC3;</p>
+    </header>
+
+    <main class="container">
+      <section class="card status-row">
+        <div class="status-indicator">
+          <div id="statusDot" class="status-dot loading"></div>
+          <span id="statusText" class="status-text">&#x68C0;&#x6D4B;&#x4E2D;...</span>
+        </div>
+        <div id="platformTag" class="platform-tag" style="display:none;">
+          <span id="platformIcon"></span>
+          <span id="platformName"></span>
+        </div>
+      </section>
+
+      <section class="card">
+        <label class="section-label">&#x1F517; RPC &#x670D;&#x52A1;&#x7684;&#x5730;&#x5740;</label>
+        <div class="input-wrapper">
+          <input type="text" id="wsHostInput" class="text-input" placeholder="ws://127.0.0.1:5612">
+          <button id="saveConfigBtn" class="btn btn-primary">&#x4FDD;&#x5B58;</button>
+        </div>
+        <p class="hint-text">&#x4FDD;&#x5B58;&#x540E;&#x7531;&#x540E;&#x53F0;&#x5E94;&#x7528;&#xFF0C;&#x4E0D;&#x4F1A;&#x5728;&#x4FDD;&#x5B58;&#x65F6;&#x9A8C;&#x8BC1;&#x8FDE;&#x63A5;</p>
+        <label class="input-label" for="rpcTokenInput">令牌（预留，当前不生效）</label>
+        <input id="rpcTokenInput" class="text-input" type="password" autocomplete="off" placeholder="可留空">
+        <p class="hint-text">仅保存到扩展本地存储，本版本不会发送或启用鉴权。</p>
+      </section>
+
+      <section class="card">
+        <label class="section-label">&#x23F1;&#xFE0F; &#x64CD;&#x4F5C;&#x5EF6;&#x8FDF;&#x914D;&#x7F6E;</label>
+        <div class="delay-info">
+          <span class="delay-label">&#x6A21;&#x62DF;&#x4EBA;&#x5DE5;&#x64CD;&#x4F5C;&#x95F4;&#x9694;</span>
+          <div class="delay-value-display">
+            <input type="number" id="delayNumberInput" class="delay-input" value="0">
+            <small>ms</small>
+          </div>
+        </div>
+        <input type="range" id="actionDelaySlider" min="0" max="5000" step="100" value="0">
+        <div class="preset-grid">
+          <button class="delay-preset-btn preset-btn active" data-value="0">&#x6781;&#x901F;</button>
+          <button class="delay-preset-btn preset-btn" data-value="500">&#x5FEB;</button>
+          <button class="delay-preset-btn preset-btn" data-value="1000">&#x9ED8;&#x8BA4;</button>
+          <button class="delay-preset-btn preset-btn" data-value="3000">&#x6162;</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <label class="section-label">&#x1F6E1;&#xFE0F; Cloudflare &#x81EA;&#x52A8;&#x7ED5;&#x8FC7;</label>
+        <div class="delay-info">
+          <span class="delay-label">&#x542F;&#x7528;&#x540E;&#x53D1;&#x73B0;CF&#x9A8C;&#x8BC1;&#x9875;&#x81EA;&#x52A8;&#x70B9;&#x51FB;&#x7ED5;&#x8FC7;</span>
+          <label class="switch">
+            <input type="checkbox" id="cfAutopilotToggle">
+            <span class="slider-switch"></span>
+          </label>
+        </div>
+        <p class="hint-text">&#x4FEE;&#x6539;&#x540E;&#x5B9E;&#x65F6;&#x540C;&#x6B65;&#x5230;&#x5F53;&#x524D;&#x6807;&#x7B7E;&#x9875;&#x7684;&#x89E6;&#x53D1;&#x5668;</p>
+        <div class="input-wrapper" style="margin-top:8px;">
+          <input type="text" id="cfWhitelistInput" class="text-input" placeholder="&#x57DF;&#x540D;&#x767D;&#x540D;&#x5355;,&#x9017;&#x53F7;&#x5206;&#x9694;,&#x7A7A;&#x4E3A;&#x5168;&#x90E8;">
+        </div>
+      </section>
+
+      <section class="platform-grid" id="platformGrid"></section>
+
+      <div class="footer-actions">
+        <button id="refreshBtn" class="btn btn-outline"><span>&#x1F504;</span> &#x5237;&#x65B0;</button>
+        <button id="openBtn" class="btn btn-secondary"><span>&#x1F680;</span> &#x6253;&#x5F00;&#x5E73;&#x53F0;</button>
+      </div>
+
+      <p class="hint-text" style="margin-bottom:0;">Crawler RPC Controller v3.0.0</p>
+    </main>
+
+    <div id="toastNotification" class="toast" style="display:none;"></div>
+  </div>
+
+  <script src="platforms.generated.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

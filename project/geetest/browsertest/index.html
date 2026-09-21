@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh">
+<head><meta charset="utf-8"><title>gcaptcha4.js URL 级整包替换验证</title></head>
+<body>
+<h4>整包替换验证：官方 gt4.js + 本地替换的 gcaptcha4.js（其余资源全部回源）</h4>
+<div id="captcha"></div>
+<script src="/v4/gt4.js"></script>
+<script>
+  window.__LOG = [];
+  initGeetest4({
+    captchaId: '54088bb07d2df3c46b79f80300b0abbe',
+    riskType: 'winlinze',
+    protocol: 'http://',
+    staticServers: ['127.0.0.1:8799'],
+    apiServers: ['127.0.0.1:8799'],
+    product: 'float',
+    lang: 'zh',
+  }, function (captcha) {
+    window.__cap = captcha;
+    captcha
+      .onReady(function () { window.__LOG.push('ready'); })
+      .onNextReady(function () { window.__LOG.push('nextReady'); })
+      .onSuccess(function (r) { window.__LOG.push('SUCCESS:' + JSON.stringify(r)); })
+      .onError(function (e) { window.__LOG.push('ERROR:' + JSON.stringify(e)); })
+      .onFail(function (r) { window.__LOG.push('FAIL:' + JSON.stringify(r)); })
+      .appendTo('#captcha');
+  });
+</script>
+</body>
+</html>

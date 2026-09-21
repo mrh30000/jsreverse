@@ -1,0 +1,14 @@
+const fs = require('fs');
+const s = fs.readFileSync(__dirname + '/output.js', 'utf8');
+const i = s.indexOf("'passtime'");
+console.log('===== passtime 附近 ±2600 =====');
+console.log(s.slice(Math.max(0, i - 1800), i + 1400));
+console.log('\n===== RSA 候选常量 =====');
+const mod = /C1E3934D/i;
+console.log('C1E3934D 命中:', (s.match(new RegExp(mod.source, 'gi')) || []).length);
+const longs = [...s.matchAll(/["'`]([0-9a-fA-F]{128,})["'`]/g)].map((m) => m[1]);
+console.log('长十六进制串候选数:', longs.length);
+longs.slice(0, 5).forEach((h) => console.log('  len=' + h.length, h.slice(0, 80) + '...'));
+console.log("10001 命中:", (s.match(/['"]10001['"]/g) || []).length, ' 65537 命中:', (s.match(/65537/g) || []).length);
+console.log('\n===== _lib / _abo 读取点 =====');
+[...s.matchAll(/\['_lib'\]|\['_abo'\]|\['lib'\]/g)].slice(0, 12).forEach((m) => console.log('  @' + m.index, s.slice(Math.max(0, m.index - 90), m.index + 90).replace(/\n/g, '\\n')));

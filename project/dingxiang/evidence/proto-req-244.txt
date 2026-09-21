@@ -1,0 +1,52 @@
+command: call
+target: get_network_request
+tool: get_network_request
+result:
+  structuredContent:
+    success: true
+    message: 请求 ID=244 获取成功
+    data:
+      reqid: 244
+      url: "https://www.hb56.com/User/Home.ashx?fr8o9lcS=abm091aAqWHAf19Eb9VnpkwFT-JBI_HAVyPPtBXA5WuVOSDr5WpEDSdnglxFygLu27X34U9lgAccuk_azA-MVhqZLCptOa3lpQWceO8lleBN1tGzNWrZmta"
+      method: POST
+      resourceType: xhr
+      postData: jHAMgNFS=agsNwqGAqWHAf19Eb9VnpkwFT-JBI_HAVyPPtBXA5WuVOSDr5WpEDSdnglxFygLu27X34U9lgAmkGCWsXV-mu2T4NIhXZ6WUkVzWE_93FM3fCvcsXKnqPXSKWgC-8y_YF60pPyKPwercVoicWJiwJYeSO4Fc63M8rf9QTEWpfzxYI5J8cZb1ePA
+      statusCode: 200
+      statusText: OK
+      requestHeaders:
+        accept: */*
+        "content-type": application/x-www-form-urlencoded; charset=UTF-8
+        cookie: f26b410c030dea7b27=81b3282bcc04936ee811d102183d2a1b; 2aCTSJaVda98O=qacw8fLkRUYyga9CuXukuxG2NOCbkGfwvWy3BHSvQs8zum5XhLP26rzeKFXeVYN1oiZx3p5VjdPopSUudi-MNGsRv3bJYXdxT2kxK_3KvjX09; __jsluid_s=01fb9da041b2807e66641124bc188a7e; f26b410c2809f96428=608215476d45c3777b4021b66082cc41; 2aCTSJaVda98P=asOrL4Ezc3J8aV2hubUxLxzCU_tyQfSBcm9-yPqJOlg_NZumJ9jqw2xcmHOJ3TSJkW9fuptkfUskDLlcl941TAUgBkPBjbYY8WT8NFcHio9iKUD_bb44FZREwqnYLMJ0_EK_JjL4QE-pK-hGmds2G8eUaYqIcL346e0Npxmr6CykwU0KUPJKozVWtd-OItxbJFP_4dA1xZAYxV_5yYwUM6H5qiHbvAJYvmcvIYvlmYRcBP1dHvm4qX0Ms6vVRw6Vn6rAcWFdtEGR-YPs-0hiSxklDgG2zX_tJicHtGYn1CYwAElh9Uk8TsdL9aCoFaGQNYuU5apW5Xi1Q_T3Hz-4QJG2NfKoe_QxHVVdnAvO0Efui5U5iwGokMVmEm1j9Ms6egIiC-RYB2xhEOtXJJmoYagF3F8c_eu5BQe_uBLqlBjivRkaNObHvV2yh1y7DWvkBVt8AfxIqivwhHVr-XlPF8xwD5DfgpsntH6EuCgkotX1bHR1xM5yILFUOy5u9ZpMi
+        origin: "https://www.hb56.com"
+        referer: "https://www.hb56.com/Login.aspx?type=wc"
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+        "x-requested-with": XMLHttpRequest
+        fr8o9lcs: aNGn2wGAqWHAf19Eb9VnpkwFT-JBI_HAVyPPtBXA5WuVOSDr5WpEDSdnglxFygLu27X34U9lgAcqTxLVQC_RH3hvFwArFszPujsPwHx_wDjd21FDtAhmtba
+      responseHeaders:
+        "content-encoding": gzip
+        "x-forwarded-for": "120.231.157.67, 36.158.231.47, 120.231.157.67"
+        "x-content-type-options": nosniff
+        "x-cache": bypass
+        date: "Sun, 06 Sep 2026 16:58:32 GMT"
+        "content-type": text/html; charset=utf-8
+        vary: "Accept-Encoding, Accept-Encoding"
+        "x-frame-options": "SAMEORIGIN, SAMEORIGIN, SAMEORIGIN"
+        "transfer-encoding": chunked
+        "strict-transport-security": max-age=63072000; includeSubdomains; preload
+        "x-via-jsl": "234f44c,-"
+        "content-security-policy": "script-src 'self' https://*.tile.openstreetmap.de https://themadcreator.github.io https://*.gdtspace.com https://*.tmaas.com.cn https://api.map.baidu.com https://apis.map.qq.com https://*.baidu.com https://*.bdimg.com https://*.amap.com blob: data: 'unsafe-inline' 'unsafe-eval'; object-src 'self' *.tile.openstreetmap.de *.gdtspace.com *.tmaas.com.cn api.map.baidu.com *.amap.com https:; frame-ancestors 'self' *.tile.openstreetmap.de *.gdtspace.com *.tmaas.com.cn https:; form-action *; worker-src 'self' *.tile.openstreetmap.de *.gdtspace.com *.tmaas.com.cn *.amap.com https: blob:;"
+        "cache-control": private
+        connection: keep-alive
+        "access-control-allow-credentials": "true"
+        "access-control-allow-origin": deny
+        "x-xss-protection": 1; mode=block
+      stack:
+        callFrames[1]{functionName,scriptId,url,lineNumber,columnNumber}:
+          J.XMLHttpRequest.send,"10458","chrome-extension://mdnleldcmiljblolnjhpnblkcekpdkpa/page-scripts/ajaxRequestInterceptor.ps.js",0,12622
+      responseBody: jHAMgNFS=a6P2PmqAqWHAf19Eb9VnpkwFT-JBI_HAVyPPtBXA5WuVOSDr5WpEDSdnglxFygLu27X34U9lgAcr6gPGHT6tMNbU-aIm8hBL3XJb0qyXf5ofjngN2jOzXrA
+      isTruncated: false
+      totalBodyLength: 128
+      previewLength: 128
+    tooltype: get_network_request
+    repeatWarning: "Tool \"get_network_request\" was called 4 times consecutively. Check whether a different observation or navigation tool is needed."
+status: success

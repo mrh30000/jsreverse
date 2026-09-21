@@ -1,0 +1,359 @@
+
+
+
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>港航纵横</title>
+    <!-- for-mobile-apps -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="keywords" content="" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- //for-mobile-apps -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/style.css?v=0.0.8" rel="stylesheet" type="text/css" media="all" />
+    <link href="css/showpic.css?v=0.0.15" rel="stylesheet" type="text/css" />
+    <meta id="L82dUTNi4GTc" content="Ry44JZU9anSeHGx8fIFQozVC87stfPYPXs40OHc1UJ9" r='m'><!--[if lt IE 9]><script r='m'>document.createElement("section")</script><![endif]--><script type="text/javascript" r='m'>$_ts=window['$_ts'];if(!$_ts)$_ts={};$_ts.nsd=80460;$_ts.cd="qtRSrcqlWOQciqV6q1E5qOQoiqG4qkQmJaE6HuQqiqV6rnE5rkQcEOgkEGqgck7qJa36rnEdJaVpmrlLiaq6qkQrEOZ6rcE5rs7YluVYiaq6rOQoEOZ4qkQmEGEPHuQqJalUlpVlDk7qJSV6q1Ediaq6ruQlEOZ6qnE-rkQqlp3lxOQmiqV6qcE5lk7qJa36rnEdJaVgck7qJS36qcEdiaq6rfWTEsVpJ_E0Jq30WuA2ZXvBv8zm4XR18ax6lx-W4eio5w_ITontlPInhFbIKi4a5-FCooUeuCX0AEs3bWqlLqWBfMrQInFAV2YY80NmpQL4sVRXHvJLZ9mrsumqxO44KsqLEcVLJITIhcRts2zNabGSVoJeJV5K19gZs9rLwiNkEOyRUkALGPq7WmZ-Uu1WEcELJTNRtExiJVNUw6wW9CrIIswnYYki1vQe1PN2xNNRKuAXx13L92ewtcr3ssoiw6YSpTm7FZlCwCyL3uSCy6xoxOfQUu1WEcELW2NRtExSJTmYt9z1eC0yVlRjFKUhM9z5Vkw2xNNRKuAXx13L9Tew81yNQKOWh2zIWPzjQQSXhDN6FCGLuvw7FcyNQKOWUnSIWPzjQQSXhDN6FCGLuvw7FcyNQKOWUnSIWPzjQQSXhmeRx1LXGPy0wvwPKYbWKY7bUcfOMJNjhCYnMP7bOoRnQKwFK1OiwCSLUnzIJES7wKfXtTeIGPajxPyuwvomUT0LKYabKLe2FoyjtDY0n10PtoRTQKoeUnSjwCzLK3SRWcf7QbfLOm2MxPazxPOVQoYfUTLLUd7GhPgGt6rCTKwwK1yNQKOWUnSIWPzjQQSXhmeRx1LXGPy0wvwPKYbWKY7bhc0btJpawKmIKPfjTKy7KYeFkLKVFlfmsCrtABWyRv3_FkTLaTl4392zIo6DM93dsmJxRIJAJKEyW0Ea9bYFQuVZJbUOY2Ji3TmGRR9_iTrV1uxkuOwEJKRt3kdvMCSVQ9JiYxJ0VDQyWvrv2YzOwmmw3OIChkleRkQZWxG7FvQyJKxz9UN1HVmNQ0u7hkleRkQZWxG7FvQyVbV0uuJoFuJBIVHchkleRkQZWxG7FvQyUYYPCoppVOw7JCMXhDN6ismuwZSaJTYA1YxUbk2LACrapsIisVSDRoQd37p9YKyDWDf0nKykH6Yj1sH3i6YvsTwL3EguiKEnHuqZObfuH0qCQYMhVoAnM2JCH3guiKEnHuqZObfuHTrLs6scQbYrMKeYIEguiKEnHuqZObfuH0gdJbkTY9yzJ9rARyzaKvrNWlzEyOrKJOWors1fWrJ7wvJ0wyLCJulaWOlebsW_Wk30qOKRRkqZJGAnWyVEWsATWuWe9k3uJG7SJsFVJO3CWuQVbjiB9kqeIY7iqWNJQyKAOrAyseW_VG6Ebj1PqGADrAWqGc3pCWO65T6FXgEGlMDWPwtJ6RzDP9N7Pm12ruKx1N97cOA0JkZuJyWTqsVEJOWZbkVSJuA5JndXJlR8s2J1WexfM6Jz1CRj06RpsorhpK4DYlVZw02LMzE4RTTHA0TP_2zvrqEDJqKUGFAu8cz2tWmO3nfOFv3LaUx-tDJTtDUsMnS2wDgLR7mfhDRORDeS0cyPRK9-RbUVhbxzMczbFwqX3vgatCQLaCJPtDmbRCumhbJb8czv3QEX3CmGInfvSUr0tDmfF1OkMCmBRnzvFZR9RKlXRDzNODmBFbA-RCBiRD2Ohbp0wESfQvqXRow6ODmuQPyORUcWRbELRbxbtWpvRbY6F6qLSDy7tDRj3nOlMKWLRbfvIESbM6qX3bS0ODwzFcyPFvtWRCeahbxatWY_R1f9FCVLSbyfRnyfFD8WRDSnhbm-FLS9MCNCtCx-Tcyv3Dq-3CuHhbwzRczOMwAXRCTCMbJju6r2tDYetDHFF6qLFbz0tWfnQcfjQCYvaCwuwnyBQD8WFvp036p6QZAXFKwztCTNaKY2tDzNRnOxMDJLwCJftW27RPf-FK0LnKSutDz6R1OxQKZLFDRCtWNOwbVXMUpfSnyjwDV-Mv8WFoJ-MczB3w9XMDTGtCf-aC97FDTGtDOY3nSL8DN2tW0C31fBRbNzSbwuQcyjRU1WMCALMCWStWTb3PfBMbqLuKzztDe7QPOJMKALMCfntWTnWnfBwuqLuUxftDe63KiWM6rOhbN0wESBQC0XFvT60Kg7Fbz-tD-YMCxfQoALFZxLhDzfInf-SoE7FCR0tDBlwPS-RKqLFZSGhDzX3nf-uDQ7F6RftDBYwPS-wD3LwWm2RUQXwCY6Ooxfw6ma3cOA3Km0hvwG3LSnRK9XwCJNOoxvw6J-tosx31S0MPz0FW9XQDf-woqL0DSvtoxLF1OAQb0LQvw6tJrnwcfnw6rZOoxnF6xPwvkxR6WLQvpGtJr63PfnQDqL0o77woz9toUkMUQChvRz3LSuwoaXwKVL0bJztorbwPO13cSCRCqLw7YShoRBt6RNTbq7wvxjtoMVRcSCwbN0tJJGMcfS3UaL0CL7wCNbtoIE3ulLQKGLwemXhowuFCTaS1yuwKyXQDDshvJTMbya3QpGhow03cf6TCW7w6YftoIUQPS686ALQWmahorOI1faSKeatoRGIPOVFC3LwbyP3LSCMUAXQCzC0bwXQcyuwDPWwvJnhvJa3LSC8oqXQK3LTvm9top0wnOKQUQLwoeGtJwOQPfTRvELTCwPF1ya3KMAhvwzMnzuFQlXwC20t6J-SbA7QCTf3OFWwUr6hvebF3S_MoQXICf6CcygFKg-IosJhvf6MPzZILS43K2Xt6TNucy_tofXwq19U1pP8qJMEWa6rm7bRkaqdnRPMqlCWktPWk3mWa3Trtqcqql0JuA09qQgJk3SJq1fJGl0qGgSJNl_ik3aJuWlLsErJA";if($_ts.lcd)$_ts.lcd();</script><script type="text/javascript" charset="utf-8" src="/TVL6Gn5H1dMd/2fi1xR9CnwHL.19f0848.js" r='m'></script><script type="text/javascript" src="js/showpic.js?v=0.0.2"></script>
+    <!-- js -->
+    <script type="text/javascript" src="js/jquery.min.js?v=2021.0.1"></script>
+    <script type="text/javascript" src="js/Common/common.js"></script>
+
+    <!-- //js -->
+
+    <!-- start-smoth-scrolling -->
+
+    <script type="text/javascript">
+        
+        $(function () {
+       
+            var a = parseInt(5 * Math.random());
+            //var a=0;
+            var b = a * -100;
+            moveElement('ifocus_piclist', 0, b, 5);
+            classNormal('ifocus_btn', 'ifocus_tx');
+            classCurrent('ifocus_btn', 'ifocus_tx', a);
+            $(".scroll").click(function (event) {
+                event.preventDefault();
+                $('html,body').animate({ scrollTop: $(this.hash).offset().top }, 1000);
+            });
+            CheckIE();
+            RefreshUser();
+            showCurrentDate();
+        });
+
+
+        function IEVersion() {
+            var userAgent = navigator.userAgent; //取得浏览器的userAgent字符串  
+            var isIE = userAgent.indexOf("compatible") > -1 && userAgent.indexOf("MSIE") > -1; //判断是否IE<11浏览器  
+            var isEdge = userAgent.indexOf("Edge") > -1 && !isIE; //判断是否IE的Edge浏览器  
+            var isIE11 = userAgent.indexOf('Trident') > -1 && userAgent.indexOf("rv:11.0") > -1;
+            if (isIE) {
+                var reIE = new RegExp("MSIE (\\d+\\.\\d+);");
+                reIE.test(userAgent);
+                var fIEVersion = parseFloat(RegExp["$1"]);
+                if (fIEVersion == 7) {
+                    return 7;
+                } else if (fIEVersion == 8) {
+                    return 8;
+                } else if (fIEVersion == 9) {
+                    return 9;
+                } else if (fIEVersion == 10) {
+                    return 10;
+                } else {
+                    return 6;//IE版本<=7
+                }
+            } else if (isEdge) {
+                return 'edge';//edge
+            } else if (isIE11) {
+                return 11; //IE11  
+            } else {
+                return -1;//不是ie浏览器
+            }
+        }
+
+
+        function RefreshUser() {
+              
+            document.getElementById("a_login").style.display = "";
+            document.getElementById("a_register").style.display = "";
+            document.getElementById("d_UserInfo").style.display = "none";
+            
+        }
+
+        function openWindow(id) {
+            var iWidth = 870;                          //弹出窗口的宽度; 
+            var iHeight = 600;                         //弹出窗口的高度; 
+            //获得窗口的垂直位置 
+            var iTop = (window.screen.availHeight - 30 - iHeight) / 2;
+            //获得窗口的水平位置 
+            var iLeft = (window.screen.availWidth - 10 - iWidth) / 2;
+            window.open("Notice/NoticeInfo.aspx?id=" + id, "", 'height=' + iHeight + ',width=' + iWidth + ',top=' + iTop + ',left=' + iLeft + ',toolbar=no,menubar=no,scrollbars=yes,resizable=yes,location=yes,status=no');
+        }
+
+        function showCurrentDate() {
+            var today, hour, second, minute, year, month, date;
+            var strDate;
+            today = new Date();
+            var n_day = today.getDay();
+            switch (n_day) {
+                case 0: {
+                    strDate = "星期日"
+                } break;
+                case 1: {
+                    strDate = "星期一"
+                } break;
+                case 2: {
+                    strDate = "星期二"
+                } break;
+                case 3: {
+                    strDate = "星期三"
+                } break;
+                case 4: {
+                    strDate = "星期四"
+                } break;
+                case 5: {
+                    strDate = "星期五"
+                } break;
+                case 6: {
+                    strDate = "星期六"
+                } break;
+                case 7: {
+                    strDate = "星期日"
+                } break;
+            }
+            year = today.getYear() + 1900;
+            month = today.getMonth() + 1;
+            if (month < 10) {
+                month = "0" + month;
+            }
+            date = today.getDate();
+            if (date < 10) {
+                date = "0" + date;
+            }
+            hour = today.getHours();
+            if (hour < 10) {
+                hour = "0" + hour;
+            }
+            minute = today.getMinutes();
+            if (minute < 10) {
+                minute = "0" + minute;
+            }
+            second = today.getSeconds();
+            if (second < 10) {
+                second = "0" + second;
+            }
+
+        }
+    </script>
+    <!-- end-smoth-scrolling -->
+
+</head>
+
+<body>
+    <!-- banner -->
+    <!--<div class="banner">-->
+    <!--滚动图片-->
+    <div class="promoWD">
+        <div class="apDivleft">
+            <div id="apDivlogo">
+                <img src="images/img_logo.png?v=0.0.1">
+            </div>
+        </div>
+        <div class="apDivright">
+            <div class="hh">
+                <span class="hha">最新公告</span>
+                <span class="hhb"><a href="Notice/NoticeList.aspx" target="_blank">更多...</a></span>
+                <div class="clear"></div>
+            </div>
+            
+            <div class="pic_list">
+                <ul>
+                    
+                    <li><a href="javascript:void(0);" onclick="openWindow('9699')" title="上港集团振东分公司系统维护停服公告">[&nbsp;振东&nbsp;]&nbsp;上港集团振东分公司系统维护停服公告</a>
+                        
+                        <img src="images/new_gif_01.gif" />
+                        
+                        <span>2026-09-04</span></li>
+                    
+                    <li><a href="javascript:void(0);" onclick="openWindow('9682')" title="关于恢复进提箱作业的通知">[&nbsp;集团&nbsp;]&nbsp;关于恢复进提箱作业的通知</a>
+                        
+                        <span>2026-08-28</span></li>
+                    
+                    <li><a href="javascript:void(0);" onclick="openWindow('9681')" title="关于上港集团振东分公司系统维护停服公告">[&nbsp;振东&nbsp;]&nbsp;关于上港集团振东分公司系统维护停服公告</a>
+                        
+                        <span>2026-08-27</span></li>
+                    
+                    <div class="clear"></div>
+                </ul>
+            </div>
+            
+            <div class="pic_list">
+                <ul>
+                    
+                    <li><a href="javascript:void(0);" onclick="openWindow('9680')" title="关于暂停空箱进提作业的通知">[&nbsp;集团&nbsp;]&nbsp;关于暂停空箱进提作业的通知</a>
+                        
+                        <span>2026-08-27</span></li>
+                    
+                    <li><a href="javascript:void(0);" onclick="openWindow('9679')" title="关于暂停空/重箱进提作业的通知">[&nbsp;集团&nbsp;]&nbsp;关于暂停空/重箱进提作业的通知</a>
+                        
+                        <span>2026-08-26</span></li>
+                    
+                    <li><a href="javascript:void(0);" onclick="openWindow('9660')" title="关于洋山港区恢复进提箱作业的通知">[&nbsp;集团&nbsp;]&nbsp;关于洋山港区恢复进提箱作业的通知</a>
+                        
+                        <span>2026-08-11</span></li>
+                    
+                    <div class="clear"></div>
+                </ul>
+            </div>
+            
+            <div class="clear"></div>
+        </div>
+
+        <div class="clear">
+        </div>
+
+        <div class="nav">
+            <ul>
+                <li>
+                    <a href="Main.aspx">综合查询</a>
+                </li>
+                
+
+
+
+                <li>
+                    <a href="https://agent.gdtspace.com/" target="_blank">船期申报</a>
+                </li>
+                
+                
+                <li>
+                    <a href="help/main_help.html?v=0.1.7" target="_blank">资料中心</a>
+                </li>
+                
+                <li>
+                    <a target="_blank" href="http://cjlm.hb56.com:8083">长江联盟</a>
+                </li>
+
+                
+            </ul>
+
+            <div id="apre">
+                <a href="Login.aspx" id="a_login">登录</a><a id="a_register" href="Register.aspx">用户注册</a>
+                
+                <div id="d_UserInfo" style="display: none" class="dropdown">
+
+                    <span style="cursor: pointer;" class="alink">
+                        </span><img src="images/icon_down.png">
+                    <div class="dropdown-content">
+                        <p><a href="User/User.aspx">个人信息</a></p>
+                        <p><a href="Login.aspx">退出</a></p>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <div class="clear"></div>
+        </div>
+        <!--滚动图片-->
+
+        <div id="ifocus">
+            <!--滚动图片-->
+            <div id="ifocus_pic">
+                <div id="ifocus_piclist">
+                    <ul>
+                        <li><a href="http://www.portshanghai.com.cn" target="_blank">
+                            <img src="images/ad_image.jpg?v=0.0.1" /></a></li>
+                        
+                        <li><a href="http://ejj.jjshipping.cn/" target="_blank">
+                            <img src="images/ad_02.jpg?v=0.0.31" /></a></li>
+                        <li><a href="https://www.1gangtong.com" target="_blank">
+                            <img src="images/ad_03.jpg?v=0.0.20" /></a></li>
+                        <li><a href="https://www.sdpl.com.cn" target="_blank">
+                            <img src="images/ad_04.jpg?v=0.0.25" /></a></li>
+                        <li><a href="http://ejj.jjshipping.cn/" target="_blank">
+                            <img src="images/ad_05.jpg?v=0.0.23" /></a></li>
+                        <li><a href="https://www.sdpl.com.cn" target="_blank">
+                            <img src="images/ad_06.jpg?v=0.0.19" /></a></li>
+                    </ul>
+                </div>
+                <div id="ifocus_tx">
+                    <ul>
+                        <li class="normal"></li>
+                        <li class="normal"></li>
+                        <li class="normal"></li>
+                        <li class="normal"></li>
+                        <li class="normal"></li>
+                        <li class="normal"></li>
+                    </ul>
+                </div>
+            </div>
+            <div id="ifocus_btn">
+                <ul>
+                    <li class="normal"><span></span></li>
+                    <li class="normal"><span></span></li>
+                    <li class="normal"><span></span></li>
+                    <li class="normal"><span></span></li>
+                    <li class="normal"><span></span></li>
+                    <li class="normal"><span></span></li>
+                </ul>
+            </div>
+            <!--滚动图片结束-->
+
+        </div>
+        <div id="ifocus_link">
+            <!--友情链接下拉列表-->
+            <div class="select">
+                <ul class="partlink">
+                   
+
+                    <li><a href="https://www.anruo-shipping.com.cn" target="_blank">
+                        <img src="images/ad_l_05.jpg?v=0.0.12"></a></li>
+                    <li><a href="https://www.1gangtong.com" target="_blank">
+                        <img src="images/ad_l_03.png?v=0.0.12"></a></li>
+                    <li><a href="https://xiancang.com" target="_blank">
+                        <img src="images/ad_l_01.jpg?v=0.0.14" /></a></li>
+                    <li><a href="https://www.hangyun365.com/index" target="_blank">
+                        <img src="images/ad_l_02.jpg?v=0.0.19" /></a></li>
+                    <li><a href="https://www.oogsmart.com" target="_blank">
+                        <img src="images/ad_l_04.png?v=0.0.14" /></a></li>
+
+                    <li></li>
+                </ul>
+                <div class="clear"></div>
+            </div>
+            <!--友情链接下拉列表结束-->
+        </div>
+    </div>
+    <!--滚动图片-->
+
+    <!--</div>-->
+    <!-- //banner -->
+
+    <!-- services -->
+
+    <!-- //services -->
+
+    <!-- footer -->
+
+    <div class="footer">
+
+        <div class="copy-right">
+            <p>
+                Copyright &copy; 2016.上海海勃数科技术有限公司 All rights reserved. <a href="https://beian.miit.gov.cn/" target="_blank">沪ICP备05012886号-3</a>
+                &nbsp;&nbsp;<img src="images/img_icon_ghs.png" />
+                <a href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=31022102000115" target="_blank">沪公网安备 31022102000115号</a>
+                
+            </p>
+
+
+        </div>
+    </div>
+    <!-- //footer -->
+
+</body>
+</html>
+<div style="text-align: center; margin-left: auto; margin-right: auto; width: 100%">
+</div>

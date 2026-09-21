@@ -1,0 +1,540 @@
+# 浏览器环境对象模型补齐指南
+
+当需要从 RuyiTrace / Node trace / fixtures 编写 `env.js`、`runner.js` 或最终 `result/src/env/*` 时读取本文件。本文件用于决定“补哪些浏览器对象”，但不降低对象真实性要求；真实性保护细节必须同时遵循 `env-native-protection.md` 和 `addon-api.md`。
+
+## 总体原则
+
+核心规则：
+
+```text
+最小范围，完整真实性。只减少对象覆盖范围，不降低已补对象质量。
+```
+
+不要一开始伪造完整浏览器，但凡某个 WebAPI 进入补环境范围，就必须从第一版实现开始执行：
+
+1. 先加载 / 记录 addon，addon 可用时优先使用 addon API。
+2. 先建立构造函数、构造函数非法调用行为、原型链、实例工厂、`prototype.constructor` 和 `Symbol.toStringTag`。
+3. 再安装属性描述符、getter / setter、方法、内部状态和真实样本值。
+4. getter / setter / 方法 / 构造函数默认 native-like，优先 `createGetter` / `createSetter` / `createNativeFunction`。
+5. 实例对象默认要满足 `Object.prototype.toString.call(obj)`、`constructor.name`、`instanceof` 和 descriptor 检查。
+6. addon 不可用、ABI 不兼容或 API 调用失败时，才使用 `NativeProtect` / JS fallback，并记录降级原因。
+
+“根据访问路径补最小对象模型”只表示不一次性补全所有 DOM / BOM，不表示可以先用普通对象、普通赋值或普通函数跑通后再补保护。
+
+## 构造函数行为采样
+
+每个进入补环境范围的构造函数都要记录浏览器真实行为：
+
+- `Ctor()` 是否允许直接调用。
+- `new Ctor()` 是否允许构造。
+- 失败时的 `error.name`、`error.constructor.name`、`error.message`、`String(error)` 和 stack 首行。
+- 成功时的实例原型、`instanceof`、`constructor.name` 和 `Object.prototype.toString.call(instance)`。
+
+不要只写：
+
+```js
+throw new TypeError('Illegal constructor');
+```
+
+也不要把所有构造错误都写成同一个 message。`EventTarget()`、`new Node()`、`new Document()`、`new Blob()`、`DOMRect()` 等在不同浏览器和调用方式下可能有不同表现；必须以本 case 的取证浏览器为准。建议把结果保存到 `case/fixtures/constructor-errors.fixture.json` 或 `case/notes/构造函数行为采样.md`。addon 可用时用 addon 创建构造函数并用 `addon.throwTypeError(message)` 或等价 helper 抛出浏览器式错误；addon 不支持目标错误类型时才 JS fallback。
+
+推荐补齐顺序：
+
+```text
+Node 泄露阻断 → addon 加载记录 → 目标对象范围确认 → 构造函数 / 原型链 / 实例工厂 → 属性描述符 / 访问器 / 方法 → 样本值写入 → fixtures 验证
+```
+
+对象范围由 RuyiTrace、Node trace、fixtures、请求样本和目标入口决定；对象质量由 addon-first、原型链、描述符、访问器、toString 保护、`Symbol.toStringTag` 和构造函数行为决定。
+
+## 对象补齐硬性清单
+
+每补一个浏览器对象，先检查以下项目：
+
+| 项目 | 要求 |
+|---|---|
+| addon-first | 进入补环境阶段先加载 addon，可用时优先使用 addon API |
+| 构造函数 | 优先 `createProtoChains(descriptors)`，构造函数名称、`length`、`prototype` 描述符要明确 |
+| 非法构造行为 | 浏览器不可直接构造的对象要按真实浏览器采样复现错误类型、错误构造器和完整 message，不能统一写泛化 `Illegal constructor` |
+| 原型链 | 先建 `Constructor.prototype` 与父级链，再创建实例 |
+| `prototype.constructor` | 通常不可枚举，指回构造函数 |
+| `Symbol.toStringTag` | 挂在正确 prototype 或实例上，按浏览器样本设置 |
+| 属性描述符 | 全部关键属性用 `Object.defineProperty` / `defineProperties` |
+| 访问器 | 浏览器中是 getter / setter 的属性，不得降级为 data descriptor |
+| 方法 | 优先 `addon.createNativeFunction`，fallback 才用 `NativeProtect.setNativeFunc` |
+| 访问器 toString | 优先 `addon.createGetter` / `createSetter`，fallback 才保护 getter / setter 函数 |
+| 实例 toString | 优先 addon 原型链 / 实例工厂；addon 创建的实例通常已处理对象 toString，fallback 才用 `Symbol.toStringTag` / `NativeProtect.setObjFunc` |
+| 内部状态 | 优先 `addon.setPrivate/getPrivate`，fallback 才用 `WeakMap` |
+| 降级记录 | addon 不可用或用户豁免必须写入 notes、阶段报告和最终总结 |
+
+## 全局对象
+
+基础关系可按目标需要安装：
+
+```js
+globalThis.window = globalThis;
+globalThis.self = globalThis;
+globalThis.top = globalThis;
+globalThis.parent = globalThis;
+```
+
+真实浏览器的 `window` 不是普通对象。只要补 `Window` / `window`，就默认需要考虑：
+
+- `Window` 构造函数和非法构造行为。
+- `Object.prototype.toString.call(window)`。
+- `window instanceof Window`。
+- `window.window === window`、`window.self === window`。
+- `window.navigator`、`window.document`、`window.location` 的 descriptor。
+- `globalThis`、`self`、`top`、`parent` 的关系和只读程度。
+
+探测模式可以最小化；交付模式不得把普通对象当作最终 `window` 真实性方案。
+
+## iframe / Worker Realm 隔离
+
+iframe 与 Worker 不是“换一个全局对象引用”的浅拷贝。只要目标路径创建 iframe、DedicatedWorker 或 SharedWorker，就必须为每个 Realm 建立独立全局、构造器图、对象实例和生命周期状态。
+
+iframe 最低关系：
+
+```text
+iframe.contentWindow !== mainWindow
+iframe.contentWindow.self === iframe.contentWindow
+iframe.contentWindow.window === iframe.contentWindow
+iframe.contentWindow.globalThis === iframe.contentWindow
+iframe.contentWindow.parent === mainWindow
+iframe.contentWindow.top === mainWindow.top
+iframe.contentWindow.frames === iframe.contentWindow
+iframe.contentDocument.defaultView === iframe.contentWindow
+iframe.contentWindow.document === iframe.contentDocument
+iframe.frameElement === iframe
+```
+
+主 Window 与同源 iframe 可以共享同源 Cookie、Storage 后端和网络 Session，但公开 wrapper、构造器与实例不能共享 identity。共享底层 origin state 不等于复用 `navigator`、`performance`、`crypto`、`location`、`document`、Storage wrapper、timer、EventTarget、XHR/fetch 或 URL 构造器。
+
+必须验证：
+
+- `frame.Object !== window.Object`、`frame.Function !== window.Function`、`frame.Array !== window.Array`、`frame.Promise !== window.Promise`。
+- `frame.Event !== window.Event`、`frame.EventTarget !== window.EventTarget`、`frame.URL !== window.URL`、`frame.Blob !== window.Blob`、`frame.XMLHttpRequest !== window.XMLHttpRequest`。
+- frame 创建的对象满足 frame-local `instanceof`，且通常不满足主 Realm 对应构造器的 `instanceof`。
+- `srcdoc`、`document.open/write/close`、navigation/reload 后会创建或更新正确 Document/Realm；旧 Realm 的 timer、XHR、MessagePort task 与 observer callback 不得继续写入新文档。
+- Worker Realm 不得暴露 Window-only API，Worker 的 `self/globalThis`、navigator、performance、timer、消息队列和构造器必须独立。
+
+发现 `ctx.X = mainWindow.X`、`frame.URL.prototype = URL.prototype`、Worker 直接透传宿主或主 Realm `Event/XHR/Request/Response` 时，默认按 P0/P1 Realm 隔离缺陷处理，不能标为 `accepted-diff`。
+
+## 属性定义工具与模板模块
+
+本 Skill 随包提供可复制模板：
+
+- `assets/env-modules/native-protect.js`：`NativeProtect` 与 addon-first helper。
+- `assets/env-modules/base-env.js`：`Window` / `Location` / `Navigator` 原型链、描述符和 getter 保护。
+- `assets/env-modules/storage-env.js`：`Storage` 构造函数、实例、方法和 `length` getter。
+- `assets/env-modules/document-env.js`：`EventTarget → Node → Document → HTMLDocument` 基础链路、cookie accessor、DOM 方法、`document.all` addon 优先处理。
+
+复制模板后必须按当前目标的 RuyiTrace / fixtures 修改字段值，不要把模板默认值当成真实采集值。不要随意赋值：
+
+```js
+navigator.userAgent = 'xxx';
+```
+
+关键属性必须统一使用 descriptor，并优先把 getter / setter / 方法交给 addon 创建：
+
+```js
+Object.defineProperty(Navigator.prototype, 'userAgent', {
+  get: addon.createGetter('userAgent', 0, function () {
+    return fixture.browser.userAgent;
+  }),
+  enumerable: true,
+  configurable: true,
+});
+```
+
+描述符来源优先级：
+
+1. 用户真实浏览器控制台采集。
+2. ruyiPage / Camoufox / CloakBrowser / 真实浏览器取证样本。
+3. RuyiTrace 环境访问证据。
+4. 常见浏览器行为模板。
+5. 目标 JS 检测结果。
+
+## navigator
+
+常见字段：
+
+| 字段 | 来源 |
+|---|---|
+| `userAgent` | 必须尽量来自真实请求 UA |
+| `language` / `languages` | 来自浏览器样本 |
+| `platform` | 来自浏览器样本 |
+| `hardwareConcurrency` | 来自浏览器样本或用户确认 |
+| `deviceMemory` | 来自浏览器样本或用户确认 |
+| `webdriver` | 普通浏览器通常应为 `false` 或不存在，取决于目标环境 |
+| `plugins` / `mimeTypes` | 优先真实采集，addon 可用时优先 `getMimeTypesAndPlugins()` |
+| `userAgentData` | 来自浏览器样本；`brands/fullVersionList/platform/mobile/getHighEntropyValues` 必须与请求头 Client Hints 一致 |
+
+补 `navigator` 时不要先手写普通 `function Navigator(){}` 作为主路径。推荐：
+
+1. 优先用 `addon.createProtoChains(descriptors)` 创建 `Navigator` 构造函数、`Navigator.prototype` 和 `navigator` 实例工厂。
+2. `Navigator` 构造函数按浏览器行为模拟非法构造，直接调用或 `new Navigator()` 应抛出合适 TypeError。
+3. `Navigator.prototype.constructor`、`Symbol.toStringTag = "Navigator"`、实例原型链在第一版就补齐。
+4. `userAgent`、`language`、`languages`、`platform`、`hardwareConcurrency`、`plugins`、`mimeTypes` 等优先用 addon getter。
+5. addon 不可用时，才使用 JS 构造函数 + `Object.defineProperty` + `NativeProtect` fallback。
+
+不要只补返回值。getter 的 `Function.prototype.toString.call(descriptor.get)`、实例的 `Object.prototype.toString.call(navigator)`、`navigator.constructor.name` 都属于默认真实性基线。
+
+`navigator.userAgentData` 是高强度检测重点。进入补环境范围时必须采样真实浏览器：
+
+- `brands`、`mobile`、`platform`、`toJSON`。
+- `getHighEntropyValues()` 的 Promise 行为、参数校验、返回字段和错误模式。
+- `architecture`、`bitness`、`model`、`platformVersion`、`uaFullVersion`、`fullVersionList` 等字段。
+- 与最终请求头 `User-Agent`、`sec-ch-ua`、`sec-ch-ua-mobile`、`sec-ch-ua-platform` 保持一致；不一致时先修正 fixture 和请求头，不要只改 JS 层。
+
+## window.chrome 与 Chrome 专有对象
+
+如果目标检测 `window.chrome`，不要只补空对象。按目标浏览器版本采样后再决定是否提供：
+
+- `chrome.app`
+- `chrome.csi`
+- `chrome.loadTimes`
+- `chrome.runtime`
+
+这些属性的 key、descriptor、函数 `name/length/toString`、返回对象结构都可能被检测。旧 Chrome API 不要盲目全补；版本不匹配也会形成指纹。addon / xbs 可用时，相关函数仍优先 native-first；fallback 才用 `NativeProtect`。
+
+## location
+
+`location` 经常参与签名。不要用空字符串猜测。
+
+值应从目标页面 URL 解析：
+
+```js
+const u = new URL(fixture.pageUrl);
+```
+
+补 `location` 时默认需要：
+
+- 优先建立 `Location` 构造函数和 `Location.prototype`。
+- `Location` 构造函数按浏览器行为模拟非法构造。
+- `href`、`origin`、`protocol`、`host`、`hostname`、`port`、`pathname`、`search`、`hash` 优先按真实浏览器 descriptor 安装。
+- 浏览器中是 getter / setter 的属性保持 accessor，不要降级成普通字段。
+- getter / setter 优先 `addon.createGetter` / `createSetter`。
+- 内部 URL 状态优先 `addon.setPrivate/getPrivate`，fallback 才用 `WeakMap`。
+- 安装 `Symbol.toStringTag = "Location"`，并验证 `Object.prototype.toString.call(location)`。
+
+## document 与 cookie
+
+常见访问：
+
+- `document.cookie`
+- `document.referrer`
+- `document.URL`
+- `document.documentElement`
+- `document.createElement`
+- `document.querySelector`
+- `document.all`
+
+补 `document` 时默认先建立：
+
+```text
+EventTarget → Node → Document → HTMLDocument
+```
+
+然后再创建 `document` 实例。`Document` / `HTMLDocument` 构造函数、`prototype.constructor`、`Symbol.toStringTag`、实例 `Object.prototype.toString` 和非法构造行为都属于默认真实性基线。
+
+`document.cookie` 必须作为 accessor descriptor 处理。即使当前样本只读取 cookie，也建议同时准备最小 setter，setter 可以只实现当前 case 需要的写入、覆盖和过期策略，但不得把 cookie 做成普通 data 属性。getter / setter 优先 addon；fallback 才用 `NativeProtect` 保护访问器函数。
+
+DOM 方法如 `createElement`、`querySelector`、`querySelectorAll`、`getElementById` 进入补环境范围后，优先用 `addon.createNativeFunction`，并挂在正确 prototype 上。
+
+`document.createElement(tag)` 不能统一返回普通对象。进入补环境范围的 tag 必须映射到正确构造链，例如：
+
+| tag | 期望实例与原型链 |
+|---|---|
+| `canvas` | `HTMLCanvasElement → HTMLElement → Element → Node → EventTarget → Object` |
+| `video` | `HTMLVideoElement → HTMLMediaElement → HTMLElement → Element → Node → EventTarget → Object` |
+| `audio` | `HTMLAudioElement → HTMLMediaElement → HTMLElement → Element → Node → EventTarget → Object` |
+| `img` / `image` | `HTMLImageElement → HTMLElement → Element → Node → EventTarget → Object` |
+| `a` | `HTMLAnchorElement → HTMLElement → Element → Node → EventTarget → Object` |
+
+同时验证 `constructor.name`、`instanceof`、`Object.prototype.toString.call(element)`、`Symbol.toStringTag`、`Object.getPrototypeOf` walk、跨原型方法 brand check，例如 `HTMLElement.prototype.getAttribute.call(video, "src")`。
+
+## `document.all`
+
+`document.all` 是 HTMLDDA / 不可检测特殊对象，不得用普通对象、普通 Proxy 或 `undefined` 声称完整实现。
+
+选择 `isolated-vm` 时，优先使用 `xbs.dom.createDocument()` 自动提供的 `document.all`：
+
+```js
+const document = xbs.dom.createDocument({
+  url: "https://example.com/",
+  html: '<main id="app"></main>',
+});
+
+// 需要禁用时必须在创建前声明，不要运行时强删。
+const withoutAll = xbs.dom.createDocument({ omitApis: ["document.all"] });
+const withoutAll2 = xbs.dom.createDocument({ features: { documentAll: false } });
+```
+
+期望关键行为至少包括：
+
+```js
+typeof document.all === 'undefined'
+document.all == null
+document.all !== undefined
+Boolean(document.all) === false
+'all' in document
+Object.prototype.toString.call(document.all) === '[object HTMLAllCollection]'
+typeof document.all.length === 'number'
+typeof document.all.item === 'function'
+typeof document.all.namedItem === 'function'
+```
+
+只有不使用 `xbs.dom.createDocument()`、而是手写 document 时，才手动使用 `xbs.createUndetectable(callback, handlers)`：
+
+```js
+const all = xbs.createUndetectable(function (value) {
+  if (arguments.length === 0 || value == null) return null;
+  // 中文说明：这里根据索引、id 或 name 返回元素；未命中返回 null。
+  return null;
+}, {
+  getter(target, property) {
+    // 中文说明：索引或命名属性可在这里 materialize；未命中必须放行给原型链。
+    return { intercept: false };
+  },
+  query(target, property) {
+    return { intercept: false };
+  },
+  descriptor(target, property) {
+    return { intercept: false };
+  },
+  enumerator(target) {
+    return Object.getOwnPropertyNames(target);
+  },
+});
+
+Object.setPrototypeOf(all, HTMLAllCollection.prototype);
+```
+
+手动模式硬规则：
+
+- `xbs.createUndetectable()` 只负责 `typeof all === "undefined"`、`Boolean(all) === false`、`all == null` 等不可检测语义。
+- `length / item / namedItem / [0] / 命名属性 / descriptor / enumerator` 需要由 handlers 与 `HTMLAllCollection.prototype` 配合实现。
+- `length / item / namedItem / constructor` 等原型链已有属性不要定义成 `document.all` 自有属性，否则会和真实浏览器不一致。
+- 更接近浏览器的安装方式是挂到 `Document.prototype` getter：
+
+```js
+Object.defineProperty(Document.prototype, "all", {
+  get: xbs.createGetter("all", 0, function () {
+    return all;
+  }),
+  enumerable: true,
+  configurable: true,
+});
+```
+
+普通 Node + addon 模式也优先使用 addon `createUndetectable(callback, handlers)` 并遵循同样的 handlers / 原型链要求。addon 或 xbs 不可用时只能写明降级近似，并必须在 notes、阶段报告和最终总结中标记真实性不足；不得声称完全一致。
+
+## Storage
+
+实现 `localStorage` / `sessionStorage` 时，不要以普通对象或普通函数作为主路径。推荐：
+
+1. 优先用 `addon.createProtoChains(descriptors)` 创建 `Storage` 构造函数、`Storage.prototype` 和实例工厂。
+2. `Storage` 构造函数按浏览器行为模拟非法构造。
+3. `localStorage` / `sessionStorage` 由实例工厂创建，并设置正确 `Symbol.toStringTag`、原型链和 `constructor`。
+4. `getItem`、`setItem`、`removeItem`、`clear`、`key` 优先 `addon.createNativeFunction`。
+5. `length` 优先 `addon.createGetter`，保持 accessor descriptor。
+6. 内部键值状态优先 `addon.setPrivate/getPrivate`，fallback 才用 `WeakMap` / `Map`。
+
+如果 addon 不可用，才使用 JS fallback：
+
+```js
+function Storage() {
+  throw new TypeError("Illegal constructor");
+}
+const localStorage = Object.create(Storage.prototype);
+```
+
+fallback 仍必须显式 descriptor、原型链、`Symbol.toStringTag`、方法 toString 和访问器 toString，不得只用普通赋值。
+
+## crypto
+
+`crypto.getRandomValues`、`crypto.subtle`、`crypto.randomUUID` 可能参与签名。
+
+原则：
+
+- 如果签名依赖随机数，fixtures 必须记录对应随机输入或控制随机源。
+- 不能随意用真实随机数比较固定期望值。
+- `Crypto` / `SubtleCrypto` 构造函数、`crypto` 实例、`getRandomValues`、`randomUUID` 进入补环境范围后，要按 addon-first 建立构造函数、原型链、descriptor 和 native-like 方法。
+- `getRandomValues` 在测试模式下可使用 fixture 中的固定字节序列，但函数形态仍要像浏览器 native API。
+
+## performance 与时间
+
+`Date.now()`、`new Date()`、`performance.now()` 经常影响签名。
+
+探测模式可以临时固定：
+
+```js
+const fixedNow = fixture.runtime.now;
+```
+
+交付模式不要直接写：
+
+```js
+Date.now = () => fixedNow;
+performance.now = () => fixture.runtime.performanceNow ?? 0;
+```
+
+交付模式要求：
+
+- `Date` 构造函数、`Date.now`、`Date.parse`、`Date.UTC` 的 `name`、`length`、`toString` 和调用行为要受保护。
+- `new Date()` 与 `Date()` 两种调用路径都要按样本验证。
+- `Performance` 构造函数、`Performance.prototype.now`、`timeOrigin`、相关 descriptor 要明确。
+- `performance.now` 优先 `addon.createNativeFunction`，不要暴露 Node `performance.nodeTiming/eventLoopUtilization/timerify`。
+
+## Canvas / WebGL / WebGPU / 字体 / DOM 几何指纹
+
+这类指纹不要优先在 Node.js 中真实模拟渲染。真实浏览器的 Skia、GPU、字体、抗锯齿、颜色管理和布局细节很难由 `node-canvas` / `headless-gl` / `jsdom` 精确复现。
+
+处理原则：
+
+- 先读取 `fingerprint-value-replay.md`。
+- 用用户确认的取证模式采集终端 API 返回值，例如 `toDataURL`、`getImageData`、`measureText`、`getParameter`、`readPixels`、`getBoundingClientRect`。
+- 在 Node.js 中用 `assets/env-modules/fingerprint-env.js` 按调用特征回放采样值。
+- 回放函数也要挂在正确 prototype 上，并保持原型链、属性描述符、native-like `toString` 和实例对象 `Object.prototype.toString`。
+- 缺少采样值时阻塞并提示补采样，不要静默返回空值或改用自动化浏览器作为最终方案。
+
+示例接入：
+
+```js
+const { installFingerprintValueReplay } = require('./fingerprint-env');
+const fingerprintFixture = require('../../fixtures/fingerprint.fixture.json');
+
+installFingerprintValueReplay(globalThis, fingerprintFixture, {
+  strict: true,
+  addon,
+});
+```
+
+最终项目中不得包含用于采样的 Hook、Playwright、Puppeteer、CloakBrowser、ruyiPage 或其他浏览器自动化代码。
+
+## 高强度补充 WebAPI 对象清单
+
+从 Cloudflare / Turnstile / Akamai / DataDome / Kasada / Shape / F5 等高强度检测样本抽象出的通用对象范围如下。只有目标 trace / fixture / 取证证据访问到时才补，但一旦补就必须遵循 addon-first / xbs native-first、原型链、描述符、访问器、构造函数行为、`Symbol.toStringTag` 和 native-like 保护。
+
+| 对象 / API | 重点行为 | 补环境要求 |
+|---|---|---|
+| `navigator.permissions` / `PermissionStatus` | `query()` Promise、`state`、`onchange`、错误类型、权限名校验 | 采样真实浏览器；方法优先 native-like；返回对象原型链和 descriptor 不得用普通对象 |
+| `navigator.plugins` / `navigator.mimeTypes` | 长度、索引属性、命名属性、`item()`、`namedItem()`、枚举顺序、Plugin / MimeType 原型 | addon 可用时优先 `getMimeTypesAndPlugins(config)`；禁止空数组或普通数组作为高强度主路径 |
+| `speechSynthesis` / `SpeechSynthesisUtterance` | `getVoices()` 列表、异步 voiceschanged、语言、voiceURI、构造函数行为 | 只回放真实采样的 voices 摘要；构造函数、事件属性和方法 toString 需保护 |
+| `AudioContext` / `OfflineAudioContext` | 构造限制、采样率、`startRendering()` Promise、AudioBuffer 数据摘要 | 终端值走 `fingerprint-value-replay.md`；不要用 Node 音频模拟库猜值 |
+| `DOMRect` / layout dimensions | `getBoundingClientRect()`、`getClientRects()`、offset/client/scroll 尺寸、对象可枚举性 | 按目标元素和调用栈采样；DOMRect 原型链、只读属性、`toJSON` 行为要真实 |
+| `CSSStyleDeclaration` / `getComputedStyle` / `matchMedia` | 属性名、索引、`length`、media query 结果、CSS.supports | 使用真实浏览器样本；不要只返回空对象或固定字符串 |
+| `navigator.mediaDevices` / WebRTC | `enumerateDevices()`、`getUserMedia()` 错误模式、`RTCPeerConnection` 候选摘要 | 不暴露宿主 Node；需要权限或设备时记录降级，不伪造敏感设备信息 |
+| `screen` / viewport / DPR | `width/height/avail*`、`colorDepth`、`devicePixelRatio`、窗口尺寸关系 | 必须与取证工具 viewport、最终请求 UA / Client Hints 和 fingerprint baseline 一致 |
+
+## 常见高风险 WebAPI 的 addon 覆盖规则
+
+以下对象在真实项目中很容易被临时写成普通函数或普通对象，但只要进入补环境范围，就必须从第一版实现开始执行 addon-first、原型链、descriptor、访问器、`Symbol.toStringTag`、非法构造行为和 native-like 保护。
+
+禁止把以下写法作为主路径：
+
+```js
+ctx.Blob = function Blob() {};
+ctx.screen = { width: 1920, height: 1080 };
+ctx.indexedDB = { open() {} };
+ctx.URL.createObjectURL = function createObjectURL() {};
+HTMLCanvasElement.prototype = { getContext() {} };
+Object.assign(ctx, { history: { back() {} } });
+ctx.TextEncoder = globalThis.TextEncoder;
+```
+
+正确方向：
+
+1. 构造函数优先由 `addon.createProtoChains(descriptors)` 或 `addon.createNativeFunction(true, name, length, callback)` 创建。
+2. 普通方法优先由 `addon.createNativeFunction(false, name, length, callback)` 创建，并通过 `Object.defineProperty` 挂到正确 prototype 或静态对象上。
+3. getter / setter 优先由 `addon.createGetter` / `addon.createSetter` 创建。
+4. 实例对象优先由 `createProtoChains` 的实例工厂创建，禁止直接 `{}`。
+5. 内部状态优先 `addon.setPrivate/getPrivate`，fallback 才用 `WeakMap`。
+6. 只有 addon 缺失、ABI 不兼容、API 调用失败或用户明确豁免时，才允许 `NativeProtect` / JS fallback，并记录到 notes、阶段报告和最终总结。
+
+重点对象清单：
+
+| 对象 / API | 必须补齐的最低结构 |
+|---|---|
+| `screen` / `Screen` / `ScreenOrientation` | `Screen` 构造函数、`Screen.prototype`、`screen instanceof Screen`、`Object.prototype.toString.call(screen)`、`width/height/availWidth/availHeight/colorDepth/pixelDepth` descriptor；`orientation` 需要 `ScreenOrientation` 原型链和 `type/angle` 访问器。 |
+| `Blob` / `File` | 构造函数可 `new`，`Blob.prototype` / `File.prototype`、`size/type/name/lastModified` descriptor、`slice/text/arrayBuffer/stream` native-like 方法；不可直接返回普通对象。 |
+| `FormData` | 构造函数可 `new`，`FormData.prototype.append/delete/get/getAll/has/set/entries/keys/values/forEach` 均用 addon native-like 方法，内部 entries 用私有状态保存。 |
+| `Event` / `CustomEvent` / `MessageEvent` | 构造函数、继承链、`type/bubbles/cancelable/defaultPrevented/detail/data/origin/source` descriptor，方法 `preventDefault/stopPropagation/stopImmediatePropagation` native-like。 |
+| `XMLHttpRequest` | `EventTarget → XMLHttpRequestEventTarget → XMLHttpRequest` 链路，构造函数可 `new`，`open/send/abort/setRequestHeader/getResponseHeader/getAllResponseHeaders` native-like，`readyState/status/responseText/onreadystatechange` descriptor。 |
+| `indexedDB` / `IDBFactory` / `IDBOpenDBRequest` / `IDBKeyRange` | `indexedDB` 必须是 `IDBFactory` 实例；`open/deleteDatabase/cmp/databases` 用 addon native-like 方法；`IDBKeyRange.only/lowerBound/upperBound/bound` 为静态 native-like 方法；请求对象要有 `IDBRequest` / `IDBOpenDBRequest` 原型链。 |
+| `URL.createObjectURL` / `URL.revokeObjectURL` | 作为 `URL` 静态方法用 descriptor 安装，函数体用 `createNativeFunction`，不要直接赋值普通 function；`URL` 本体不要盲目透传 Node 宿主构造器。 |
+| `CSS.supports` / `CSS.escape` | `CSS` 不能是普通对象字面量；静态方法必须 native-like，必要时建立 `CSS` 命名空间对象的 `Symbol.toStringTag` 与 descriptor。 |
+| `MutationObserver` / `IntersectionObserver` / `ResizeObserver` | 构造函数可 `new`，实例方法 `observe/unobserve/disconnect/takeRecords` native-like；回调与 records 可按 fixture 最小实现。 |
+| `BroadcastChannel` / `MessageChannel` / `MessagePort` | 构造函数与 `MessagePort` 原型链，`postMessage/start/close/addEventListener/removeEventListener` native-like，`port1/port2` 是 `MessagePort` 实例。 |
+| Canvas / WebGL 上下文 | `HTMLCanvasElement`、`CanvasRenderingContext2D`、`WebGLRenderingContext` / `WebGL2RenderingContext` 原型链，`getContext/toDataURL/getImageData/measureText/getParameter/readPixels` 等终端 API 用 addon native-like 包装并按指纹 fixture 回放。 |
+| `AudioContext` / `OfflineAudioContext` | 构造函数、`BaseAudioContext` 链路、`createAnalyser/createOscillator/decodeAudioData/startRendering` native-like，指纹输出从采样值回放。 |
+| `Image` / `HTMLImageElement` / `Worker` | 不要用普通 function 临时返回普通对象；需要 `HTMLElement → HTMLImageElement`、`EventTarget → Worker` 链路，`postMessage/terminate/addEventListener` native-like。 |
+
+直接复用 Node 宿主对象也属于风险写法。`TextEncoder`、`TextDecoder`、`URL`、`URLSearchParams`、`fetch`、`Headers`、`Request`、`Response`、`WebAssembly`、Streams、Events、`crypto` 等如果参与目标检测，不能简单写成 `ctx.X = globalThis.X`；必须按浏览器样本和目标调用范围建立可控实现，或明确记录不可用原因。
+
+### MutationObserver 行为最低要求
+
+如果目标实际调用 `MutationObserver`，不能只补构造函数空壳。至少按 fixture 支持：
+
+- `new MutationObserver(callback)` 的参数校验。
+- `observe(target, options)`、`disconnect()`、`takeRecords()`。
+- `attributes`、`attributeOldValue`、`attributeFilter` 的最小行为。
+- DOM 属性变化后 callback 的异步触发顺序。
+- `MutationRecord` 的 `type`、`target`、`attributeName`、`oldValue`。
+- 参数错误时的错误类型、message 和 stack 首行按浏览器采样。
+
+### 媒体能力最低要求
+
+如果目标访问媒体能力，优先采样并回放：
+
+- `HTMLMediaElement.prototype.canPlayType` 对 mp4、webm、ogg、hls 等 MIME / codecs 的返回值：`""`、`"maybe"`、`"probably"`。
+- `navigator.mediaSession` 的对象结构、descriptor、`Object.prototype.toString` 和相关方法。
+- `AudioContext` / `OfflineAudioContext` 指纹输出仍按真实浏览器采样值回放。
+
+交付前必须运行：
+
+```bash
+node scripts/check_webapi_addon_coverage.js --case-dir case --markdown
+```
+
+该检查失败时，不得交付最终项目；应先把普通 WebAPI 函数、普通对象、prototype 对象字面量和宿主透传迁移为 addon-first 实现。
+
+## fetch 与 XMLHttpRequest
+
+补环境阶段默认不应让目标 JS 真的发网络请求。
+
+策略：
+
+- 如果目标 JS 只构造请求或计算签名，`fetch` / `XMLHttpRequest` 可以记录调用并返回离线 fixture。
+- `fetch`、`Headers`、`Request`、`Response`、`XMLHttpRequest` 一旦进入补环境范围，仍要建立构造函数、原型链、方法、访问器、descriptor 和 native-like 行为。
+- 不要直接透传 Node 宿主 `fetch` / undici，也不要把最终验证交给浏览器自动化。
+- 如果必须访问网络，先确认用户授权和访问范围；最终真实请求应由已确认的 Node.js / Python TLS 指纹兼容客户端完成。
+- 不要把补环境 runner 变成批量请求工具。
+
+## 原型链
+
+原型链不是最后补的附加项，而是每个对象进入补环境范围时的第一步。
+
+以下内容默认要考虑：
+
+```js
+navigator instanceof Navigator
+document instanceof Document
+Object.getPrototypeOf(navigator)
+navigator.constructor.name
+Object.prototype.toString.call(navigator)
+Object.getOwnPropertyDescriptor(Navigator.prototype, 'userAgent')
+Function.prototype.toString.call(Object.getOwnPropertyDescriptor(Navigator.prototype, 'userAgent').get)
+```
+
+基础链路示例：
+
+```text
+EventTarget → Node → Document → HTMLDocument
+EventTarget → XMLHttpRequestEventTarget → XMLHttpRequest
+HTMLElement → HTMLCanvasElement
+```
+
+优先用 addon `createProtoChains(descriptors)` 一次性定义构造函数、父级、实例工厂、`Symbol.toStringTag`、只读 prototype 和不可变原型设置。只有 addon 不可用时，才用 JS `Object.setPrototypeOf` / `Object.create` fallback，并用 `NativeProtect` 做函数和实例保护。
+
+不要为了“完整”一次性补所有 DOM。只补 RuyiTrace / Node trace / fixtures / 目标检测证明目标 JS 会访问或依赖的部分；但已补的部分必须完整真实性。
