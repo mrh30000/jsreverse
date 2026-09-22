@@ -239,7 +239,153 @@ blob worker 的 href / pathname / protocol
 
 ---
 
-## 6. 排错速查
+## 6. 媒体解密器的内存取证与文件头解密（emcc / Go 产物）
+
+路线一~四解决「**怎么把算法跑出来**」；这一节解决「**跑出来了，key 在哪、文件头怎么回写**」。
+素材来自两类真实产物：Emscripten（emcc）编译的播放器模块，与 Go 编译的解密模块。
+
+### 6.1 断点打不上：先看它是不是在 worker 里
+
+Emscripten 产物常把解密跑在 **Web Worker** 里 ⇒ **在页面对 JS 下断点不会停**（那是另一个执行上下文）。
+三个处置，按性价比排：
+
+1. **对 wasm 里的 `_malloc` 下断点**（在 DevTools 的 wasm 源码视图里），一定能停住，再沿栈回看。
+2. **改代码插 `debugger`**：把 worker 脚本里那个 `t = function(){...}` 的开头插一行 `debugger`，
+   刷新即停（原文的做法）。
+3. 直接改走 6.3 的内存取证路线 —— 很多时候**根本不需要断点**。
+
+### 6.2 emcc 的字符串/常量都在内存里：**先 dump，再搜**
+
+Emscripten 会把源码里的字符串与数组初始化为「编译期分配空间 + 启动时写内存」。
+所以：**把整个 `HEAPU8` 下载下来，用记事本直接搜**，比读代码快一个数量级。
+
+```js
+// 一行拿到整块内存（HEAPU8 可能有几十 MB，够用）
+blob = new Blob([new Uint8Array(Module.HEAPU8)], {type: 'application/octet-stream'});
+objectUrl = URL.createObjectURL(blob);
+```
+
+搜什么（按价值排序）：
+
+| 搜什么 | 命中含义 |
+| --- | --- |
+| 已知字符串（URL、字段名、`eval` 里的片段） | 定位常量区与初始化写入点 |
+| `63 7c 77 7b f2 6b 6f c5` | **AES S 盒**（`0x63,0x7c,0x77,0x7b,0xf2,0x6b,0x6f,0xc5`）⇒ **逐值核对是否被魔改** |
+| RSA/大数常量、`0123456789abcdef` 变体 | 编码表 / 密钥材料 |
+| 长 hex / base64 串 | 写死的 key、IV、盐 |
+
+**序列化数组要转成 C 代码再看**：字符串能直接搜，但 `uint8_t x[] = {...}` 这类数组
+在内存里是裸字节，只能先 dump 出来再解析。
+
+### 6.3 「地址差法」：不读算法直接拿下 key
+
+**这是本类产物最省力的一招**。wasm 的 JS 胶水层总会把结果从内存取出来：
+
+```js
+p = Module.ccall("get", "number", [...], [d.byteOffset, h.byteOffset, u, s.byteOffset, l, e, r.byteOffset, a]);
+A = Module.HEAPU8.subarray(p, p + u);          // p = 解密后的 ts 内容地址，u = 长度
+```
+
+⇒ **key 常常就躺在 `p` 附近**。做法：
+
+1. dump 内存 → 在记事本里找到 key 的明显特征（如 32 个 hex）→ 记下**它的地址**；
+2. 与 `p` 相减，得到一个**稳定偏移**（实测一例是 **`-304`**）；
+3. 直接取 `Module.HEAPU8.subarray(p - 304, p - 304 + 16)`。
+
+**偏移是常量、但不保证跨版本**：升级后要重新量一次。判据是「解出来的 key 能解出一个能播的分片」。
+
+### 6.4 环境检测来自 wasm 调 JS：给 `eval` 出口打桩
+
+Emscripten 里 `_emscripten_run_script*` 系列最终调 JS 的 `eval`。wasm 内部用 `' ? 1 : 0'`
+这样的字符串拼检查表达式 ⇒ 报错点在 **JS 侧**，不在 wasm 里。
+
+```js
+// 需要返回值的那种（返回 int 给 wasm）
+function _emscripten_run_script_int(ptr) {
+    const str = UTF8ToString(ptr);
+    if (str.indexOf('location') !== -1) return 1;   // 环境检测：按「合格」放行
+    return 0 | eval(str);
+}
+// 不需要返回值的那种：只要能跑通，返回值无所谓
+function _emscripten_run_script(ptr) { eval('1'); }
+```
+
+**判据**：报错栈落在 `_emscripten_run_script*` 上 ⇒ 不要去读 wasm，直接打桩。
+
+**`Module["" + i] = a` 这种写法**：把「token 的 UTF-8 字节长度」挂到模块对象上，
+后面 wasm 侧的某些检查会读它。**从内存里删/改它之前先想清楚有没有人被依赖**。
+
+### 6.5 ts 内容**不能置空**：key 的生命周期绑在后续处理上
+
+带 ffmpeg 封装的大模块（v13 那类，wat 近 30 MB）有个反直觉行为：
+
+> 它先解出 key，**但如果后续处理 ts 失败，会主动释放那段 key 内存**。
+
+所以「把 ts 传空字符串、只想要 key」这条路会**拿不到 key**（读到的是已释放内存）。
+处置（按代价排）：
+
+1. **传一个真实的（哪怕很小的）ts 分片**进去 —— 最省事，原文的结论；
+2. 改 wat 代码，在处理 ts 之前就返回 key 地址 —— 30 MB wat 改起来极复杂，**不推荐**。
+
+### 6.6 文件头解密（v13 式）：长度对齐与 188 的倍数
+
+有些站点对每个分片加密它的**文件头**，而不是整片。实测形态：
+
+```
+头大小 = ((分片序号 % 5) + 1) * 1024 | 16      # 1024/2048/... 再或上 0x10
+IV     = 固定字节数组（如 [0,8,2,7,1,9,1,4,1,2,1,3,12,1,3,1]）
+解密长度 = 真实长度 | 0x10                     # 或 0x10 是「补到 16 的倍数」的填充
+memcpy 时只用真实长度（填充那部分不能拷进去）
+```
+
+解密之后还有两步**易漏**：
+
+1. 对紧接着的 16 字节做一次**简单异或**还原；
+2. **把 `v47 | 0x10` 之后的数据整体前移 16 字节**（因为前面多写的填充要抹掉）。
+
+最后一步是 JS 胶水层做的事，**很容易被忽略**：
+
+```js
+m = r.Module.HEAPU8.subarray(g, g + p - p % 188);   // 188 = TS 包长，必须对齐
+```
+
+⇒ **回写 TS 时长度必须是 188 的整数倍**；不对齐的尾巴要么是填充要么是残留，
+剩下的一步交给 `../scripts/ts_repack.py`（`--extract-es` / `--es` / `--check`）。
+
+### 6.7 NALU 级 wasm 解密（央视 h5e 型）的会话状态
+
+调用形态：
+
+```
+settle: InitPlayer() → (等 json) → 每次解密前 UpdatePlayer() 取 vmpTag
+派发  : vmpTag 中落在 "0123456" 的字符决定调 _CNTV_jsdecVOD{7-i}(mediaTag, buf, len, hostLen)
+会话串: 普通包 mediaTagID；特殊包 "mediaTagID##<dts>##<seeked>"
+NALU  : type 25 的 payload[0] 决定 shouldDecrypt；type 1/5 才解密
+```
+
+**把它当 oracle 用**：不必还原 wasm 算法，只要在页面里持有这个会话，
+把本地拿到的分片喂进去、拿回明文，再交给 `ts_repack.py` 回写。
+**这条路的前提是「能稳定复现一次会话」**，见 §5 路线四。
+
+**注意模块是「有状态」的**：`InitPlayer` / `UpdatePlayer` / `UnInitPlayer` 必须成对，
+重复初始化会失败（原文的 TS 实现里用 `sessionBegin` 守着这一点）。
+
+### 6.8 Go 编译的 wasm：`encrypt/decrypt` 可能**只能调用一次**
+
+Go 侧 `crypto/cipher` 的流对象是**有状态**的（`Stream` 内部维护 offset）。
+现象：第一次 `encrypt('1')` 有值，**同一个实例再调就返回 `null` / 空**。
+
+处置：
+
+1. **判据先立住**：想复用就「每次进页面重新加载模块」，或干脆一次调用取一组样本；
+2. 调 `decrypt` 来看**明文里到底加了什么盐**（原文靠 `decrypt` 发现明文被塞了 `timeout` + `fingerprint`，
+   这也解释了「同一个输入每次结果不同」）；
+3. 打断点位置：`$crypto/aes.NewCipher`（**入参是 key**）、`$crypto/cipher.newCBC`（**入参是 iv**）、
+   `$runtime.stringFromBytes`（看字符串）。
+
+---
+
+## 7. 排错速查
 
 | 现象 | 首查 | 次查 |
 | --- | --- | --- |
@@ -253,3 +399,10 @@ blob worker 的 href / pathname / protocol
 | VMP 字节码长度对不上 | 数组被日志截断 / 分多段写入 | 与 `eb` 申请长度（如 682576）核对 |
 | 还原出的 IR 看不懂 | 正常；IR 只是比字节码可读 | 与旧版 wasm2js 产物比对结构 |
 | 本地与浏览器结果不完全一致 | 会话状态（`vmpTag`）未对齐 | 抓 worker `postMessage` 序列重放；接受局部瑕疵 |
+| 对页面 JS 下断点不停 | 解密跑在 **Worker** 里 | 改对 `_malloc` 下断点，或改代码插 `debugger` |
+| 报错栈停在 `_emscripten_run_script*` | 环境检测是 wasm 调 JS `eval` | 给这两个导出打桩（`location` 直接返回 1） |
+| key 拿到手但取出来是垃圾 | key 地址靠「与返回地址的固定偏移」估算 | dump 内存搜特征串重新量偏移（不保证跨版本） |
+| 把 ts 传空只想要 key，结果拿不到 | 后续处理失败会**释放 key 内存** | 必须传一个真实的小分片进去 |
+| 明文长度对但 ffmpeg 报 NALU size | 解密后 ES 长度变了，TS 包布局失效 | 走 `../scripts/ts_repack.py` 重新封装 |
+| `encrypt` 第二次调用返回 null | Go 的 cipher 流**有状态** | 每次重新加载模块；用 `decrypt` 反查明文里加的盐 |
+| 头部解完还是花屏 | 漏了「异或还原」或「数据前移 16 字节」 | 尾巴必须对齐到 **188** 的整数倍 |

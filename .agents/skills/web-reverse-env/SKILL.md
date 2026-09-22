@@ -18,24 +18,24 @@ description: 面向 Web/JS 逆向中的浏览器补环境技能，覆盖 Proxy �
 
 默认优先走“诊断驱动”的补环境路线，而不是一次性补全浏览器。
 
-## proxycli 集成（首选工具链）
+## browsercli 集成（首选工具链）
 
-本技能在仓库内运行时，**优先通过 `proxycli` 调用 MCP 工具**完成真实浏览器的采集、Hook、差异分析与重建导出，而不是手写一次性调试脚本。`proxycli` 只通过 worker 的 `/api/v1` HTTP 契约通信，参数以 `src/tools` 下各工具的 zod schema 为准。
+本技能在仓库内运行时，**优先通过 `browsercli` 调用 MCP 工具**完成真实浏览器的采集、Hook、差异分析与重建导出，而不是手写一次性调试脚本。`browsercli` 只通过 worker 的 `/api/v1` HTTP 契约通信，参数以 `src/tools` 下各工具的 zod schema 为准。
 
-按补环境阶段，主要命令如下（完整参数见 [08-proxycli.md](references/08-browsercli.md)）：
+按补环境阶段，主要命令如下（完整参数见 [08-browsercli.md](references/08-browsercli.md)）：
 
 | 阶段 | 命令 | 作用 |
 | --- | --- | --- |
-| 连接/状态 | `proxycli status`、`proxycli browser connect`、`proxycli list-tools` | 确认 worker 在线、查看工具签名 |
-| 打开页面 | `proxycli call navigate_page --url "<target>" --type url` | 导航到目标站 |
-| 采集环境种子 | `proxycli call compare_env`、`proxycli call evaluate_script --function "..."`、`proxycli call inspect_object --expression "navigator"`、`proxycli call get_storage --type all` | 观察真实浏览器环境，作为补环境基准 |
-| Hook 定位入口 | `proxycli call create_hook --type cookie --action log` → `inject_hook` → `get_hook_data`；或 `hook_function --target "..."`、`inject_preload_script --preset log-cookies` | Hook `document.cookie`/`fetch`/`xhr` 等，找回真实调用链 |
-| 差异分析与补丁建议 | `proxycli call diff_env_requirements --runtimeError "..." [--observedCapabilities <arr>]` | 把运行时报错映射为缺失能力与下一步补丁 |
-| 导出重建 bundle | `proxycli call export_rebuild_bundle --taskId <id> --taskSlug <slug> --targetUrl <url> --goal <goal> [--autoGenerate true]` | 一键导出 entry/env/polyfills/capture 到任务 artifacts |
+| 连接/状态 | `browsercli status`、`browsercli browser connect`、`browsercli list-tools` | 确认 worker 在线、查看工具签名 |
+| 打开页面 | `browsercli call navigate_page --url "<target>" --type url` | 导航到目标站 |
+| 采集环境种子 | `browsercli call compare_env`、`browsercli call evaluate_script --function "..."`、`browsercli call inspect_object --expression "navigator"`、`browsercli call get_storage --type all` | 观察真实浏览器环境，作为补环境基准 |
+| Hook 定位入口 | `browsercli call create_hook --type cookie --action log` → `inject_hook` → `get_hook_data`；或 `hook_function --target "..."`、`inject_preload_script --preset log-cookies` | Hook `document.cookie`/`fetch`/`xhr` 等，找回真实调用链 |
+| 差异分析与补丁建议 | `browsercli call diff_env_requirements --runtimeError "..." [--observedCapabilities <arr>]` | 把运行时报错映射为缺失能力与下一步补丁 |
+| 导出重建 bundle | `browsercli call export_rebuild_bundle --taskId <id> --taskSlug <slug> --targetUrl <url> --goal <goal> [--autoGenerate true]` | 一键导出 entry/env/polyfills/capture 到任务 artifacts |
 
 核心原则：**先 Observe（真实浏览器采集），再 Hook（不暂停执行），最后才补环境/断点**，与仓库的 `Observe-first`、`Hook-preferred`、`Breakpoint-last` 方法论一致。
 
-`scripts/` 下的本地脚本仅用于**没有真实浏览器 / worker 不可用**的离线分析场景，或对 proxycli 采集结果做二次加工；一旦 worker 可用，优先用 proxycli。
+`scripts/` 下的本地脚本仅用于**没有真实浏览器 / worker 不可用**的离线分析场景，或对 browsercli 采集结果做二次加工；一旦 worker 可用，优先用 browsercli。
 
 ### 离线脱机脚本与快速诊断（免浏览器）
 
@@ -65,7 +65,7 @@ node skills/web-reverse-env/scripts/export-rebuild-bundle.js -o ./my-rebuild -t 
 - 用户要继续扩展外部阅读池或找更多非大站来源：读 [05-diversified-reading.md](references/05-diversified-reading.md)
 - 用户要做回归验证、模块验收或判断补丁是否够稳：读 [06-validation.md](references/06-validation.md)
 - 用户要了解现有 GitHub 框架、来源映射和代码级模式：读 [07-source-map.md](references/07-source-map.md)
-- 用户要用 proxycli 调用 MCP 工具采集环境、Hook、导出重建 bundle：读 [08-proxycli.md](references/08-browsercli.md)
+- 用户要用 browsercli 调用 MCP 工具采集环境、Hook、导出重建 bundle：读 [08-browsercli.md](references/08-browsercli.md)
 
 ## 标准工作流
 
@@ -83,19 +83,19 @@ node skills/web-reverse-env/scripts/export-rebuild-bundle.js -o ./my-rebuild -t 
 
 ### 2. 先采集，再诊断
 
-优先用 proxycli 在真实浏览器里采集环境基准（Observe-first）：
+优先用 browsercli 在真实浏览器里采集环境基准（Observe-first）：
 
-- `proxycli call compare_env` 采集 `navigator`/`screen`/`canvas`/`webgl`/`audio`/`timing` 基准
-- `proxycli call evaluate_script --function "..."` 精确读取任意属性/描述符/原型链
-- `proxycli call inspect_object --expression "navigator" --depth 3` 看对象结构与原型链
-- `proxycli call get_storage --type all` 采集 cookie / localStorage / sessionStorage 运行态
+- `browsercli call compare_env` 采集 `navigator`/`screen`/`canvas`/`webgl`/`audio`/`timing` 基准
+- `browsercli call evaluate_script --function "..."` 精确读取任意属性/描述符/原型链
+- `browsercli call inspect_object --expression "navigator" --depth 3` 看对象结构与原型链
+- `browsercli call get_storage --type all` 采集 cookie / localStorage / sessionStorage 运行态
 
 只有 worker 不可用、没有真实浏览器时，才回退到本地脚本：
 
 - [collect-browser-env.js](scripts/collect-browser-env.js)：离线采集环境种子
 - [observe-runtime.js](scripts/observe-runtime.js)：Proxy 吐环境与缺口聚合
 
-如果已有运行日志或报错，配合 `proxycli call diff_env_requirements --runtimeError "..." [--observedCapabilities <arr>]` 把报错映射为缺失能力。
+如果已有运行日志或报错，配合 `browsercli call diff_env_requirements --runtimeError "..." [--observedCapabilities <arr>]` 把报错映射为缺失能力。
 
 不要在没有诊断信息的前提下大面积硬补对象。
 
@@ -150,13 +150,13 @@ node skills/web-reverse-env/scripts/export-rebuild-bundle.js -o ./my-rebuild -t 
 
 ## 资源使用规则
 
-### proxycli（首选）
+### browsercli（首选）
 
-worker 可用时，**优先用 `proxycli call` 完成采集、Hook、差异分析与导出**，命令清单与参数见 [08-proxycli.md](references/08-browsercli.md)。`scripts/` 与 `references/` 是离线兜底与理论补充。
+worker 可用时，**优先用 `browsercli call` 完成采集、Hook、差异分析与导出**，命令清单与参数见 [08-browsercli.md](references/08-browsercli.md)。`scripts/` 与 `references/` 是离线兜底与理论补充。
 
 ### scripts
 
-优先使用现有脚本，而不是每次重写。仅在没有真实浏览器 / worker 不可用时回退到这里，或对 proxycli 采集结果做二次加工。
+优先使用现有脚本，而不是每次重写。仅在没有真实浏览器 / worker 不可用时回退到这里，或对 browsercli 采集结果做二次加工。
 
 - [collect-browser-env.js](scripts/collect-browser-env.js)
   - 浏览器侧采集环境种子
@@ -218,7 +218,7 @@ worker 可用时，**优先用 `proxycli call` 完成采集、Hook、差异分�
 - 当前任务属于哪一种补环境问题
 - 建议优先补哪些模块
 - 需要读取哪些 references
-- 需要运行哪些 `proxycli call` 命令（首选）或 scripts（离线兜底）
+- 需要运行哪些 `browsercli call` 命令（首选）或 scripts（离线兜底）
 - 如果用户要代码，给出模块化补丁，而不是一整份混乱脚本
 - 如果风险较高，明确指出纯 JS 难以完整模拟的部分
 
@@ -252,11 +252,11 @@ worker 可用时，**优先用 `proxycli call` 完成采集、Hook、差异分�
 - `JsRpc`
 - `WebSocket` 回传结果
 
-在仓库内，这条替代路线落到具体工具就是 proxycli：
+在仓库内，这条替代路线落到具体工具就是 browsercli：
 
-- 真浏览器内执行 → `proxycli call evaluate_script --function "..."`、`proxycli call navigate_page [--url "<target>"]`
-- Hook 回传结果 → `proxycli call create_hook --type <type>` + `inject_hook --hookId <id> --script "<script>"` + `get_hook_data [--hookId <id>]`
-- WebSocket 链路观察 → `proxycli call list_websocket_connections` + `get_websocket_messages --wsid <id>`
+- 真浏览器内执行 → `browsercli call evaluate_script --function "..."`、`browsercli call navigate_page [--url "<target>"]`
+- Hook 回传结果 → `browsercli call create_hook --type <type>` + `inject_hook --hookId <id> --script "<script>"` + `get_hook_data [--hookId <id>]`
+- WebSocket 链路观察 → `browsercli call list_websocket_connections` + `get_websocket_messages --wsid <id>`
 
 这属于技能允许的替代路线，不是偏题。
 

@@ -28,7 +28,7 @@
 ## 2. wasm2c + wasm-rt 完整路线
 
 ```bash
-# 1) 拿到 .wasm（浏览器另存 / curl / proxycli wasm_dump）
+# 1) 拿到 .wasm（浏览器另存 / curl / browsercli wasm_dump）
 curl -s -o app.wasm 'https://target.com/static/app.wasm'
 
 # 2) 翻译成 C + 头文件（需要 wabt 工具包）
@@ -142,12 +142,85 @@ Object.keys(wasm).forEach(k => { window['__w_' + k] = wasm[k]; });
 
 ---
 
-## 7. 反例黑名单
+## 7. 内存取证：不读算法直接拿 key / 常量（emcc 与 Go 产物通用）
+
+很多目标的性价比最优解不是「还原算法」，而是「**把内存 dump 出来搜特征**」。
+这一节是 §3~§5 的**省力替代路线**：能取证就别反编译。
+
+### 7.1 先 dump 整块内存，再搜
+
+Emscripten 会把源码里的字符串与数组做成「编译期分配 + 启动时写入内存」，
+所以**内存里就有一份可读的常量副本**：
+
+```js
+blob = new Blob([new Uint8Array(Module.HEAPU8)], {type: 'application/octet-stream'});
+objectUrl = URL.createObjectURL(blob);       // 下载下来，用记事本 / grep 直接搜
+```
+
+| 搜什么 | 命中含义 |
+| --- | --- |
+| 已知字符串（URL、字段名、`eval` 片段） | 定位常量区与初始化写入点 |
+| `63 7c 77 7b f2 6b 6f c5` | **AES S 盒**（`0x63,0x7c,0x77,0x7b,0xf2,0x6b,0x6f,0xc5`）⇒ 逐值核对是否被魔改 |
+| 编码表（`0123456789abcdef` 及其变体）、长 hex / base64 串 | 写死的 key、IV、盐、码表 |
+
+> 字符串可以直接搜；`uint8_t x[] = {...}` 这类**数组**在内存里是裸字节，
+> 只能先 dump 再解析（或按已知长度切出来）。
+
+### 7.2 地址差法：由「已知返回地址」倒推 key 地址
+
+JS 胶水层总要把结果从内存取出来，那个地址（下例的 `p`）是现成的锚点：
+
+```js
+p = Module.ccall("get", "number", [...], [d.byteOffset, h.byteOffset, u, s.byteOffset, l, e, r.byteOffset, a]);
+A = Module.HEAPU8.subarray(p, p + u);        // p = 结果地址，u = 长度
+```
+
+做法：dump 内存 → 找到 key 的特征串 → 记下**它的地址** → 与 `p` 相减得到**固定偏移**
+（实测一例为 `-304`）→ 之后直接 `subarray(p - 304, p - 304 + 16)`。
+
+**偏移是常量但不保证跨版本**；升级后重新量一次。判据是「取出的 key 能产出正确结果」。
+
+### 7.3 环境检测来自 wasm 调 JS `eval`：给出口打桩
+
+报错栈落在 `_emscripten_run_script*` 上 ⇒ **不要读 wasm**，直接打桩：
+
+```js
+function _emscripten_run_script_int(ptr) {          // 需要返回 int 的
+    const str = UTF8ToString(ptr);
+    if (str.indexOf('location') !== -1) return 1;   // 环境检测：按「合格」放行
+    return 0 | eval(str);
+}
+function _emscripten_run_script(ptr) { eval('1'); } // 不需要返回值的：跑通即可
+```
+
+**判据**：wasm 内部把检查表达式拼成字符串（如 `' ? 1 : 0'`）交给 JS `eval`，
+所以**修 JS 就能过检测**，改 wasm 是白费力气。
+
+### 7.4 Go 编译的产物：符号名 + 流对象有状态
+
+- 符号名常保留 `$crypto/aes.NewCipher`、`$crypto/cipher.newCBC`、`$crypto/md5.*`、`$runtime.stringFromBytes`。
+  打断点看入参：**`NewCipher` 的入参是 key，`newCBC` 的入参是 IV**。
+- `$runtime.stringFromBytes` 适合用来「把内存里的字节当字符串看」。
+- 🔴 **`crypto/cipher` 的流对象是有状态的**：同一个实例**第二次调用可能返回 `null` / 空**。
+  ⇒ 想多取样本就**每次重新加载模块**；或干脆一次调用只取一组，用 `decrypt` 反查明文里被加了什么盐。
+
+### 7.5 结果内存的生命周期：别把输入置空
+
+大模块（尤其内嵌 ffmpeg 的）有个反直觉行为：**后续处理失败时会主动释放已经算出来的 key 内存**。
+所以「把输入传空、只想要输出」这条路会拿到**已释放内存**（表现为垃圾或 `null`）。
+⇒ **必须传一个真实的（哪怕很小的）输入**。
+
+---
+
+## 8. 反例黑名单
 
 - **不要在没确认「只要能调用」还是「要搞懂算法」之前就开读 WAT**。选错路是最大的浪费。
+- **不要跳过内存取证直接反编译**。dump 一次 + 搜特征串，往往 5 分钟拿到 key（§7）。
 - **不要把 `i32.load` 的四字节当十进制相加**。必须按小端还原（§3）。
 - **不要为了还原字节流去啃密钥生成逻辑**。用已知明文（填充字节）反推密钥更快且更可靠（§4）。
 - **不要相信「符号名是乱码」**。先 `c++filt` 一次。
 - **不要漏编译 `wasm-rt-impl.c`**。缺它是 wasm2c 最常见的失败原因。
 - **不要对含非 ASCII 参数的导出函数直接用 `passStringToWasm0` 传中文**。会静默截断。
 - **不要依赖 DOM 交互工具去触发带反调试页面的 wasm**。会挂起并永久占用 worker（`HTTP 409 WORKER_BUSY`），见 SKILL.md「实战警示」。
+- **不要以为「同一个实例能反复调用」**。Go 的 cipher 流、带会话状态的模块都可能只能用一次（§7.4 / §7.5）。
+- **不要在拿到 key 就收工**。偏移是常量但不保证跨版本，**换一个样本再验一次**才算完成。

@@ -85,7 +85,7 @@
 | 22 | `2094667-smart-hotel-slider-bg-restore.md` | `4800a8852d0fa96efb1db47ad8dc793d` | 2026-09-20 | `web-verify-patcher` | evolve | **接口下发式**顺序（`shuffle` 为 JSON 字符串、语义 `source-to-target`、2 行 × N 列）；`collectData` 的 **类 TLV + CRC32** 打包（`Length = DataLen + 3`、252 字节分片、`'|'` 连接）；**AES-CTR + nopadding**、IV 前置拼接；RSA **PKCS1v15**；`getKey` 索引从 1 起 ⇒ 永不生成 `'0'` |
 | 23 | `52pojie-1583574-网易易盾—推理拼图验证的破解.md` | `3ddce5489e2b82cd9a8c93ee2d0089c5` | 2026-09-20 | `web-verify-patcher` | evolve | 真拼图（非切片乱序）⇒ **遗传算法**路线；判据是"错误拼缝处二值化后边缘趋于直线且突变明显"；二开 `individual.py` 导出 `pieceMapping`；复杂原图误差会放大 |
 | 24 | `2098921-yolo-captcha-calc.md` | `49a67fd78e5ce5cc3938d4807a52eaf4` | 2026-09-20 | `web-verify-patcher` | evolve | 切片 base64 **按序拼接**（非置换）→ 二值化 + 连通域面积去噪 → Label Studio 标注 → YOLOv8 训练（**`fliplr=0.0` 必关**）→ 按 x 排序拼算式 → 白名单求值；收敛判据 `loss<0.2~0.3` / `mAP50-95≥0.9`；样本量 180+ 才稳 |
-| 25 | `52pojie-2112042-YOLO识别拼图过滑块验证.md` | `4037be3cd60c241ae7ee4eb6e8ce6241` | 2026-09-20 | `web-verify-patcher` | evolve | **自举闭环**：小样本训练 → 导出 ONNX → X-AnyLabeling 自动标注 → 人工修正 → 重训；滑块只需 `max_det=1` 取拼图左下角 `x1`；"训练一次换永久免手动"的收益判断 |
+| 25 | `52pojie-2112042-YOLO识别拼图过滑块验证.md` | `4037be3cd60c241ae7ee4eb6e8ce6248` | 2026-09-20 | `web-verify-patcher` | evolve | **自举闭环**：小样本训练 → 导出 ONNX → X-AnyLabeling 自动标注 → 人工修正 → 重训；滑块只需 `max_det=1` 取拼图左下角 `x1`；"训练一次换永久免手动"的收益判断 |
 | 26 | `52pojie-2099086-浅谈OB混淆及其变体特征.md` | `c68f7b149cccbc2983d997a926da92fe` | 2026-09-20 | `ast-deobfuscation` | evolve | 标准 OB 五特征 + **动态识别的两条硬判据**（数组元素全为字符串 / 解密函数含标准 base64 码表）；四类变体（掺非字符串、去自执行、乱序码表、格式化检查、多重赋值分身、字典混淆、外衣函数）逐一对策；`path.crawl()` 必要性 |
 | 27 | `52pojie-2034613-某大厂waf逆向-- 用AST还原加强ob混淆壳.md` | `15420cc0abd32934b17ca347e2b2dbc8` | 2026-09-20 | `ast-deobfuscation` | evolve | 加强 OB 壳的四步 AST 配方：`path.evaluate()` 静态求值（**必须先查 `confident`**）→ 数值字典 `Pm.B → 2` 内联 → 分身归一回原名 + **导出函数主动调用** → `B[键]` 按 value 类型（字符串/代理调用/二元运算）分类还原；压缩后再加载以绕过格式化检查 |
 | 28 | `52pojie-2073419-某老板直聘四层switch反混淆.md` | `80dd3c65fbe5c91430e18c11b93258cd` | 2026-09-20 | `ast-deobfuscation` | evolve | **多入口多层 switch**（起始 index 由调用传参决定）三步还原法：收集 index → 最内层插探针 → 拖进 `for` 循环取映射；两个致命坑：case index 藏在调用点、还原后**变量污染**⇒ 必须按入口拆回多个函数；新增 `patterns/zhipin-switch-pass.js` + `patterns/zhipin.md` + detector/pipeline 接入 |
@@ -321,7 +321,7 @@
 | 91 | `52pojie-1887377-40行python识别某讯云滑块验证码并自动登录.md` | `d032af049291a7c94e3ecab8695ae0ed` | 2026-09-21 | `web-verify-patcher` | evolve | 缺口坐标**存在站点级固定偏移**（实测 `距离 = 识别缺口 x - 60`，因滑块初始位置不在最左）；取图可从 iframe 内 `style` 里正则提 URL；偏移量按站点实测、不可跨站套用 |
 | 92 | `52pojie-2106089-智慧酒店登录滑块各部分易错点详析.md` | `777321954a7a80677b7f7cfdc42b5cdf` | 2026-09-21 | `web-verify-patcher` | evolve | **五请求链**（而非三请求）：challenge/verifyId → 静态资源（`shuffle` 切割表 + `publicKey` 加密轨迹）→ `collectData` 得 `result`（=登录用 `secure_key`）→ `secret-key` 得 `iv`/`secret_key`/`secret_key_id` → login；**`csrf-token` 要「先发一次再从响应 Cookie 取值」两步法**，第 4 个请求同样要更新；双缺口底图用**中心点**计算 + 红线校验 |
 | 93 | `52pojie-1868749-反调试-编译pass彻底解决调试web无限debugger问题.md` | `aec9df38777673a3eee294b02542171e` | 2026-09-21 | `web-reverse-algorithm` | evolve | **编译级绕过**：V8 把 `debugger` 当关键字（`parsing/keywords-gen.h` / `token.h` / `scanner-inl.h`），改这几个字符串后重编 node 即可；Chrome 侧更省事的是**二进制改 `chrome.dll` 里的硬 token**（`grep -aboP "\x00[xd]ebugger\x00"` 定位后把首字节改掉），副作用：语法完整性被破坏会被探测、部分插件失效 |
-| 94 | `52pojie-2047827-【反反调试】破解匿名函数的构造函数执行的debugger.md` | `b338847feb716ef984dd4f47678b4b46` | 2026-09-21 | `web-reverse-algorithm` | evolve | `(function(){}["constructor"]("debugger"))()` 的处置：核心是重写 **`Function.prototype.constructor` 的 getter**，而不是只换 `window.Function`；配套要 `Object.getOwnPropertyDescriptor` 联动 + 定时自检复原 + `onerror` 静默；另可在 `setInterval` 包装器里临时替换 `Function` 来保护闭包变量 |
+| 94 | `52pojie-2047827-【反反调试】破解匿名函数的构造函数执行的debugger.md` | `b338847feb716ef984dd4f47678b4bae` | 2026-09-21 | `web-reverse-algorithm` | evolve | `(function(){}["constructor"]("debugger"))()` 的处置：核心是重写 **`Function.prototype.constructor` 的 getter**，而不是只换 `window.Function`；配套要 `Object.getOwnPropertyDescriptor` 联动 + 定时自检复原 + `onerror` 静默；另可在 `setInterval` 包装器里临时替换 `Function` 来保护闭包变量 |
 | 95 | `52pojie-2095322-某招聘网站的反调试与反反调试策略.md` | `51a3fc461b396583e182f5efc4b4c20a` | 2026-09-21 | `web-reverse-algorithm` | evolve | **sink→运行时栈→bundle 对位三步定位法**（先 hook `window.open`/`location` setter/`history`/`body.innerHTML`，用 `new Error().stack` 一次拿全 `XCID → onDevToolOpen → ht` 链路，再回快照按符号定位）；**隐藏 iframe 从 `contentWindow` 取未 hook 的原生 API**（只在主窗口 hook 会全失效）；`[native code]` 完整性校验；**内存炸弹**（`1000×1000` 对象 / `new Array(1e4).fill('x')` 定时器）；定时器拦截要从「全拦」收敛到「按调用栈白名单」 |
 | 96 | `52pojie-2014821-js过反调试.md` | `0580097b41454853ae16f0929d0e4617` | 2026-09-21 | `web-reverse-algorithm` | evolve | 实战踩坑：hook 后断点「停不下来」是因为还要在 `eval` 里注入 + 定时器也在检测；**`endebug` / `txsdefwsw` 必须在断点处清空**（不在断点处清无效）；`location` 不可置空只能改判据或替换文件 |
 | 97 | `52pojie-1901995-小白hook无限debugger.md` | `9cbe4bf28f5684159949f24d12b76bf1` | 2026-09-21 | `web-reverse-algorithm` | evolve | 三类 debugger（裸 / `eval` 内 / 定时器）与「必须在定时器首次执行前 hook」的时序要求；「永不在此断点」的副作用：内存爆破型会让浏览器卡死（这条是判据，不是偏好） |
@@ -329,7 +329,7 @@
 | 99 | `52pojie-2128269-Drissionpage焦点伪造检测点.md` | `a6747f0407525585a801ed40013fe7cf` | 2026-09-21 | `web-reverse-algorithm` | evolve | **自动化框架自身的指纹**：DrissionPage 默认无条件下发 `Emulation.setFocusEmulationEnabled(enabled=True)`，导致页面被挤到后台后仍报 `hasFocus()===true` + `visibilityState==='visible'`；判据是**矛盾**而非 `hasFocus===true`；实测 A/B 对照 + 规避 `enabled=False`（新 tab/frame 后需再关） |
 | 100 | `52pojie-2045645-浏览器指纹追踪入门：常见检测手段 + 小白适用的绕过小技巧.md` | `11612d32785e694c286a3027f3a71251` | 2026-09-21 | `web-reverse-algorithm` | evolve | 指纹检测 19 类清单（UA/语言/屏幕/Canvas2D/WebGL/AudioContext/字体/硬件/电池/时间精度/WebRTC/鼠标/键盘/插件/Flash/Selenium/Puppeteer/综合指纹）→ 与「运行时状态一致性」是**三类独立检测**，补了前两类不代表第三类也过 |
 | 101 | `52pojie-2011480-[Web逆向反调试]常见检测到开发者工具的制止手段.md` | `6bba4ec2a3f550952e28ae65e655659a` | 2026-09-21 | `web-reverse-algorithm` | evolve | **`location` 的属性/方法不可重写**（直接置空无效，`defineProperty` 与 `Proxy` 也无效）⇒ 只能改条件逻辑或替换文件；`console.log/table` 的对象求值副作用被用作探测点；`setInterval/setTimeout` 也是探测通道；油猴注入时机必须 `@run-at document-start` |
-| 102 | `52pojie-2015243-[学习笔记]JS逆向-控制台反调试使用的常见三种方式及hook思路.md` | `cf6e96ccd04c8587deb1de3668988e5` | 2026-09-21 | `web-reverse-algorithm` | evolve | 三种控制台反调试：窗口尺寸（`outerHeight - innerHeight > 400`）、构造函数无限递归断点、定时器 debugger；对应的三种零时解法（一律不在此处暂停 / 条件断点 false / 替换文件）；**`console.log` 不要置空**（会破坏自身调试能力，且站点可能因此走另一条分支） |
+| 102 | `52pojie-2015243-[学习笔记]JS逆向-控制台反调试使用的常见三种方式及hook思路.md` | `cf6e96ccd04c8587deb1de366c8988e5` | 2026-09-21 | `web-reverse-algorithm` | evolve | 三种控制台反调试：窗口尺寸（`outerHeight - innerHeight > 400`）、构造函数无限递归断点、定时器 debugger；对应的三种零时解法（一律不在此处暂停 / 条件断点 false / 替换文件）；**`console.log` 不要置空**（会破坏自身调试能力，且站点可能因此走另一条分支） |
 
 ### 本批次技能变更汇总
 
@@ -1280,11 +1280,8 @@ python artifacts/skill-evolution/tools/append-b9-ledger.py
 | padding 公式 | 971 字节 → 补 44 个 0、总长 1024（可被 64 整除） | 38 项断言；并**证伪原文的 `42`**（按 42 补完总长 1022，1022 % 64 = 62） |
 | 真实 VM 样本插桩 | 仓内 `artifacts/tiktok/webmssdk.js`（243 KB，真实混淆产物） | call 层插到 **251 处**，节点 64,548 → 69,270，产物 `node --check` 通过 |
 
-
-
 | # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取 |
 | --- | --- | --- | --- | --- | --- | --- |
-
 | 149 | `2073641-jsvmp-pure-algo-tricks.md` | `2d9d988d8d6610d9890bd4607ae11f96` | 2026-09-21 | `ast-deobfuscation` | evolve | 插桩取巧「先打指令、再反问结果」：两种控制流形态（switch / if-else 链 / 三目嵌套）下都直接打印指令流；栈用 JSON.stringify 格式化（须防循环引用，否则打印直接抛错）；「同一指令值出现 9,520 次 ⇒ 在第 9,520 次打断点」的条件断点法；多打印几个指令应对嵌套多层 switch |
 | 150 | `2079058-ast-jsvmp-instrument.md` | `8d51d702e6fffd6d2524b2ff57b6e13c` | 2026-09-21 | `ast-deobfuscation` | evolve | **AST 自动插桩**：定位特征 = 父节点 SwitchCase + 后兄弟 BreakStatement + 自身是赋值表达式（圈定 handler 不误伤业务）；console.log 不是单一节点（MemberExpression + CallExpression 两步构造）并封装复用；**动态 k 值两趟法**（先把 `k++` 改成 `k - index` 并在还原后改回，index 需 reverse 倒排）；**插桩代码二次调用被插桩函数 ⇒ 有状态变量多推进 ⇒ 后续分支整体错位**（故插桩只读不调用） |
 | 151 | `2104849-qqmusic-sign-vmp-instrument-log.md` | `204c82aa300a57b26ca5860a260c0dc4` | 2026-09-21 | `ast-deobfuscation` | evolve | 插桩日志分析全流程：先在控制台装日志导出器（**拦截 console 必须保留原方法**、分批导出、txt/json/jsonl、可选保留调用栈），再扣 VM 到本地插桩；**密文固定化**（明文固定成最短可复现值）让日志可复现；从结果倒推生成逻辑 |
@@ -1304,7 +1301,7 @@ python artifacts/skill-evolution/tools/append-b9-ledger.py
 | 165 | `52pojie-2053916-【js逆向】码上爬-题十二JSVMP入门逆向补环境.md` | `23fb7c1f05bed089243fe511e8be23bb` | 2026-09-21 | `ast-deobfuscation` | evolve | 补环境路线的可复用手法：先整体搬到本地跑 → 逐个报错补齐（ajax/`$` → Canvas → `document.createElement` → `navigator/location/history/screen/localStorage`）→ **挂代理看哪个属性是 undefined 再补**；关键补齐项 `$.extend` / `setAttribute` / `MockCanvasRenderingContext2D` / `toDataURL`；补完导出到全局即可出值 |
 | 166 | `52pojie-1865940-[JSvmp] 某书最新webprofile之profileData逆向算法.md` | `f39c87241e035ef4f76e87dc10861b12` | 2026-09-21 | `ast-deobfuscation` + `web-reverse-algorithm` | evolve | **推荐组合顺序**：用 jsdom 补环境先跑出一致的签名当 oracle，再回头分析算法；「**执行 VM 消耗资源巨大，手上没点钱是顶不住业务机器的高并发的**」⇒ 补环境可作 oracle、不可作交付形态（交纯算）；同厂两个参数（`x-s` 与 `profileData`）共用同一套 VM 思路，**换 key 与字符串池即可复用前一次的还原经验**（base64 环境块 + 内存里的 key 数组） |
 | 167 | `52pojie-2030247-vmp套vmp之探讨某d的_fingerprint参数生成.md` | `dabed884a4d6c5cb317eaf1c1f9a9c97` | 2026-09-21 | `ast-deobfuscation` | evolve | **vmp 套 vmp** 的处置顺序：只先还原外层、把内层当黑盒（插桩记它的入参/返回值）→ 对内层入参做**短串分析**（由哪几段拼成、哪些是常量哪些是环境值）→ 再确认内层是否与已知算法同构 → 确有必要才独立建工程展开内层；参数生成入口的快速定位（直接搜赋值点 `this._fingerprint = ...`，比跟栈快） |
-| 168 | `52pojie-2027657-AI与JSVMP的初次结合-深入浅出的逆向JSVMP.md` | `77f72860c9b0e694524412e889376a9f` | 2026-09-21 | `ast-deobfuscation` | evolve | **AI 辅助插桩**：给模型「目标 + 要观察的变量 + 期望日志格式」产出插桩代码，但**产物仍须人工核对覆盖关键路径**；**分而治之**：把一个大的逆向流程不断拆成很多个小流程逐个交给模型；apply 插桩日志的读法（从 `[调用 apply]` / `[返回值]` 的成对记录还原数据流，本批实测可见 ua 先进 VM 出乱码、环境数组与小数组拼接后再进 VM、最后与字符串做运算出 a_bogus） |
+| 168 | `52pojie-2027657-AI与JSVMP的初次结合-深入浅出的逆向JSVMP.md` | `77f72860c9b0e694524412e889376a9b` | 2026-09-21 | `ast-deobfuscation` | evolve | **AI 辅助插桩**：给模型「目标 + 要观察的变量 + 期望日志格式」产出插桩代码，但**产物仍须人工核对覆盖关键路径**；**分而治之**：把一个大的逆向流程不断拆成很多个小流程逐个交给模型；apply 插桩日志的读法（从 `[调用 apply]` / `[返回值]` 的成对记录还原数据流，本批实测可见 ua 先进 VM 出乱码、环境数组与小数组拼接后再进 VM、最后与字符串做运算出 a_bogus） |
 
 ### 本批次技能变更汇总
 
@@ -1656,3 +1653,242 @@ python artifacts/skill-evolution/tools/append-b12-ledger.py
 ② 容器型三配方里 A / B / C 的「可执行件」只有 `media_crypto.py aes-ecb` 这一档，
 某东的 `utf16ToBytes` 与 `dpbt` 只给了 JS 侧描述；
 ③ 地址差法只有 `--diff` 的机械 diff，没有「自动归纳出构造式」的一步。
+---
+
+## 三·K、批次 B13 · 2026-09-22（JSVMP 剩余：IR 优化 / CFG 回译 / 厂商字节码取证）
+
+> ⚠️ **本轮开局先做了两件「半成品补救」**（沿用 B7 救回 B6 的做法）：
+> 1. **B12**（2026-09-21 21:32）的技能改动与台账均已落盘，但 **automation memory 缺条目**（本轮补写）；
+> 2. **B13**（2026-09-21 23:45）属**半成品**：`ast-deobfuscation/scripts/jsvmp-ir-optimize.js` 已写入，
+>    但它声明的权威文档 `references/jsvmp-ir-and-optimization.md` **不存在**，
+>    `SKILL.md` 未接线、`.agents` 未镜像、台账未登记、memory 未写。
+>    ⇒ 本轮把这四项补齐，**才**把 B13 正式做完（台账口径：B13 = 本节 15 篇）。
+>    另修：B12 遗留的 7 处失效跨技能引用（`stream-drm-reverse/references/` 下 `../<skill>/` 少退一级
+>    + 1 处裸跨技能路径）与 `wsam-reverse/SKILL.md` 的行尾混用。
+
+**取材口径**：**「JSVMP 反汇编产物之后那一步」一次做全** ——
+IR 的常量折叠 / 死 case 消除 / 短路还原 / CFG 回译 · 两套真实 opcode 编码（12 位家族 / 3 字节家族）·
+三厂商 opcode 语义骨架（某 Q 音寄存器式 82 handler / 某音 8 参数入口 / 某讯 chaos 随机分段）·
+常量取证（bignum limb vs 哈希常量表）· 纯算落地（x96 轮转查表 / X-Bogus 七组四字符）·
+插桩日志的读数与预算递进。
+
+**选它的理由**：B11 起连续三轮把「JSVMP 剩余」列为优先级 ① 并注明
+「B6 只落了助记符表 + 反编译器设计」；开工前核对 `jsvmp-bytecode-and-decompiler.md` 虽已 15.9 KB，
+但**「拿到 IR 之后怎么优化」这一步完全没有落点** —— 而 `52pojie-2042090` 的原文正是以
+「**下一步将继续学习中间代码优化相关知识，进行常量折叠、常量传播等优化，优化完毕后将控制流图转换成对应的 js 代码**」
+结尾 ⇒ 这是**能力缺口**（第四条判据：现有 reference 里没有这条线），且 `2042090` 那轮已经把工具写了一半。
+
+**产出**：**无新建技能**（第 6 次确认），演化既有技能 **3** 个（`ast-deobfuscation` / `forum-corpus-archival` /
+`stream-drm-reverse` 引用修复），补做半成品 **1** 个（B13 的文档 / 接线 / 镜像 / 登记），附带修复 **9** 项。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 204 | `2079071-qqmusic-sign-param-vmp.md` | `910bfdc71e96fd524900c1d1bb6d39f4` | 2026-09-22 | ast-deobfuscation + web-reverse-algorithm | evolve | 某 Q 音 sign 的**可执行 JS 全文**（本批交叉验证的一极）：`sign = ("zzc" + 取索引表1 + base64后删「/+」 + 取索引表2).toLowerCase()`；四张常量表全部落地；「先只打 call → 1027 条衔接不上 → 补运算 2216 → 补索引取值 3289 才清晰」的**日志预算递进**；`++h` 自增实参打日志要减掉 `++`；`553B7D79` 这类**列表 join 出来的固定串**要先确认「是结果要用的」再往上追 |
+| 205 | `2084662-tencent-jsvmp-part1.md` | `067fece3af1719a199408b553497139f` | 2026-09-22 | ast-deobfuscation | evolve | 某讯滑块 VMP 的**定位四步**（虚拟机初始化 / 指令调度 / 指令处理 / 循环执行）+ 「把文件里所有方法折叠后，只有一个是自执行的，重点看它」的判据；「环境检测少 ⇒ 直接扣算法」与 `getTdcData` 断点链 |
+| 206 | `52pojie-1619464-【JS逆向系列】某乎x96参数与jsvmp初体验.md` | `8f5e2503c196d08f3e9e29dfae15c74f` | 2026-09-22 | ast-deobfuscation | evolve | x96 **12 位家族 opcode 位域**逐位实测值（`(opcode[pc] & 0xF000) >> 12` 定族；family 9 取 `4095>>10 / 1023>>8 / 1023 / 63`；family 10 取 `4095>>10 / 1023>>8 / 1023>>6`；family 14 取 `4095` 当函数下标）+ **独立 opstr 字符串表**（2 字节条数 + 2 字节/条 + 长度前缀表）；**三方案选型**（补环境 / 修改操作码 / 算法还原）；反编译器用 Babel 生成 AST 的骨架 |
+| 207 | `52pojie-1631492-某音jsvmp下参数分析笔记.md` | `1ebfbb05e50e57b438db0138b0dac57e` | 2026-09-22 | ast-deobfuscation | evolve | 某音 **8 参数 VM 入口表**（字节码 / 函数基址 / 函数长度 / 本地变量 / 闭包变量 / 调用者 / 无意义 / 分支类型）⇒ 可做到**函数级按需反编译**（原文先拿基址 578 长度 71 的 `open` 试）；🔴 **自动生成的伪代码不可信**（原文自己说「逻辑上存在问题，代码并不可信」）——只能当辅助；同站多文件（`webmssdk.js` / `captcha.js`）**字节码魔数相同 ⇒ 一套解释器通吃** |
+| 208 | `52pojie-1645300-某乎x96jsvmp算法还原新手初体验.md` | `0071310869b121b4194fc3960f93dd4f` | 2026-09-22 | ast-deobfuscation | evolve | x96 纯算的**已实测可复现形态**：倒着取明文、3 字符一组、`len%3` 补 `\u0000`、三条**随轮次回绕的常量表**（`A=[42,0,0,0]` 异或 / `B=[8,16,8,16]` 左移 / `C=[63,6,12,18]` 掩码与右移）、每轮出 4 字符；**64 元打乱字母表**（含 `_`/`-`，不是 base64）；本轮已把文章的输入/输出对做成 oracle 实跑通过（`jsvmp-oracles.js` A 段） |
+| 209 | `52pojie-1686683-【JS逆向系列】某乎x96参数3.0版本与jsvmp进阶.md` | `150cef6d38cfe5843f369aa72cd683b4` | 2026-09-22 | ast-deobfuscation | evolve | **IR 优化五步的真实操作序列**（本批 `jsvmp-ir-optimize.js` 的来源）：去 try 反调试 → 删时间 case(300/360/368) → **全 case 下断点扫死 case**（23 个清单）→ `this.M[k]=v` 虚假指令表折叠（未出现的一律 null）→ `this.T ≡ case 号` 还原字面量 → `+=`/`-=` 归一到 `=` → 单前驱单后继块合并（352→300→368，改完**实跑结果一致**才算安全）；**3 字节家族**（`charCodeAt(0)<<16|…<<8|…` 条数 + 3 字节/条）与**链式异或字符串表解码**（`U=66` 回灌，`24 ^ byte ^ U`）；初始化段无时间/随机 ⇒ **可离线求真值** |
+| 210 | `52pojie-1744197-【JS 逆向百例】某音 X-Bogus 逆向分析，JSVMP 纯算法还原.md` | `709e2b8ed6a7e32eda04e63d07aba85e` | 2026-09-22 | ast-deobfuscation + web-reverse-algorithm | evolve | X-Bogus **完整纯算**：28 字符 = 7 组 × 4 字符，掩码/移位 `16515072>>18 / 258048>>12 / 4032>>6 / 63` 四值可写死；乱码串 = `md5 → hex 转 Uint8Array → 再 md5 → 再转` + 时间戳/1000 + canvas 指纹，拼 19 元素 `p1` 后**按奇偶交错**成 `p2`，再经 **RC4 变体**（`_0x46fa4c`）打乱、前置 `\u0002` + `ÿ`（`_0x2b6720`）；**条件断点定位法**（结果串下一元素先是 null ⇒ 下一步就是生成点；三元组需再加限制条件收敛） |
+| 211 | `52pojie-1865657-巨量算数response解密[jsvmp].md` | `ffeaf8393a71d1008cf83e5276251fb5` | 2026-09-22 | ast-deobfuscation | evolve | **「小 vmp」规模判据**：指令集很小但**执行量巨大**（原文「我的电脑跑崩了无数次」）⇒ 规模小 ≠ 好逆；调试要**主动清无用数据**。作为「按体量选路线」的反例入档 |
+| 212 | `52pojie-1894606-某讯jsvmp还原.md` | `c346db03b89bd1b36d1629f173cc61af` | 2026-09-22 | ast-deobfuscation | evolve | **某讯 tencent_vm_chaos 脱壳器设计**：① 四件套输入（密文 / 起始 index / `SysObj` 原生对象表 / `name_array` 关键词数组），`name = name_array[x]; target = SysObj[name]` 把「五花八门的调用」统一成一类字节码；② **随机分段抗脱壳**（把多条 opcode 合并成 1 条新 opcode ⇒ 「程序 A 的脱壳器脱不了程序 B 的壳」，case 数 ≠ 语义 opcode 数 **不是 bug**）；③ `case_map` 必须**现解析 switch**，不能沿用上次；④ **短路还原的真实代价**：`a && b` 被拆成嵌套分支后两分支同一对后继，还原时要丢掉重复的花指令块，但**被合并的第二块若带副作用就改变语义** |
+| 213 | `52pojie-1969992-某q音乐新版txjsvmp分析.md` | `bd45d9af55a86416b28f6a3acb659a64` | 2026-09-22 | ast-deobfuscation | evolve | 某 Q 音 sign 的**插桩日志视角**（交叉验证的第三极，奇数位被脱敏）：条件断点 + 日志采集的标准写法 `JSON.stringify(d, (k,v) => v === window || !v || v.length > 1000 ? undefined : v)`；结果四段拼接 `zzc + … + … + …` 与 `toLowerCase()`；**「检测环境较少就不讲补环境，直接扣算法」的选路记录** |
+| 214 | `52pojie-1974900-某音新版jsvmp参数a_bogus分析.md` | `52b4c51bc31ecfbda4b97f85a556a964` | 2026-09-22 | ast-deobfuscation | evolve | 新版 `a_bogus`：**加密入口找不到 ⇒ 官方口径就是「暂且搁置、改走插桩」**；换到 `bdms_1.0.1.17.js`，加密在 `do-while` 里且**该 VM 内部也控制流平坦化** ⇒ **先解混淆再插桩**（原文「还原后非常清晰可观」）；插桩重点在 `T.apply(E, j)`；9 步加密流程概述（双重 SM3 / 轨迹转乱码 / 魔改 base64） |
+| 215 | `52pojie-2042090-某q音乐jsvmp反编译.md` | `848a82c8e317b18e5abe2985699f2f4c` | 2026-09-22 | ast-deobfuscation + forum-corpus-archival | evolve | 🔧 **本文件本身是「部分乱码」事故**（正文被按 CP154 解码），本轮已就地修复（cyr 8277→3）；内容为**寄存器式 VM 完整反编译**：82 个 handler、8 个入口寄存器、`CreateVmFunction` 五参数（count/param_i/target/offset/length）与 `Object.defineProperty(fn,"length",…)` 必做动作；**IR 抽象类设计**（`IRInstruction` 基类 + 寄存器/立即数两类操作数）；**`PC += ++PC` 的语义陷阱**（`++pc` 在右值表达式里先自增 ⇒ 反汇编时必须按「先取自增值再加」还原）；`f_5329` 展开的 zzc sign（与 2079071/1969992/2096887 逐值一致）；🔴 该 IR 的 base64 字母表写作 `ABCDEDG…`（缺 `F`、`D` 重复）⇒ **单射性机械校验可独立证伪**；环境检测清单（window/document/navigator/location/history/screen + nodejs + Headless + 域名白名单 `qq.com/joox.com/tencentmusic.com/wavecommittee.com/kugou.com/kuwo.cn`） |
+| 216 | `52pojie-2061802-千呼万唤始出来《WX小程序反编译教程》.md` | `0cf4d962f7f237c2a462f3c80d01111c` | 2026-09-22 | — | skip | **小程序反编译**（wxapkg 解包 + `wxappUnpacker`），属本技能库明确划出的边界外（`web-js-env-patcher` 明文排除小程序 ⇒ 与 B1-17 同口径）。仅记录两条环境事实以免重复调研：4.0+ 版小程序目录为 `C:\Users\<用户>\AppData\Roaming\Tencent\xwechat\radium\Applet`，旧版为 `WeChat Files\Applet`；主包/分包靠 `sub` 标识区分 |
+| 217 | `52pojie-2076005-Python爬虫进阶：spiderdemo困难题JSVMP-T6题解.md` | `800c40d665960cead2300972f8d93f63` | 2026-09-22 | ast-deobfuscation | evolve | **插桩日志的「富矿」判据**：整个库对象会被打出来 ⇒ `{default_key_size:1024, default_public_exponent:"010001", key:{n:{…,t:37,s:0}, e:65537}}` 一眼定 RSA-1024，明文 = 时间戳 + 固定 salt 后 `btoa` 再 RSA；🔴 **一串「神秘整数」先判 limb 大整数再谈算法**（有 `t`/`s`、limb < 2³⁰ ⇒ jsbn 形式 bignum，还原后 1096 bit；`d/p/q` 全 null 是**库对象默认字段**而非「被擦的私钥」）；响应侧「数字按奇偶 -4/-2」的还原规律 |
+| 218 | `52pojie-2086034-某讯jsvmp(二).md` | `a2d9a1534d5b16cd1b420abf4f41c9bc` | 2026-09-22 | ast-deobfuscation | evolve | 某讯滑块 `collect` 的**拼接形态**：结果 = **4 段**乱码串各自 `btoa` 后拼接再 `replace(/\+|\/|=/g,"")`，**顺序被打乱**；每段 = 明文每 4 位一组做 `charCodeAt` + 左移 + 或；**每段下面都直接打印了对应明文** ⇒ 「研究透一段，其余三段换明文即可」；🔴 **日志里存在故意误导的干扰项**（「生成结果值、未用到的值…都是干扰日志」）⇒ 判据是**对最终结果做数据流回溯**，圈外一律丢 |
+
+### 本批次技能变更汇总（B13）
+
+| 技能 | 变更类型 | 主要落点 |
+| --- | --- | --- |
+| `ast-deobfuscation` | evolve（主） | 新增 `references/jsvmp-ir-and-optimization.md`（**「IR 优化 + CFG 回译」阶段唯一权威源**：五 pass 顺序与各自安全判据、两套 opcode 编码、三厂商语义骨架、常量取证、跨来源交叉验证、两套纯算形态、日志读数、反例黑名单、复跑）；补做 B13 遗留的 `scripts/jsvmp-ir-optimize.js` 接线；`SKILL.md` 新增脚本条目 + 导航 + 触发词（IR 优化 / 常量折叠 / 常量传播 / CFG 回译）；`references/jsvmp-dynamic-instrumentation.md` 新增 §4.4（**日志预算递进 1027→2216→3289**）/§4.5（**干扰日志的数据流回溯判据**）/§4.6（库对象富矿指针）；`scripts/crypto-signature-id.js` 新增 `analyzeBignum()` + 8 条断言（含「真哈希 IV 不得被判成 limb 大整数」反向断言） |
+| `forum-corpus-archival` | evolve | 新增 `scripts/repair-encoding.py`（**「部分乱码」检测与修复**，50 项 `--selftest`：多码页自动判定 + **混表逐字符候选收敛** + **GB2312 越界率判优**（防静默错字）+ 中英混排拒绝执行 + 截断字节兜底 + 幂等）；`SKILL.md` 新增坑 30 |
+| `stream-drm-reverse` | 附带修复 | `references/` 下 7 处失效跨技能引用（`../<skill>/` 从 `references/` 出发应退两级 `../../`）+ 1 处裸跨技能路径；`wsam-reverse/SKILL.md` 行尾统一 LF |
+
+### 本批次的方法论增量（可复用）
+
+1. **判「该不该新建技能」的第 5 条判据：看原文作者自己写的「下一步」**。
+   `52pojie-2042090` 结尾原话是「下一步将继续学习中间代码优化相关知识，进行常量折叠、常量传播等优化，
+   优化完毕后将控制流图转换成对应的 js 代码」—— 作者把**他知道但还没做的那一步**写出来了。
+   这类句子是**最省力的缺口定位器**（比数 references 文件体量更早可判）。
+2. **「反汇编产物里的常量」必须做机械校验，不能照抄**。实测某 IR 的 base64 字母表写作
+   `ABCDEDGH…`（缺 `F`、`D` 出现在下标 3 与 5）。**两处独立来源一致也不能替代机械判据** ——
+   这里靠的是「字母表必须单射」这一条数学约束：下标 3（`byte>>2==3`，如 `byte=12`）与
+   下标 5（`byte=20`）都可达，同字符 ⇒ 服务端无法唯一解码 ⇒ 表必错。
+   ⇒ **凡「字母表 / 映射表 / 置换表」类常量，先跑一次单射性检查。**
+3. **「一串神秘整数」要先判 bignum limb，再谈算法**（本轮真实走过的弯路）：
+   `{n:{0:192007799,…,36:34738}, t:37, s:0}` + 隔壁 `e:65537` 是 **jsbn 形式的 RSA 模数**
+   （limb 基 2³⁰、低位在前，还原后 1096 bit），**不是**「魔改 MD5 的 T 表」。
+   判据三条：有 `t`/`s`、所有 limb `< 2³⁰`、还原后 bit 长度落在 `30(t-1)..30t`；
+   **反向断言**：真哈希 IV（MD5/SHA-256）的 limb ≥ 2³⁰ ⇒ 天然被排除。
+4. **「往返自检」抓不到对称错误，「多路径产物对拍」可以**。`jsvmp-ir-optimize.js` 的
+   `flat`（PC 逐块）与 `structured`（块合并 + 结构识别）是两条**完全不同的代码路径**，
+   两者结果一致才算通过；另对每个优化步骤设**「真的做了优化」的下界断言**，
+   否则「什么都没做」也会全绿（B8 / B11 教训的延续）。
+5. **插桩日志的预算是递进的**：某 Q 音 sign 实测 `call` → 1027 条（衔接不上）→
+   补运算 → 2216 条 → 补**索引取值** → 3289 条（清晰）。
+   ⇒ **「日志衔接不上」通常不是理解问题，是桩打少了**；这一族大量靠索引查表，索引点不插桩日志永远是断的。
+6. **日志里存在故意误导的干扰项**，但它是**可机械判定**的：
+   对最终结果做一次数据流回溯，「生成过但没被后续用到」的值一律丢 —— 不要见运算就记。
+7. **插桩日志常能整块捞出加密库对象**：`default_key_size` / `default_public_exponent` / `log`
+   这类字段名一出现，就说明抓到了**整个库对象**，算法族、密钥材料、明文构造、盐往往直接可读，
+   比逐层打运算日志快一个数量级（本轮 RSA 参数配方即由此直接定案）。
+8. **语料缺陷可以是「无声的」**：`52pojie-2042090` 的文件统计（大小、行数、文件名、ID）
+   全部正常，只有**打开正文**才发现整段是西里尔字母串。
+   ⇒ 归档/抓取后必须跑一次 `repair-encoding.py --scan`；这类缺陷**不影响任何统计口径**。
+   且修复时**不能用「整文件选一种编码」**（正常的中文头会被一起毁掉，且不报错），必须**逐行 + 逐字符判优**。
+9. **「同一段乱码、两套码页都能编出合法 UTF-8」是真实存在的**：实测 `ptcp154` 优先会把
+   cp1251 的事故解成 `倆析` / `帀傅`（合法、不报错、全错）。
+   ⇒ **判优依据**：中文正文应落在常用字集里，用 **GB2312 越界字符数**当罚项。
+   这条可平移到任何「多种解码都可能合法」的场景。
+10. **半成品检查要扩到「跨轮」**：本轮开局发现**两轮**半成品（B12 缺 memory + B13 缺文档/接线/登记）。
+    判据固化为四条：① 台账条数 vs `backup-<ts>/`；② `tools/` 里有没有 `append-b*-ledger.py`
+    却没在台账里找到对应块；③ automation memory 末条是不是上一轮；
+    ④ **新脚本声明的依赖文档是否存在**（`jsvmp-ir-optimize.js` 头部写了
+    `references/jsvmp-ir-and-optimization.md`，而该文件当时不存在 —— 这条判据本轮新增）。
+11. **修脚本时用「文件名 + 已有内容」锚定，不要用行号锚定**：本轮多支 judge 给的定位是行号，
+    而文件在评审期间仍可能被改 ⇒ 落地前必须重新 grep 定位（行号会漂）。
+
+### 台账维护（本轮一并修掉的既有缺陷，可追溯）
+
+- 用新增的 `tools/verify-ledger-md5.py` 对**全量 218 条**逐条重算 md5，发现 **4 条录入错**
+  （均在 B13 之前的批次，此前从未有脚本整份核过）：
+  #25 `2112042`、#94 `2047827`、#168 `2027657` 是**末位抄错 1 个 hex**；
+  #102 `2015243` **只有 31 位**。四个文件在工作区与 `HEAD` 一致（**未被改动**）⇒ 判定为录入错，
+  已按实算值修正。**口径提醒**：台账头部写「哈希不匹配 ⇒ 视为新版本需重新评估」，
+  哈希抄错会让这条规则**持续误报** —— 所以录入错必须修，不能当噪声。
+- 修掉 B10 遗留的 **1 处 Markdown 表格断裂**（表头分隔行与首个数据行之间被插入空行，
+  会让整张表退化成裸文本）。**该缺陷与 B13 本轮自己踩的是同一个坑**
+  （`HEAD`/`FOOT` 多行字符串自带首尾换行，直接 `join` 就多出一个空行）
+  ⇒ 已在 `tools/append-b13-ledger.py` 加**两条会失败的断言**兜住：
+  「追加块必须是纯 CRLF」「表头分隔行之后必须紧跟数据行」。
+- **台账口径**：全量 md5 一致 / 行号 `1..218` 连续 / 纯 CRLF（无裸 LF）/ 表格无断裂。
+---
+
+## 三·L、批次 B14 · 2026-09-22（流媒体 / 直播流：key 二次构造（W 族）+ 直播流捕获 / 播放器侧 / EME）
+
+> ⚠️ **本节是「跨轮补救登记」**：B14（2026-09-22 15:21–15:46）的技能改动**已全部落盘**
+> （`stream-drm-reverse`：新增 `references/key-wrapper-families.md`、`references/player-and-live-capture.md`、
+> `scripts/key_wrapper.py`；改 `SKILL.md`、`hls-and-ts-structure.md`、`vendor-key-schemes.md`、`m3u8_probe.py`；
+> `.agents` 已镜像），但**未登记台账、未写 automation memory**。
+> 本轮（B15 开工前）先做闭环补救：重跑自检与对拍 → 机械校验 → 补登本节 21 条。
+> 本节成员由「B14 交付物里可逐条回源复核的结论」反推，**逐篇 grep 字面量核对通过**
+> （例：`1602878` 命中 `$0`/`wsSecret`/`wsTime`/`uuid`/`al.flv.huya`；`1688088` 命中 `AES-128-PES`/`AES-128-ECB`；
+> `1833748` 命中 `Strdecode`/`appbgzjnopv1917`；`2021915` 命中 `TG:@XMFLV`/`signCoen`；
+> `1943363` 命中 `MediaKeySession`/`addEventListener`/`requestMediaKeySystemAccess`）。
+
+**取材口径**：**「m3u8 key 拿到的不是真 key」与「拿不到 / 抓不到流」两条线一次做全** ——
+W 族五类 key 包装（重复 XOR 三段链 / 字符表滚动 + 噪声 / 定长正文 + hex 标记串 / 两半异或 / 字母表守卫）·
+厂商扩展 METHOD（`AES-128-PES` / `AES-128-ECB` / `-CTR` / `-256` / `SM4-*` / `NONE`）·
+播放器侧 MSE 源码注入与反录制（`<video>` vs `<canvas>`）· 移动端 UA 换发行版 ·
+base64「基址」403 三步处置 · 接口层两种伪装 · EME/CDM 拦截与离线判 DRM 类型。
+
+**选它的理由**：B11 起连续多轮把「流媒体剩余」列为待办，并注明
+「`stream-drm-reverse` 自 B8 建库后**一次都没演化过** ⇒ 按 B7 判据值得优先」；
+本轮开工前核对 `stream-drm-reverse/references/` 共 5 个文件、`scripts/` 6 个 ——
+**缺的正是「key 拿到之后发现不是真 key」这一层**（W 族）与**「流根本没抓到」这一层**（播放器侧），
+即 B7 判据的「技能名覆盖 ≠ 能力覆盖」。
+
+**产出**：**无新建技能**（第 7 次确认不建 `captcha-flow-orchestration`），
+演化既有技能 **1** 个（`stream-drm-reverse`，本批唯一），附带修复 **6** 项。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 219 | `52pojie-2061590-原创抖音网页版直播源FLV格式真实直播流web源码.md` | `cd89c5c786c9eb435bfff831e8708ad8` | 2026-09-22 | stream-drm-reverse | evolve | **FLV 与 m3u8 是两条不同的路**：FLV 没有「解分片」这一步，链路只有「URL 签名 → 拼参数 → 请求」；抖音网页版直播在**移动端页面源码**里直接给 FLV 直链（PC 端走签名接口）⇒ 入 `player-and-live-capture.md` §1 的「先判流对象是 m3u8 还是 flv」判据 |
+| 220 | `52pojie-1888176-某平台m3u8视频js获取解密key过程分析.md` | `fc5fd8fdd54a73e8a843f23f0de27a32` | 2026-09-22 | stream-drm-reverse | evolve | **key URI 自带业务参数**的形态：`#EXT-X-KEY:METHOD=AES-128,URI="…/api/…?vod_id=…&app_id=…"`——直接访问该 URI 会失败，因为参数要由播放器补齐（与 §4.2 某鹅通 `uid` 同族） |
+| 221 | `52pojie-1833748-某e通的m3u8文件解密.md` | `cf9208bcd40489c167db3988e366a041` | 2026-09-22 | stream-drm-reverse | evolve | **W2 字符表滚动族（xiaoe 式）唯一全码来源**：`e=hexMD5(salt)`（hex 字符串再参与 md5）/ `n=+t.substr(-3)[1]` 噪声间隔 / `s=表.indexOf(t[0])` / `c=hexMD5(e+t[0]).substr(s%8, s%8+7)`（**第二参数是长度 ⇒ 窗口长度 (s%8)+7 ∈ [7,14]**）/ 正文去首 1 去末 3 / `l=a[t[h]]-f-c[f++]; while(l<0) l+=65`（**模 65 不是 64**）；本族已用**文章原样 JS 当 oracle 与 Python 实现逐字节对拍 160/160** |
+| 222 | `52pojie-1749546-中岩培训 某讯云 m3u8二次加密key分析.md` | `56235e4085d5f2670ff0524b8e665361` | 2026-09-22 | stream-drm-reverse | evolve | **「下载器提示 key 错误」= 拿到的是包装后 key** 的第二条独立来源（某讯云）：断点栈里能看到真 `key` / `iv` ⇒ 与 1734656 / 1635800 互证「长度不是 16 位 ⇒ 先怀疑包装层」 |
+| 223 | `52pojie-1734656-破解某动漫m3u8加密.md` | `23d6c09cbc6a5aee0d4b5c8736ec43a2` | 2026-09-22 | stream-drm-reverse | evolve | **「返回的 `k` 不是 16 位」这一判据的最早实例**（2023-01）：`#EXT-X-KEY` 的 `URI` 是自定义格式（请求参数 `lt` 即 m3u8 里的 URI）；`k` 每次变但 m3u8 一直不变 ⇒ 包装是**会话相关**而不是内容相关；主 m3u8 里多档清晰度**只差一个参数**（对应 §7「不要一次性抓所有分辨率」） |
+| 224 | `52pojie-1689801-某鹅通m3u8视频JS获取解密Key的过程分析.md` | `f87201c3ee9a751668769b4486cdbc54` | 2026-09-22 | stream-drm-reverse | evolve | **§4.2「key 接口少一个参数」的原始案例**：JS 请求时在 URL 后追加 `&uid=<页面浮动的用户ID>`；全局搜接口路径片段（`material-center…get`）定位拼 URL 的那一行，`window.USERID` 直接控制台打印；该站同时把真 key 做成**二次加密** ⇒ 是「接口层 + W 包装层」叠在一起的典型 |
+| 225 | `52pojie-1688088-修改hls.js增加播放某CTO视频的方法.md` | `0647dd9960814e412045ed7005c0cade` | 2026-09-22 | stream-drm-reverse | evolve | **厂商扩展 METHOD 的实测来源**（某 CTO 阿里云播放器 m3u8 样本）：`METHOD=AES-128-PES`（只加密 **PES 载荷**，TS 包头/PES 头保持明文）与 `METHOD=AES-128-ECB`（**ECB 无 IV**，套 CBC 会静默解错）⇒ 落地为 `m3u8_probe.py` 的 `VENDOR_METHODS` 表（6 种：PES / ECB / AES-256 / CTR / SM4-CBC / SM4-ECB）+ 7 条新自检；改播放器（hls.js）本身也是这一族的一条路线 |
+| 226 | `52pojie-1679546-可批量爬取某影视工厂 m3u8 文件.md` | `2e3616d499e0528a0a966b93f93a1084` | 2026-09-22 | stream-drm-reverse | evolve | **批量场景下的时效坑**：m3u8 地址带时效，下载器多线程跑几集后报「m3u8 文件失效」⇒ 必须**边取边下 / 每次重新获取列表**（对应 §7「把取 key → 解密 → 重封装串成一次执行」） |
+| 227 | `52pojie-1635800-某医学网站的加密M3U8分析.md` | `1331a6c0c843ae849ec8580f21870229` | 2026-09-22 | stream-drm-reverse | evolve | **m3u8 三要素齐全的形态**：同一份列表里同时给出 `IV` + key 地址 + **key 二次加密方式（AES-128）**；key 地址直接访问无效 ⇒ 走 JS 断点取真 key（`2e4b4c125bd9b3c7034b8a6f700e6688`，恰 16 字节 = 真 key） |
+| 228 | `52pojie-1624279-逆向某个vip视频解析,获取m3u8播放源,纯技术分享、研究.md` | `4797fb2a4ef3c99aede08bc749aa4166` | 2026-09-22 | stream-drm-reverse | evolve | **W1 重复密钥 XOR 三段链的实测来源**：`strdecode(a, token)` = `b64( xor( b64(明文), token ) )`，`token = md5(md5(格式化时间戳/1000 + key))`（32 位 hex 当字节用）；**少做/多做一次 base64 都得到「看着像乱码的合法字节」而不报错** ⇒ `key_wrapper.py` 成对提供 encode/decode + 反向断言（已与文章原样 JS 对拍 12/12） |
+| 229 | `52pojie-1495421-以 aqistudy 为例的无限 debugger 反调试绕过演示（附视频）.md` | `700c9468023adc0fc67a496895827081` | 2026-09-22 | stream-drm-reverse | evolve | **无限 debugger 反调试的处置**：与 `web-reverse-algorithm/references/07-antidebug-and-live-patching.md` 同源，本批作为「播放器页面本身带反调试」的交叉指针入档（SKILL.md 资源段已指向该文件） |
+| 230 | `52pojie-1362235-短视频去水印接口源码分析（今日头条第一弹）.md` | `7a18af43edf5786348993ce0d9b558f6` | 2026-09-22 | stream-drm-reverse | evolve | **D 接口层「与媒体流无关的密文」形态**：去水印接口返回加密串，属 `media_crypto.py` 的处置范围（SKILL.md 分层表 D 层），不要与 A/C 层混做 |
+| 231 | `52pojie-1122675-[web]分析调试某qiyi直播源【未完成】.md` | `a36facaffd8b2e3d495abecbff67096c` | 2026-09-22 | stream-drm-reverse | evolve | **私有 scheme 实测案例**：PC 端抓到的是 `hcdnlive://…`，**不能直接下载**；移动端下发 `formatType=TS` 的 `hlslive…m3u8` ⇒ 入 `player-and-live-capture.md` §3（换发行版）与 §6（`blob:` / 私有 scheme 处置） |
+| 232 | `52pojie-1056116-网易CC直播源抓取分析过程.md` | `b75a83a958cfdbc716bc8b71ba96ec3f` | 2026-09-22 | stream-drm-reverse | evolve | **直播源抓取的「页面源码直给」形态**（网易 CC）：与 864112 / 2061590 互证 「移动端页面源码里的 `liveLineUrl` / `streams[]` / `playUrl` 常是 base64 ⇒ 解出来就是地址」 |
+| 233 | `52pojie-1602878-某牙直播flv地址解密.md` | `be7b6bc136eb79a2606cbc498928f702` | 2026-09-22 | stream-drm-reverse | evolve | **§3.1「base64 解出的地址 403 ⇒ 那是基址不是最终地址」的唯一权威来源**：地址里含 `$0 $1 $2 $3` 占位符；`wsSecret` / `wsTime` **先对不变的参数串求 md5** 再与 `uid`/`uuid`/`seqid` 拼进模板；`uuid` 动态派生（`Date.now()%1e10*1e3 + Math.random()*1e3`）但**同一场直播内可复用**；最后一步是**改域名与后缀**（`al.flv.huya.com`、`.m3u8 → .flv`） |
+| 234 | `52pojie-2021915-【js逆向】虾m视频真实地址.md` | `74f01a07722216f04b9bed673e2adee5` | 2026-09-22 | stream-drm-reverse | evolve | **W3 定长正文 + hex 标记串族的全码来源**（含评论区完整复现）：`hex( 13 位随机数 + "TG:@XMFLV" + urlencode([首字符][定长正文]) + 13 位随机数 )`；窗口长度是**常量 7**（与 W2 的 `(s%8)+7` 不同）、取模 **64**（表 65 元含 `=`）、正文**硬编码 60** ⇒ 明文恰好 45 字节；🔴 两处录入错：`secret_key` 解出 `TG:XMFLV`（少 `@`）、字符表 `…789-=+` **缺 `/` 多 `-`** ⇒ 落地为 `key_wrapper.py` 的「矛盾直打」+ 单射/覆盖性守卫（已与文章原样 JS 对拍 30/30） |
+| 235 | `52pojie-1943363-WEB前端逆向获取EME解密密钥.md` | `bf56aacdad56617f774cd0449ba7a2a0` | 2026-09-22 | stream-drm-reverse | evolve | **§5 EME / CDM 拦截打法**：拦 `MediaKeySession.prototype.addEventListener`，命中 `"message"` 时**上一层栈帧**里就有 `o.keys`（最终密钥）；另两个落点 `navigator.requestMediaKeySystemAccess`（拿 KID / key system）与 `MediaKeys.createSession`；油猴脚本要补 `toString` 防检测；**判 DRM 类型可离线**：`strings|grep Handler` / `exiftool -HandlerDescription` / `ffprobe … handler_name`（§5.2） |
+| 236 | `52pojie-1752497-某音平台某浪新版key解密 play_licenses.md` | `c6e0691c7b181285ae3d3bb721b46fb2` | 2026-09-22 | stream-drm-reverse | evolve | **§5.1「拦 `atob` 拿密钥」什么时候会断**的原始案例（`play_licenses` 响应里是 base64 ⇒ 拦 `atob` 命中）：三种失效情况 —— ① JS 用**自实现 base64**（拦 `atob` 零命中）② 响应是 **hex/字节流十六进制** ③ 混淆到**搜不到特征字符串** ⇒ 一律换「拦 EME API + 栈帧回溯」 |
+| 237 | `52pojie-971265-解密m3u8文件, ts文件解密, hls 解密.md` | `65e5baf957ec5816eb17ed21a7a6a611` | 2026-09-22 | stream-drm-reverse | evolve | **HLS/m3u8 + TS 解密的经典形态**（2019 老帖，60902 查看）：`#EXT-X-KEY` 语义 + ts 逐片解密的基础链路 ⇒ 作为 `hls-and-ts-structure.md` 的 A 层基线来源 |
+| 238 | `52pojie-864112-【Fiddler为所欲为第四篇】直播源抓取与接口分析.md` | `729eb3dcc1c6375de78be05d6511a68c` | 2026-09-22 | stream-drm-reverse | evolve | **直播源抓取的「接口 + 播放列表」两步法**（2019 老帖）：先抓下发列表的接口，再取 m3u8；入 `player-and-live-capture.md` §1 的三条入口路线之一 |
+| 239 | `52pojie-1616797-爬虫之巧用BurpSuite获取m3u8视频真实mp4地址.md` | `aad0375e22cf7b134c8a8c97640036d0` | 2026-09-22 | stream-drm-reverse | evolve | **抓包工具视角的 m3u8 → 真实媒体地址**：与 864112 / 971265 互证「先判层再动手」，并给出「同一份列表里的 `#EXT-X-STREAM-INF` 多档」的处置（§7 逐档取） |
+
+### 本批次技能变更汇总（B14）
+
+| 技能 | 变更类型 | 主要落点 |
+| --- | --- | --- |
+| `stream-drm-reverse` | evolve（唯一） | 新增 `references/key-wrapper-families.md`（**key 二次构造 / 包装层 W 族唯一权威源**：五族总表 30 秒分流、W1 三段链、W2 xiaoe 全码 + **噪声字符三侧宽容度矩阵**、W3 定长正文 + hex 标记串（与 W2 的 4 处关键差异对照表）、W5 字母表守卫四条判据、§7「不报错但结果错」坑表、复跑命令）；新增 `references/player-and-live-capture.md`（**直播流捕获 / 播放器侧 / 反录制唯一权威源**：三条入口路线选路判据、MSE 源码注入四处落点与 `Uint8Array` 落盘陷阱、**反录制判据（`<video>`+MSE 可 dump vs `<canvas>` 自渲染失效 + wasm 体积猛增 / YUV 两个确证特征）**、移动端 UA 换发行版三例、**base64「基址」403 三步处置**、接口层两种伪装、EME/CDM 拦截与 §5.1「拦 `atob` 会断」三情况、§5.2 离线判 DRM、`blob:` / 私有 scheme 处置、§7 坑表）；新增 `scripts/key_wrapper.py`（**51 项 `--selftest`**：`alpha-check` 覆盖性 + 单射性 + 越界下标、`noise-check` 三侧宽容度矩阵、`xiaoe`/`xm` 两族正反双向、`xor`/`xor-halves`；所有静默路径一律**报错退出**）；`SKILL.md` 新增 W 层分层行 + **CHECKPOINT「key 是不是 16 字节」**（插在动手解分片之前）+ 5 条失败模式 + 5 条反例 + 命令段 + 资源段两条；`hls-and-ts-structure.md` 补「先做长度检查再往下读」指针 + 排错表 3 行；`vendor-key-schemes.md` 补 W 层判据 2 行 + 坑表 4 行 + 资源指针；`scripts/m3u8_probe.py` 新增 **PLAIN 层**（`METHOD=NONE` 单独出现不是「有加密」）+ **6 种厂商扩展 METHOD** + `vendor_method` 回填，自检 22 → **35 项** |
+
+### 本批次的方法论增量（可复用）
+
+1. **「长度就是判据」**：AES-128 的真 key **一定有且只有 16 字节** ⇒ 拿到的值长度不是 16，
+   **100% 还有一层包装**，不要先去怀疑算法或 IV。这条判据**单向成立**
+   （反过来「拿到 16 字节」**不能**推出「没有包装层」—— W 族的产物也可能是 16 字节）。
+   本批 3 个独立来源（`1602878` 之外的 `1734656` / `1635800` / `1749546`）都在正文里写了同一现象。
+2. **「三侧宽容度矩阵」是不可移植行为，必须实测**：同一份 JS 里 `u += 噪声` 依赖 `atob` 忽略非法字符，
+   但 Python / Node / 浏览器对同一字符可分别为「忽略 / 静默改字节 / 抛错」。
+   **三侧都忽略的字符只有 ASCII 空白**；`n == 0` 的样本永远暴露不出这个问题
+   ⇒ 「原文代码能跑通」**不能**作为「噪声字符选得对」的证据。
+3. **凡「字母表 / 映射表 / 置换表」类常量，先跑单射性 + 覆盖性检查**（B13 教训的第二次应验）：
+   本轮实测字符表 `…789-=+` **缺 `/` 多 `-`**（与编码侧标准 `btoa` 不配套 ⇒ `indexOf` 返回 -1、
+   `% 64` 落到一个看似合法的下标、**产物是错的不报错**）。数学约束强于「两篇文章都这么写」。
+4. **`substr(x, y)` 的第二参数是「长度」不是「终点」**：误按 `substring` 语义实现，
+   窗口长度会从「随首字符变化」变成常量，且**错位后解出的仍是一串合法 base64 字符**（静默）。
+   ⇒ 自检里必须逐项核对 8 个 `s % 8` 的窗口长度。
+5. **「403 不是被封，是拿到的不是最终地址」**：处置顺序固定为
+   「解 base64 → 找 `$0..$3` 占位符 → 找 `md5(拼接串)` 的盐 → 补动态参数 → 改域名/后缀」。
+   这条把「换 IP / 换 UA / 重抓包」这类无效劳动一次性砍掉。
+6. **看 DOM 而不是看代码判「MSE 注入会不会失效」**：容器里是 `<video>` ⇒ 能 dump 明文分片；
+   是 `<canvas>` ⇒ 一定失效（多路 canvas 叠加时连「删水印的那一路」都不存在）。
+   两个**确证特征**（用来确证而不是猜）：wasm 体积突然猛增（内封装了解码库）+ JS 层出现 YUV 原始流。
+7. **`METHOD=NONE` 是 HLS 标准值**：整份列表全是 `NONE` ⇒ 是 **PLAIN**（这份列表本身没加密），
+   不是「未知 METHOD」。旧版 `m3u8_probe.py` 把它归进「非标准值 ⇒ A?」，会让「整份列表都不加密」被报成「有加密」。
+8. **文档里的「断言数」一律不手抄**：本批 `m3u8_probe.py` 自检 22 → 35 项，
+   文档里统一写「**以实跑输出为准**」（B8 教训复用）。
+
+### 本轮（B15 开工前）对 B14 的闭环补救与验收
+
+| 动作 | 结果 |
+| --- | --- |
+| `key_wrapper.py --selftest` | ✓ **PASS 51 / 51** |
+| `m3u8_probe.py --selftest` | ✓ **35 项，失败 0 项** |
+| `b14-run-20260922-1521/crosscheck.js`（文章原样 JS vs Python 逐字节对拍） | ✓ W2 `160/160` · W3 `30/30` · W1 `12/12` · W5 `3/3` ⇒ **三族 + 守卫全部逐字节一致** |
+| `check_skill_integrity.js --root . --markdown` | ✓ **阻断 0 · 告警 0**（修复前为 5 阻断 + 1 告警，见下） |
+| `.claude` ↔ `.agents` 镜像 | ✓ 逐字节一致 |
+| 台账登记 | ✓ 本节 21 条（#219–#239） |
+
+**本轮修掉的 3 类既有缺陷（可追溯）**：
+
+1. **校验器不认识「`## §N` 形式的标题」**（B14 引入的标题风格）⇒ 5 条正确指针被误报成
+   「目标文件没有该小节标题」（`player-and-live-capture.md` §2/§5、`key-wrapper-families.md` §2）。
+   已改 `check_skill_integrity.js`：章节存在性正则与重复检测正则都**允许可选 `§` 前缀**
+   （`^#{2,4}\s*§?\s*<n>`）。**这是校验器的能力缺口，不是文档缺陷** —— 若照报错去改文档，
+   会把「`## §2` 这种与指针 `§2` 一致的排版」改成不一致的形式。
+2. **`forum-corpus-archival/SKILL.md` 行尾混用**（351 CRLF + 33 LF）⇒ 已统一为纯 LF 并重新镜像。
+3. **B14 未登记台账 / 未写 memory** ⇒ 本节 + automation memory 条目补齐。
+
+> 口径提醒（沿用 B13）：**报告与台账本身也是产物**，本轮对 B14 的验收全部**实跑**，
+> 不采信「B14 自己写的说明」。
+
+### 本批次明确留白（写进文档而非假装支持）
+
+1. **W4「两半异或」没有实测来源**：族表里保留（结构签名清晰、`key_wrapper.py xor-halves` 已实现并自检），
+   但**本批 21 篇里没有一篇给出现成样本** ⇒ 标注为「结构已知、样本待补」。
+2. **W5 字母表守卫只覆盖「自定义 base64 表」**：非 base64 类映射表（如整体替换表）仍需人工判。
+3. **反录制的工程解法只到「改走 wasm 取证」**：canvas 路线的完整自动 dump 未实现（依赖 wasm 内存取证，见 B12）。
+4. **§4.1「裂图」伪装只有判据没有可执行件**：需先按文本读、再交 `media_crypto.py`，中间没有专用解析器。
+
+### 下一批（B15）取材建议（承接本节）
+
+- 待处理 **457** 篇（台账 239 条后）。优先级：
+  ① **签名 / 协议参数系（最大簇）**：与 `protocol-reverse` / `web-reverse-algorithm` 合并评估；
+  ② **验证码图像识别系剩余**：真拼图 / 双缺口 / 旋转系的**协议侧**仍薄；
+  ③ **WAF 剩余**：加速乐 / `acw_sc__v2` / Cloudflare / Akamai / Reese84 的收尾量级；
+  ④ **`web-reverse-env` 等长期零演化的技能**：按 B7 判据先数 `references/` 文件体量再定批次。
+- 候选新技能 `captcha-flow-orchestration` —— B5–B14 **八次确认不新建**。
+- 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。

@@ -17,16 +17,16 @@ description: JavaScript 代码静态分析技能，替代已移除的 understand
 
 ```bash
 # 收集页面脚本（按优先级返回，便于挑重点文件）
-proxycli call collect_code --url "https://target.example/app.js" --smartMode priority
+browsercli call collect_code --url "https://target.example/app.js" --smartMode priority
 
 # 关键词定位签名/加密/鉴权代码
-proxycli call search_in_scripts --pattern "sign"
+browsercli call search_in_scripts --pattern "sign"
 
 # 按 scriptId 取完整源码
-proxycli call get_script_source --scriptId "<scriptId>"
+browsercli call get_script_source --scriptId "<scriptId>"
 
 # 若已注入 Hook，取运行时样本作为数据流证据
-proxycli call get_hook_data --hookId "<hookId>" --view detail
+browsercli call get_hook_data --hookId "<hookId>" --view detail
 ```
 
 代码较长时先截断（单文件约 10k 字符、合并多文件约 300k 字符以内），避免分析上下文溢出。

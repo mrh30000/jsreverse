@@ -122,6 +122,10 @@ IV = 16 字节大端整数，值 = EXT-X-MEDIA-SEQUENCE + 分片在该列表中�
 
 ## 4. key / IV 的四类来源与真实派生式
 
+> ★ **先做一次长度检查再往下读**：`#EXT-X-KEY` 拿回来的值**不是 16 字节** ⇒
+> 100% 还有一层**包装**（W 族）⇒ 转 `key-wrapper-families.md`（先跑它的 §6 字母表守卫）。
+> 本节的四类来源是「怎么**得到**那 16 字节」，W 族讲的是「得到的是**包装**时怎么还原」。
+
 ### 4.1 明文 key URI
 
 m3u8 给了 `URI`，直接 GET 回 16 字节。注意：
@@ -296,7 +300,41 @@ print(requests.get("http://127.0.0.1:5620/business-demo/invoke",
 
 ---
 
-## 10. 排错速查
+## 10. 交付前必做的两件机械动作（都有现成脚本）
+
+### 10.1 把远程 KEY 本地化 —— 交给下载器之前
+
+拿到 key 之后，手工「写 `key.key` + 把 m3u8 里的 URI 改掉 + 放同一目录」是每道题都要做一遍的动作，
+而且**漏掉任何一步都表现为下载器在运行时才炸**。用脚本一次做对：
+
+```bash
+S=.claude/skills/stream-drm-reverse/scripts
+python $S/m3u8_rewrite.py playlist.m3u8 -o local.m3u8 --key-file key.key --key-hex <32位hex>
+python $S/m3u8_rewrite.py playlist.m3u8 -o local.m3u8 --key-file key.key --base <分片基地址> --strip-query
+python $S/m3u8_rewrite.py playlist.m3u8 --dump-urls segs.txt --pretty      # 只要分片清单
+```
+
+**容易漏的一条**：分片 URL 上的时效 token（`?upt=` / `?token=` / `?wsSecret=`）
+**必须扩散到每个分片**。只给 m3u8 带 token 是「m3u8 能下、ts 403」的常见来源。
+
+### 10.2 解密后长度变了 —— 必须重新封装 TS
+
+`ts_probe.py --decrypt-nalu` 出的是**明文 ES**，不是能播的 TS。只要 ES 长度变了
+（`nal_unescape` 会、文件头解密会、NALU 重排也会），原来的包布局就不再成立：
+
+```bash
+python $S/ts_repack.py seg0.ts --pid 0x100 --extract-es seg0.es      # 取出明文 ES（或解密后回写）
+python $S/ts_repack.py seg0.ts --pid 0x100 --es seg0.clear.es -o seg0.clear.ts
+python $S/ts_repack.py seg0.clear.ts --pid 0x100 --check --expect-es seg0.clear.es
+ffmpeg -v error -i seg0.clear.ts -f null -                           # 唯一算数的验收
+```
+
+`ts_repack.py` 保留原 PES 头（**含 PTS/DTS**，重建头会丢时间戳）、按 NALU 起始码切分回填、
+补 `adaptation field` 填充（`188 - 4 - 1 - offset - naluLen`），非目标 PID 逐字节原样通过。
+
+---
+
+## 11. 排错速查
 
 | 现象 | 首查 | 次查 |
 | --- | --- | --- |
@@ -307,5 +345,11 @@ print(requests.get("http://127.0.0.1:5620/business-demo/invoke",
 | 首帧坏、后面好 | IDR 帧用了不同 IV | CRC16 校验被跳过导致首帧被吞 |
 | 换了码率就失败 | 每个码率的 `EXT-X-KEY` 不同 | 不同 CEK（E 层） |
 | `md5` 派生式算出来不对 | `substring` 切的是**字符**不是字节 | `raw=true` / `hexdigest` 混用 |
-| `AES.new` 抛长度异常 | key 长度不是 16/24/32 | 把 hex 文本当成了二进制 key（或反之） |
+| key 不是 16 字节（32/47/64 位、长 hex） | 站点对 key 做了二次构造 | 转 `key-wrapper-families.md` |
+| 页面能播但网络面板看不到 m3u8/flv | 流由 JS 拼好后直接喂 MSE | 转 `player-and-live-capture.md` §2 |
+| base64 解出的地址 403 / 含 `$0 $1 $2 $3` | 那是「基址」不是最终地址 | 同上 §3.1 |
+| `AES.new` 抛长度异常 | key 长度不是 16/24/32 | 把 hex 文本当成了二进制密钥（或反之） |
 | 接口响应解不开 | `Latin1` vs `utf-8` 编码口径 | `s0` 是运行时算出来的，静态数组读不到 |
+| 解密后文件大小对、ffmpeg 报 NALU size | 明文 ES **长度变了**，TS 包布局失效 | 走 §10.2 的 `ts_repack.py` |
+| m3u8 能下、分片 403 | 时效 token 没扩散到分片 URL | 走 §10.1 的 `m3u8_rewrite.py --strip-query` 或补 token |
+| 下载器报「填充错误」 | key 不是内容 key（还差一层包装） | 见 `vendor-key-schemes.md` §3 判据表 |

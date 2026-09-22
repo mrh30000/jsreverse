@@ -1,6 +1,6 @@
 # 浏览器取证与打开网页规则
 
-本文件用于验证码识别任务中必须打开真实网页、截图、抓包、收集脚本或观察验证组件时。默认优先离线分析用户已提供的 HTML、截图、URL、脚本片段和页面文案；只有证据不足且用户确认授权范围后，才进入浏览器取证。通过 proxycli / Worker 采集证据时，还必须读取 `proxycli-tools.md`。
+本文件用于验证码识别任务中必须打开真实网页、截图、抓包、收集脚本或观察验证组件时。默认优先离线分析用户已提供的 HTML、截图、URL、脚本片段和页面文案；只有证据不足且用户确认授权范围后，才进入浏览器取证。通过 browsercli / Worker 采集证据时，还必须读取 `browsercli-tools.md`。
 
 ## 何时读取
 
@@ -14,14 +14,14 @@
 - 页面出现验证码、登录、MFA、设备验证或风控验证。
 - 需要采集用户手动完成验证码后的成功基线样本。
 - 用户明确要求避免普通自动化、CDP 或 WebDriver 检测。
-- 需要通过 proxycli / Worker 调用页面、CAPTCHA、DOM、网络或脚本取证工具。
+- 需要通过 browsercli / Worker 调用页面、CAPTCHA、DOM、网络或脚本取证工具。
 
 ## 硬性规则
 
 - 启动任何浏览器前，先让用户确认取证模式。
 - 用户未确认前，只能做离线材料分析和缺失证据提示。
-- proxycli 是 JSReverser Worker 的 HTTP 控制面，不是独立的反检测浏览器模式；不得用它绕过模式确认或静默连接默认浏览器。
-- 只有用户确认浏览器模式且同意由 proxycli / Worker 控制后，才按 `proxycli-tools.md` 取证；已有浏览器连接时先核对状态，不要重新连接或更换模式。新建 proxycli Cloak 连接前，必须另外说明它不提供 `humanize` 参数且可能下载二进制，再取得用户确认。
+- browsercli 是 JSReverser Worker 的 HTTP 控制面，不是独立的反检测浏览器模式；不得用它绕过模式确认或静默连接默认浏览器。
+- 只有用户确认浏览器模式且同意由 browsercli / Worker 控制后，才按 `browsercli-tools.md` 取证；已有浏览器连接时先核对状态，不要重新连接或更换模式。新建 browsercli Cloak 连接前，必须另外说明它不提供 `humanize` 参数且可能下载二进制，再取得用户确认。
 - 不要直接使用普通 Playwright、Puppeteer、Selenium、系统 Chrome、系统 Firefox 或 CDP 路线打开目标页。
 - 已选模式后，后续所有浏览器取证动作都沿用该模式。
 - 工具不可用、路径缺失、runtime 不合格、需要登录或必须更换工具时，暂停并让用户确认；不要静默 fallback 到普通浏览器自动化。
@@ -47,7 +47,7 @@
 | 仅 ruyiPage | 使用 ruyiPage 打开页面、截图、抓包、收集 JS，不采集 RuyiTrace 日志 | 只需要网页证据时 |
 | Camoufox + camoufox-reverse-mcp | 使用 Camoufox 反指纹浏览器和 MCP 工具做网络、脚本、Hook 与调用栈取证 | 需要 Firefox/Camoufox 路线和 MCP 工具链时 |
 | 仅 Camoufox | 使用 Camoufox 官方 API 做轻量取证 | 用户已有 Camoufox 或只需打开页面时 |
-| CloakBrowser | 使用 CloakBrowser 有头 + humanize 的 Chromium 路线；proxycli / Worker 控制面的能力差异需另行确认 | 目标更适合 Chromium 或用户已有 CloakBrowser 时 |
+| CloakBrowser | 使用 CloakBrowser 有头 + humanize 的 Chromium 路线；browsercli / Worker 控制面的能力差异需另行确认 | 目标更适合 Chromium 或用户已有 CloakBrowser 时 |
 | 用户手动取证 | 用户自行提供 HTML、截图、HAR、cURL、JS 文件、调用栈截图 | 不允许自动化或需要真实登录态时 |
 | AI 自行决定 | 先检测本机工具，提出将使用的模式，用户确认后再启动 | 用户不确定时 |
 
@@ -77,14 +77,14 @@
 - 不直接调用普通 `chromium.launch()`、`puppeteer.launch()` 或普通 browserType 启动。
 - 需要登录态或高风控时，优先使用持久化 profile；profile 是否保留或删除由用户确认。
 
-### proxycli / Worker（CloakBrowser 的可选控制面）
+### browsercli / Worker（CloakBrowser 的可选控制面）
 
-- proxycli 只通过 `/api/v1` 调用已运行的 Worker，不负责启动或停止本地 Worker 进程。
-- 用户确认 CloakBrowser 与 proxycli / Worker 控制方式前，只能运行 `proxycli status`、`proxycli browser status` 和 `proxycli list-tools --json` 做只读能力检查。
+- browsercli 只通过 `/api/v1` 调用已运行的 Worker，不负责启动或停止本地 Worker 进程。
+- 用户确认 CloakBrowser 与 browsercli / Worker 控制方式前，只能运行 `browsercli status`、`browsercli browser status` 和 `browsercli list-tools --json` 做只读能力检查。
 - Worker 离线、浏览器模式不符或工具缺失时暂停；不要自动启动 Worker、连接默认浏览器或切换到普通 Chrome / CDP。
-- 用户确认后，按 `proxycli-tools.md` 的最小命令集采集证据；完整、实时契约以 `proxycli list-tools --json` 为准。
-- `proxycli browser connect --cloak true --headless false` 使用 Worker 的 Patchright + Cloak 二进制路线，不暴露 CloakBrowser 官方包装器的 `humanize` 参数，并可能在二进制缺失时下载约 200 MB 文件。只有用户单独确认这两项差异后才能执行；如果任务硬性要求官方包装器 + `humanize`，不要使用该连接命令。
-- 使用 proxycli 时仍默认保持零 JS stealth 注入和系统真实 viewport；不要主动传 `--js-stealth`、`--viewport` 或 `--full-stealth-args`。
+- 用户确认后，按 `browsercli-tools.md` 的最小命令集采集证据；完整、实时契约以 `browsercli list-tools --json` 为准。
+- `browsercli browser connect --cloak true --headless false` 使用 Worker 的 Patchright + Cloak 二进制路线，不暴露 CloakBrowser 官方包装器的 `humanize` 参数，并可能在二进制缺失时下载约 200 MB 文件。只有用户单独确认这两项差异后才能执行；如果任务硬性要求官方包装器 + `humanize`，不要使用该连接命令。
+- 使用 browsercli 时仍默认保持零 JS stealth 注入和系统真实 viewport；不要主动传 `--js-stealth`、`--viewport` 或 `--full-stealth-args`。
 
 ## 工具缺失时的引导
 
@@ -244,7 +244,7 @@ npm install cloakbrowser puppeteer-core
 
 1. 确认授权范围和目标页面。
 2. 让用户确认取证模式。
-3. 检测用户选择的工具是否可用；使用 proxycli / Worker 时先运行只读状态与工具清单检查。
+3. 检测用户选择的工具是否可用；使用 browsercli / Worker 时先运行只读状态与工具清单检查。
 4. 工具不可用时，暂停并让用户确认安装、提供路径、降级或切换模式。
 5. 按确认模式从第一次导航开始打开页面。
 6. 如需要登录、验证码、MFA 或设备验证，暂停等待用户手动完成。
@@ -298,7 +298,7 @@ npm install cloakbrowser puppeteer-core
 - 仅 ruyiPage
 - Camoufox + camoufox-reverse-mcp
 - 仅 Camoufox
-- CloakBrowser（proxycli / Worker 控制需单独确认能力差异）
+- CloakBrowser（browsercli / Worker 控制需单独确认能力差异）
 - 用户手动取证
 - AI 自行决定
 

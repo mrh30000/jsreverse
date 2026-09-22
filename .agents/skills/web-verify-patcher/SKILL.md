@@ -10,8 +10,8 @@ description: "网页验证码识别、方案选择与授权验证流程分析技
 ## 工作流程
 
 1. 优先基于用户已提供的离线证据分析：HTML 片段、脚本 URL、iframe URL、页面可见提示文案、截图元信息、厂商参数名、网络接口名。
-2. 如果必须打开真实网页取证，先读取 `references/browser-acquisition.md`，并按其中的取证模式执行；需要通过 proxycli / Worker 采集证据时，同时读取 `../ast-deobfuscation/references/proxycli-tools.md`。proxycli 只是已确认浏览器模式的控制面，不是新的取证模式。启动任何浏览器前先让用户确认模式：ruyiPage + RuyiTrace、仅 ruyiPage、Camoufox + camoufox-reverse-mcp、仅 Camoufox、CloakBrowser（proxycli / Worker 控制需单独确认能力差异）、用户手动取证或 AI 自行决定。用户未确认前，不要打开页面、截图、抓包、注入 Hook、读取 Cookie/Storage 或启动任何浏览器工具。
-3. 打开网页时不要直接使用普通 Playwright、Puppeteer、系统浏览器或 CDP 路线；使用 proxycli 时，只能在用户已确认的 Worker 浏览器模式和连接状态下调用被动取证工具，不能用默认浏览器连接替代已选模式，也不能把 `proxycli browser connect --cloak true` 等同于 CloakBrowser 官方包装器的 `humanize` 路线。已选模式不可用时，暂停并让用户确认安装、提供路径、降级或切换，不要静默 fallback。验证码、登录、MFA 或设备验证出现时暂停，让用户手动完成或改为离线分析；授权取证时让用户多次手动完成验证码成功样本，用 `scripts/evaluate_success_baseline.py` 判断成功基线是否足够。
+2. 如果必须打开真实网页取证，先读取 `references/browser-acquisition.md`，并按其中的取证模式执行；需要通过 browsercli / Worker 采集证据时，同时读取 `../ast-deobfuscation/references/browsercli-tools.md`。browsercli 只是已确认浏览器模式的控制面，不是新的取证模式。启动任何浏览器前先让用户确认模式：ruyiPage + RuyiTrace、仅 ruyiPage、Camoufox + camoufox-reverse-mcp、仅 Camoufox、CloakBrowser（browsercli / Worker 控制需单独确认能力差异）、用户手动取证或 AI 自行决定。用户未确认前，不要打开页面、截图、抓包、注入 Hook、读取 Cookie/Storage 或启动任何浏览器工具。
+3. 打开网页时不要直接使用普通 Playwright、Puppeteer、系统浏览器或 CDP 路线；使用 browsercli 时，只能在用户已确认的 Worker 浏览器模式和连接状态下调用被动取证工具，不能用默认浏览器连接替代已选模式，也不能把 `browsercli browser connect --cloak true` 等同于 CloakBrowser 官方包装器的 `humanize` 路线。已选模式不可用时，暂停并让用户确认安装、提供路径、降级或切换，不要静默 fallback。验证码、登录、MFA 或设备验证出现时暂停，让用户手动完成或改为离线分析；授权取证时让用户多次手动完成验证码成功样本，用 `scripts/evaluate_success_baseline.py` 判断成功基线是否足够。
 4. 用现有证据运行离线分类脚本：
    - `python scripts/classify_verify.py --html page.html --url "https://example.test/login" --text "拖动滑块完成拼图" --pretty`
    - `--html`、`--text`、`--screenshot-meta` 既可以传文件路径，也可以直接传字符串。
@@ -23,7 +23,7 @@ description: "网页验证码识别、方案选择与授权验证流程分析技
      子类判据（文字/图标/语序/图文/空间语义）、题目→坐标的匹配与指派、语序还原、坐标生成都在那里，
      配两个零依赖脚本 `scripts/assign_by_similarity.py`、`scripts/order_restore.py`。
    - 需要打开真实网页、截图、抓包或采集页面证据时读 `references/browser-acquisition.md`。
-   - 已确认使用 proxycli / Worker 采集 CAPTCHA 状态、截图、DOM、网络或脚本证据时读 `../ast-deobfuscation/references/proxycli-tools.md`。
+   - 已确认使用 browsercli / Worker 采集 CAPTCHA 状态、截图、DOM、网络或脚本证据时读 `../ast-deobfuscation/references/browsercli-tools.md`。
    - 如果 `image-restore` 命中 `captcha_variant: tile-scramble`，先用 `scripts/analyze_tile_restore.py` 判断是否是切片/分块乱序图，再分析 `tileOrder`、`pieceOrder`、`background-position`、`drawImage` 或纯图片边缘连续性。
 6. 用户从 `solution_options` 中选择方案并明确确认后，进入第二阶段：
    - 总流程必须读 `references/verification-workflow.md`。

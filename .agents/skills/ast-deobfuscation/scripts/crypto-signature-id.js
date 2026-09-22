@@ -86,6 +86,58 @@ for (const [v, desc, algo] of SINGLE_DEFS) {
 /** 「魔改」判定：某个位置与标准 IV 的差值在 ±TOL 内，视为「同一常量被微调过」 */
 const TOL = 16;
 
+// ---------------------------------------------------------------- 大整数（limb 形式）
+
+/**
+ * 识别「limb 形式的大整数」——**不要把它当成哈希常量表**。
+ *
+ * 实测形态（`52pojie-2076005` 的插桩日志，RSA 公钥对象）：
+ *     {n: {0:192007799, 1:114825681, …, 36:34738, t:37, s:0},
+ *      e:65537, default_key_size:1024, default_public_exponent:"010001"}
+ *
+ * 判据（三条同时成立才算）：
+ *   a. 有 `t`（limb 个数）与 `s`（符号）字段，且 `t` == 下标最大值 + 1；
+ *   b. 所有 limb < 2^30（实测最大 266222446 < 2^28，故基数只可能是 30）；
+ *   c. 按 `n = Σ limb[i] << (30*i)`（**低位在前**）算出的整数，其 bit 长度
+ *      落在 `30*(t-1)` 与 `30*t` 之间。
+ *
+ * 🔴 为什么单列一节：这种数组**看起来和哈希常量表一模一样**（一大串"神秘整数"），
+ *    很容易被误当成"魔改 MD5 的 T 表"去逐值 diff —— 那是**完全错误的方向**。
+ *    正确的第一步是**把它还原成整数**（或直接交给目标库的 `fromString/toString`）。
+ *    实测该例还原后是 **1096 bit** 的整数，即 RSA 模数 n；指数就在隔壁的 `e:65537`。
+ *
+ * @param {{t?:number,s?:number}} meta  对象里读到的 t / s
+ * @param {number[]} nums
+ */
+function analyzeBignum(meta, nums) {
+  const n = nums.map(u32);
+  const out = { isBignum: false, reasons: [], radix: 30, bitLen: 0, hex: '', t: meta.t, s: meta.s };
+
+  if (n.length < 2) { out.reasons.push('元素太少'); return out; }
+  const maxLimb = Math.max(...n);
+  if (!(maxLimb < (2 ** 30))) { out.reasons.push('存在 limb >= 2^30 ⇒ 不是 30 位基数'); return out; }
+  const radixGuess = maxLimb < 2 ** 26 ? 26 : (maxLimb < 2 ** 28 ? 28 : 30);
+  out.radix = radixGuess;
+
+  if (meta.t !== undefined && meta.t !== n.length) {
+    out.reasons.push(`t=${meta.t} 与元素个数 ${n.length} 不符`);
+    return out;
+  }
+  if (meta.s !== undefined && meta.s !== 0 && meta.s !== 1) {
+    out.reasons.push('s 不是 0/1');
+    return out;
+  }
+
+  // 低位在前累加（jsbn / node-forge 口径）
+  let acc = 0n;
+  for (let i = n.length - 1; i >= 0; i--) acc = (acc << 30n) | BigInt(n[i]);
+  out.bitLen = acc.toString(2).length;
+  out.hex = '0x' + acc.toString(16);
+  out.isBignum = true;
+  out.reasons.push(`limb 基数 ${radixGuess}、bit 长度 ${out.bitLen}（${n.length} limb）`);
+  return out;
+}
+
 // ---------------------------------------------------------------- 解析
 
 const NUM_TOKEN = String.raw`-?(?:0[xX][0-9a-fA-F]+|\d+)`;
@@ -415,6 +467,29 @@ function selftest() {
   // 15) 日志里应当出现的那 32 位字（末三字节 `}}}` = 0x7D7D7D）
   ok(expectedPadWord([0x7d, 0x7d, 0x7d]) === 0x7D7D7D80, '末三字节 7D7D7D + 0x80 应得 0x7D7D7D80');
   ok((0x7D7D7D00 >>> 0) === 2105376000, '0x7D7D7D00 应为十进制 2105376000（原文该值正确）');
+
+  // 16) 🔴 limb 大整数识别（B13 新增）——防止把 RSA 模数误判成「魔改哈希常量表」
+  //     这是本轮真实走过的弯路：一组 37 个神秘整数，第一直觉是"魔改 MD5 的 T 表"，
+  //     实际是 jsbn 形式（2^30 limb、低位在前）的 RSA 模数 n；指数就在隔壁的 e。
+  const rsaN = [192007799, 114825681, 193118990, 266222446, 239702029, 53419855,
+    210456210, 235088571, 118605468, 111081405, 23033814, 37191, 216811803,
+    188222612, 194936855, 40795983, 128992659, 19418592, 1961647, 228544787,
+    47368259, 57130987, 233317798, 232454343, 168541728, 22284269, 67866178,
+    123637318, 184039944, 194835225, 17862181, 199213632, 123184483, 122629547,
+    208085612, 19616610, 34738];
+  const bn = analyzeBignum({ t: 37, s: 0 }, rsaN);
+  ok(bn.isBignum === true, '37 limb 数组被识别为 limb 大整数');
+  ok(bn.bitLen === 1096, `还原后 bit 长度应为 1096（实测 ${bn.bitLen}）`);
+  ok(bn.bitLen > 1024 && bn.bitLen <= 1024 + 72,
+    '1096 bit 落在 RSA-1024 加 limb 填充的区间内（1024~1096）');
+  ok(analyzeBignum({ t: 36, s: 0 }, rsaN).isBignum === false, 't 与实际 limb 数不符 ⇒ 拒绝');
+  ok(analyzeBignum({ t: 37, s: 2 }, rsaN).isBignum === false, 's 非 0/1 ⇒ 拒绝');
+  ok(analyzeBignum({}, [0]).isBignum === false, '单元素 ⇒ 拒绝（非 limb 数组）');
+  // 反向断言：真正的哈希 IV 不得被判成 limb 大整数
+  ok(analyzeBignum({}, [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476]).isBignum === false,
+    'MD5 标准 IV 不得被判成 limb 大整数（含 >= 2^30 的 limb）');
+  ok(analyzeBignum({}, [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a]).isBignum === false,
+    'SHA-256 标准 IV 不得被判成 limb 大整数');
 
   console.log('crypto-signature-id --selftest: ' + checks + ' 项断言全部通过');
 }

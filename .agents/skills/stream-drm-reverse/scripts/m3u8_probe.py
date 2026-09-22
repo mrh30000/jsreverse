@@ -156,13 +156,52 @@ def classify(pl: dict) -> dict:
             'reason': 'EXT-X-KEY 带 KEYFORMAT（DRM 系统标识）⇒ DRM 许可证体系。',
             'next': 'references/license-and-key-hierarchy.md',
         }
-    if any(m == 'NONE' for m in methods) and any(m == 'AES-128' for m in methods):
+    if any(m == 'NONE' for m in methods):
+        # METHOD=NONE 是**标准值**（表示该段不加密），单独出现时不是「容器层加密」。
+        # 旧版把 NONE 归进「非标准值 ⇒ A?」，会让「整份列表都不加密」也被报成「有加密」。
+        enc_methods = [m for m in methods if m and m != 'NONE']
+        if not enc_methods:
+            return {
+                'layer': 'PLAIN',
+                'confident': True,
+                'reason': '只有 METHOD=NONE（HLS 标准值，表示不加密）⇒ 这份列表本身没有加密。'
+                          '若视频仍不可播，加密必然在 B/C/E 层（看 JS 或 NALU），不要在这层找 key。',
+                'next': 'ts_probe.py <seg.ts> 看 PES/NAL；或搜 JS 的 decryptdata / GetLicense',
+            }
         return {
             'layer': 'A',
             'confident': True,
             'reason': '含 METHOD=NONE 段 ⇒ 有明文广告/插播段。**不要**把 NONE 之后的分片也解密。',
             'next': 'media_crypto.py aes-cbc（按 key_states 分段处理）',
         }
+
+    # ---- 厂商扩展 METHOD（非 HLS 标准值，但有明确实测语义）----
+    # 判据来源：B14 蒸馏（52pojie-1688088 某 CTO 阿里云播放器实测 m3u8 样本）。
+    # 这一类**不是** A 层（整片 AES-128-CBC）也不必然是 D 层，单独成族以免被当成「未知」。
+    VENDOR_METHODS = {
+        'AES-128-ECB': ('C', 'METHOD=AES-128-ECB ⇒ ECB 模式 + 无 IV。'
+                             '常见两种覆盖范围：整片 ES，或 PES 载荷。'
+                             'ECB 无 IV ⇒ 不要用 AES-CBC 解（会静默解错，不报错）。'),
+        'AES-128-PES': ('C', 'METHOD=AES-128-PES ⇒ 加密覆盖 **PES 载荷**而非整片。'
+                             '按整片 AES-CBC 解必然花屏；TS 包头/PES 头保持明文。'),
+        'AES-256': ('A', 'METHOD=AES-256 ⇒ 容器层整片加密，但密钥 32 字节而非 16。'
+                         '用 aes-cbc 时必须给 64 位 hex key，给 32 位会静默用错长度。'),
+        'AES-128-CTR': ('A', 'METHOD=AES-128-CTR ⇒ 容器层，但模式是 CTR。'
+                             'CTR 不使用 padding，且 IV 是计数器初值 ⇒ 别套 CBC 的 PKCS7 处理。'),
+        'SM4-CBC': ('A', 'METHOD=SM4-CBC ⇒ 国密容器层整片加密。用 media_crypto.py sm4-cbc。'),
+        'SM4-ECB': ('A', 'METHOD=SM4-ECB ⇒ 国密 ECB，无 IV；注意 SM4 密文长度必须是 16 的倍数。'),
+    }
+    for m in methods:
+        if m in VENDOR_METHODS:
+            layer, why = VENDOR_METHODS[m]
+            return {
+                'layer': layer,
+                'confident': True,
+                'vendor_method': m,
+                'reason': why,
+                'next': ('media_crypto.py aes-ecb / sm4-*；覆盖范围不确定时先 ts_probe.py 看 NAL 分层'
+                         if layer == 'C' else 'media_crypto.py 按该模式解；先用单分片跑 ffmpeg 闭环'),
+            }
     if any(m == 'AES-128' for m in methods):
         multi = len({k.get('URI') for k in keys}) > 1
         return {
@@ -363,6 +402,24 @@ def _selftest() -> int:
           '不要' in classify(parse_playlist(
               '#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="k"\n#EXTINF:6.0,\na.ts\n'
               '#EXT-X-KEY:METHOD=NONE\n#EXTINF:6.0,\nb.ts\n'))['reason'])
+    # --- 厂商扩展 METHOD（B14 新增：旧版一律落到「非标准值 ⇒ A?」，会把语义完全不同的一族混在一起）---
+    def _cls(method):
+        return classify(parse_playlist(
+            '#EXTM3U\n#EXT-X-KEY:METHOD=%s,URI="k",IV=0x00\n#EXTINF:6.0,\na.ts\n' % method))
+    check('只有 METHOD=NONE ⇒ PLAIN（不是「有加密」）', _cls('NONE')['layer'] == 'PLAIN', str(_cls('NONE')))
+    check('AES-128-PES ⇒ C 层（覆盖 PES 载荷，不是整片）',
+          _cls('AES-128-PES')['layer'] == 'C', str(_cls('AES-128-PES')))
+    check('AES-128-ECB ⇒ C 层且提示不要用 AES-CBC 解',
+          _cls('AES-128-ECB')['layer'] == 'C' and 'CBC' in _cls('AES-128-ECB')['reason'])
+    check('AES-256 ⇒ A 层且提示 key 是 32 字节',
+          _cls('AES-256')['layer'] == 'A' and '32' in _cls('AES-256')['reason'])
+    check('AES-128-CTR ⇒ A 层且提示 CTR 不用 padding',
+          _cls('AES-128-CTR')['layer'] == 'A' and 'padding' in _cls('AES-128-CTR')['reason'])
+    check('SM4-CBC ⇒ A 层', _cls('SM4-CBC')['layer'] == 'A')
+    check('未知 METHOD 仍落 A? 且标记不自信',
+          _cls('FOO-BAR')['layer'] == 'A?' and _cls('FOO-BAR')['confident'] is False)
+    check('厂商 METHOD 会回填 vendor_method 字段供程序化分支',
+          _cls('AES-128-PES').get('vendor_method') == 'AES-128-PES')
 
     # --- 变体列表 ---
     mpl = parse_playlist(SAMPLE_MASTER)

@@ -76,6 +76,9 @@ node skills/web-reverse-algorithm/scripts/detect-crypto.js -i ./dist/sign.js --j
 最后一类先读 [references/08-mixed-crypto-segmentation.md](./references/08-mixed-crypto-segmentation.md)：
 从密文长度与字符集**先推出骨架**（如「末尾恒定 256 hex ⇒ RSA-1024 密钥包装」），
 再用「常量特征优先于关键字」的定位法逐段取证，最后用固定 key/iv/明文与浏览器逐字节 diff 锁死四元组。
+**先认形态、再谈算法**：除了「前段密文 + 后段密钥包装」，还有三种高频形态 ——
+自描述密文（长度字段 + 尾部密钥）、响应自带 key/iv、算法按时间戳奇偶切换（§八），
+三种都只需量体征就能判出来，判错形态会白读一整轮混淆代码。
 
 遇到这一步拿不准时，优先读 [references/04-debug-env-playbook.md](./references/04-debug-env-playbook.md)。
 
@@ -291,7 +294,7 @@ python scripts/waf_clearance_solver.py --selftest
   **sink→运行时栈→bundle 对位三步定位法**、自动化框架自身指纹（CDP 焦点伪造 `hasFocus()+visible` 矛盾、
   实测 A/B 对照与规避）、反调试处置决策树。
 - [references/08-mixed-crypto-segmentation.md](./references/08-mixed-crypto-segmentation.md)
-  用途：**混合加密分段还原总纲** —— 从密文长度/字符集黑盒推骨架、长度→算法反查表、三段定位法（常量特征 / 关键字 / Proxy 陷阱）、对称段四元组定界与逐字节 diff 验证、同骨架四类变体对照、会话级复用清单、PoW 段归约。
+  用途：**混合加密分段还原总纲** —— 从密文长度/字符集黑盒推骨架、长度→算法反查表、三段定位法（常量特征 / 关键字 / Proxy 陷阱）、对称段四元组定界与逐字节 diff 验证、同骨架四类变体对照、会话级复用清单、PoW 段归约、**密钥包装的另外三种形态（自描述密文 / 响应自带密钥 / 算法按时间戳奇偶切换，§八）**。
 - [references/10-waf-clearance-cookie.md](./references/10-waf-clearance-cookie.md)
   用途：**边缘 WAF / CDN 准入 Cookie 的离线求解**（该族「可离线部分」的唯一权威源）——
   加速乐 jsl 两趟（第一趟 JSFuck 化算术按 JS 语义求值、第二趟双字符补位暴力、`bts[1]` 不可 unquote）、

@@ -1,6 +1,6 @@
 ---
 name: wsam-reverse
-description: WebAssembly 模块逆向时使用，覆盖 捕获 → 反编译/反汇编 → 离线执行 → VMP 追踪 全链路。既包含依附活体浏览器的在线抓取与追踪（collect_wasm / wasm_dump / wasm_vmp_trace），也提供无需浏览器的 100% 离线 CLI 工具链（wasm-decompile / wasm-disassemble / wasm-inspect / wasm-run）。当用户在 wasm 里遇到读不懂的内存寻址（i32.load/i32.store、小端、offset 寻址、HEAPU8、131072 分块搬运）、C++ / Emscripten 修饰符号名（__ZN...Itanium mangling、c++filt）、想走 wasm2c + wasm-rt 把 wasm 翻译成 C 供任意语言调用、需要识别导出函数签名与内存分配约定（__wbindgen_malloc / passStringToWasm0），或目标页带 F12 反调试（debugger 循环、pushState 刷地址栏、DevTools 检测覆写页面）导致 worker 卡死时，也使用本技能。
+description: WebAssembly 模块逆向时使用，覆盖 捕获 → 反编译/反汇编 → 离线执行 → VMP 追踪 全链路。既包含依附活体浏览器的在线抓取与追踪（collect_wasm / wasm_dump / wasm_vmp_trace），也提供无需浏览器的 100% 离线 CLI 工具链（wasm-decompile / wasm-disassemble / wasm-inspect / wasm-run）。当用户在 wasm 里遇到读不懂的内存寻址（i32.load/i32.store、小端、offset 寻址、HEAPU8、131072 分块搬运）、C++ / Emscripten 修饰符号名（__ZN...Itanium mangling、c++filt）、想走 wasm2c + wasm-rt 把 wasm 翻译成 C 供任意语言调用、需要识别导出函数签名与内存分配约定（__wbindgen_malloc / passStringToWasm0），想先用内存 dump / 地址差法直接把写死的 key 与常量捞出来（HEAPU8、`Module.HEAPU8.subarray`、`_emscripten_run_script`、`$crypto/aes.NewCipher`、`$crypto/cipher.newCBC`、`$runtime.stringFromBytes`）、或目标页带 F12 反调试（debugger 循环、pushState 刷地址栏、DevTools 检测覆写页面）导致 worker 卡死时，也使用本技能。
 ---
 
 # Wasm 逆向
@@ -34,14 +34,14 @@ node skills/wsam-reverse/scripts/wasm-run.js -i ./target.wasm --invoke encrypt -
 
 ---
 
-## proxycli 在线捕获与追踪前置
+## browsercli 在线捕获与追踪前置
 
-对于运行在线上网页中的 Wasm 模块，通过 proxycli 进行活体捕获与追踪：
+对于运行在线上网页中的 Wasm 模块，通过 browsercli 进行活体捕获与追踪：
 
 ```bash
 # 连接浏览器（headless 默认），并确认 worker 状态
-proxycli browser connect
-proxycli status
+browsercli browser connect
+browsercli status
 
 # wasm 工具属于 full profile，workflow 下会报
 # "Tool wasm_decompile is not available in profile workflow"
@@ -49,10 +49,10 @@ proxycli status
 JS_REVERSE_TOOL_PROFILE=full npm run start   # 或在你自己的 MCP host 环境里注入
 
 # 可用性自检：列出工具并过滤 wasm 族
-proxycli list-tools --json | jq -r '.[].name' | grep -E '^(collect_wasm|wasm_)'
+browsercli list-tools --json | jq -r '.[].name' | grep -E '^(collect_wasm|wasm_)'
 
 # 工具调用通用形式（连字符↔下划线自动转换：wasm-capabilities ⇄ wasm_capabilities）
-proxycli call <tool-name> [--param value] [--data '{"k":"v"}'] [--file params.json]
+browsercli call <tool-name> [--param value] [--data '{"k":"v"}'] [--file params.json]
 ```
 
 **参数约定**：
@@ -67,10 +67,10 @@ proxycli call <tool-name> [--param value] [--data '{"k":"v"}'] [--file params.js
 
 ```bash
 # 1) 捕获模块（wasm_dump 的前置！重新导航目标页，抓网络加载 + 运行时创建的 wasm）
-proxycli call collect_wasm --url https://target.com/path
+browsercli call collect_wasm --url https://target.com/path
 
 # 2) 导出模块（从浏览器抓到 .wasm）
-proxycli call wasm_dump --moduleIndex 0 --outputPath ./target.wasm
+browsercli call wasm_dump --moduleIndex 0 --outputPath ./target.wasm
 
 # 3) 使用离线脚本检查与反编译（推荐）
 node skills/wsam-reverse/scripts/wasm-inspect.js --input ./target.wasm
@@ -80,8 +80,8 @@ node skills/wsam-reverse/scripts/wasm-decompile.js --input ./target.wasm
 node skills/wsam-reverse/scripts/wasm-run.js --input ./target.wasm --invoke <functionName> --args <arg1,arg2>
 
 # 5) 在线内存 / 运行时追踪
-proxycli call wasm_memory_inspect --offset 0 --length 1024 --format hex --searchPattern "deadbeef"
-proxycli call wasm_vmp_trace --maxEvents 100 --filterModule <name>
+browsercli call wasm_memory_inspect --offset 0 --length 1024 --format hex --searchPattern "deadbeef"
+browsercli call wasm_vmp_trace --maxEvents 100 --filterModule <name>
 ```
 
 ---
@@ -136,13 +136,19 @@ bits: 0 | 1100010 | 11000100 | 10011000  =  6472856
 
 内存布局类目标（加密视频流、二进制处理）再抓三件事：内存基址与栈上界（`abortStackOverflow` 触发点）、JS→wasm 写入入口 `stringToUTF8(e, stackAlloc(i), i)`、**131072（128 KB）** 分块搬运常量。地址推演全流程、**从已知明文反推密钥**、字节流还原配方见 `references/wasm2c-and-memory-semantics.md` §3–§4。
 
+🔴 **在开始读 WAT 之前，先花 5 分钟做一次内存取证**：`new Blob([new Uint8Array(Module.HEAPU8)])` 把整块内存
+dump 下来搜特征串（AES S 盒 `63 7c 77 7b`、写死的 key/IV、编码表），或用「已知返回地址 + 固定偏移」直接
+把 key 取出来。Emscripten 与 Go 产物都适用，命中即省半天到一天。
+做法、地址差法、`_emscripten_run_script` 打桩、以及「输入不能置空 / 实例只能调一次」两个反直觉坑，
+见 `references/wasm2c-and-memory-semantics.md` §7。
+
 ---
 
 ## VMP 场景
 
 如果 wasm 是**代码保护器**（如某些商业 VMP 用的 wasm 壳），反编译可能输出大量无意义指令（`i32.const` / `local.get` / `i32.xor` 循环）。这时：
 
-1. `proxycli call wasm_vmp_trace` 抓运行时事件（每次进入 / 退出函数 + 参数摘要）
+1. `browsercli call wasm_vmp_trace` 抓运行时事件（每次进入 / 退出函数 + 参数摘要）
 2. 用 `node skills/wsam-reverse/scripts/wasm-run.js --input ./target.wasm --invoke <func>` 重放同一个输入多次，看哪条路径被命中
 3. 关注 **dispatcher**（最外层 switch 调度函数）的输入输出
 
@@ -169,16 +175,16 @@ __ZNSt3__26__treeINS_12__value_typeIi14nup2p_secret_tEENS_..._EEE4findIiEENS_...
 
 ```bash
 # 1. 找 JS 侧加载代码
-proxycli call list_scripts --filter "wasm|.wasm|WebAssembly"
-proxycli call search_in_sources --query "WebAssembly.instantiate|compileStreaming"
+browsercli call list_scripts --filter "wasm|.wasm|WebAssembly"
+browsercli call search_in_sources --query "WebAssembly.instantiate|compileStreaming"
 # 找到 JS 调 wasm 的入口（search_in_sources 默认把命中脚本写入当前工作目录）
 
 # 2. 用 hook 拦截 JS 侧的 import（传入 wasm 的 JS 函数）
-proxycli call hook_function --target <importedFuncName>
+browsercli call hook_function --target <importedFuncName>
 # 看 JS 给 wasm 传了什么
 
 # 3. 拦截 wasm 侧 export（wasm 调 JS）
-proxycli call wasm_vmp_trace  # 看 wasm→JS 边界调用
+browsercli call wasm_vmp_trace  # 看 wasm→JS 边界调用
 ```
 
 ### 调试注入：在 wasm 加载完成后注入可搜索的标记
@@ -214,11 +220,11 @@ Object.keys(wasm).forEach(k => { window['__w_' + k] = wasm[k]; });
 curl -s -o target.wasm 'https://target.com/static/app.wasm'
 # 2) 本地 Node 实例化下载的 wasm 重建加密逻辑（WebAssembly API 内置于 Node）
 node loader.js   # loader.js: WebAssembly.instantiate(fs.readFileSync('target.wasm')) → 调导出函数
-# 或走 worker：proxycli call wasm_offline_run --file params.json
+# 或走 worker：browsercli call wasm_offline_run --file params.json
 
 # worker 一旦被卡死：先试取消任务，不行只能重启 worker 进程
-proxycli jobs list
-proxycli jobs cancel <job-id>
+browsercli jobs list
+browsercli jobs cancel <job-id>
 ```
 
 > 依赖动态生成、答案有效期短（如一分钟）的目标：写"计算 + 提交"一体化脚本保证时效。
@@ -247,15 +253,19 @@ proxycli jobs cancel <job-id>
 | `wasm_capabilities` 报 wabt 缺失     | `npm i -g wabt` 或 `apt install wabt`                                                       |
 | `wasm_capabilities` 报 wasmtime 缺失 | `curl https://wasmtime.dev/install.sh -sSf \| bash`                                         |
 | `wasm_optimize` 报 wasm-opt 缺失     | 装 Binaryen（`brew install binaryen` / `apt install binaryen`）                             |
-| `wasm_dump` 报"未捕获任何 WASM 模块" | 先 `proxycli call collect_wasm --url <url>` 重新导航捕获                                    |
+| `wasm_dump` 报"未捕获任何 WASM 模块" | 先 `browsercli call collect_wasm --url <url>` 重新导航捕获                                    |
 | `wasm_decompile` 慢 / 卡住           | 加 `--maxWatChars 500000` 限制输出                                                          |
 | 反编译输出看不懂                     | 改用 `wasm_disassemble` 看原始 WAT；或 `wasm_offline_run` 重放输入                          |
 | 找不到入口函数                       | 看 `wasm_inspect_sections` 的 export 段；用 skill `code-analysis` 辅助 JS 侧                |
 | 二进制字符串扫描报敏感               | `--maskSensitiveStrings true` 屏蔽，但记下索引回查                                          |
 | 工具不可用（profile 报错）           | 在 worker 启动环境设置 `JS_REVERSE_TOOL_PROFILE=full` 并重启 worker                         |
-| 页面反调试卡死 worker（409）         | 放弃 DOM 交互，走 curl 拉资源 + 本地 Node 重建；必要时 `proxycli jobs cancel` / 重启 worker |
+| 页面反调试卡死 worker（409）         | 放弃 DOM 交互，走 curl 拉资源 + 本地 Node 重建；必要时 `browsercli jobs cancel` / 重启 worker |
 | WAT 里全是 `__ZNSt3__2...` 看不懂    | 用 `c++filt` / `llvm-cxxfilt` 解修饰名，先知道它是什么再读指令                               |
 | `i32.load` 出来的地址对不上          | 按小端逐字节还原（§Wasm 内存语义），不要把四字节当十进制相加                                 |
+| 报错栈停在 `_emscripten_run_script*` | 环境检测是 wasm 调 JS `eval`；给这两个导出打桩（`location` 直接返回 1），不要去读 wasm      |
+| key 就在内存里但取不到               | dump `HEAPU8` 搜特征串；或按「结果地址 ± 固定偏移」取（偏移不保证跨版本，换样本复验）        |
+| `encrypt` 第二次调用返回 `null`      | Go 的 `crypto/cipher` 流对象**有状态**：每次重新加载模块，或一次调用只取一组样本             |
+| 把输入传空只想取输出，结果拿到垃圾   | 大模块在后续处理失败时会**释放输出内存**；必须传一个真实的（哪怕很小的）输入                 |
 | `wasm2c` 编译报缺符号                | 把 wabt 源码包里的 `wasm-rt-impl.c` / `wasm-rt.h` 一起编译；导出名形如 `w2c_<module>_<name>` |
 | wasm2c 出来的函数传中文参数即崩      | 该模块 `passStringToWasm0` 只支持 ASCII（`< 127`）；改在 C 侧直接按字节写内存                |
 | 目标页 `pushState` 把浏览器刷到卡死  | Hook `history.pushState` 为空函数后再抓包                                                    |
@@ -278,10 +288,13 @@ proxycli jobs cancel <job-id>
 ## 关联
 
 - `references/wasm2c-and-memory-semantics.md`：wasm2c 完整路线、内存语义与地址推演、字节流密钥反推、Itanium 符号解码表、调试注入。
+- **内存取证（先做这个）**：`references/wasm2c-and-memory-semantics.md` §7 —— HEAPU8 dump 搜常量、
+  「结果地址 + 固定偏移」取 key、`_emscripten_run_script` 打桩、Go 产物符号名与流对象状态、
+  结果内存生命周期。emcc 与 Go 编译的产物都适用。
 - **加密媒体流 / DRM 场景**：如果这个 wasm 是用来解密 **ts / m3u8 / 视频内容**的（导出函数名像 `decrypt`、
   入参是 PES/NALU、旁边有 `EXT-X-KEY` 或 `GetLicense`），先切到 `../stream-drm-reverse/SKILL.md` ——
   那里有 F 层的四条路线选择（`importObject` 代理直接调用 / wasm2js + DFA / VMP 反汇编成 IR / AI 补环境重放），
   比从本技能一路读内存语义更省时间。
-- 完整六阶段工作流（Observe / Capture / Rebuild / Patch / PureExtraction / Port）：`skills/proxycli-playbook/SKILL.md` + `docs/reference/reverse-workflow.md`
-- 工具参数与 profile 门控：`skills/proxycli-playbook/references/tool-catalog.md` / `profile-tool-gating.md`
-- 失败回退决策树：`skills/proxycli-playbook/references/fallbacks.md`
+- 完整六阶段工作流（Observe / Capture / Rebuild / Patch / PureExtraction / Port）：`skills/browsercli-playbook/SKILL.md` + `docs/reference/reverse-workflow.md`
+- 工具参数与 profile 门控：`skills/browsercli-playbook/references/tool-catalog.md` / `profile-tool-gating.md`
+- 失败回退决策树：`skills/browsercli-playbook/references/fallbacks.md`

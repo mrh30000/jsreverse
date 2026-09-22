@@ -1,6 +1,6 @@
 ---
 name: ast-deobfuscation
-description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反混淆。适用于 `_0x` 标识符、字符串表、自执行解码包装、`["$_x"].concat(fn)` + `shift()` 形式的别名族、dispatcher 对象、虚假常量分支、`while/for + switch` 控制流平坦化、`if (literal === opcode)` 分发链、OB 混淆变体（数组元素掺非字符串、去自执行、打乱 base64 码表、解密函数多重赋值分身、字典混淆、外衣函数嵌套）、多入口多层 switch，以及需要按站点或混淆家族命中特征切换专用脚本的场景。需要通过 proxycli 从页面定位、导出或运行时验证混淆脚本，以及用户明确提到 decodeObfuscator、reese84、顶象、极验（v3 的 `$_` 前缀变量族与 v4 的 guarded-switch）、同花顺、网易易盾、小红书、BOSS 直聘/zp_stoken、OB 变种或类似站点适配时也使用本 skill。
+description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反混淆。适用于 `_0x` 标识符、字符串表、自执行解码包装、`["$_x"].concat(fn)` + `shift()` 形式的别名族、dispatcher 对象、虚假常量分支、`while/for + switch` 控制流平坦化、`if (literal === opcode)` 分发链、OB 混淆变体（数组元素掺非字符串、去自执行、打乱 base64 码表、解密函数多重赋值分身、字典混淆、外衣函数嵌套）、多入口多层 switch，以及需要按站点或混淆家族命中特征切换专用脚本的场景。需要通过 browsercli 从页面定位、导出或运行时验证混淆脚本，以及用户明确提到 decodeObfuscator、reese84、顶象、极验（v3 的 `$_` 前缀变量族与 v4 的 guarded-switch）、同花顺、网易易盾、小红书、BOSS 直聘/zp_stoken、OB 变种或类似站点适配时也使用本 skill。JSVMP 场景下同样适用于：反汇编产物（IR）的常量折叠 / 死 case 消除 / 短路还原 / CFG 回译成 JS、指令集与 opcode 位域还原、助记符表对齐、插桩日志常量取证。
 ---
 
 # AST 反混淆
@@ -9,7 +9,7 @@ description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反�
 
 ## 工作流
 
-1. 输入来自浏览器页面时，先按 `references/proxycli-tools.md` 定位并导出目标脚本；已有本地 JS 文件时跳过此步。
+1. 输入来自浏览器页面时，先按 `references/browsercli-tools.md` 定位并导出目标脚本；已有本地 JS 文件时跳过此步。
 2. 运行 `scripts/detect-patterns.js <input.js> [hint]` 做模式检测。
 3. 只读取命中的站点或混淆家族规则文档。
 4. 运行 `scripts/run-pipeline.js <input.js> <output-dir> [hint]` 执行选中的流水线。
@@ -60,8 +60,7 @@ description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反�
   腾讯系 VM 的指令数组**每次请求都重排**，按序号识别指令必然失效，必须靠这张表。
   三态分开统计（`hole` 空槽 / `empty` 空体 / `instruction`），空洞与空体混算会让控制流整体错位。
   `--diff a.json b.json` 比对两次抓取是否同一指令集。与 `analyze-jsvmp-vm.js` 的分工见 `references/jsvmp-bytecode-and-decompiler.md` §2。
-- `scripts/jsvmp-instrument.js`
-  **JSVMP 三层插桩器**（`call/apply` → 运算符 → 赋值），由内向外包装，插桩**只读不调用**
+- `scripts/jsvmp-instrument.js`  **JSVMP 三层插桩器**（`call/apply` → 运算符 → 赋值），由内向外包装，插桩**只读不调用**
   （绝不二次调用被插桩函数，避免 `k++`/`pc` 之类有状态变量被多推进）。
   逻辑/一元/自增只记结果、不捕获操作数（保住短路语义、避免 `typeof` 未声明标识符抛错）。
   `--selftest` 自带合成 VM 夹具，覆盖**实跑对拍**、**节点数只增不减**、**重复插桩守卫**
@@ -71,14 +70,26 @@ description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反�
   初始向量，逐位置给出 `实测 - 标准` 差值；MD5 与 SHA-1 共享前 4 个 IV 的**歧义会被显式标注**。
   `--file <日志>` 直接抽日志里所有 ≥4 元素的数组批量识别；`--padding <字节数>` 给出标准
   MD5/SHA-1 padding 的**预期值**（补几个 0、补完总长），用于回日志核对；
-  `--selftest` 含 38 项断言（含「200 组随机数组不得误报」「按错误公式补完必不整除 64」的反向断言）。
+  `--selftest` 含断言若干（含「随机数组不得误报」「按错误公式补完必不整除 64」
+  与「真哈希 IV 不得被判成 limb 大整数」三组**反向断言**；项数以实跑输出为准）。
   见 `references/jsvmp-dynamic-instrumentation.md` §6/§7。
+- `scripts/jsvmp-ir-optimize.js`
+  **JSVMP 反汇编产物的中间代码优化与 CFG 回译**（零依赖，即"反汇编之后"那一步）。
+  `optimize` 全链**实测顺序**为 `prune-cases`（死 case 消除，**必须最先**：删 case 会改地址与 CFG）
+  → `fold-const`（常量虚假指令表折叠）→ `restore-logic`（`&&`/`||` 还原）与
+  `simplify-cfg`（常量传播 / 恒真假分支 / 不可达 / 单前驱单后继合并）**交替跑两趟**（不动点，
+  第二趟才有新短路形态浮现）→ `emit-js`（**flat 保底** + **structured 可读**两个发射器，
+  **两者结果必须一致**）；
+  另含 `cfg` 导出 Graphviz。`--selftest` 用随机程序夹具做**解释器 / flat / structured 三方
+  逐字节对拍**，并对每个优化步骤设**"真的做了优化"的下界断言**（否则"什么都没做"也会全绿）。
+  见 `references/jsvmp-ir-and-optimization.md`（该阶段唯一权威源）；
+  **pass 的执行顺序与"为什么这么排"以该文件 §2 为准**（`prune-cases` 必须最先、`restore-logic`↔`simplify-cfg` 要跑两趟）。
 - `scripts/compare-with-reference.js`
   将最新流水线输出与 `decode.js` 对比，汇总剩余差距。
 
 ## 参考文档
 
-- 从浏览器页面采集源码、补抓 Worker 脚本或验证运行时行为时，读 `references/proxycli-tools.md`，并使用 `proxycli` skill 获取完整命令契约。
+- 从浏览器页面采集源码、补抓 Worker 脚本或验证运行时行为时，读 `references/browsercli-tools.md`，并使用 `browsercli` skill 获取完整命令契约。
 - 新增或调整适配器时，先读 `references/pattern-layering.md`。
 - 任何逻辑想放进通用脚本前，先读 `references/safe-rewrite-rules.md`。
 - 处理字符串表、解码 stub、最小运行时求值时，读 `references/string-array-and-minimal-eval.md`；
@@ -111,6 +122,15 @@ description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反�
   含 `IrJfalse`/`IrJeq` 这类"只在一个分支弹栈"的高危指令）、异常表 `stateFlag` 1/2/3 与调用栈帧 8 项、
   PC 状态机与 **CFG bound 合并**（多入口 = 有控制流，不可合并）、寄存器式 VM 的差异、AI 辅助的分而治之、vmp 套 vmp。
   **判据：CFG 是插桩的地图。插桩点找不到时，先出图。**
+- **已有的 IR / 反汇编产物乱得读不下去，或原文作者说"下一步要做常量折叠、常量传播、CFG 转 JS"时，
+  读 `references/jsvmp-ir-and-optimization.md`**（该阶段唯一权威源）：
+  五个 pass 的顺序与各自"为什么安全"（`fold-const` 的常量表判据与 `null` vs `0` 之争、
+  `prune-cases` 靠**断点全覆盖探测**拿死 case 清单、`restore-logic` 的**短路还原语义代价**——
+  被合并的第二个条件块**不得含副作用**、`simplify-cfg` 的"改完实跑结果一致"准出）、
+  两套真实 opcode 编码（12 位家族 + 独立 opstr 表 / 3 字节家族 + 内联字符串表 + 两种异或解码变体）、
+  腾讯 chaos 的**随机分段抗脱壳**（case 数 ≠ 语义 opcode 数不是 bug）、
+  **"一串神秘整数"先判 bignum limb 再谈算法**、以及反汇编常量必须做**单射性机械校验**
+  （实测某 IR 的 base64 字母表第 5 位错成 `D`，照抄会静默算错 sign）。
 - 运用 LLM 大模型辅助代码清洗、语义命名推导、VM 结构分析与思维链去虚拟化时，读 `references/llm-deobfuscation-prompts.md`。
 - 处理控制流平坦化、opcode 分发器和 VM 类 handler 时，读 `references/control-flow-and-opcode-patterns.md`；开始把状态机归约回 if/while/break/continue 前，先读 `references/control-flow-reduction-rules.md` 逐条核对前提。
 - **CFF 还原前先读 `references/mba-and-dispatcher-reduction.md` §3**：`while+switch` 的还原依赖「字符串数组已还原」这一前置，顺序错了不报错、直接清空函数体。多层位切片 dispatcher（`Ci = 31 & li; mi = 31 & fi; ...`）与 MBA 混合布尔算术表达式的归约配方也在该文档。

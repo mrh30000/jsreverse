@@ -33,7 +33,7 @@ description: Use for authorized reverse engineering of custom binary protocols, 
 | 情况 | 去哪 |
 |------|------|
 | 仅 HTTP 参数签名 / JS 加密 | Web 参数类 → `web-reverse-algorithm` / `web-verify-patcher` |
-| 仅 TLS 证书问题 | 浏览器代理 / 抓包工具（`proxycli` 系列） |
+| 仅 TLS 证书问题 | 浏览器代理 / 抓包工具（`browsercli` 系列） |
 | 固件内协议栈深挖 + 仿真 | 本仓库未收录；先按 `AGENTS.md` 确认 scope 与工具可用性 |
 | **载荷是 Protobuf / gRPC-Web（含 google-protobuf、protobufjs、厂商自研 protobuf 实现）** | **`protobuf-reverse`** —— 方言判据、零依赖 wire 解码、从生成 JS 抽 `.proto`、两级逐字节验收都在那里。**本 skill 不重复维护 protobuf 细节。** |
 | 载荷是 WebSocket 上的 protobuf | `websocket-reverse`（消息分组 / 心跳 / `payloadType` 路由）→ 再转 `protobuf-reverse` |

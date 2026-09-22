@@ -47,10 +47,10 @@ description: 目标级/会话级逆向分析工作流技能，替代已移除的
 ## 相关工具
 
 ```bash
-proxycli call session_create --name "<name>" --targetUrl "<url>"
-proxycli call session_get_data --sessionId "<id>"
-proxycli call collect_code --url "<url>" --smartMode priority
-proxycli call get_hook_data --hookId "<id>" --view detail
-proxycli call record_reverse_evidence --taskId "<task>" --entry '{"note":"..."}'
-proxycli call export_session_report --format markdown
+browsercli call session_create --name "<name>" --targetUrl "<url>"
+browsercli call session_get_data --sessionId "<id>"
+browsercli call collect_code --url "<url>" --smartMode priority
+browsercli call get_hook_data --hookId "<id>" --view detail
+browsercli call record_reverse_evidence --taskId "<task>" --entry '{"note":"..."}'
+browsercli call export_session_report --format markdown
 ```

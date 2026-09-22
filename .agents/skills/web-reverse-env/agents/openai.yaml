@@ -1,4 +1,4 @@
 interface:
   display_name: "Web���򲹻���"
   short_description: "����JS���򲹻��������ļ��ܣ�����Proxy�»�����ԭ������native������ָ�����ǿ�ȼ��ģ�顣"
-  default_prompt: "ʹ��������ܷ������proxycli����������ͨ�� browsercli call ���� MCP �������proxycli���ɼ���Hook ��λ������������ؽ��������μ� references/08-browsercli.md��������ʱ�ٻ��˵� references �� scripts ���ģ�黯����������ϡ�"
+  default_prompt: "ʹ��������ܷ������browsercli����������ͨ�� browsercli call ���� MCP �������browsercli���ɼ���Hook ��λ������������ؽ��������μ� references/08-browsercli.md��������ʱ�ٻ��˵� references �� scripts ���ģ�黯����������ϡ�"
