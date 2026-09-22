@@ -1,0 +1,115 @@
+{
+  "id": "netease-weapi",
+  "title": "网易云音乐 weapi 请求加密（params / encSecKey）",
+  "category": "platform-signature",
+  "status": "active",
+  "version": "1.0.0",
+  "summary": "weapi 接口 POST 表单两个字段：params=AES-CBC 双重加密的 JSON，encSecKey=RSA 加密的随机 16 位密钥。",
+  "aliases": [
+    "weapi",
+    "params",
+    "encSecKey",
+    "网易云加密参数"
+  ],
+  "keywords": [
+    "网易云",
+    "netease",
+    "music.163.com",
+    "weapi",
+    "params",
+    "encSecKey",
+    "AES",
+    "RSA"
+  ],
+  "algorithm": {
+    "family": "symmetric",
+    "detail": "params：AES-128-CBC（两次，CryptoJS.AES.encrypt，key 为 CryptoJS.enc.Utf8.parse 的 16 字节，iv 固定，mode CBC）；encSecKey：RSA（自实现 RSAKeyPair / encryptedString，指数 e 与模数 m）",
+    "key_material": "AES key1='0CoJUm6Qyw8W8jud'; AES IV='0102030405060708'; RSA e='010001'; RSA m='00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7'",
+    "output_encoding": "params=base64（CryptoJS ciphertext.toString()）；encSecKey=hex（biToHex）",
+    "output_length": null
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-2018113-网易云音乐逆向.md",
+      "line": 539,
+      "quote": "var result = d(JSON.stringify(i1x), \"010001\", n, \"0CoJUm6Qyw8W8jud\")",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2018113-网易云音乐逆向.md",
+      "line": 78,
+      "quote": "var n = '00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a8",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2018113-网易云音乐逆向.md",
+      "line": 90,
+      "quote": ", d = CryptoJS.enc.Utf8.parse(\"0102030405060708\")",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2018113-网易云音乐逆向.md",
+      "line": 92,
+      "quote": "f = CryptoJS.AES.encrypt(e, c, {",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2018113-网易云音乐逆向.md",
+      "line": 94,
+      "quote": "mode: CryptoJS.mode.CBC",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2018113-网易云音乐逆向.md",
+      "line": 526,
+      "quote": "h.encText = b(h.encText, i),",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2018113-网易云音乐逆向.md",
+      "line": 527,
+      "quote": "h.encSecKey = c(i, e, f),",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2018113-网易云音乐逆向.md",
+      "line": 540,
+      "quote": "json_data={'params':result.encText,",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2018113-网易云音乐逆向.md",
+      "line": 81,
+      "quote": "b = \"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\", c = \"\";",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2018113-网易云音乐逆向.md",
+      "line": 59,
+      "quote": "'https://music.163.com/weapi/song/enhance/player/url/v1',",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1271541-02-网易云音乐加密分析.md",
+      "line": 13,
+      "quote": "![](https://attach.52pojie.cn/forum/202009/21/140011pg96ly50pp2d95l6.png)",
+      "verified_in_article": false
+    }
+  ],
+  "entry": {
+    "location": "JS 函数 get_data() → d() → b()（AES）/ c()（RSA）；文章称另存为 网易云.js",
+    "trigger": "请求前：execjs 调 ctx.call('get_data', i1x)，即对请求体 JSON 调 get_data",
+    "transport": "body，Content-Type: application/x-www-form-urlencoded，字段名逐字为 params、encSecKey"
+  },
+  "gaps": [
+    "文章未给 params、encSecKey 的示例密文，无法对拍",
+    "本批 8 篇均未出现 eapi 接口、'非ce' 二次加密、'crypto 前 16 字节' 等说法，故这些一律 null",
+    "encSecKey 的具体填充/长度（RSA chunkSize 细节）文章未展开",
+    "1271541（网易云）为 screenshot-only，无可用正文"
+  ],
+  "self_check": [
+    "n 的 hex 串长度实测 = 258 字符（129 字节），与代码 setMaxDigits(131) 量级一致",
+    "文章未给 params/encSecKey 示例密文，无法对拍；仅确认常量与调用链",
+    "1271541 全文仅 7 张截图，无正文，无法据此新增结论 → evidence: screenshot-only"
+  ]
+}

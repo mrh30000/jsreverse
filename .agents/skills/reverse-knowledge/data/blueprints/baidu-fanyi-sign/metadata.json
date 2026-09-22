@@ -1,0 +1,79 @@
+{
+  "id": "baidu-fanyi-sign",
+  "title": "百度翻译 v2transapi sign 参数",
+  "category": "platform-signature",
+  "status": "unknown",
+  "version": "1.0.0",
+  "summary": "百度翻译 v2transapi 的 sign：随待翻译词变化，由某 export 函数生成，内部依赖固定常量 r 与函数 n。",
+  "aliases": [
+    "sign",
+    "百度翻译",
+    "fanyi.baidu.com"
+  ],
+  "keywords": [
+    "百度翻译",
+    "baidu",
+    "fanyi",
+    "v2transapi",
+    "sign"
+  ],
+  "algorithm": {
+    "family": null,
+    "detail": "unknown（两篇文章均以截图/描述为主，未给出 sign 的算法公式或拼接规则）",
+    "key_material": "固定常量 r = \"320305.131321201\"（1897565:42）",
+    "output_encoding": "unknown",
+    "output_length": null
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-1897565-某度翻译的sign逆向.md",
+      "line": 42,
+      "quote": "经过测试发现r的确是固定值 等于\"320305.131321201\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1897565-某度翻译的sign逆向.md",
+      "line": 12,
+      "quote": "因为每次更换翻译单词的时候sign都会发生变化，所以我们需要逆向sign",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1897565-某度翻译的sign逆向.md",
+      "line": 26,
+      "quote": "断下之后，双击进入函数，我们发现参数t就是我们需要翻译的单词",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1897565-某度翻译的sign逆向.md",
+      "line": 50,
+      "quote": "n这个函数我们没有扣，再到源码里面抠一下就好了",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1474990-python爬虫-最新破解百度翻译sign值.md",
+      "line": 30,
+      "quote": "看到sign又函数L生成，且里面的参数就是我们需要翻译的内容",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1474990-python爬虫-最新破解百度翻译sign值.md",
+      "line": 43,
+      "quote": "重新请求一下发现，i是不变的，直接把i定义到代码里面去",
+      "verified_in_article": false
+    }
+  ],
+  "entry": {
+    "location": "JS 中生成 sign 的 export 函数（1474990 称函数 L，1897565 未命名），另有函数 n 参与",
+    "trigger": "请求前（接口 https://fanyi.baidu.com/v2transapi?from=en&to=zh）",
+    "transport": "未明确（接口 query 中含 sign）"
+  },
+  "gaps": [
+    "sign 的算法族（是否 MD5）文章未提及 → 团队要求的 md5(appid+query+salt+key) 口径在本批 8 篇中无任何依据，故不写",
+    "appid / salt / token 等参数名两篇文章均未出现",
+    "sign 的输出编码与长度未知",
+    "1474990 关键步骤为截图，无正文可引（evidence: screenshot-only）"
+  ],
+  "self_check": [
+    "两篇文章都未给出 sign 的算法公式（1474990 正文几乎全为截图，仅描述函数 L/i/n/r；1897565 只给固定常量 r 与函数名），故 family/detail 置 null/unknown"
+  ]
+}

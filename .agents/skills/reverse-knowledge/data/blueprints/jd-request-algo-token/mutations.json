@@ -1,0 +1,19 @@
+{
+  "mutations": [
+    {
+      "name": "token 前缀即来源标识",
+      "rule": "远程获取的 token 形如 tk03，本地兜底生成的形如 tk05",
+      "symptom_if_wrong": "h5st 能生成但请求 403；对比抓包 token 前缀即可一眼判断"
+    },
+    {
+      "name": "清 cookie 后算法会变",
+      "rule": "清空 cookie 后重新请求会拿到不同的算法体，不能把算法硬编码",
+      "symptom_if_wrong": "复用旧的算法体，签名不通过"
+    },
+    {
+      "name": "补环境必须让 XHR 真发请求",
+      "rule": "env.js 里的 XMLHttpRequest 要基于 Node https 实现真实请求",
+      "symptom_if_wrong": "token 恒为 tk05，403"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "parts": [
+    {
+      "name": "token",
+      "description": "作用: h5st 的 HMAC key 来源 | 来源: 远端 request_algo 返回，缓存于 localStorage `WQ_dy_tk_s_f06cc_4.3`；2022 版为 cookie `sfstoken` | 示例: tk03（远程正确）/ tk05（本地生成错误）"
+    },
+    {
+      "name": "algos / algo 源码",
+      "description": "作用: 定义使用哪种 HMAC 签名算法（VM 加载的 js 代码） | 来源: 远端返回，缓存于 localStorage `WQ_dy_algo_s_f06cc_4.3`"
+    },
+    {
+      "name": "expandParams 返回体",
+      "description": "作用: 2022 版：该接口同时返回环境检测参数集合 | 来源: 同一 request_algo 请求的响应"
+    }
+  ]
+}

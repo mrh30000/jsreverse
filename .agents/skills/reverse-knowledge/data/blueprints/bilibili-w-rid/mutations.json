@@ -1,0 +1,29 @@
+{
+  "mutations": [
+    {
+      "name": "参数必须排序",
+      "rule": "Object.keys(s).sort() 之后再拼接",
+      "symptom_if_wrong": "不排序 → w_rid 与浏览器不一致"
+    },
+    {
+      "name": "值先过滤再 urlencode",
+      "rule": "h.replace(/[!'()*]/g,'') 之后才 encodeURIComponent(h)",
+      "symptom_if_wrong": "含 ! ' ( ) * 的参数值会导致 w_rid 不同"
+    },
+    {
+      "name": "wts 先入对象再排序",
+      "rule": "s = Object.assign({}, e, {wts: u})，wts 参与排序与拼接",
+      "symptom_if_wrong": "漏掉 wts 或后加 → 不一致"
+    },
+    {
+      "name": "空值不入串",
+      "rule": "仅 null != h 才 push",
+      "symptom_if_wrong": "把 null 也拼进去会错"
+    },
+    {
+      "name": "imgKey/subKey 是否固定",
+      "rule": "文章实测 o/i 为固定值；代码里其实来自 localStorage 的 ct 键",
+      "symptom_if_wrong": "换站点/换会话后 Key 可能变，需重新取"
+    }
+  ]
+}

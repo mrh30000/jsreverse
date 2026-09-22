@@ -1,0 +1,133 @@
+{
+  "id": "csdn-x-ca-signature",
+  "title": "CSDN bizapi x-ca-signature 签名（HMAC-SHA256 + Base64，阿里云 API 网关规范）",
+  "category": "platform-signature",
+  "status": "unknown",
+  "version": "1.0.0",
+  "summary": "CSDN bizapi 接口签名：HMAC-SHA256(密钥, \"GET\\n*/*\\n\\n\\n\\nx-ca-key:<appKey>\\nx-ca-nonce:<uuid>\\n<path?query>\") 后 Base64。",
+  "aliases": [
+    "x-ca-signature",
+    "X-Ca-Signature",
+    "x-ca-key",
+    "X-Ca-Key",
+    "x-ca-nonce",
+    "X-Ca-Nonce",
+    "x-ca-signature-headers",
+    "X-Ca-Signature-Headers"
+  ],
+  "keywords": [
+    "CSDN",
+    "csdn",
+    "bizapi.csdn.net",
+    "x-ca-signature",
+    "HMAC-SHA256",
+    "appSecret",
+    "阿里云API网关"
+  ],
+  "algorithm": {
+    "family": "hmac",
+    "detail": "HMAC-SHA256，输出 Base64。待签名串按阿里云 API 网关规范逐行拼接：HTTPMethod + \\n + Accept + \\n + Content-MD5 + \\n + Content-Type + \\n + Date + \\n + Headers + PathAndQuery；其中 Headers 为参与签名的头按 x-ca-key、x-ca-nonce 顺序各占一行、行尾带 \\n。本文示例串共 7 个 \\n：\"GET\\n*/*\\n\\n\\n\\nx-ca-key:203803574\\nx-ca-nonce:{uuid}\\n{path?query}\"。",
+    "key_material": "9znpamsyl2c7cdrr9sas0le9vbc3r6ba（32 字符 ASCII；文章变量名 ekey，出自前端 JS 的 appSecret）",
+    "output_encoding": "base64",
+    "output_length": null
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-1291943-关于CSDN获取博客内容接口的x-ca-signature签名算法研究.md",
+      "line": 17,
+      "quote": "简单调试得到 `https://bizapi.csdn.net/blog-console-api/v3/editor/getArticle?id=109204774&model_type=`",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1291943-关于CSDN获取博客内容接口的x-ca-signature签名算法研究.md",
+      "line": 24,
+      "quote": "简单调试**js**发现`x-ca-key` 和 `x-ca-signature-headers`是一个常量",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1291943-关于CSDN获取博客内容接口的x-ca-signature签名算法研究.md",
+      "line": 56,
+      "quote": "ekey = \"9znpamsyl2c7cdrr9sas0le9vbc3r6ba\".encode()",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1291943-关于CSDN获取博客内容接口的x-ca-signature签名算法研究.md",
+      "line": 57,
+      "quote": "to_enc = f\"GET\\n*/*\\n\\n\\n\\nx-ca-key:203803574\\nx-ca-nonce:{uuid}\\n{s.path+'?'+s.query[:-1]}\".encode()",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1291943-关于CSDN获取博客内容接口的x-ca-signature签名算法研究.md",
+      "line": 58,
+      "quote": "sign = b64encode(hmac.new(ekey, to_enc, digestmod=hashlib.sha256).digest()).decode()",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1291943-关于CSDN获取博客内容接口的x-ca-signature签名算法研究.md",
+      "line": 68,
+      "quote": "headers['x-ca-signature-headers'] = \"x-ca-key,x-ca-nonce\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1291943-关于CSDN获取博客内容接口的x-ca-signature签名算法研究.md",
+      "line": 77,
+      "quote": "而他们分别对应的是请求头中的`x-ca-nonce`，`x-ca-signature` 字段",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1291943-关于CSDN获取博客内容接口的x-ca-signature签名算法研究.md",
+      "line": 77,
+      "quote": "另外请求这个接口的时候需要带有 登陆后的**cookie**",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1511380-CSDN爬虫signature加密算法破解.md",
+      "line": 15,
+      "quote": "https://bizapi.csdn.net/community-cloud/v1/homepage/community/by/tag?deviceType=PC&tagId=",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1511380-CSDN爬虫signature加密算法破解.md",
+      "line": 20,
+      "quote": "x-ca-error-message: Header `X-Ca-Key` is Required",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1511380-CSDN爬虫signature加密算法破解.md",
+      "line": 30,
+      "quote": "观察代码得知将此字符串通过hmac-sha256算法+Base64编码后就能得到签名。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1511380-CSDN爬虫signature加密算法破解.md",
+      "line": 40,
+      "quote": "appSecret = re.search('''appSecret:\"([a-zA-Z0-9]*)\"''', index_js).group(1)",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1511380-CSDN爬虫signature加密算法破解.md",
+      "line": 41,
+      "quote": "key = re.search('''e.headers\\[\"X-Ca-Key\"\\]=([0-9]*),''', index_js).group(1)",
+      "verified_in_article": true
+    }
+  ],
+  "entry": {
+    "location": "前端 JS（chunk/tpl/ccloud-bbs/index.<hash>.js 内以常量 appSecret 与 e.headers[\"X-Ca-Key\"]=… 形式存在；具体签名函数名文章未给）",
+    "trigger": "每次请求前（x-ca-nonce 每次请求都需要重新生成）",
+    "transport": "请求头 x-ca-key / x-ca-nonce / x-ca-signature / x-ca-signature-headers"
+  },
+  "gaps": [
+    "1511380 未给出待签名串原文（只有截图），无法逐字核对它与 1291943 的串是否完全一致（尤其空行数量）",
+    "服务端是否对 header 名大小写敏感未知",
+    "x-ca-nonce 是否必须严格符合 UUID v4 格式：1291943 明确说「主要的格式正确，而不是特别严格的，我没有严格的按照js的算法去写」",
+    "文章未给任何 x-ca-signature 示例值，无法验证输出长度/编码",
+    "两篇样本为 2020-10 与 2021-09，接口是否已改版未知（1511380 另给出 2021 年的新接口 community-cloud/v1/…）"
+  ],
+  "self_check": [
+    "待签名串结构核算：\"GET\\n*/*\\n\\n\\n\\nx-ca-key:203803574\\nx-ca-nonce:<uuid>\\n<path?query>\" 共 7 个 \\n，第 1 个分 Method 与 Accept，第 2~4 个产生 3 个空行，第 5 个结束 x-ca-key 行，第 6 个结束 x-ca-nonce 行，第 7 个结束 PathAndQuery → 与阿里云网关规范（Method/Accept/Content-MD5/Content-Type/Date/Headers/PathAndQuery）一致",
+    "密钥长度核算：9znpamsyl2c7cdrr9sas0le9vbc3r6ba = 32 字符（符合 appSecret 32 位特征）",
+    "AppKey 长度核算：203803574 = 9 位纯数字，与 1511380 的正则 e.headers[\"X-Ca-Key\"]=([0-9]*,) 的限制匹配",
+    "示例 URL 核算：query = \"id=109204774&model_type=\"，query[:-1] = \"id=109204774&model_type\"，因此原文待签名串末尾没有 '='",
+    "HMAC-SHA256 + Base64 输出长度应为 44 字符（32 字节 → 44 base64），文章未给示例值，无法实测比对"
+  ]
+}

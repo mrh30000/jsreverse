@@ -1,0 +1,8 @@
+{
+  "parts": [
+    {
+      "name": "a-bogus",
+      "description": "作用: 最终签名，放进 feed 请求载荷 | 来源: bdms 文件内 s 方法 → U 方法 → return 值"
+    }
+  ]
+}

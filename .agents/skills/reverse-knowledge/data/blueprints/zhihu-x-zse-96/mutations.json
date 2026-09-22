@@ -1,0 +1,29 @@
+{
+  "mutations": [
+    {
+      "name": "末尾补 \\u0000",
+      "rule": "md5 hex 字符串末尾补一个 \\u0000 再参与分组",
+      "symptom_if_wrong": "分组错位/长度非 33，签名全错"
+    },
+    {
+      "name": "从末尾倒序分组",
+      "rule": "第 1 组 a=ord(md5_str[32]), b=ord(md5_str[31]), c=ord(md5_str[30])，其后每组下标递减 3",
+      "symptom_if_wrong": "顺序搞反结果不同"
+    },
+    {
+      "name": "4 种位运算含 XOR 42",
+      "rule": "m1 异或 a^42；m2 异或 b^42；m3 异或 c^42；m4 三者都不异或",
+      "symptom_if_wrong": "用错变体则 m 错、签名错"
+    },
+    {
+      "name": "source 拼接",
+      "rule": "101_3_2.0 + 路径query + 疑似 cookie(|时间戳)，原文用 + 与 | 呈现",
+      "symptom_if_wrong": "少一段或多一个字符即全错"
+    },
+    {
+      "name": "另配 x-zst-81",
+      "rule": "cookie 与其他参数可短时间固定，但有时会出现 x-zst-81 参数",
+      "symptom_if_wrong": "只补 x-zse-96 时偶发仍失败"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "mutations": [
+    {
+      "name": "自定义 Base64 字母表搞错",
+      "rule": "必须用 64 字符自定义表，不能用标准 A-Za-z0-9+/",
+      "symptom_if_wrong": "文章1：静态分析给出的字母表是错的；'通过 200 次调用，收集加密后的字节与输出字符的映射关系，统计推导出完整的 65 字符字母表' 才拿到正确结果"
+    },
+    {
+      "name": "XXTEA 密钥搞错",
+      "rule": "key 是 \"e6483ca2a1eed5e3\"，不是混淆代码里相邻的 \"exnsonixyangluo\"",
+      "symptom_if_wrong": "文章1：'AI 在静态分析 VMP 时，把一个无关的 ASCII 字符串 \"exnsonixyangluo\" 当成了密钥'，端到端结果不一致"
+    },
+    {
+      "name": "payload 明文拼接",
+      "rule": "u = url + JSON.stringify(body)；两个 MD5 分别对 u 和纯 url",
+      "symptom_if_wrong": "文章2 强调 x-s 与 url+body 强绑定，body 变了签名就变"
+    },
+    {
+      "name": "x-t 时效",
+      "rule": "x-t 必须在签名生成后立即生成，避免过期",
+      "symptom_if_wrong": "文章2 注释：'必须在签名生成后立即生成，避免过期'"
+    },
+    {
+      "name": "环境指纹（补环境方案）",
+      "rule": "VMP 需 navigator.userAgent='...Chrome/120.0.0.0...'、appVersion、platform='Win32'、language='zh-CN'、languages=['zh-CN','zh','en']、cookieEnabled、webdriver=false、screen 1920x1080、canvas toDataURL、performance.now 等",
+      "symptom_if_wrong": "缺环境则 VMP 报错或输出与浏览器不一致"
+    }
+  ]
+}

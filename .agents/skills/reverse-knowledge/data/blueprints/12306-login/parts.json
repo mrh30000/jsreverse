@@ -1,0 +1,44 @@
+{
+  "parts": [
+    {
+      "name": "cookie_url",
+      "description": "作用: 第 1 步：获取 cookie | 来源: 固定 URL | 示例: https://kyfw.12306.cn/otn/login/conf"
+    },
+    {
+      "name": "captcha_url",
+      "description": "作用: 第 2 步：下载验证码（base64 图片） | 来源: query 含 login_site=E、module=login、rand=sjrand、时间戳、callback、_ | 示例: https://kyfw.12306.cn/passport/captcha/captcha-image64?login_site=E&module=login&rand=sjrand&1541686714134&callback=jQuery19109992892609908492_1541686371355&_=1541686371356"
+    },
+    {
+      "name": "image",
+      "description": "作用: 验证码接口返回的 base64 图片字段 | 来源: re.findall(r'\"image\":\"(.*?)\"', data)[0] 后 b64decode"
+    },
+    {
+      "name": "answer",
+      "description": "作用: captcha-check 的 query 参数，验证码答案坐标 | 来源: 按序号经 get_point 映射成坐标串，序号逗号分隔 | 示例: （如序号 1,5 → 37,46,37,116）"
+    },
+    {
+      "name": "rand",
+      "description": "作用: 验证码相关 query | 来源: 固定 | 示例: sjrand"
+    },
+    {
+      "name": "login_site",
+      "description": "作用: 验证码相关 query | 来源: 固定 | 示例: E"
+    },
+    {
+      "name": "result_code",
+      "description": "作用: 校验结果 | 来源: 响应 JSON | 示例: 4 = 验证码校验成功；0 = 用户名密码校验成功 / 获取 token 成功"
+    },
+    {
+      "name": "username / password",
+      "description": "作用: 登录表单 | 来源: 账号密码 | 示例: 12306账号"
+    },
+    {
+      "name": "appid",
+      "description": "作用: 登录与 uamtk 表单的固定字段 | 来源: 固定 | 示例: otn"
+    },
+    {
+      "name": "tk",
+      "description": "作用: uamauthclient 表单字段 | 来源: uamtk 返回的 newapptk"
+    }
+  ]
+}

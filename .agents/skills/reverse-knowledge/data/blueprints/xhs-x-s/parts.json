@@ -1,0 +1,48 @@
+{
+  "parts": [
+    {
+      "name": "x-s",
+      "description": "作用: 请求签名头 | 来源: 'XYS_' + b64Encode(encodeUtf8(JSON.stringify(P))) | 示例: XYS_2UQhPsHCH0c1PUhMHjIj2erjwjQhyoPTqBPT49pjHjIj2eHjwjQgynEDJ74A..."
+    },
+    {
+      "name": "x-t",
+      "description": "作用: 毫秒级时间戳头 | 来源: str(int(time.time() * 1000))（Python 侧） | 示例: 1776697339937"
+    },
+    {
+      "name": "x-s-common",
+      "description": "作用: 公共参数头 | 来源: 文章未给出生成代码，只给了示例值；实测为同一自定义码表 Base64 | 示例: 2UQAPsHC+aIjqArjwjHjNsQhPsHCH0rjNsQhPaHCH0c1PUhMHjIj2eHjwjQgynEDJ74A..."
+    },
+    {
+      "name": "P.x0",
+      "description": "作用: payload 版本号 | 来源: 固定字符串 | 示例: 4.3.5"
+    },
+    {
+      "name": "P.x1",
+      "description": "作用: 端标识 | 来源: 固定字符串 | 示例: xhs-pc-web"
+    },
+    {
+      "name": "P.x2",
+      "description": "作用: 平台 | 来源: 固定字符串 | 示例: Windows"
+    },
+    {
+      "name": "P.x3",
+      "description": "作用: 核心签名（mnsv2 返回值） | 来源: window.mnsv2(u, m, w) | 示例: mns0301_gRaKqcgJb/QcUUzNEp0idC7x+racR85VC7jxYGGI2jnM7z4dsiOURGFrmUXQypUdBXCGmAZt1dS3tYlX4uocRicjmh4ZUecbVzzm4jvVz/4IT71k+1gA0JHKXSbdL8Wo1fMCnpsRzRJPUaT3lJxKSndVZlciE0JRIk0OHNRRTMrZ5D8d8B8gceko1i8lgtB/"
+    },
+    {
+      "name": "P.x4",
+      "description": "作用: 类型标识 | 来源: 固定字符串 | 示例: object"
+    },
+    {
+      "name": "u（mnsv2 第1参）",
+      "description": "作用: 参与 MD5 的明文 | 来源: u = e; u += JSON.stringify(a)  即 url + body 原文 | 示例: /api/sns/web/v1/homefeed{\"cursor_score\":\"\",\"num\":31,...}"
+    },
+    {
+      "name": "m（mnsv2 第2参，文章1称 md5_1）",
+      "description": "作用: MD5 摘要 | 来源: CryptoJS.MD5([u].join('')).toString() = MD5(u)"
+    },
+    {
+      "name": "w（mnsv2 第3参，文章1称 md5_2）",
+      "description": "作用: MD5 摘要 | 来源: CryptoJS.MD5(e).toString() = MD5(url)"
+    }
+  ]
+}

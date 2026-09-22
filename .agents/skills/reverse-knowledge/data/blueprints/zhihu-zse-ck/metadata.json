@@ -1,0 +1,171 @@
+{
+  "id": "zhihu-zse-ck",
+  "title": "知乎 __zse_ck Cookie（jsvmp + wasm 多层套娃，魔改 SM4 + 魔改 base64）",
+  "category": "platform-signature",
+  "status": "unknown",
+  "version": "1.0.0",
+  "summary": "知乎 __zse_ck cookie：JS 层 ob+jsvmp 加载 wasm，wasm 内再套一层 VM 加密环境指纹，最终经魔改 SM4 + 魔改 base64 生成 003_ 前缀 ck。",
+  "aliases": [
+    "__zse_ck",
+    "_zse_ck",
+    "zse_ck"
+  ],
+  "keywords": [
+    "知乎",
+    "zhihu",
+    "__zse_ck",
+    "zse_ck",
+    "jsvmp",
+    "wasm",
+    "sm4",
+    "魔改base64",
+    "环境检测",
+    "crc32"
+  ],
+  "algorithm": {
+    "family": "symmetric",
+    "detail": "框架为 SM4 但被不同程度魔改，再经一个魔改过的 base64 编码形成 ck。外层 ob 混淆 + jsvmp → eval 胶水代码加载内嵌(base64) wasm → wasm 内再跑一个自实现 VM(jsvmp 结构) → 输出加密环境信息 → 解密/校验/拼接明文 → sub_988 加密",
+    "key_material": null,
+    "output_encoding": "魔改 base64（原文：'经过一个魔改过得base64编码'）",
+    "output_length": "null（原文未给；两个默认假 ck 实测均为 112 字符，见 self_check）"
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-1968832-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（左篇）.md",
+      "line": 32,
+      "quote": "jsvmp部分的代码与上一篇的\\_\\_zse\\_ck完全一样，但是字节码部分却很奇怪",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1968832-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（左篇）.md",
+      "line": 40,
+      "quote": "搜索【>> 0x13】下断点，此时就可以查看this的数据",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1968832-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（左篇）.md",
+      "line": 44,
+      "quote": "字符串数组下标13的字符串长度居然高达7094",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1968832-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（左篇）.md",
+      "line": 54,
+      "quote": "__g[\"ck\"] = \"003_bdxEeEnJYUXwWmFo0zxaCPNgpkh1+HL9yQr4ya6AXXDDOOQXoausGBAnGBSUqjXGqpIyQJjZ7C2Su",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1968832-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（左篇）.md",
+      "line": 79,
+      "quote": "__g[\"ck\"] = \"003_bse0VGIjj3tceHDd8dBC73LrG7T3+wPFX/XU+QZ69kG8R9/JoHdLt9xKdmxP6LEBeW4N9MZWmS36rLXN81hQSdiWDIqzuoVj9RJHBJU8Qdoi\";",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1968832-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（左篇）.md",
+      "line": 85,
+      "quote": "前面是一些环境检测，检测不通过的话就会设置一个默认的ck值，但是这个值拿去请求的话，是会返回乱码的内容。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1968832-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（左篇）.md",
+      "line": 95,
+      "quote": "二进制wasm文件直接用base64编码写在了源代码中",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1968832-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（左篇）.md",
+      "line": 109,
+      "quote": "但是此时无论是搜索【encrypt】或者是【sm4】都没有结果",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1970885-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（右篇）.md",
+      "line": 16,
+      "quote": "胶水代码会被绑定到window.Go上面，那么就可以在胶水代码执行完成之后，wasm加载之前下断点",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1970885-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（右篇）.md",
+      "line": 26,
+      "quote": "往下拉在【syscall/js.valueGet】函数内下一个断点",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1970885-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（右篇）.md",
+      "line": 30,
+      "quote": "多次调用后，会发现堆栈中不断出现【(\\*main.VM)】前缀的函数",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1970885-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（右篇）.md",
+      "line": 44,
+      "quote": "出现了一个base64解码的函数，地址是0x11428，长度是15160",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1970885-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（右篇）.md",
+      "line": 54,
+      "quote": "最终可以得到一个2329长度的大数组，以及一个90长度的字符串数组",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1970885-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（右篇）.md",
+      "line": 58,
+      "quote": "【runtime.run$1$gowrapper】函数就是主循环函数，【(\\*main.VM)】前缀的函数就是子函数组",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1970885-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（右篇）.md",
+      "line": 72,
+      "quote": "大数组长度达到了8000+，而且里面所有的代码均为环境检测",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1970885-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（右篇）.md",
+      "line": 78,
+      "quote": "最后将加密后的环境信息绑定到\\_\\_g.r进行返回",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1970885-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（右篇）.md",
+      "line": 82,
+      "quote": "内容主要分为6部分，并使用\"\\xE2\\x80\\x8D\"进行分割",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1970885-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（右篇）.md",
+      "line": 88,
+      "quote": "最后再取ua的crc32与前面两项拼接，作为最终的明文",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1970885-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（右篇）.md",
+      "line": 94,
+      "quote": "sub\\_988就是最终的加密函数，与之前一样，框架上也是使用的sm4，但是一样是经过了不同程度的魔改，然后经过一个魔改过得base64编码，形成了最终的ck",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1970885-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（右篇）.md",
+      "line": 104,
+      "quote": "中文没有乱码完美",
+      "verified_in_article": true
+    }
+  ],
+  "entry": {
+    "location": "最外层混淆 js → eval 胶水代码 → window.Go/run 初始化 → wasm；最终加密函数 sub_988；主循环 runtime.run$1$gowrapper，子函数组 (*main.VM)",
+    "trigger": "无痕模式访问知乎页面（如提问题主页）时返回验证中间页，加载该 js 生成 ck",
+    "transport": "cookie，名 __zse_ck（标题逐字；正文出现的是 __g[\"ck\"]）"
+  },
+  "gaps": [
+    "SM4 的密钥/IV/轮数等 key_material 原文未给（且为魔改，标准密钥不可套）",
+    "魔改 base64 的字母表原文未给",
+    "明文 6 段的具体内容与顺序原文未给（仅说 6 部分、\\xE2\\x80\\x8D 分割）",
+    "如何从 wasm 提取 0x11428/长度 15160 那一坨字节码、反汇编器细节，原文只在图里",
+    "jsvmp 中『>> 19』与『>> 0x13』的具体分组含义原文未展开",
+    "左右篇文件仅约 5KB，绝大多数关键信息在 30+ 张 52pojie 附件截图里，未能进入文本抽取"
+  ],
+  "self_check": [
+    "左篇第 54 行默认 ck 实测长度 112（含 003_ 前缀），第 79 行默认 ck 实测长度 112（含 003_ 前缀）；两者去掉 4 字符前缀后主体均 108、且可被 4 整除，但第 79 行无 '=' 填充、且含 '+' '/' → 与『魔改 base64』说法相容",
+    "\\xE2\\x80\\x8D 三字节按 UTF-8 解码 = U+200D ZERO WIDTH JOINER（不可见分隔符）"
+  ]
+}

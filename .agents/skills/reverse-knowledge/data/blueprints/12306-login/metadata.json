@@ -1,0 +1,108 @@
+{
+  "id": "12306-login",
+  "title": "12306 登录流程协议（conf / captcha-image64 / captcha-check / login / uamtk / uamauthclient）",
+  "category": "platform-protocol",
+  "status": "historical",
+  "version": "1.0.0",
+  "summary": "12306 登录无签名参数，流程为：conf 取 cookie → captcha-image64 取图 → captcha-check 校验 → web/login 校验账号 → auth/uamtk 取 newapptk → uamauthclient 校验 token。",
+  "aliases": [
+    "uamtk",
+    "newapptk",
+    "captcha-image64",
+    "captcha-check",
+    "uamauthclient",
+    "login_site"
+  ],
+  "keywords": [
+    "12306",
+    "kyfw.12306.cn",
+    "登录",
+    "验证码",
+    "uamtk",
+    "appid otn"
+  ],
+  "algorithm": {
+    "family": "custom",
+    "detail": "无签名/加密算法，仅为 6 步流程编排，依赖 session cookie 与 JSON 里的 result_code 分支。验证码答案为坐标字符串（不是原图坐标，而是固定点位映射）。",
+    "key_material": "验证码序号→坐标映射表：{'1':'37,46','2':'110,46','3':'181,46','4':'253,46','5':'37,116','6':'110,116','7':'181,116','8':'253,116'}",
+    "output_encoding": "none",
+    "output_length": null
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-819754-【原创】Python爬取12306登录.md",
+      "line": 49,
+      "quote": "cookie_url = 'https://kyfw.12306.cn/otn/login/conf'",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-819754-【原创】Python爬取12306登录.md",
+      "line": 52,
+      "quote": "captcha_url = 'https://kyfw.12306.cn/passport/captcha/captcha-image64?login_site=E&module=login&rand=sjrand&1541686714134&callback=jQuery19109992892609908492_1541686371355&_=1541686371356'",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-819754-【原创】Python爬取12306登录.md",
+      "line": 55,
+      "quote": "img_base64 = re.findall(r'\"image\":\"(.*?)\"', data)[0]",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-819754-【原创】Python爬取12306登录.md",
+      "line": 65,
+      "quote": "response = session.get(check_captcha, params={'answer': get_point(input('请输入正确的序号>>>:'))} )",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-819754-【原创】Python爬取12306登录.md",
+      "line": 68,
+      "quote": "if code == '4':",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-819754-【原创】Python爬取12306登录.md",
+      "line": 71,
+      "quote": "login_url = 'https://kyfw.12306.cn/passport/web/login'",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-819754-【原创】Python爬取12306登录.md",
+      "line": 75,
+      "quote": "'appid': 'otn'",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-819754-【原创】Python爬取12306登录.md",
+      "line": 82,
+      "quote": "uamtk_url = 'https://kyfw.12306.cn/passport/web/auth/uamtk'",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-819754-【原创】Python爬取12306登录.md",
+      "line": 88,
+      "quote": "check_token_url = 'https://kyfw.12306.cn/otn/uamauthclient'",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-819754-【原创】Python爬取12306登录.md",
+      "line": 89,
+      "quote": "response = session.post(check_token_url, data={'tk': res['newapptk']})",
+      "verified_in_article": true
+    }
+  ],
+  "entry": {
+    "location": "无 JS 加密（纯 HTTP 流程；实现方式是 requests.Session 自动管 cookie）",
+    "trigger": "登录时顺序调用",
+    "transport": "cookie（session 自动携带）；GET query：login_site=E&module=login&rand=sjrand；POST form：appid=otn / username / password / tk"
+  },
+  "gaps": [
+    "文章未说明 captcha-image64 的 callback/时间戳/_ 参数是否必须（示例里写死）",
+    "未说明验证码是否还有滑块/交验失败重试逻辑",
+    "未涉及登录后的业务接口（如查票）",
+    "2018-11 样本，接口可能已改版；文章未声明仍有效"
+  ],
+  "self_check": [
+    "验证码点位核算：map 共 8 项，x ∈ {37,110,181,253}，y ∈ {46,116}；1~4 为第一行 y=46，5~8 为第二行 y=116，每列间隔 71~73 像素，排布合理",
+    "流程分支核算：共 3 处 result_code 判定（captcha 的 '4'、login 的 0、uamtk 的 0），文章代码逐层 if 嵌套，与 6 步流程一致"
+  ]
+}

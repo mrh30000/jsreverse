@@ -1,0 +1,64 @@
+{
+  "parts": [
+    {
+      "name": "isg",
+      "description": "作用: cookie 验签值 | 来源: S.F()/getIsg() 生成，M.pa(l) 自定义 Base64"
+    },
+    {
+      "name": "cna",
+      "description": "作用: cookie 值 | 来源: 请求 https://log.mmstat.com/eg.js，正则提取 goldlog.Etag"
+    },
+    {
+      "name": "a[0]",
+      "description": "作用: 计数器 o | 来源: 每次带 n 调用自增"
+    },
+    {
+      "name": "a[1]",
+      "description": "作用: 随机数 | 来源: pppp.a() = (4294967295 * Math.random()) >>> 0"
+    },
+    {
+      "name": "a[2]",
+      "description": "作用: 当前时间戳 | 来源: t() = (pppp.d() / 1e3) >>> 0  秒级"
+    },
+    {
+      "name": "a[3]",
+      "description": "作用: 首次时间戳（仅 a[4]==0 时设置） | 来源: t()"
+    },
+    {
+      "name": "a[4]",
+      "description": "作用: 会话内固定的随机数 | 来源: 0==a[4] 时 a[4]=pppp.a()"
+    },
+    {
+      "name": "a[5]",
+      "description": "作用: A._() | 来源: 遍历 P 对象返回首个命中键的数字（初始 P={}，返回 0）"
+    },
+    {
+      "name": "a[6]",
+      "description": "作用: 平台索引 | 来源: L.ra()：按 navigator.platform 匹配 11 条正则返回 索引+1，未命中 0"
+    },
+    {
+      "name": "a[7]",
+      "description": "作用: 常量 0 | 来源: a[7] = 0 | 示例: 0"
+    },
+    {
+      "name": "a[8]",
+      "description": "作用: UA 哈希 | 来源: pppp.c(user_agent)（32 位字符串哈希）"
+    },
+    {
+      "name": "a[9..14]",
+      "description": "作用: 行为/环境指纹 | 来源: j.G()/j.H()/j.I()/j.J() 与 j.N() 返回的 {K,L,M}"
+    },
+    {
+      "name": "a[15]",
+      "description": "作用: 数组 s 的哈希 | 来源: pppp.h(s)，s = [r, j.Q(), n, c, i, true, f, u]"
+    },
+    {
+      "name": "a[16]",
+      "description": "作用: A.$() | 来源: 对 M 中 6 个检查项求值后 pppp.h(F)"
+    },
+    {
+      "name": "a[17] / a[18]",
+      "description": "作用: 编码相关标志 | 来源: j.Y() / j.W()"
+    }
+  ]
+}

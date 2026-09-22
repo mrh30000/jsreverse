@@ -1,0 +1,39 @@
+{
+  "mutations": [
+    {
+      "name": "魔改 base64 映射表",
+      "rule": "不是标准 ABC...+/ 表，而是 Dkdpgh2ZmsQB80/MfvV36XI1R45-WUAlEixNLwoqYTOPuzKFjJnry79HbGcaStCe（64 字符，用 - 和 / 代替 + 与 /）",
+      "symptom_if_wrong": "用标准 base64 解码 a_bogus 会得到乱码/长度对不上；作者用自定义表 encode 后'与结果一致'"
+    },
+    {
+      "name": "魔改 RC4（流密码长度不等）",
+      "rule": "256 轮初始化 + 结构化 swap，但输入与输出长度不相同（非标准 RC4 的等长特性）",
+      "symptom_if_wrong": "按标准 RC4 等长假设去核对会'奇怪，长度并不相同，可能是哪里被魔改了'（2092806:342 原文）"
+    },
+    {
+      "name": "尾部盐值 dhzx",
+      "rule": "载荷内容（URI）末尾必须拼上 4 字符 dhzx 再进 SM3；有无 POST 的处理见 1928860 旧版（只加 cus / post 末尾加 cus）",
+      "symptom_if_wrong": "作者提醒'明明我的操作一样，怎么出来的结果不一样'——因为漏了尾部定值字符"
+    },
+    {
+      "name": "时间戳不可返回定值",
+      "rule": "vmp 内可能多次取时间戳，hook 时应让每次调用 +1 或 +3（作者用 base=1771655150000 递增）",
+      "symptom_if_wrong": "时间戳取定值会导致与网站不一致；2088330 也把'时间戳的差值'列为坑"
+    },
+    {
+      "name": "随机数注入",
+      "rule": "为便于复现可把 Math.random 固定为 0.05（Math.random=function(){return 0.05;}）",
+      "symptom_if_wrong": "不固定随机数则每次结果不同，无法对拍"
+    },
+    {
+      "name": "UA 参与校验",
+      "rule": "请求 UA 改变则生成的加密参数失效",
+      "symptom_if_wrong": "换 UA 后服务端拒绝/签名失效"
+    },
+    {
+      "name": "环境数组来源易错",
+      "rule": "arr_47 来自屏幕参数 innerWidth/innerHeight/outerWidth/outerHeight/availWidth/availHeight/sizeWidth/sizeHeight/platform；U79-80 由 screen_platform 数组长度算出",
+      "symptom_if_wrong": "补环境时屏幕字段缺失会得到错误的 arr_47 → 最终 a_bogus 不匹配"
+    }
+  ]
+}

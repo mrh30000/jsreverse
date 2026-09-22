@@ -1,0 +1,9 @@
+{
+  "mutations": [
+    {
+      "name": "其余三个参数可直接构造",
+      "rule": "请求共四个字段，除 crawlerInfo 外的三个「可以很简单就能完成」",
+      "symptom_if_wrong": "文章未说明"
+    }
+  ]
+}

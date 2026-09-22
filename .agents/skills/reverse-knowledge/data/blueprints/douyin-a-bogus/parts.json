@@ -1,0 +1,48 @@
+{
+  "parts": [
+    {
+      "name": "a_bogus",
+      "description": "作用: 最终签名，放进 URL query | 来源: 魔改 base64( arr_4 + 魔改RC4( arr_8 + func(arr_100) ) ) | 示例: mfsVDFtyxxRVPdKGmOju7cHUWtglNBWyerTOWF5THPTka10bx8NT8OGurowL4DjiruBwkqV7TVFMYdnc84UsZKrkwmpfuKhR7T/nnW0ohqw2GM08gNfzSwgzuwMzU5Xil5cSilRRUsMJIdo5VNAuAp3aC5zLQQy2SqZVp/TybDC0ps6TIo/GtrJWOhg=（2104414:8266，188 字符）"
+    },
+    {
+      "name": "dhzx",
+      "description": "作用: 固定盐值，拼在载荷内容（URI）尾部后再进 SM3 | 来源: 写死的字符串 | 示例: dhzx（2092806:989 载荷尾部 ...RLLkdc0tA%3Ddhzx；2088330:83 SM3(载荷内容+字符串 dhzx)）"
+    },
+    {
+      "name": "arr_50",
+      "description": "作用: 50 个元素的数组，从全局数组 U 按固定乱序索引读取 | 来源: 不涉及计算，只从全局栈 U 按索引取值；含固定值与时间戳/appid/屏幕相关值 | 示例: U_index_unsorted = [34,44,56,61,73,29,70,45,35,49,38,66,51,68,28,48,64,47,30,71,26,55,31,69,59,40,62,63,27,72,41,74,57,52,42,39,33,67,53,43,65,46,36,24,60,32,79,80,84,85]"
+    },
+    {
+      "name": "arr_47",
+      "description": "作用: 屏幕/平台环境数组 | 来源: [\"innerWidth\",\"innerHeight\",\"outerWidth\",\"outerHeight\",\"availWidth\",\"availHeight\",\"sizeWidth\",\"sizeHeight\",\"platform\"] 逐项取值 | 示例: [\"innerWidth\",\"innerHeight\",\"outerWidth\",\"outerHeight\",\"availWidth\",\"availHeight\",\"sizeWidth\",\"sizeHeight\",\"platform\"]"
+    },
+    {
+      "name": "arr_2",
+      "description": "作用: 时间戳数组 | 来源: Date.now / Date.prototype.getTime（毫秒） | 示例: hook 时用 base=1771655150000，实际日志中时间戳 1771662511336 / 1771662511330（13 位，毫秒）"
+    },
+    {
+      "name": "arr_1",
+      "description": "作用: 1 个元素的数组（拼接时创建长度 1 的数组） | 来源: 与 arr_8 关联，可能含随机数"
+    },
+    {
+      "name": "arr_8",
+      "description": "作用: 8 个元素的数组，拼在 arr_136 之前 | 来源: 涉及随机数，文章未逐字给出"
+    },
+    {
+      "name": "arr_4 / base64_prefix",
+      "description": "作用: 魔改 base64 之前前置拼接的 4 位数组 | 来源: Math.random() 派生（a=rand*0xFFFF, b=rand*40），常量 3 与 82 | 示例: gen_arr_4_base64_prefix(): res=[(a&0xAA)|(3&0x55),(3&0xAA)|(a&0x55),(b&0xAA)|(82&0x55),(82&0xAA)|(b&0x55)]"
+    },
+    {
+      "name": "UA (userAgent)",
+      "description": "作用: 环境校验项，参与加密；改 UA 会导致签名失效 | 来源: navigator.userAgent | 示例: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+    },
+    {
+      "name": "msToken / uifid / webid",
+      "description": "作用: 载荷(query)自带的业务参数，一起被拼进待签名串 | 来源: cookie / 页面变量 | 示例: msToken=dXe0jnNzu431nXFqwMl1tf0TENOS39jD0PyUCG3gEYF5UeKLZj8ZF1RDkMXUAlQkZdgHWUiCjfYGRuSi6dXNrcc4Ut_8Z3wc2itPGK3L5q4G30UFaxOihBGzUsdbIyRJ6Ge2gN5EHUt2uNn0n0tZXhgYa-vhaR4RywUc_evB652IKnRLLkdc0tA%3D"
+    },
+    {
+      "name": "全局数组 U",
+      "description": "作用: jsvmp 的寄存器/栈（全局数组 E），arr_50 从它按固定索引读取 | 来源: vmp 运行期累积 | 示例: U[]=> [Array(22), {…}, 1, 0, 8, 'device_platform=webapp&...', '', 'Mozilla/5.0 ...', 6241, 6383, '1.0.1.19-fix.01', 空白, 3, {…}, 1771662511336, t, 1, 0]"
+    }
+  ]
+}

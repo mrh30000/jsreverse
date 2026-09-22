@@ -1,0 +1,48 @@
+{
+  "parts": [
+    {
+      "name": "traceparent",
+      "description": "作用: 请求头，W3C trace 格式（文章称可固定/可不要） | 来源: 随机数 E() | 示例: 00-<32位hex>-<16位hex>-01"
+    },
+    {
+      "name": "X-K-HEADER",
+      "description": "作用: 请求头，值为 secret_key_value | 来源: agreement 接口返回的 content.secretKeyValue（由 RSA 加密 32 位随机 aesKey 换取）"
+    },
+    {
+      "name": "X-SS-REQ-HEADER",
+      "description": "作用: 请求头，键值对形式的同一个 secret | 来源: json.dumps({\"secret\": secret_key_value})"
+    },
+    {
+      "name": "X-S-HEADER",
+      "description": "作用: 请求头，每次翻页都变 | 来源: jt(): SHA256 后做 AES-CBC 加密"
+    },
+    {
+      "name": "x-anit-forge-code",
+      "description": "作用: 请求头，登录后才有（文章实测不要也行） | 来源: 首页 __NEXT_DATA__ 的 props.tokenData.submitCode"
+    },
+    {
+      "name": "x-anit-forge-token",
+      "description": "作用: 请求头，登录后才有（文章实测不要也行） | 来源: 首页 __NEXT_DATA__ 的 props.tokenData.submitToken"
+    },
+    {
+      "name": "__lg_stoken__",
+      "description": "作用: cookie，点击搜索后生成 | 来源: window.gt.prototype.a()，输入是 window.location.search（302 跳转地址的 query）"
+    },
+    {
+      "name": "user_trace_token",
+      "description": "作用: cookie | 来源: a.脱敏处理.com/json 接口返回（params: lt=trackshow, t=ad, v=0, dl=站点首页, dr=站点, time=毫秒时间戳）"
+    },
+    {
+      "name": "X_HTTP_TOKEN",
+      "description": "作用: cookie | 来源: 一段 OB 混淆 JS（约 300 行）生成，需要 document.cookie 里的 user_trace_token，并用 Date.parse(new Date())/1000 的秒级时间戳"
+    },
+    {
+      "name": "aesKey",
+      "description": "作用: AES 密钥，32 位随机字符串 | 来源: 从 64 字符表 ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/= 随机取 32 位；必须经 RSA 加密后通过 agreement 接口激活才有效 | 示例: dgHY1qVeo/Z0yDaF5WV/EEXxYiwbr5Jt"
+    },
+    {
+      "name": "data",
+      "description": "作用: POST form 字段，值为请求数据的 AES 密文 | 来源: Rt(JSON.stringify(originalData), aesKey) | 示例: r4MqbduYxu3Z9sFL75xDhelMTCYPHLluKaurYgzEXlEQ1Rg......（原文即用省略号截断）"
+    }
+  ]
+}

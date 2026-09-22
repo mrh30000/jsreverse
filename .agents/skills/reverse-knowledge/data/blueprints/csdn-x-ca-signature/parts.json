@@ -1,0 +1,40 @@
+{
+  "parts": [
+    {
+      "name": "x-ca-key",
+      "description": "作用: AppKey，常量 | 来源: 前端 JS 常量（1511380 给出从 JS 正则提取的方法） | 示例: 203803574"
+    },
+    {
+      "name": "x-ca-nonce",
+      "description": "作用: 每次请求重新生成的随机串 | 来源: UUID，形如 xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx；字符取小写字母 a~f 与数字 1~9 | 示例: d0c9ba05-56ab-4938-9b6f-8844f114d279（示例来自 1625463 的 jqnonce 形态，非本文；本文未给示例）"
+    },
+    {
+      "name": "x-ca-signature",
+      "description": "作用: 最终签名 | 来源: HMAC-SHA256 + Base64"
+    },
+    {
+      "name": "x-ca-signature-headers",
+      "description": "作用: 参与签名的头名列表，常量 | 来源: 固定字符串 | 示例: x-ca-key,x-ca-nonce"
+    },
+    {
+      "name": "HTTPMethod",
+      "description": "作用: 待签名串第 1 行 | 来源: 请求方法 | 示例: GET"
+    },
+    {
+      "name": "Accept",
+      "description": "作用: 待签名串第 2 行 | 来源: 请求头 Accept | 示例: */*"
+    },
+    {
+      "name": "Content-MD5 / Content-Type / Date",
+      "description": "作用: 待签名串第 3~5 行 | 来源: 均为空（示例 URL 下三个空行） | 示例: \n\n\n（三个空行）"
+    },
+    {
+      "name": "签名头段",
+      "description": "作用: 待签名串第 6~7 行 | 来源: x-ca-key:<appKey>\\nx-ca-nonce:<uuid>\\n | 示例: x-ca-key:203803574\\nx-ca-nonce:{uuid}\\n"
+    },
+    {
+      "name": "PathAndQuery",
+      "description": "作用: 待签名串最后一段 | 来源: s.path + '?' + s.query[:-1]（query 去掉最后一个字符） | 示例: /blog-console-api/v3/editor/getArticle?id=109204774&model_type"
+    }
+  ]
+}

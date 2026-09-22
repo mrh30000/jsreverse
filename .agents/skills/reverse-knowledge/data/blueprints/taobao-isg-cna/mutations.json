@@ -1,0 +1,29 @@
+{
+  "mutations": [
+    {
+      "name": "UA 必须与浏览器一致",
+      "rule": "a[8] = hash(navigator.userAgent)，脚本里 user_agent 常量写死为 Chrome/119",
+      "symptom_if_wrong": "UA 不一致则 isg 校验不过"
+    },
+    {
+      "name": "webdriver / cdc 检测",
+      "rule": "检测 '$cdc_asdjflasutopfhvcZLmcfl_' in document || navigator.webdriver",
+      "symptom_if_wrong": "命中则被判定为自动化"
+    },
+    {
+      "name": "isg cookie 有效期",
+      "rule": "new Date(pppp.d() + 15552e6).toUTCString()（4.32 小时）",
+      "symptom_if_wrong": "过期需重新生成"
+    },
+    {
+      "name": "localStorage 复用",
+      "rule": "localStorage['isg__'] 有旧值则先复用（r || (r = pppp.j(g))）",
+      "symptom_if_wrong": "直接重新计算可能与服务端记录不一致"
+    },
+    {
+      "name": "vendor / appVersion / getBattery 指纹",
+      "rule": "脚本检查 navigator.vendor、navigator.appVersion(/python/i)、'sgAppName' in navigator、navigator.getBattery",
+      "symptom_if_wrong": "补环境缺失这些字段会导致 a[9..18] 指纹不同"
+    }
+  ]
+}

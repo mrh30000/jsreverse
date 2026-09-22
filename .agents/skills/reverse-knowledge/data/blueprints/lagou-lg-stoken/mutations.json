@@ -1,0 +1,39 @@
+{
+  "mutations": [
+    {
+      "name": "code 必须转大写",
+      "rule": "SHA256 结果要 .toUpperCase() 后再放进 originHeader/code 结构",
+      "symptom_if_wrong": "X-S-HEADER 校验失败（文章未给具体报错）"
+    },
+    {
+      "name": "SHA256 输入顺序固定",
+      "rule": "JSON.stringify({deviceType:1}) + u(接口 URL) + JSON.stringify(originalData)，顺序不能换、中间无分隔符",
+      "symptom_if_wrong": "X-S-HEADER 值不一致"
+    },
+    {
+      "name": "aesKey 必须先激活",
+      "rule": "aesKey 未经 RSA 加密并通过 agreement 接口验证的话是无效的",
+      "symptom_if_wrong": "X-K-HEADER/X-S-HEADER 无效（原文：如果这个 key 没有经过 RSA 加密并通过 agreement 接口验证的话，是无效的）"
+    },
+    {
+      "name": "__lg_stoken__ 的输入是 location.search",
+      "rule": "window.location.search 的值就是待加密参数（含前导 ?，来自 302 跳转地址的 query）",
+      "symptom_if_wrong": "文章实测：随便换一个搜索关键词、把 302 地址塞进固定 JS 里会报错，说明混淆 JS 的入参与其内容版本必须匹配"
+    },
+    {
+      "name": "混淆 JS 文件名与内容每次都变",
+      "rule": "不能直接替换该 JS 固定文件名（会导致页面一直 loading），正确做法是请求拿到当期 JS 内容再补 window.getLgStoken",
+      "symptom_if_wrong": "刷新后断点失效、替换文件名后页面一直加载并报错"
+    },
+    {
+      "name": "traceparent 的三段长度",
+      "rule": "格式固定为 00-<32位hex>-<16位hex>-01（E() 无参时 substr(0, undefined) 返回整串 32 位）",
+      "symptom_if_wrong": "文章未说明（该参数可固定）"
+    },
+    {
+      "name": "user_trace_token 的 time 是毫秒",
+      "rule": "params.time = str(int(time.time() * 1000))",
+      "symptom_if_wrong": "取不到 user_trace_token"
+    }
+  ]
+}

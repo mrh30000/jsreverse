@@ -1,0 +1,207 @@
+{
+  "id": "jd-env-params",
+  "title": "京东 h5st 环境/设备指纹段（第8段 / expandParams / AES 密文 t）",
+  "category": "platform-signature",
+  "status": "active",
+  "version": "1.0.0",
+  "summary": "h5st 的环境/指纹段：采集 navigator/window/canvas/webgl 等字段，再 AES-CBC(hex) 或自定义 base64 编码。",
+  "aliases": [
+    "第8段",
+    "h5st 第8段",
+    "expandParams",
+    "device_data",
+    "env",
+    "环境检测段"
+  ],
+  "keywords": [
+    "京东",
+    "jd",
+    "h5st",
+    "第8段",
+    "expandParams",
+    "环境检测",
+    "指纹",
+    "canvas",
+    "webglFp",
+    "sua"
+  ],
+  "algorithm": {
+    "family": "symmetric",
+    "detail": "三套版本各不相同：(1) 2022 试用页第8段与 expandParams = AES（key/iv 由 hex 解码得到），密文输出 hex；(2) 2024 js_security_v3_0.1.6 的 t = AES 加密环境串，key 为 \"&d74&yWoV.EYbWbZ\"，iv 为 [\"01\"..\"08\"].join(\"\")，密文输出 hex；(3) 2025 h5_file_v5.2.0 第8段 = CryptoJS WordArray → UTF-8 字节数组 → 填充到 3 的倍数 → 每 3 个元素一组并反转组顺序 → 自定义字符表 Base64 → 每 4 个字符反转",
+    "key_material": "iv（三处一致）= `0102030405060708`；key（2022，原文逐字）= `wm0!@w_s#ll1flo(`（同篇另一处写作 `wm0!@w-s#ll1flo(`）；key（2024）= `&d74&yWoV.EYbWbZ`；自定义 base64 字符表（5.2，逐字）= `hgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA-_9876543210zyxwvutsrqponmlkji`",
+    "output_encoding": "hex（2022 第8段/expandParams、2024 t）或 自定义字符表 base64（2025 v5.2 第8段）",
+    "output_length": "2025 v5.2 第8段实测 792 字符（对应 593 字节 JSON 填充到 594 字节后编码）；hex 版本长度文章未给"
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-1669042-京东试用h5st参数.md",
+      "line": 38,
+      "quote": "继续往上看， `g=v[t(0, 1269, 0, 1201)][t(0, 1121, 0, 1110)]()`",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1669042-京东试用h5st参数.md",
+      "line": 44,
+      "quote": "而iv和key又可由hex解码解出",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1669042-京东试用h5st参数.md",
+      "line": 48,
+      "quote": "| 0102030405060708 | wm0!@w\\_s#ll1flo( |",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1669042-京东试用h5st参数.md",
+      "line": 54,
+      "quote": "协议头和fp等参数组成，所以判断参数8几乎为固定的",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1669042-京东试用h5st参数.md",
+      "line": 60,
+      "quote": "\"fp\": \"4975599160384842\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1669042-京东试用h5st参数.md",
+      "line": 97,
+      "quote": "c = e[o(1191, 0, 1170)];          //也就是e.env",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1669042-京东试用h5st参数.md",
+      "line": 110,
+      "quote": "明文中，包括了很多信息....cookie、ua、页面宽高信息、url、Origin、appid、fp等信息。",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1913553-利用 ast 解混淆某东 h5st js 文件并进行参数分析.md",
+      "line": 819,
+      "quote": "这是对一个K变量字符串进行aes加密, aes key是\"&d74&yWoV.EYbWbZ\", iv是`[\"01\", \"02\"",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1913553-利用 ast 解混淆某东 h5st js 文件并进行参数分析.md",
+      "line": 771,
+      "quote": "可以全文搜索解混淆之后的 js 代码, 关键词为请求体中的`expandParams`, 分析其中所有参数的生成逻辑,",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1913553-利用 ast 解混淆某东 h5st js 文件并进行参数分析.md",
+      "line": 840,
+      "quote": "| sua | string | 使用正则RegExp(\"Mozilla/5.0 \\((.*?)\\)\")取出useragent内容 |",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1913553-利用 ast 解混淆某东 h5st js 文件并进行参数分析.md",
+      "line": 841,
+      "quote": "| pp | object | 取cookie对应值, 没有就不设置, p1: pwdt\\_id, p2: pin, p3: pt\\_pin |",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1913553-利用 ast 解混淆某东 h5st js 文件并进行参数分析.md",
+      "line": 851,
+      "quote": "Sr.l = navigator.languages && 0 !== navigator[\"languages\"][\"length\"] ? 0 : 1;",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1913553-利用 ast 解混淆某东 h5st js 文件并进行参数分析.md",
+      "line": 856,
+      "quote": "(\"cdc_adoQpoasnfa76pfcZLmcfl_Array\" in window ||",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1913553-利用 ast 解混淆某东 h5st js 文件并进行参数分析.md",
+      "line": 863,
+      "quote": "Er = -1 !== gg(_r = window.location[\"host\"]).call(_r, \"sz.jd.com\")",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1913553-利用 ast 解混淆某东 h5st js 文件并进行参数分析.md",
+      "line": 878,
+      "quote": "Sr[\"bu4\"] = kr;",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-2052845-某东最新5.2版本的第8段环境参数加密逆向解析.md",
+      "line": 17,
+      "quote": "_$Gy.parse(unescape(encodeURIComponent(_$Gd)))",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-2052845-某东最新5.2版本的第8段环境参数加密逆向解析.md",
+      "line": 37,
+      "quote": "# 4. 填充数组到3的倍数",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2052845-某东最新5.2版本的第8段环境参数加密逆向解析.md",
+      "line": 40,
+      "quote": "# 5. 按3个元素分组并反转组顺序",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2052845-某东最新5.2版本的第8段环境参数加密逆向解析.md",
+      "line": 49,
+      "quote": "# 8. 每4个字符反转",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2052845-某东最新5.2版本的第8段环境参数加密逆向解析.md",
+      "line": 53,
+      "quote": "base64的自定义字符集是\"hgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA-_9876543210zyxwvutsrqponmlkji\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2052845-某东最新5.2版本的第8段环境参数加密逆向解析.md",
+      "line": 88,
+      "quote": "\"v\": \"h5_file_v5.2.0\",",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2052845-某东最新5.2版本的第8段环境参数加密逆向解析.md",
+      "line": 90,
+      "quote": "\"canvas\": \"6f086516fe378bad9ab0ea6c0f7d2faa\",",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2052845-某东最新5.2版本的第8段环境参数加密逆向解析.md",
+      "line": 91,
+      "quote": "\"webglFp\": \"a0629ea0cc107adb3e707ade5b3ffcf3\",",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2052845-某东最新5.2版本的第8段环境参数加密逆向解析.md",
+      "line": 92,
+      "quote": "\"ccn\": 6,",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 269,
+      "quote": "— 环境检测（收集浏览器指纹）",
+      "verified_in_article": false
+    }
+  ],
+  "entry": {
+    "location": "(a) 2022 试用页：参数8 `g=v[t(0, 1269, 0, 1201)][t(0, 1121, 0, 1110)]()`；expandParams 为 `c = e[o(1191, 0, 1170)]`（即 e.env）。(b) 2024 js_security_v3_0.1.6：`t` 来自 `V = t[\"sent\"]`，在 Promise case5→case8 区间最后一次 `t[\"abrupt\"](\"return\", xxx)` 处。(c) 2025 v5.2.0：设备参数定位处 `_$Gy.parse(unescape(encodeURIComponent(_$Gd)))`",
+    "trigger": "签名时（每次请求都重新采集/加密）",
+    "transport": "作为 h5st 的第 8 段嵌入 h5st 字符串；2022 版另有独立请求参数 `expandParams`"
+  },
+  "gaps": [
+    "2022/2024 两版 AES 的密文 hex 长度与是否含 padding（PKCS7 等）文章未说明",
+    "AES 是 CBC 还是 ECB 文章未逐字写（只给了 key 与 iv，按有 iv 推断为 CBC，但文章未明说，故 detail 中不写死模式）",
+    "extend 中 bu5/bu6/bu7/bu8/bu10/bu11/bu12/bu13/ccn 的语义文章未说明",
+    "5.2 版第8段是否还有除明文 JSON 外的其他拼装（如前后缀、时间戳）文章未说明",
+    "5.2 版 `stringify1(device_init, 0)` 的第二个参数 0 的含义文章未说明"
+  ],
+  "self_check": [
+    "自定义字符表长度核算 = 64 字符（hgfedcba 8 + ZYXWVUTSRQPONMLKJIHGFEDCBA 26 + `-_` 2 + 9876543210 10 + zyxwvutsrqponmlkji 18），且无重复字符 → 是一张合法的一对一 6-bit 表",
+    "第7步输出长度 792，第8步输出长度 792，两者相等（每 4 字符反转不改变长度）",
+    "我独立验证 `rev4(第7步) == 第8步`（把第7步串每 4 个字符反转后与文章第8步输出逐字相同）→ 该文章第 7→8 步流水线可复现",
+    "第8步输出全部字符均落在自定义字符表内，且不含 `=` 填充符，与字符表长度 64 自洽",
+    "第0步 JSON 的 UTF-8 字节数实测 = 593，593 % 3 = 2 → 按第4步『填充到 3 的倍数』补 1 字节得 594；594/3*4 = 792，与第7步输出长度 792 完全吻合 → 整条流水线（含 pad 步骤）自洽",
+    "1669042 的 fp `4975599160384842` 为 16 位数字；2052845 的 fp `gta93wizm0httth5` 为 16 位字母数字 → 两版 fp 形态不同（长数字 vs 短随机串），属版本差异"
+  ]
+}

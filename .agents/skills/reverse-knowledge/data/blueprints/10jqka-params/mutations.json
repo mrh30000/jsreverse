@@ -1,0 +1,34 @@
+{
+  "mutations": [
+    {
+      "name": "UA 必须与 env 完全一致",
+      "rule": "hexin-v 内部编码了 strhash(navigator.userAgent)，请求头 UA 与 env.js 里 navigator.userAgent 必须逐字符相同",
+      "symptom_if_wrong": "被服务端判为异常（2128820 原文：不一致会被服务端判为异常）"
+    },
+    {
+      "name": "TOKEN_SERVER_TIME 必须新鲜",
+      "rule": "main 里该值是保存时写死的，需在加载前替换为当前服务器时间（秒）",
+      "symptom_if_wrong": "token 会编码它，过期会被服务端拒绝"
+    },
+    {
+      "name": "cookie 名与 localStorage 键不同",
+      "rule": "chameleon 写 document.cookie 的名称是 v，localStorage 的键是 hexin-v",
+      "symptom_if_wrong": "只读 cookie['hexin-v'] 会取不到值（需兼容读 v）"
+    },
+    {
+      "name": "setInterval 会挂住 Node",
+      "rule": "chameleon 末尾 setInterval(getServerTime, 1200000)，需 unref 或替换 setInterval 否则进程不退出",
+      "symptom_if_wrong": "node run.js 永不返回"
+    },
+    {
+      "name": "必须在补环境里隐藏 Node 痕迹",
+      "rule": "run.js 在加载 env 前 delete global/process/require/module/exports/__dirname/__filename",
+      "symptom_if_wrong": "chameleon 检测到 Node 环境直接返回空 token"
+    },
+    {
+      "name": "补环境需 native toString 保护",
+      "rule": "结构遵循：构造器 + prototype + 实例 + 描述符 + native toString 保护（markNative 打 [native code] 标记）",
+      "symptom_if_wrong": "被 toString 检测识破，token 取不到"
+    }
+  ]
+}

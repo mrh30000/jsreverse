@@ -1,0 +1,14 @@
+{
+  "mutations": [
+    {
+      "name": "固定常量 r",
+      "rule": "r 为固定值 '320305.131321201'，无 window 环境时可直接写死",
+      "symptom_if_wrong": "1897565 原文：r 未定义时报错；补 r 后仍报错（还缺函数 n）"
+    },
+    {
+      "name": "需一并扣函数 n",
+      "rule": "只扣 export 函数不够，还需扣函数 n",
+      "symptom_if_wrong": "n 未定义报错"
+    }
+  ]
+}

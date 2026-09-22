@@ -1,0 +1,39 @@
+{
+  "mutations": [
+    {
+      "name": "abcdx 反调试门禁",
+      "rule": "abcd2/abcd4/abcd5 开头都有 if(!abcdx()) return;，命中 webdriver / $cdc_ / PhantomJS / callPhantom 时函数直接返回 undefined",
+      "symptom_if_wrong": "jqParam 与 jqsign 变 undefined 或空值"
+    },
+    {
+      "name": "ktimes 作 XOR 密钥",
+      "rule": "b = ktimes % 10，且 b == 0 时置为 1",
+      "symptom_if_wrong": "jqsign 与服务端不一致（ktimes 若为 10 的倍数必须按 1 算）"
+    },
+    {
+      "name": "starttime 格式与取反",
+      "rule": "starttime 需 replace(/-/gm,'/') 后 new Date()；且若秒级时间戳 %10 > 0，要把时间戳字符串反转后再拼 '89123'",
+      "symptom_if_wrong": "jqParam 不一致"
+    },
+    {
+      "name": "activityId 先异或",
+      "rule": "页面里的 activityId 需先 DecodeId（^2130030173）再取 parseInt 参与拼串",
+      "symptom_if_wrong": "jqParam 不一致"
+    },
+    {
+      "name": "jqpram 要二次编码",
+      "rule": "jqParam 需 encodeURIComponent 后作为 jqpram 拼进 URL",
+      "symptom_if_wrong": "提交失败"
+    },
+    {
+      "name": "jcn 可省略",
+      "rule": "作者实测「有没有都行」",
+      "symptom_if_wrong": "无影响"
+    },
+    {
+      "name": "调试地址可绕 debug 处理",
+      "rule": "把 ks.wjx.top/vj/xxxxx.aspx 改成 ks.wjx.top/vm/xxxxx.aspx（vj 会做 debug 处理，vm 不会）",
+      "symptom_if_wrong": "调试时反复被 debugger 打断"
+    }
+  ]
+}

@@ -2133,3 +2133,120 @@ AES+RSA 混合）· 提交形态两段式（明文框 + 隐藏字段）· 会话
      可聚成「非极验滑块厂商对照表」，验证「极验的两接口模型不能套到别家」。
 - 候选新技能 `captcha-flow-orchestration` —— B5–B16 **十次确认不新建**。
 - 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
+
+---
+
+## 三·O、批次 B17 · 2026-09-22（成熟平台签名参数蓝图库落地：`reverse-knowledge`）
+
+**取材口径**：单一能力族「成熟平台签名 / 加密参数」一次做全 —— 抖音/头条 `a_bogus`、京东 `h5st`（含第 8 段环境段
+与 `request_algo` token）、知乎 `x-zse-96` / `__zse_ck`、小红书 `x-s`、B 站 `w_rid`、美团 `mtgsig`、
+BOSS `__zp_stoken__`、淘宝 `isg`/`cna`、网易云 `weapi`、QQ 音乐 `sign`、酷狗 `signature`、百度翻译 `sign`、
+同花顺 `hexin-v`、得物 `sign`、拉勾 `X-S-HEADER`、拼多多、CSDN `x-ca-signature`、问卷星、12306、羊了个羊。
+
+**选它的理由（本批开局的发现）**：`reverse-knowledge` 的 `description` 声称提供「京东 h5st、抖音 a_bogus、快手 falcon」
+的**算法蓝图库**，但 `scripts/query-blueprint.js` 指向的 `docs/knowledge/parameter-blueprints` **从未被创建**
+（`git log --all -- docs/knowledge` 为空），且 `REPO_ROOT` 少算一级（`../../../` 从 `scripts/` 只到 `.claude/`）——
+`--list` 必然 `ENOENT` 崩溃。这是 B13 闭环判据 ④「脚本声明的依赖是否存在」的**教科书式命中**：
+**技能名覆盖、能力完全没覆盖**。同族待处理文章 175 篇（签名/参数类），远超建新技能的阈值。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取知识点 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 276 | `2088330-douyin-ab-params.md` | `f58ed208759266fbb7c9b2a2230c20ac` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`douyin-a-bogus` |
+| 277 | `2092635-h5st-ai-env-patching.md` | `04d1a1774b9d289f4f544e40a47a1407` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`jd-env-params`、`jd-h5st`、`jd-request-algo-token` |
+| 278 | `2092806-douyin-a_bogus-50bytes.md` | `44fae2623df3eb8e36a7e19507cfdc75` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`douyin-a-bogus`；a_bogus 50 位数组全解 + 自定义 base64 表 + 魔改 RC4 + 尾部盐 `dhzx` |
+| 279 | `52pojie-1269855-01-酷狗音乐搜索下载js解密附Python源码.md` | `ee3310e1afc26f1cd143269be52f127f` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`kugou-signature` |
+| 280 | `52pojie-1271541-02-网易云音乐加密分析.md` | `74ad820a5b43ed72ca490a7b4ce4d787` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`netease-weapi` |
+| 281 | `52pojie-1291943-关于CSDN获取博客内容接口的x-ca-signature签名算法研究.md` | `38ca6257feb21ca75f2a60e79ac389bb` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`csdn-x-ca-signature`；`query[:-1]` 裁末字符 + 3 个空行语义 + `x-ca-key` 双处出现 |
+| 282 | `52pojie-1474990-python爬虫-最新破解百度翻译sign值.md` | `1911121691cb804b09d019edb19f6dbe` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`baidu-fanyi-sign` |
+| 283 | `52pojie-1511380-CSDN爬虫signature加密算法破解.md` | `47012a79b70b1fdcbadbadb928633f96` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`csdn-x-ca-signature` |
+| 284 | `52pojie-1625463-问卷星(答题)协议全参数分析.md` | `dffc5465fc3914be5f391a7083401e7d` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`wenjuanxing-params`；`abcdx()` 反调试门禁 + ktimes 作 XOR 密钥 |
+| 285 | `52pojie-1631378-某乎x-zse-96签名算法python重写.md` | `399290df734584fc59c50494e14ec7db` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`zhihu-x-zse-96` |
+| 286 | `52pojie-1669042-京东试用h5st参数.md` | `03928fe301246163acdfd0cac8d438ed` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`jd-env-params`、`jd-h5st`、`jd-request-algo-token`；h5st 8 段结构 + 环境变量白名单 + 远程 token |
+| 287 | `52pojie-1692161-[2022.9.28]羊了个羊协议分析.md` | `f393ef8fc532fc146b37962b4cd5c8de` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`yanglegeyang-map` |
+| 288 | `52pojie-1719655-酷狗音乐网页歌曲爬取优化.md` | `d0c6da664ecebee88b80ead3e856b631` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`kugou-signature` |
+| 289 | `52pojie-1744074-记一次DE物后台请求sign加密算法过程.md` | `a7500ef80aa4a79e90e9bae3c573ac43` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`dewu-sign` |
+| 290 | `52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md` | `c4615afe65d223e17ed17d698009b70d` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`lagou-lg-stoken`；aesKey 需 RSA+agreement 激活；混淆 JS 文件名每次变 |
+| 291 | `52pojie-1856239-淘系浏览器请求验签isg和cna分享.md` | `2dc619e0845d900c62d8051c1c2f0e8a` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`taobao-isg-cna` |
+| 292 | `52pojie-1897565-某度翻译的sign逆向.md` | `9fc56b9f5d22a8eb92e243ae02eef5cc` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`baidu-fanyi-sign` |
+| 293 | `52pojie-1913553-利用 ast 解混淆某东 h5st js 文件并进行参数分析.md` | `6be8446491e521a751653c95524703e8` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`jd-env-params`、`jd-h5st`、`jd-request-algo-token` |
+| 294 | `52pojie-1928860-某音a_bogus纯算分析.md` | `e999490abac7238c5b73bd624dcfdfaf` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`douyin-a-bogus`；旧版纯算链路（cus / post 分支） |
+| 295 | `52pojie-1964578-某团新版Web mtgsig1.2 算法解析.md` | `48c33c5961a260b8e7d0c1459db40458` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`meituan-mtgsig`；VMP 插桩 + 动态数组；字节流公式由本批**独立重算并逐值验证** |
+| 296 | `52pojie-1968832-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（左篇）.md` | `7fe8662b95a9214b097d892bd0c79b08` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`zhihu-zse-ck`；ob+jsvmp → 内嵌 base64 wasm 的套娃定位 |
+| 297 | `52pojie-1970885-【JS逆向系列】某乎__zse_ck参数js与wasm多重套娃地狱级（右篇）.md` | `3dc41ee2b6b28b2d2bcee6582b7c39db` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`zhihu-zse-ck` |
+| 298 | `52pojie-2018113-网易云音乐逆向.md` | `944e9a523a604e1a206b6827e77230ec` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`netease-weapi` |
+| 299 | `52pojie-2022463-某q音乐sign逆向-多角度.md` | `ed3be72a2993d378a5c106ebca0d72bf` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`qqmusic-sign` |
+| 300 | `52pojie-2033704-某站w_rid加密参数分析.md` | `34424dcba1574eb1bde16df1c2bca0ad` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`bilibili-w-rid` |
+| 301 | `52pojie-2048032-JS逆向实战案例之———x日头条【a-bogus】分析.md` | `fd0827f317e904e8add8ab4129553d69` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`toutiao-a-bogus` |
+| 302 | `52pojie-2052845-某东最新5.2版本的第8段环境参数加密逆向解析.md` | `b86b9979f1bd16ab6d1d069b8a43f10b` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`jd-env-params` |
+| 303 | `52pojie-2058603-[原创]boss直聘__zp_stoken__的控制平坦流纯算逆向思路.md` | `ba0ef1109331b2a3fa71219f515a84a9` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`boss-zp-stoken`；控制平坦化 be→分支 map 还原；`window["s"]` 执行时间检测；文件名每日变 |
+| 304 | `52pojie-2092725-某red书最新'x-s'ai纯算+补环境.md` | `d2b1c5535d76d3063f1e2a7c3f118241` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`xhs-x-s`；XXTEA 密钥 `e6483ca2a1eed5e3` + 自定义 base64 表（统计归纳法） |
+| 305 | `52pojie-2104039-新版小红书首页笔记获取及X-s参数解密.md` | `90b48fd742af17872fc239c54507c701` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`xhs-x-s` |
+| 306 | `52pojie-2104180-京东搜索接口商品数据获取及h5st参数解析.md` | `0255a2541641748d4e5ef49b4e71b4ed` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`jd-h5st` |
+| 307 | `52pojie-2104414-抖音详情页数据采集及a_bogus参数逆向分析.md` | `9efb6be2b55c12e0e86cb8936e64ca0b` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`douyin-a-bogus` |
+| 308 | `52pojie-2128820-Ai逆向同花顺网站采集数据.md` | `7880b7f78cfd9d8b12ff54d1ad8ec637` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`10jqka-params` |
+| 309 | `52pojie-2128911-手动补环境过同花顺网站.md` | `eb9c6ee8aebb1830c0a7f98443a084ae` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`10jqka-params` |
+| 310 | `52pojie-819754-【原创】Python爬取12306登录.md` | `be720c0a422c2c951535f80fa0d420fe` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`12306-login` |
+| 311 | `52pojie-858765-JS实战系列之解密-拼夕夕反爬虫算法.md` | `ceaf6072f1c205b61726ac528a3513e7` | 2026-09-22 | reverse-knowledge | evolve | 落 `reverse-knowledge` 蓝图：`pinduoduo-antispider` |
+
+### 本批次技能变更汇总（B17）
+
+| 技能 | 变更类型 | 变更内容 |
+| --- | --- | --- |
+| `reverse-knowledge` | evolve（**修复失效功能 + 从零落地蓝图库**） | 新增 `data/blueprints/`（24 个蓝图 / 388 条来源引用 / 36 篇来源文章）；新增 `references/blueprint-schema.md`（文件契约唯一权威源）、`references/platform-signature-patterns.md`（跨平台共性 12 节）；重写 `scripts/query-blueprint.js`（修路径 + 可读报错 + `--data/--where/--selftest`）、新增 `scripts/blueprint-lint.js`（结构与来源溯源校验，自检含失败分支）；`SKILL.md` 补蓝图库章节与四条质量红线 |
+
+### 本批次的方法论增量（可复用）
+
+1. **闭环判据 ④ 升级为「声明的依赖」而不只是「声明的文档」**：本轮命中项是一个**目录**（`docs/knowledge/parameter-blueprints`）从未存在，且脚本的路径推导本身也少一级。凡是「技能里有一个脚本会去读某处资源」的技能，都必须有一条机械断言证明该资源存在。
+2. **资源要自包含**：蓝图库落在 `<skill>/data/blueprints/`，并用「显式 `--data` → 环境变量 → 技能内 → 仓库 `docs/`（历史兼容）→ cwd」的解析链 + `--where` 可观测。**技能被复制到任何位置都能跑**，不再依赖仓库布局。
+3. **给数据加 lint 而不是只给代码加 lint**：`blueprint-lint.js` 校验的是**内容契约**——必填字段、枚举值、`index`↔`metadata` 的 id 一致性、parts 重名、空 mutations、**`sources[].file` 必须真实存在（来源溯源）**、行号必须为正整数、孤儿目录。数据类技能没有 lint，下一批必然漂移。
+4. **抽取结果不直接入库，先过「构建器」**：`b17-build-blueprints.py` 把抽取 JSON 机械映射成蓝图文件，任何不合契约的条目（空 mutations / 来源不存在 / id 非法）**直接报错退出**，而不是由脚本补默认值。本批靠这道闸门抓到 3 个真问题（JSON 围栏被内嵌 ``` 截断、`platform-protocol` 分类缺失、`unknown` 算法族不在枚举内）。
+5. **源文章的数字必须自己重算（B10 结论再次生效）**：美团 `mtgsig` 一文只给了 5 个「逐步演算」的中间值，本批把公式归纳为 `out[i] = (out[i-1] + i + key[i mod 16] + 31) mod 256` 后**逐值重算**，5 个检查点全部命中；同时发现原文第 17 个值的算式抄错（写成 `261 - 256 || 318 % 256`，实际应为 `261 % 256 = 5`）。
+6. **多源交叉验证优先于单源**：知乎 `x-zse-96` 的抽取过程**证伪了任务书里的三条先验假设**（`x-zse-93` / `d_c0` 在三篇原文中零命中、无 HMAC-SHA256、无「MD5 后 substr 十六进制替换表」），真正的表是 64 字符 `fixed_str`。**假阴性会诱使人去改正确的内容（B4 已踩过），所以断言必须 grep 字面量。**
+7. **同源矛盾要显式记录**：小红书两篇对 base64 字母表长度说法不一（一文说 65 字符），抽取侧**逐字符数了文章二的常量表 = 64 且去重后仍 64**，判定为 64 并把矛盾写进 `contradictions`。
+8. **「如实标注 unknown」优于「补一个猜的算法」**：`toutiao-a-bogus` 源文章几乎全是截图，只给定位不给算法 —— 该蓝图 `status: unknown` + `family: unknown` + **不写 `mutations.json`**，由 lint 以 warn 形式暴露（可见的缺口好过不可见的编造）。
+
+### 本批次明确留白（写进文档而非假装支持）
+
+1. **`toutiao-a-bogus` 没有 mutations**：源文章（`2048032`）为截图型，未给出任何可复述的陷阱，蓝图只保留定位与补环境路线，`metadata.gaps` 已列明。
+2. **知乎 `__zse_ck` 的 key_material 为空**：SM4 密钥/IV、魔改 base64 字母表、明文 6 段顺序均只在源文章的截图里。
+3. **`jd-h5st` 的 8 段未逐段穷尽**：源文章只钉死第 3 段（`signAppId`）、第 5 段（HMAC-SHA256）、第 8 段（环境指纹），其余段在 `gaps` 中标注。
+4. **百度翻译 `sign` 只到「固定常量 + 函数 n」层级**：源文章未给出完整函数体。
+5. **蓝图库没有「自动从新文章抽取」的流水线**：本轮抽取是人工编排 + 子代理，抽取规范落在 `artifacts/skill-evolution/b17-run-20260922-2113/EXTRACT-SPEC.md`，尚未工具化。
+
+### 复跑命令
+
+```bash
+# 1) 蓝图库结构 + 来源溯源校验（0 error 为通过；1 条 warn 来自 toutiao-a-bogus 无 mutations）
+node .claude/skills/reverse-knowledge/scripts/blueprint-lint.js
+
+# 2) 检索器与校验器的自检（断言数以实跑输出为准，勿手抄）
+node .claude/skills/reverse-knowledge/scripts/query-blueprint.js --selftest
+node .claude/skills/reverse-knowledge/scripts/blueprint-lint.js --selftest
+
+# 3) 实际命中的数据目录（应为技能内 data/blueprints）
+node .claude/skills/reverse-knowledge/scripts/query-blueprint.js --where
+
+# 4) 自然语言检索端到端
+node .claude/skills/reverse-knowledge/scripts/query-blueprint.js -q "抖音 resource list 签名"
+node .claude/skills/reverse-knowledge/scripts/query-blueprint.js --id douyin-a-bogus --json | head -40
+
+# 5) 从零重建蓝图库（幂等：会先删 data/blueprints 再按抽取结果重建）
+python artifacts/skill-evolution/tools/b17-build-blueprints.py
+
+# 6) 整体机械校验（0 阻断 / 0 告警 为通过）
+node artifacts/skill-evolution/tools/check_skill_integrity.js --root . --markdown
+
+# 7) 台账幂等复跑（应打印「已登记，跳过」）
+python artifacts/skill-evolution/tools/append-b17-ledger.py
+```
+
+### 下一批（B18）取材建议（承接本节）
+
+- 待处理 **457** 篇（台账 311 条后）。
+- 优先级：
+  ① **签名 / 协议参数系仍有大量剩余**：本轮只覆盖 24 个平台，待处理队列里仍有 爱奇艺 `cmd5x`、优酷、咪咕、网易云 eapi、快手、微博、得物之外的电商与 OTA 平台；**按「同一平台 ≥2 篇」聚簇继续补蓝图**（多源互证收益最高）；
+  ② **验证码图像识别系剩余（~85 篇）**：真拼图 / 双缺口 / 旋转系的**协议侧**仍薄；
+  ③ **Cloudflare 系（CSDN 24 篇同题水贴）**：与 B9 的 `edge-waf-cookie-challenge.md` 对拍，重点做**证伪**（这批 CSDN 文章多为同质转述，适合验证「哪些说法站不住」）；
+  ④ **JSVMP 剩余**：符号执行 / 中间代码优化（落 `ast-deobfuscation` 既有文件）。
+- 候选新技能 `captcha-flow-orchestration` —— B5–B17 **十一次确认不新建**。
+- 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。

@@ -1,0 +1,29 @@
+{
+  "mutations": [
+    {
+      "name": "timeTag 语义变更",
+      "rule": "24 号前 = 操作间隔毫秒；24 号起 = type（方块初始化后的类型）",
+      "symptom_if_wrong": "文章未说明具体报错"
+    },
+    {
+      "name": "chessIndex 编号起点",
+      "rule": "从第 1 层 0 开始编号；排序按 -layerNum、type、moldType 升序",
+      "symptom_if_wrong": "文章未说明"
+    },
+    {
+      "name": "道具需补操作记录",
+      "rule": "移出道具多 3 个操作、撤销道具多 1 个操作",
+      "symptom_if_wrong": "文章未说明"
+    },
+    {
+      "name": "加入 Version 后失效",
+      "rule": "作者认为游戏更新并加入 Version 之后，原思路失效：游戏可以过关但不加次数、当天不能玩",
+      "symptom_if_wrong": "能过关但不计次/当天不能玩"
+    },
+    {
+      "name": "被覆盖判定",
+      "rule": "上层块与当前块行列值绝对值差 < 8 即被覆盖（块的逻辑宽高为 8）",
+      "symptom_if_wrong": "可操作块集合算错、解不可行"
+    }
+  ]
+}

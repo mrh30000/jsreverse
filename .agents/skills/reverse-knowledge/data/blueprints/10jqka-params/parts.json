@@ -1,0 +1,24 @@
+{
+  "parts": [
+    {
+      "name": "hexin-v / v",
+      "description": "作用: 反爬 token，真正参与风控的值 | 来源: chameleon 生成；写入 cookie(name=v) 与 localStorage(hexin-v)"
+    },
+    {
+      "name": "TOKEN_SERVER_TIME",
+      "description": "作用: 服务器时间（秒，浮点写法），被 token 编码 | 来源: main 里写死，需用 run.js 动态注入 Date.now()/1000 覆盖 | 示例: 1789789000.668（文中 main 的原始值）"
+    },
+    {
+      "name": "navigator.userAgent",
+      "description": "作用: 参与 strhash，必须与请求头 UA 完全一致 | 来源: 补环境里自定义 | 示例: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36（2128820）/ …Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0（2128911）"
+    },
+    {
+      "name": "location",
+      "description": "作用: hexin-v 与域名相关 | 来源: 补环境构造，默认 q.10jqka.com.cn | 示例: host: q.10jqka.com.cn, pathname: /index/index/board/all/field/zdf/order/desc/page/5/ajax/1/"
+    },
+    {
+      "name": "X-Antispider-Message",
+      "description": "作用: jsvmp 字符串表里出现的请求头名（用途文章未说明） | 来源: chameleon 字符串表"
+    }
+  ]
+}

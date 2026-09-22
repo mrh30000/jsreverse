@@ -1,0 +1,125 @@
+{
+  "id": "boss-zp-stoken",
+  "title": "BOSS直聘 __zp_stoken__（0f35c990.js 控制流平坦化纯算）",
+  "category": "platform-signature",
+  "status": "active",
+  "version": "1.0.0",
+  "summary": "cookie __zp_stoken__ 由每日变动的 0f35c990.js 生成；该文件为控制流平坦化（分发变量 be），需 AST 建 be→代码块映射表还原执行流后纯算。文章以方法论为主，字面算法缺失。",
+  "aliases": [
+    "__zp_stoken__",
+    "zp_stoken",
+    "zhipin",
+    "0f35c990.js"
+  ],
+  "keywords": [
+    "boss直聘",
+    "zhipin",
+    "boss",
+    "__zp_stoken__",
+    "控制流平坦化",
+    "AST",
+    "纯算"
+  ],
+  "algorithm": {
+    "family": "custom",
+    "detail": "文章未给出最终算法族（几乎全是截图，evidence=screenshot-only）。可见特征：控制流平坦化 VMP，需 AST 建映射表；字符串编码方式为'长度 + 逐字符 ASCII 码'拼接（如 '0b92' → 48,98,57,50，4=长度）。",
+    "key_material": null,
+    "output_encoding": "unknown",
+    "output_length": "不固定（文章：'怎么生成的结果会变，甚至长度都不是固定的'）"
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-2058603-[原创]boss直聘__zp_stoken__的控制平坦流纯算逆向思路.md",
+      "line": 12,
+      "quote": "注意到下面的请求cookie才第一次使用到__zp_stoken__,推断出是在这个0f35c990.js里生成的.注意该文件以及文件名会在每天晚上0点-1点之间变动一次,固定为每天一次.",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2058603-[原创]boss直聘__zp_stoken__的控制平坦流纯算逆向思路.md",
+      "line": 16,
+      "quote": "该js分为两部分,上面是一小段自执行函数,如上图.这里关键控制变量是G,并且是常量16.",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-2058603-[原创]boss直聘__zp_stoken__的控制平坦流纯算逆向思路.md",
+      "line": 20,
+      "quote": "下面部分依然大同小异,只是控制变量不再为常量,而是由传入的参数决定.",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-2058603-[原创]boss直聘__zp_stoken__的控制平坦流纯算逆向思路.md",
+      "line": 25,
+      "quote": "这是典型的控制平坦流.面对这种情况,我的思路是,首先要理解,它实际控制变量就一个,这里的be.后面的Ee,Ae,Ne这几个实际是由be经过固定算法得出的.",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-2058603-[原创]boss直聘__zp_stoken__的控制平坦流纯算逆向思路.md",
+      "line": 30,
+      "quote": "比如当be=10768时,Ee,Ae,Ne对应的值就分别是16 16 10.",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-2058603-[原创]boss直聘__zp_stoken__的控制平坦流纯算逆向思路.md",
+      "line": 42,
+      "quote": "以be=1616为入口为例,得到这样的结果.",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-2058603-[原创]boss直聘__zp_stoken__的控制平坦流纯算逆向思路.md",
+      "line": 55,
+      "quote": "然后进行常量合并,如观察到\\_ = \"len\";e = \"gth\";y=\\_ + e;那么自然y=\"length\".",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2058603-[原创]boss直聘__zp_stoken__的控制平坦流纯算逆向思路.md",
+      "line": 73,
+      "quote": "可以看到第一个参数5553,即be=5553是关键入口,第二个第三个是前面请求或者token已过期时系统返回的种子参数.",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-2058603-[原创]boss直聘__zp_stoken__的控制平坦流纯算逆向思路.md",
+      "line": 79,
+      "quote": "首先是字符串的长度,然后跟字符串对应的ascii码.",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-2058603-[原创]boss直聘__zp_stoken__的控制平坦流纯算逆向思路.md",
+      "line": 83,
+      "quote": "48, 98,  57,  50 是\"0b92\"对应的ascii码,4代表该字符串的长度.同理44代表'booubZKQSgODivfbCd8dHDdK8T7BITcNqfge/Jfh7Oo='这个种子的长度.",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-2058603-[原创]boss直聘__zp_stoken__的控制平坦流纯算逆向思路.md",
+      "line": 95,
+      "quote": "部分陷阱:比如这里的返回值f是undefined,是怎么回事呢?实际上因为v是数组,它是在函数内部对v进行了操作,最后没有返回任何东西,但实际上v已经变化了.",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-2058603-[原创]boss直聘__zp_stoken__的控制平坦流纯算逆向思路.md",
+      "line": 104,
+      "quote": "答:这个是首次自执行该js时拿到的一个时间戳,会保存到window['s']中,后续计算会用到,作用我猜测是计算本js从开始执行到最后生成参数,相隔了多长时间.",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-2058603-[原创]boss直聘__zp_stoken__的控制平坦流纯算逆向思路.md",
+      "line": 110,
+      "quote": "答:还是由于上面的这个原因.",
+      "verified_in_article": false
+    }
+  ],
+  "entry": {
+    "location": "0f35c990.js（文件名每天 0 点-1 点间变动一次）",
+    "trigger": "页面加载时自执行生成；请求时作为 cookie 发出",
+    "transport": "cookie，参数名逐字：\"__zp_stoken__\"；另有 window['s']"
+  },
+  "gaps": [
+    "最终 token 的完整算法（文章正文几乎全是截图，无源码，关键步骤 evidence=screenshot-only）。",
+    "be→Ee/Ae/Ne 的'固定算法'具体内容。",
+    "token 输出的编码与长度（文章只说长度不固定）。",
+    "ASCII 拼接片段在整体算法中的位置。"
+  ],
+  "self_check": [
+    "ASCII 核算：'0b92' → ord('0')=48, ord('b')=98, ord('9')=57, ord('2')=50，与文章 48/98/57/50 完全一致。",
+    "种子串长度核算：len('booubZKQSgODivfbCd8dHDdK8T7BITcNqfge/Jfh7Oo=') = 44，与文章'44代表该种子的长度'一致。"
+  ]
+}

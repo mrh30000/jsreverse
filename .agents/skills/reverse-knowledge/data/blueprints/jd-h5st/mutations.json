@@ -1,0 +1,34 @@
+{
+  "mutations": [
+    {
+      "name": "body 必须紧凑 JSON",
+      "rule": "body 的 SHA-256 必须先 JSON.stringify 成无空格紧凑串（Python 端 separators=(',', ':')）",
+      "symptom_if_wrong": "2092635：Python 端 hashlib.sha256 算的 body hash 与 JS 内部算的不一致；2104180 明确注明 separators 是为与 JS 行为一致"
+    },
+    {
+      "name": "signAppId ≠ appid",
+      "rule": "h5st 第三段（构造函数 appId，如 01a47）与 sign 参数/POST data 里的 appid（如 pc-rate-qa、search-pc-java）是两个不同的值，不能混用",
+      "symptom_if_wrong": "混在一起后 403；分开后仍 403（作者未最终解决）"
+    },
+    {
+      "name": "token 必须远程取",
+      "rule": "token 不能本地生成，必须走 request_algo 远程获取",
+      "symptom_if_wrong": "本地生成得到 tk05，抓包真实值是 tk03，请求 403"
+    },
+    {
+      "name": "补环境不能依赖宿主全局",
+      "rule": "Node 内置 navigator 会顶掉自补的 navigator",
+      "symptom_if_wrong": "签名能生成但请求 403，_$clt 读到的 navigator.userAgent 等属性值不对"
+    },
+    {
+      "name": "时间戳单位与 t 的双元素数组",
+      "rule": "t 是毫秒时间戳；发请求时 query 里的 `t` 是 [签名用的 t, 新生成的毫秒时间戳] 两元素数组",
+      "symptom_if_wrong": "用秒级时间戳或只传单个 t，签名校验不通过"
+    },
+    {
+      "name": "环境变量白名单",
+      "rule": "参与 h5st 的环境检测变量只有 sua/pp/extend/random/v/fp 这几个",
+      "symptom_if_wrong": "把 wc/wd/l/ls/ml/pl/av/ua 等也塞进 h5st 会导致原文对不上"
+    }
+  ]
+}

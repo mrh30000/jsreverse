@@ -1,0 +1,36 @@
+{
+  "parts": [
+    {
+      "name": "source",
+      "description": "作用: 待签名原文（拼接结果） | 来源: 固定版本串 + 接口路径与 query + 被双引号包裹的疑似 cookie 值（内含 |时间戳） | 示例: 101_3_2.0+/api/v4/search_v3?t=general&q=office&correction=1&offset=0&limit=20&filter_fields=&lc_idx=0&show_all_topics=0&search_source=Normal+\"APAdT9SE4hSPTk_l1utlpb-FN6jTF5TgpSY=|1651578807\""
+    },
+    {
+      "name": "101_3_2.0",
+      "description": "作用: source 首段常量（疑为 x-zse-93 版本值，文章未点名） | 来源: 固定字符串 | 示例: 101_3_2.0"
+    },
+    {
+      "name": "md5(source)",
+      "description": "作用: 对 source 求 MD5，得到 32 位 hex 字符串 | 来源: MD5"
+    },
+    {
+      "name": "\\u0000",
+      "description": "作用: 补在 md5 字符串末尾（凑成 33 字符便于 3 个一组） | 来源: 常量 | 示例: \\u0000"
+    },
+    {
+      "name": "m",
+      "description": "作用: 3 个数字（charCode）经位运算得到的大数 | 来源: 4 种位运算之一"
+    },
+    {
+      "name": "fixed_str",
+      "description": "作用: 64 字符固定索引表/字典（每 4 字符一组查表） | 来源: 常量 | 示例: RuPtXwxpThIZ0qyz_9fYLCOV8B1mMGKs7UnFHgN3iDaWAJE-Qrk2ecSo6bjd4vl5"
+    },
+    {
+      "name": "1651578807",
+      "description": "作用: 疑似时间戳（文章未说明其用途；含在双引号包裹的疑似 cookie 值内） | 来源: 疑似 unix 秒 | 示例: 1651578807"
+    },
+    {
+      "name": "APAdT9SE4hSPTk_l1utlpb-FN6jTF5TgpSY=",
+      "description": "作用: 疑似 cookie 值（原文未点名，疑为 d_c0） | 来源: 疑似 cookie | 示例: APAdT9SE4hSPTk_l1utlpb-FN6jTF5TgpSY=|1651578807"
+    }
+  ]
+}

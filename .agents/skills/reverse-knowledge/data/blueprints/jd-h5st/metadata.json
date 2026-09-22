@@ -1,0 +1,265 @@
+{
+  "id": "jd-h5st",
+  "title": "京东 h5st 签名参数",
+  "category": "platform-signature",
+  "status": "active",
+  "version": "1.0.0",
+  "summary": "京东 api.m.jd.com 请求上的签名参数 h5st，由 JS 按 8 段拼接，含 HMAC-SHA256 段与环境指纹段。",
+  "aliases": [
+    "h5st",
+    "PSign.sign",
+    "__genSignParams",
+    "ParamsSign",
+    "js_security_v3"
+  ],
+  "keywords": [
+    "京东",
+    "jd",
+    "h5st",
+    "PSign",
+    "js_security_v3",
+    "api.m.jd.com",
+    "search.jd.com",
+    "pc_search_adv_Search"
+  ],
+  "algorithm": {
+    "family": "hmac",
+    "detail": "第5段与最终签名段均为 HMAC-SHA256（原文 `Jd.HmacSHA256`、`HmacSHA256签名`）。签名原文由若干 `key:value` 用 `&` 连接（示例逐字：`appid:search-pc-java&body:xxxxxx&client:pc&clientVersion:1.0.0&functionId:mixerOut&t:1713089999455`）；HMAC 的 salt 不是固定盐，而是 __genKey(_token,_fingerprint,v,_appId,algos) 的返回值，其算法体由远端下发 VM 代码定义",
+    "key_material": "无固定全局盐值；HMAC key = token（tk03/tk05，来自 request_algo）或 __genKey 派生值。注意：本批文章中**没有** `_key` 这一变量名",
+    "output_encoding": "unknown（文章只说明第 5 段做了 o(93,0,-78) 的转换，未说明是 hex 还是 base64）",
+    "output_length": null
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-1669042-京东试用h5st参数.md",
+      "line": 26,
+      "quote": "可以看出y就是h5st，而 `y = this[o(81, 0, 25) + t(0, 920, 0, 1148)](f, s, g);`",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1669042-京东试用h5st参数.md",
+      "line": 28,
+      "quote": "this中包含了 `_appId` 和 `_fingerprint` 和`_token`和`_timestamp`和`_version`",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1669042-京东试用h5st参数.md",
+      "line": 29,
+      "quote": "[在电脑浏览器登录京东试用的时候，cookie中sfstoken就是token]",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1669042-京东试用h5st参数.md",
+      "line": 33,
+      "quote": "8个参数，现在就剩下5和8了，再往上看，找到了调用参数`(f, s, g)`",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1669042-京东试用h5st参数.md",
+      "line": 64,
+      "quote": "看参数5 `f = Jd.HmacSHA256(l, n)[o(93, 0, -78)](Jd[t(0, 812, 0, 820)]",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1669042-京东试用h5st参数.md",
+      "line": 70,
+      "quote": "可以看出t是加密文本，n(token)是key，使用HMAC SHA 256加密",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1669042-京东试用h5st参数.md",
+      "line": 116,
+      "quote": "此次得到的结果就是第五个参数key就是刚才HMAC SHA 256加密的结果，那么t(加密文本)中有一个boby是64位的未知数",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1669042-京东试用h5st参数.md",
+      "line": 128,
+      "quote": "body: Br.a.sha256_digest(JSON.stringify(a)).toString()",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1669042-京东试用h5st参数.md",
+      "line": 138,
+      "quote": "能看出body的密文其实的post的时候的body的参数进行了SHA256加密",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1669042-京东试用h5st参数.md",
+      "line": 144,
+      "quote": "functionid等，是根据api的functionid变化的",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1913553-利用 ast 解混淆某东 h5st js 文件并进行参数分析.md",
+      "line": 20,
+      "quote": "从调用栈中出现的 js 文件列表中搜索`h5st`关键词, 可找到两处相关代码, 且两处调用的函数一样, 都是`window.PSign.sign`.",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1913553-利用 ast 解混淆某东 h5st js 文件并进行参数分析.md",
+      "line": 707,
+      "quote": "全文搜索\"h5st\", 得到两处相关代码, 通过分析知道 h5st 来自`__genSignParams`函数, 打上断点分析.",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1913553-利用 ast 解混淆某东 h5st js 文件并进行参数分析.md",
+      "line": 721,
+      "quote": "var s = this[\"__genKey\"](this[\"_token\"], this[\"_fingerprint\"], v, this[\"_appId\"]",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1913553-利用 ast 解混淆某东 h5st js 文件并进行参数分析.md",
+      "line": 797,
+      "quote": "拼接成`appid:search-pc-java&body:xxxxxx&client:pc&clientVersion:1.0.0&functionId",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1913553-利用 ast 解混淆某东 h5st js 文件并进行参数分析.md",
+      "line": 791,
+      "quote": "通过跟踪`__genSign`->`Zb`知道, A是计算拼接字符串的HmacSHA256签名, 其中salt是`2.3 s参数`",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1913553-利用 ast 解混淆某东 h5st js 文件并进行参数分析.md",
+      "line": 827,
+      "quote": "值得注意的是参与h5st时的环境检测变量只有: sua/pp/extend/random/v/fp这几个.",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-2104180-京东搜索接口商品数据获取及h5st参数解析.md",
+      "line": 69,
+      "quote": "body_hash = hashlib.sha256(json_str.encode('utf-8')).hexdigest()",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2104180-京东搜索接口商品数据获取及h5st参数解析.md",
+      "line": 77,
+      "quote": "\"t\": int(time.time() * 1000),  # JS 的 new Date().getTime() 是毫秒级时间戳",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2104180-京东搜索接口商品数据获取及h5st参数解析.md",
+      "line": 174,
+      "quote": "\"h5st\": h5st_value}",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 214,
+      "quote": "ParamsSign({ appId: '01a47' })",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 223,
+      "quote": "（h5st 第三段）",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 245,
+      "quote": "通过 hook 内部方法，发现签名流程：",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 250,
+      "quote": "_$cps",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 253,
+      "quote": "— 排序参数",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 258,
+      "quote": "_$rds",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 266,
+      "quote": "_$clt",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 269,
+      "quote": "— 环境检测（收集浏览器指纹）",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 274,
+      "quote": "_$ms",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 282,
+      "quote": "_$gdk",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 285,
+      "quote": "— 用 token 派生密钥",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 296,
+      "quote": "_$gsd",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 304,
+      "quote": "_$gsp",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 307,
+      "quote": "— 拼接最终 h5st",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 309,
+      "quote": "关键发现：我们生成的 h5st 里 token 是",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 36,
+      "quote": "（约 10500 行混淆代码），发现它重度依赖浏览器全局对象：window、document、navigator、localStorage、",
+      "verified_in_article": false
+    }
+  ],
+  "entry": {
+    "location": "多版本入口名不同：(a) 2022 试用页 main.6d****82.js，`y = this[o(81,0,25)+t(0,920,0,1148)](f, s, g)` 赋值给 `c.h5st`/`w.h5st`；(b) 2024 搜索页 js_security_v3_0.1.6.js 的 `window.PSign.sign`，h5st 实际来自 `__genSignParams`；(c) 另一版本为全局 `ParamsSign`（1.js，约 10500 行混淆）",
+    "trigger": "请求前生成（文章在滑动加载下一页 / 点类目 / 发搜索请求时断点命中）",
+    "transport": "query 参数，参数名逐字 `h5st`；2104180 中随 `params` 一起 GET 到 https://api.m.jd.com/api，同请求另有 query `x-api-eid-token`、`appid`、`functionId`、`client`、`clientVersion`、`t`、`body`"
+  },
+  "gaps": [
+    "h5st 的完整 8 段分段结构（分隔符到底是 `;` 还是其他、每段是什么）本批 5 篇文章全部未给出；第 1/2/4/6/7 段逐字含义 unknown",
+    "第 5 段 o(93, 0, -78) 转换后的编码（hex / base64）与长度，文章未说明",
+    "h5st 整体字符串长度：2104180 代码里 print 了 `len(h5st_value)`，但文章未贴出输出值",
+    "`_key` 这一变量名在本批文章中不存在（仅 `_token`/`_fingerprint`/`_appId`/`_version`），如其他来源提到 `_key` 需另行取证",
+    "算法体（algos / __genKey 内部实现）由远端 VM 代码下发，文章未展开，纯算需自行 dump",
+    "2104180 未给出可运行的 h5st.js（作者说『js文件非常大』、放在压缩包），只有 Python 侧代码"
+  ],
+  "self_check": [
+    "2104180 的 body hash 为 64 个 hex 字符；1669042:116 说的『boby是64位的未知数』与之吻合（是 64 个字符而非 64 bit），SHA-256 摘要长度核算通过",
+    "1913553:794 的 body 值 `4003786fdc49eae4d371309b4e42395f38e243887e470fe2cef2733dc03581c3` 实测长度 = 64 字符，确认为 SHA-256 hex",
+    "1913553 的示例时间戳 1713089999455 换算为 UTC 2024-04-14 10:19:59.455，与文章发布时间 2024-04-14 吻合，确认是毫秒",
+    "2092635 的示例 t=1771501263005 换算为 UTC 2026-02-19 11:41:03.005，与帖子编辑时间 2026-02-22 吻合，确认是毫秒",
+    "2052845 的 `v: \"h5_file_v5.2.0\"` 与标题『5.2版本』一致",
+    "拼接串分隔符核算：示例串中 6 组 `key:value` 之间确实是 `&`，键值之间是 `:`，与文章文字描述一致"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "mutations": [
+    {
+      "name": "拼串无分隔符",
+      "rule": "按参数名升序把 key 与 value 直接相连，空数组只留下键名（如 brandIds、categoryLv3Ids 后面没有值）",
+      "symptom_if_wrong": "待签名串与文章示例不一致，服务端会判签名错误（文章未给错误码）"
+    },
+    {
+      "name": "sign 字段自身不参与签名",
+      "rule": "文章给出的待签名串里不含 sign 字段",
+      "symptom_if_wrong": "文章未说明"
+    }
+  ]
+}

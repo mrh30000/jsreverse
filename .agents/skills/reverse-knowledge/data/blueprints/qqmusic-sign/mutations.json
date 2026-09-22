@@ -1,0 +1,29 @@
+{
+  "mutations": [
+    {
+      "name": "sha1 需大写 hex",
+      "rule": "sha1 输出用大写 hex 参与后续",
+      "symptom_if_wrong": "dict 键为大写 A-F，小写会查不到值导致异或结果错乱"
+    },
+    {
+      "name": "base64 去字符",
+      "rule": "base64 结果需去掉 / + =",
+      "symptom_if_wrong": "sign 含 +/= 与真值不符"
+    },
+    {
+      "name": "最终转小写",
+      "rule": "拼接结果整体 toLowerCase()",
+      "symptom_if_wrong": "大小写不符"
+    },
+    {
+      "name": "索引越界",
+      "rule": "indices1 含 40，超出 sha1 长度(40)，该项为 undefined，被 join 丢弃",
+      "symptom_if_wrong": "多算/少算一个字符"
+    },
+    {
+      "name": "异或字节数",
+      "rule": "sha1 为 40 hex → 20 字节，与 key_list 长度 20 对齐",
+      "symptom_if_wrong": "长度不匹配"
+    }
+  ]
+}

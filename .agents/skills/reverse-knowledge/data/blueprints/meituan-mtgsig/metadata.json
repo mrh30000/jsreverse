@@ -1,0 +1,160 @@
+{
+  "id": "meituan-mtgsig",
+  "title": "美团 Web mtgsig 1.2（a3 / a5 / a6 三段 + VMP 插桩）",
+  "category": "platform-signature",
+  "status": "active",
+  "version": "1.0.0",
+  "summary": "美团 Web 请求头 mtgsig（1.2）由 VMP 生成，拆成 a3/a5/a6 三段；a5 可见 0..255 动态数组与 16 位数组做 (acc+i+arr[i]+31) mod 256 轮询。",
+  "aliases": [
+    "mtgsig",
+    "mtgsig1.2",
+    "a3",
+    "a5",
+    "a6",
+    "dfpID"
+  ],
+  "keywords": [
+    "美团",
+    "meituan",
+    "mtgsig",
+    "mtgsig1.2",
+    "VMP",
+    "插桩",
+    "dfpID"
+  ],
+  "algorithm": {
+    "family": "custom",
+    "detail": "VMP。a5 可见轮询：acc = (acc_prev + i + encrypt_arr[i % 16] + 31) % 256；另有 0..255 动态数组与 16 位数组参与；数组由 kr = kR[\"apply\"](kS, kP) 生成。a3/a6 未给出可读算法。",
+    "key_material": "encrypt_arr = [152, 232, 186, 109, 125, 188, 249, 229, 95, 58, 250, 230, 169, 75, 115, 56]",
+    "output_encoding": "unknown",
+    "output_length": "476（文章：'这里正常应该是476位'）"
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-1964578-某团新版Web mtgsig1.2 算法解析.md",
+      "line": 19,
+      "quote": "最近工作有点小忙。没空更新，现在简单更新一下美团的吧 算法和环境更新了一下。某些接口请求几次就强校验了。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1964578-某团新版Web mtgsig1.2 算法解析.md",
+      "line": 28,
+      "quote": "首先AST解混淆，把代码中b函数给解出来就行了。非常简单。",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1964578-某团新版Web mtgsig1.2 算法解析.md",
+      "line": 32,
+      "quote": "这里算了。我补了一天最后还差了200多位。这里正常应该是476位。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1964578-某团新版Web mtgsig1.2 算法解析.md",
+      "line": 36,
+      "quote": "这里其实就是一个VMP。",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1964578-某团新版Web mtgsig1.2 算法解析.md",
+      "line": 41,
+      "quote": "ki+1,kg[\"getUint8\"](ki+1),kb",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1964578-某团新版Web mtgsig1.2 算法解析.md",
+      "line": 55,
+      "quote": "之间搜索dfpID的位置。",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1964578-某团新版Web mtgsig1.2 算法解析.md",
+      "line": 59,
+      "quote": "扣完 a3 即生成。",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1964578-某团新版Web mtgsig1.2 算法解析.md",
+      "line": 68,
+      "quote": " kR[\"apply\"](kS, kP)",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1964578-某团新版Web mtgsig1.2 算法解析.md",
+      "line": 117,
+      "quote": "encrypt_arr = [152, 232, 186, 109, 125, 188, 249, 229, 95, 58, 250, 230, 169, 75, 115, 56]",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1964578-某团新版Web mtgsig1.2 算法解析.md",
+      "line": 121,
+      "quote": "152 + 31",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1964578-某团新版Web mtgsig1.2 算法解析.md",
+      "line": 127,
+      "quote": "// 第二个",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1964578-某团新版Web mtgsig1.2 算法解析.md",
+      "line": 128,
+      "quote": "// 184+232 = 416   184 = 183+1  232 第二个数组",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1964578-某团新版Web mtgsig1.2 算法解析.md",
+      "line": 150,
+      "quote": "// 第16个",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1964578-某团新版Web mtgsig1.2 算法解析.md",
+      "line": 151,
+      "quote": "// 231 + 56   216 + 15  56 第15个数组",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1964578-某团新版Web mtgsig1.2 算法解析.md",
+      "line": 168,
+      "quote": "这里有个小坑~~~ 留着先自己弄弄",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1964578-某团新版Web mtgsig1.2 算法解析.md",
+      "line": 218,
+      "quote": "至此 a3 a5 a6 全部搞定。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1964578-某团新版Web mtgsig1.2 算法解析.md",
+      "line": 222,
+      "quote": "后面拼出来就行了。",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1964578-某团新版Web mtgsig1.2 算法解析.md",
+      "line": 224,
+      "quote": "然后找几个关键校验的接口 这里我用的是某Boking 去测试的。至于 还有a8 和 d1 。。 只能说待续",
+      "verified_in_article": false
+    }
+  ],
+  "entry": {
+    "location": "VMP（先 AST 解混淆，把 b 函数解出来；再层层插桩）",
+    "trigger": "请求前生成",
+    "transport": "header（文章标题称 mtgsig1.2；正文未逐字给出 header 名）"
+  },
+  "gaps": [
+    "a3 的算法（只说'扣完 a3 即生成'，无源码）。",
+    "a6 的算法（'瞎JB一顿乱找和乱猜' + 截图）。",
+    "mtgsig 最终拼接格式（a3/a5/a6 如何拼、有无分隔符、编码）。",
+    "header 名逐字（文章标题是 mtgsig1.2，正文未逐字给出 'mtgsig' 头名）。",
+    "a8 与 d1 两段（文章明确'待续'）。",
+    "dfpID 的来源与生成方式。"
+  ],
+  "self_check": [
+    "按 acc=(acc_prev + i + encrypt_arr[i%16] + 31) mod 256 重算 i=0..16，得 [183,191,154,41,201,169,199,210,88,186,221,237,193,56,216,62,5]。其中 i=0..15 依次为 183/191/154/41/.../62，与文章给出的 183、191、154、41、...(第16个)62 完全一致。",
+    "由上，文章第 17 个'未给结果'应为 261 % 256 = 5（文章写成 318 % 256 是笔误）。",
+    "encrypt_arr 长度核算 = 16，与'需要与之运算的16位数组'一致；第 17 个用 encrypt_arr[0]=152，符合 i%16 轮询。"
+  ]
+}

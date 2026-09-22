@@ -1,0 +1,19 @@
+{
+  "mutations": [
+    {
+      "name": "两次 AES 的密钥顺序",
+      "rule": "先 b(明文, '0CoJUm6Qyw8W8jud')，再 b(上次结果, 随机16位)",
+      "symptom_if_wrong": "服务端解密失败（文章未述现象，属调用链结构）"
+    },
+    {
+      "name": "IV 固定不变",
+      "rule": "两次 AES 都用同一 IV '0102030405060708'",
+      "symptom_if_wrong": "解密乱码（文章未述现象）"
+    },
+    {
+      "name": "随机密钥即 encSecKey 的明文",
+      "rule": "c(i, e, f) 中 i 就是第二次 AES 的 key，二者必须配对",
+      "symptom_if_wrong": "encSecKey 与 params 不匹配"
+    }
+  ]
+}

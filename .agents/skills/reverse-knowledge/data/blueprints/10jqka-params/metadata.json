@@ -1,0 +1,190 @@
+{
+  "id": "10jqka-params",
+  "title": "同花顺 hexin-v (chameleon) 反爬 token 与补环境清单",
+  "category": "platform-signature",
+  "status": "active",
+  "version": "1.0.0",
+  "summary": "同花顺反爬 token hexin-v（cookie 名 v）：由 chameleon JSVMP 脚本在浏览器环境生成，内含 strhash(navigator.userAgent)；本文只给出补环境方案与调用方式，签名算法本身未还原。",
+  "aliases": [
+    "hexin-v",
+    "v",
+    "chameleon",
+    "X-Antispider-Message",
+    "TOKEN_SERVER_TIME"
+  ],
+  "keywords": [
+    "同花顺",
+    "10jqka",
+    "q.10jqka.com.cn",
+    "hexin-v",
+    "chameleon",
+    "补环境",
+    "jsvmp",
+    "strhash"
+  ],
+  "algorithm": {
+    "family": "custom",
+    "detail": "签名算法本文未给出：两篇都只有 chameleon 的 JSVMP 字节码（一篇作为压缩包附件、一篇把 jsvmp 源码内联贴在正文），未还原为可读的哈希/编码步骤。文章明确可知的算法特征：① 内部编码了 strhash(navigator.userAgent)，UA 不一致即被判异常；② token 编码了 TOKEN_SERVER_TIME，过期被服务端拒绝；③ jsvmp 字符串表里出现 URL-safe base64 字母表 ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_、32 个 '1' 的掩码、常量 9527 / 2333 / 1200000 等；④ 初始化流程为 Init → W()。",
+    "key_material": "URL-safe base64 字母表 \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_\"（出现在 jsvmp 字符串表中，用途文章未说明）；'11111111111111111111111111111111'；9527；2333；1200000",
+    "output_encoding": "unknown",
+    "output_length": null
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-2128820-Ai逆向同花顺网站采集数据.md",
+      "line": 27,
+      "quote": "/* * 同花顺 chameleon (hexin-v) 补环境",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128820-Ai逆向同花顺网站采集数据.md",
+      "line": 30,
+      "quote": "使其在 Node 中跑通并在 document.cookie 写入 hexin-v。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128820-Ai逆向同花顺网站采集数据.md",
+      "line": 32,
+      "quote": "结构遵循补环境方法论：构造器 + prototype + 实例 + 描述符 + native toString 保护",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128820-Ai逆向同花顺网站采集数据.md",
+      "line": 52,
+      "quote": "// 必须与请求头 User-Agent 完全一致：hexin-v 内部编码了 strhash(navigator.userAgent)",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128820-Ai逆向同花顺网站采集数据.md",
+      "line": 539,
+      "quote": "getHexinV() { return cookieJar['hexin-v'] || cookieJar['v'] || null; },",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128820-Ai逆向同花顺网站采集数据.md",
+      "line": 554,
+      "quote": "3. 读取 main(chameleon) 源码，动态注入当前服务器时间(TOKEN_SERVER_TIME)",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128820-Ai逆向同花顺网站采集数据.md",
+      "line": 555,
+      "quote": "—— main 里该值是保存时写死的，token 会编码它，过期会被服务端拒绝",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128820-Ai逆向同花顺网站采集数据.md",
+      "line": 588,
+      "quote": "src = src.replace(",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128820-Ai逆向同花顺网站采集数据.md",
+      "line": 656,
+      "quote": "hexin-v 内部编码了 strhash(navigator.userAgent)，不一致会被服务端判为异常",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128820-Ai逆向同花顺网站采集数据.md",
+      "line": 774,
+      "quote": "cookies={\"hexin-v\": token, \"v\": token}, timeout=timeout)",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128911-手动补环境过同花顺网站.md",
+      "line": 23,
+      "quote": "1) 调 node env.js 现算一个新鲜的 hexin-v(cookie 里的 v 值) + 对应 UA；",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128911-手动补环境过同花顺网站.md",
+      "line": 28,
+      "quote": "hexin-v 内部编码了 strhash(navigator.userAgent)，请求头 UA 必须与 env.js 里的",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128911-手动补环境过同花顺网站.md",
+      "line": 96,
+      "quote": "\"hexin-v\": v,",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128911-手动补环境过同花顺网站.md",
+      "line": 345,
+      "quote": "userAgent:\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0\",",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128911-手动补环境过同花顺网站.md",
+      "line": 350,
+      "quote": "webdriver:false,",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128911-手动补环境过同花顺网站.md",
+      "line": 470,
+      "quote": "// chameleon 初始化末尾会 setInterval(getServerTime, 1200000)，",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128911-手动补环境过同花顺网站.md",
+      "line": 496,
+      "quote": "var TOKEN_SERVER_TIME = 1789789000.668;",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128911-手动补环境过同花顺网站.md",
+      "line": 1774,
+      "quote": "token 已写入 document.cookie(name=v) 与 localStorage(hexin-v)。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128911-手动补环境过同花顺网站.md",
+      "line": 1780,
+      "quote": "var m = String(document.cookie).match(/(?:^|;\\s*)v=([^;]+)/);",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128911-手动补环境过同花顺网站.md",
+      "line": 1771,
+      "quote": "\"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128911-手动补环境过同花顺网站.md",
+      "line": 1771,
+      "quote": "\"X-Antispider-Message\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128911-手动补环境过同花顺网站.md",
+      "line": 1771,
+      "quote": "\"11111111111111111111111111111111\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2128911-手动补环境过同花顺网站.md",
+      "line": 486,
+      "quote": "console.log(\"__HEXIN_UA__=\" + Navigator.prototype.userAgent);",
+      "verified_in_article": true
+    }
+  ],
+  "entry": {
+    "location": "chameleon 反爬脚本 main（jsvmp 字节码），初始化 W()/Init；文中的 main 内写有 var TOKEN_SERVER_TIME；生成后由 setCookie 写入 document.cookie(name=v)，同时写 localStorage(hexin-v)",
+    "trigger": "页面加载初始化（chameleon 初始化末尾 setInterval(getServerTime, 1200000) 每 20 分钟刷新）",
+    "transport": "cookie：hexin-v 与 v（2128820 的 requests 里同时带 cookies={\"hexin-v\": token, \"v\": token}）；2128911 的请求头里也放了 \"hexin-v\": v"
+  },
+  "gaps": [
+    "签名算法本文未给出：hexin-v 的生成算法（哈希/编码/字段构成）两篇都未还原，只有 JSVMP 字节码（一篇是压缩包附件、一篇内联贴出 jsvmp 源码）",
+    "X-Antispider-Message 头的取值规则与是否需要携带未说明",
+    "hexin-v 的长度与字符集文章未给示例值（只提到 jsvmp 里有 base64url 字母表，属间接证据）",
+    "cookie 的 domain/path/expires 具体值未给出（只给匹配正则）",
+    "行情接口是否需要额外 header（如 Referer 之外的风控头）未说明"
+  ],
+  "self_check": [
+    "jsvmp 字符串表核算：'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_' 共 64 个字符 → URL-safe base64 字母表（- 和 _ 代替 + 和 /），说明 token 可能用 base64url 编码",
+    "cookie 提取正则核算：/(?:^|;\\s*)v=([^;]+)/ 与 chameleon 写 cookie 的形态 'v=<token>; domain=…; path=/; expires=…' 匹配，能正确取到 token；不会误匹配 hexin-v（因要求 v 前是行首或 '; '）",
+    "TOKEN_SERVER_TIME 示例 1789789000.668 换算为 2026-09-19 附近（秒级 Unix 时间戳），与文章发布时间 2026-09-19 吻合",
+    "setInterval(getServerTime, 1200000) 的 1200000ms = 20 分钟，与注释「20 分钟的定时器」一致"
+  ]
+}

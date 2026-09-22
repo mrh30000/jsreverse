@@ -1,0 +1,118 @@
+{
+  "id": "bilibili-w-rid",
+  "title": "B站 / wbi 接口 w_rid 签名（w_rid + wts）",
+  "category": "platform-signature",
+  "status": "active",
+  "version": "1.0.0",
+  "summary": "B站 wbi 接口 w_rid = MD5(按 key 排序并 urlencode 后以 '&' 拼接的 query 串 + 32 位 mixinKey)；wts 为秒级时间戳，mixinKey 由 imgKey+subKey 按固定 64 索引表取字符得到。",
+  "aliases": [
+    "w_rid",
+    "w-rid",
+    "wbi",
+    "wts",
+    "imgKey",
+    "subKey",
+    "mixinKey"
+  ],
+  "keywords": [
+    "bilibili",
+    "B站",
+    "bilibili.com",
+    "api.bilibili.com",
+    "w_rid",
+    "wbi",
+    "wts"
+  ],
+  "algorithm": {
+    "family": "hash",
+    "detail": "w_rid = MD5(v + a)。v = 把参数对象 e 加 wts 后用 Object.keys().sort() 排序，逐项 encodeURIComponent(key)+'='+encodeURIComponent(value)，末尾 join('&')；值为字符串时先 replace(/[!'()*]/g,'')；null/undefined 不入串。a = mixinKey = (imgKey+subKey) 按固定索引表取字符后取前 32 位。",
+    "key_material": "imgKey = \"7cd084941338484aae1ad9425b84077c\"; subKey = \"4932caff0ff746eab6f01bf08b70ac45\"; 索引数组（逐字）= [46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49, 33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55, 40, 61, 26, 17, 0, 1, 60, 51, 30, 4, 22, 25, 54, 21, 56, 59, 6, 63, 57, 62, 11, 36, 20, 34, 44, 52]",
+    "output_encoding": "hex",
+    "output_length": "32（MD5 hex）"
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-2033704-某站w_rid加密参数分析.md",
+      "line": 10,
+      "quote": "先放个网址：aHR0cHM6Ly93d3cuYmlsaWJpbGkuY29tL2Jhbmd1bWkvcGxheS9lcDE2MzM2NDM=",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2033704-某站w_rid加密参数分析.md",
+      "line": 19,
+      "quote": "这个是评论区的接口，可以自行滑动或者直接搜索接口：aHR0cHM6Ly9hcGkuYmlsaWJpbGkuY29tL3gvdjIvcmVwbHkvd2JpL21haW4=",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2033704-某站w_rid加密参数分析.md",
+      "line": 32,
+      "quote": "这里我们大概可以猜到加密的方式MD5（爬虫老鸟可能直接最开始看到长度就敏感了）",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-2033704-某站w_rid加密参数分析.md",
+      "line": 87,
+      "quote": "r.join(\"\").slice(0, 32)), u = Math.round(Date.now() / 1e3), s = Object.assign({}, e, {",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2033704-某站w_rid加密参数分析.md",
+      "line": 88,
+      "quote": "wts: u",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2033704-某站w_rid加密参数分析.md",
+      "line": 93,
+      "quote": "null != h && l.push(\"\".concat(encodeURIComponent(p), \"=\").concat(encodeURIComponent(h)))",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2033704-某站w_rid加密参数分析.md",
+      "line": 97,
+      "quote": "w_rid: at(v + a),",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2033704-某站w_rid加密参数分析.md",
+      "line": 111,
+      "quote": "测试可以看出来，at函数加密是标准的md5，只需要分析v和a函数的生成，可以查看作用域",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2033704-某站w_rid加密参数分析.md",
+      "line": 137,
+      "quote": "然后就是a的生成过程，代码片段如下，经过测试，o和i的值是固定的",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2033704-某站w_rid加密参数分析.md",
+      "line": 140,
+      "quote": "// o = \"7cd084941338484aae1ad9425b84077c\" i =\"4932caff0ff746eab6f01bf08b70ac45\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2033704-某站w_rid加密参数分析.md",
+      "line": 151,
+      "quote": "这段代码的作用是从字符串t中按特定索引顺序提取有效字符，生成新的数组 r并取前32位，并将结果赋值给变量 a,t是由o+i生成的",
+      "verified_in_article": true
+    }
+  ],
+  "entry": {
+    "location": "函数 lt(e)（内部生成 mixinKey a，再 return {w_rid: at(v + a), wts: u.toString()}）；at 为标准 MD5",
+    "trigger": "请求前（刷新/下拉评论接口时触发）",
+    "transport": "query，参数名逐字：\"w_rid\"、\"wts\"",
+    "note": "文章标题写'某站'，但正文两处 base64 网址解出均为 bilibili.com，故按实际平台命名 bilibili-w-rid"
+  },
+  "gaps": [
+    "ft() 的实现（Key 还原）。",
+    "localStorage 键名 ct 的字面值。",
+    "useAssignKey / wbiImgKey / wbiSubKey 分支（代码里有但文章没解释）。",
+    "文章中未给出 w_rid 的完整真实示例值（只有对拍截图）。"
+  ],
+  "self_check": [
+    "t = imgKey+subKey 长度 = 64，索引数组长度 = 64，最大索引 = 63（全部落在 t 内，t.charAt(e) 恒真）。",
+    "用文章给的 o/i 与索引表重算 mixinKey a = 'ea1db124af3c7062474693fa704f4ff8'（32 位 hex，符合 slice(0,32)）。",
+    "base64 解码两个网址，得到 bilibili.com/bangumi/play/ep1633643 与 api.bilibili.com/x/v2/reply/wbi/main —— 确认参数属 B 站（蓝图 ID 保持 bilibili-w-rid，无需改名）。"
+  ]
+}

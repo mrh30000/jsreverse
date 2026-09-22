@@ -1,0 +1,597 @@
+{
+  "schemaVersion": 1,
+  "generatedFrom": [
+    "douyin.md",
+    "jd-h5st.md",
+    "mixed1.md",
+    "mixed2.md",
+    "music.md",
+    "zhihu.md"
+  ],
+  "blueprints": [
+    {
+      "id": "10jqka-params",
+      "path": "10jqka-params",
+      "title": "同花顺 hexin-v (chameleon) 反爬 token 与补环境清单",
+      "category": "platform-signature",
+      "status": "active",
+      "summary": "同花顺反爬 token hexin-v（cookie 名 v）：由 chameleon JSVMP 脚本在浏览器环境生成，内含 strhash(navigator.userAgent)；本文只给出补环境方案与调用方式，签名算法本身未还原。",
+      "aliases": [
+        "hexin-v",
+        "v",
+        "chameleon",
+        "X-Antispider-Message",
+        "TOKEN_SERVER_TIME"
+      ],
+      "keywords": [
+        "同花顺",
+        "10jqka",
+        "q.10jqka.com.cn",
+        "hexin-v",
+        "chameleon",
+        "补环境",
+        "jsvmp",
+        "strhash"
+      ]
+    },
+    {
+      "id": "12306-login",
+      "path": "12306-login",
+      "title": "12306 登录流程协议（conf / captcha-image64 / captcha-check / login / uamtk / uamauthclient）",
+      "category": "platform-protocol",
+      "status": "historical",
+      "summary": "12306 登录无签名参数，流程为：conf 取 cookie → captcha-image64 取图 → captcha-check 校验 → web/login 校验账号 → auth/uamtk 取 newapptk → uamauthclient 校验 token。",
+      "aliases": [
+        "uamtk",
+        "newapptk",
+        "captcha-image64",
+        "captcha-check",
+        "uamauthclient",
+        "login_site"
+      ],
+      "keywords": [
+        "12306",
+        "kyfw.12306.cn",
+        "登录",
+        "验证码",
+        "uamtk",
+        "appid otn"
+      ]
+    },
+    {
+      "id": "baidu-fanyi-sign",
+      "path": "baidu-fanyi-sign",
+      "title": "百度翻译 v2transapi sign 参数",
+      "category": "platform-signature",
+      "status": "unknown",
+      "summary": "百度翻译 v2transapi 的 sign：随待翻译词变化，由某 export 函数生成，内部依赖固定常量 r 与函数 n。",
+      "aliases": [
+        "sign",
+        "百度翻译",
+        "fanyi.baidu.com"
+      ],
+      "keywords": [
+        "百度翻译",
+        "baidu",
+        "fanyi",
+        "v2transapi",
+        "sign"
+      ]
+    },
+    {
+      "id": "bilibili-w-rid",
+      "path": "bilibili-w-rid",
+      "title": "B站 / wbi 接口 w_rid 签名（w_rid + wts）",
+      "category": "platform-signature",
+      "status": "active",
+      "summary": "B站 wbi 接口 w_rid = MD5(按 key 排序并 urlencode 后以 '&' 拼接的 query 串 + 32 位 mixinKey)；wts 为秒级时间戳，mixinKey 由 imgKey+subKey 按固定 64 索引表取字符得到。",
+      "aliases": [
+        "w_rid",
+        "w-rid",
+        "wbi",
+        "wts",
+        "imgKey",
+        "subKey",
+        "mixinKey"
+      ],
+      "keywords": [
+        "bilibili",
+        "B站",
+        "bilibili.com",
+        "api.bilibili.com",
+        "w_rid",
+        "wbi",
+        "wts"
+      ]
+    },
+    {
+      "id": "boss-zp-stoken",
+      "path": "boss-zp-stoken",
+      "title": "BOSS直聘 __zp_stoken__（0f35c990.js 控制流平坦化纯算）",
+      "category": "platform-signature",
+      "status": "active",
+      "summary": "cookie __zp_stoken__ 由每日变动的 0f35c990.js 生成；该文件为控制流平坦化（分发变量 be），需 AST 建 be→代码块映射表还原执行流后纯算。文章以方法论为主，字面算法缺失。",
+      "aliases": [
+        "__zp_stoken__",
+        "zp_stoken",
+        "zhipin",
+        "0f35c990.js"
+      ],
+      "keywords": [
+        "boss直聘",
+        "zhipin",
+        "boss",
+        "__zp_stoken__",
+        "控制流平坦化",
+        "AST",
+        "纯算"
+      ]
+    },
+    {
+      "id": "csdn-x-ca-signature",
+      "path": "csdn-x-ca-signature",
+      "title": "CSDN bizapi x-ca-signature 签名（HMAC-SHA256 + Base64，阿里云 API 网关规范）",
+      "category": "platform-signature",
+      "status": "unknown",
+      "summary": "CSDN bizapi 接口签名：HMAC-SHA256(密钥, \"GET\\n*/*\\n\\n\\n\\nx-ca-key:<appKey>\\nx-ca-nonce:<uuid>\\n<path?query>\") 后 Base64。",
+      "aliases": [
+        "x-ca-signature",
+        "X-Ca-Signature",
+        "x-ca-key",
+        "X-Ca-Key",
+        "x-ca-nonce",
+        "X-Ca-Nonce",
+        "x-ca-signature-headers",
+        "X-Ca-Signature-Headers"
+      ],
+      "keywords": [
+        "CSDN",
+        "csdn",
+        "bizapi.csdn.net",
+        "x-ca-signature",
+        "HMAC-SHA256",
+        "appSecret",
+        "阿里云API网关"
+      ]
+    },
+    {
+      "id": "dewu-sign",
+      "path": "dewu-sign",
+      "title": "得物(DE物)商家后台 stark.dewu.com 统计数据接口 sign",
+      "category": "platform-signature",
+      "status": "unknown",
+      "summary": "得物商家后台统计接口 body 里的 sign：参数按键名升序拼 key+value 后直接接 32 位十六进制常量，再交给 return_sign（算法正文未给）。",
+      "aliases": [
+        "sign",
+        "return_sign"
+      ],
+      "keywords": [
+        "得物",
+        "dewu",
+        "stark.dewu.com",
+        "sign",
+        "商家后台",
+        "h5"
+      ]
+    },
+    {
+      "id": "douyin-a-bogus",
+      "path": "douyin-a-bogus",
+      "title": "抖音 a_bogus 签名",
+      "category": "platform-signature",
+      "status": "active",
+      "summary": "抖音 web 接口 query 里的 a_bogus，由 bdms.js(jsvmp) 生成：SM3 多轮 + 魔改 RC4 + 魔改 base64，长度不固定。",
+      "aliases": [
+        "a_bogus",
+        "ab",
+        "a_b"
+      ],
+      "keywords": [
+        "抖音",
+        "douyin",
+        "a_bogus",
+        "ab",
+        "bdms",
+        "jsvmp",
+        "SM3",
+        "RC4",
+        "魔改base64"
+      ]
+    },
+    {
+      "id": "jd-env-params",
+      "path": "jd-env-params",
+      "title": "京东 h5st 环境/设备指纹段（第8段 / expandParams / AES 密文 t）",
+      "category": "platform-signature",
+      "status": "active",
+      "summary": "h5st 的环境/指纹段：采集 navigator/window/canvas/webgl 等字段，再 AES-CBC(hex) 或自定义 base64 编码。",
+      "aliases": [
+        "第8段",
+        "h5st 第8段",
+        "expandParams",
+        "device_data",
+        "env",
+        "环境检测段"
+      ],
+      "keywords": [
+        "京东",
+        "jd",
+        "h5st",
+        "第8段",
+        "expandParams",
+        "环境检测",
+        "指纹",
+        "canvas",
+        "webglFp",
+        "sua"
+      ]
+    },
+    {
+      "id": "jd-h5st",
+      "path": "jd-h5st",
+      "title": "京东 h5st 签名参数",
+      "category": "platform-signature",
+      "status": "active",
+      "summary": "京东 api.m.jd.com 请求上的签名参数 h5st，由 JS 按 8 段拼接，含 HMAC-SHA256 段与环境指纹段。",
+      "aliases": [
+        "h5st",
+        "PSign.sign",
+        "__genSignParams",
+        "ParamsSign",
+        "js_security_v3"
+      ],
+      "keywords": [
+        "京东",
+        "jd",
+        "h5st",
+        "PSign",
+        "js_security_v3",
+        "api.m.jd.com",
+        "search.jd.com",
+        "pc_search_adv_Search"
+      ]
+    },
+    {
+      "id": "jd-request-algo-token",
+      "path": "jd-request-algo-token",
+      "title": "京东 request_algo 远端下发 token/算法体",
+      "category": "platform-signature",
+      "status": "active",
+      "summary": "h5st 的 token 与签名算法体由远端 request_algo 下发并缓存到 localStorage，本地生成会得到错误的 tk05。",
+      "aliases": [
+        "request_algo",
+        "_onRequestTokenRemotely",
+        "WQ_dy_algo_s_f06cc_4.3",
+        "WQ_dy_tk_s_f06cc_4.3",
+        "tk03",
+        "tk05"
+      ],
+      "keywords": [
+        "京东",
+        "jd",
+        "request_algo",
+        "cactus.jd.com",
+        "token",
+        "tk03",
+        "tk05",
+        "localStorage",
+        "algos"
+      ]
+    },
+    {
+      "id": "kugou-signature",
+      "path": "kugou-signature",
+      "title": "酷狗音乐搜索 signature（MD5 首尾盐值拼接）",
+      "category": "platform-signature",
+      "status": "active",
+      "summary": "酷狗搜索接口 signature = MD5(固定盐值 + 若干 k=v 按固定顺序无分隔拼接 + 同一固定盐值)，盐值固定。",
+      "aliases": [
+        "signature",
+        "sign",
+        "mid",
+        "dfid",
+        "uuid"
+      ],
+      "keywords": [
+        "酷狗",
+        "kugou",
+        "complexsearch.kugou.com",
+        "signature",
+        "MD5",
+        "NVPh5oo715z5DIWAeQlhMDsWXXQV4hwt"
+      ]
+    },
+    {
+      "id": "lagou-lg-stoken",
+      "path": "lagou-lg-stoken",
+      "title": "拉勾网 positionAjax.json 全套参数（traceparent / __lg_stoken__ / X-S-HEADER / AES 请求体）",
+      "category": "platform-signature",
+      "status": "unknown",
+      "summary": "拉勾职位接口：__lg_stoken__ 由混淆 JS（window.gt）用 location.search 算出；X-S-HEADER=AES-CBC(JSON{originHeader,code})，其中 code=SHA256(...) 转大写；请求体与响应体同为 AES-CBC。",
+      "aliases": [
+        "__lg_stoken__",
+        "X-S-HEADER",
+        "traceparent",
+        "X-K-HEADER",
+        "X-SS-REQ-HEADER",
+        "x-anit-forge-code",
+        "x-anit-forge-token",
+        "X_HTTP_TOKEN",
+        "user_trace_token"
+      ],
+      "keywords": [
+        "拉勾",
+        "lagou",
+        "positionAjax.json",
+        "__lg_stoken__",
+        "X-S-HEADER",
+        "AES",
+        "RSA",
+        "SHA256"
+      ]
+    },
+    {
+      "id": "meituan-mtgsig",
+      "path": "meituan-mtgsig",
+      "title": "美团 Web mtgsig 1.2（a3 / a5 / a6 三段 + VMP 插桩）",
+      "category": "platform-signature",
+      "status": "active",
+      "summary": "美团 Web 请求头 mtgsig（1.2）由 VMP 生成，拆成 a3/a5/a6 三段；a5 可见 0..255 动态数组与 16 位数组做 (acc+i+arr[i]+31) mod 256 轮询。",
+      "aliases": [
+        "mtgsig",
+        "mtgsig1.2",
+        "a3",
+        "a5",
+        "a6",
+        "dfpID"
+      ],
+      "keywords": [
+        "美团",
+        "meituan",
+        "mtgsig",
+        "mtgsig1.2",
+        "VMP",
+        "插桩",
+        "dfpID"
+      ]
+    },
+    {
+      "id": "netease-weapi",
+      "path": "netease-weapi",
+      "title": "网易云音乐 weapi 请求加密（params / encSecKey）",
+      "category": "platform-signature",
+      "status": "active",
+      "summary": "weapi 接口 POST 表单两个字段：params=AES-CBC 双重加密的 JSON，encSecKey=RSA 加密的随机 16 位密钥。",
+      "aliases": [
+        "weapi",
+        "params",
+        "encSecKey",
+        "网易云加密参数"
+      ],
+      "keywords": [
+        "网易云",
+        "netease",
+        "music.163.com",
+        "weapi",
+        "params",
+        "encSecKey",
+        "AES",
+        "RSA"
+      ]
+    },
+    {
+      "id": "pinduoduo-antispider",
+      "path": "pinduoduo-antispider",
+      "title": "拼多多(夕夕进宝)商品搜索接口 crawlerInfo 加密参数",
+      "category": "platform-signature",
+      "status": "historical",
+      "summary": "拼夕夕旗下夕夕进宝商品搜索请求里的随机加密串（参数名 crawlerInfo），入口函数 k()；文章只有截图与配套视频，未给出算法。",
+      "aliases": [
+        "crawlerInfo"
+      ],
+      "keywords": [
+        "拼多多",
+        "pinduoduo",
+        "夕夕进宝",
+        "crawlerInfo",
+        "k()"
+      ]
+    },
+    {
+      "id": "qqmusic-sign",
+      "path": "qqmusic-sign",
+      "title": "QQ音乐 sign 参数（zzc 前缀自制签名）",
+      "category": "platform-signature",
+      "status": "active",
+      "summary": "y.qq.com 请求的 sign：'zzc' 固定前缀 + sha1 摘要按索引抽取的两段字符 + 异或后 base64 的中段，最后整体转小写。",
+      "aliases": [
+        "sign",
+        "zzc",
+        "zzc-sign"
+      ],
+      "keywords": [
+        "QQ音乐",
+        "qqmusic",
+        "y.qq.com",
+        "sign",
+        "zzc",
+        "sha1",
+        "base64"
+      ]
+    },
+    {
+      "id": "taobao-isg-cna",
+      "path": "taobao-isg-cna",
+      "title": "淘系 isg cookie 签名 + cna（getIsg）",
+      "category": "platform-signature",
+      "status": "active",
+      "summary": "淘系 cookie isg：46 字节字段按宽度描述符序列化后，前置 [0x04, 校验字节]，异或流加密再 URL-safe Base64；cna 从 log.mmstat.com/eg.js 正则取 goldlog.Etag。",
+      "aliases": [
+        "isg",
+        "cna",
+        "getIsg",
+        "_sufei_data2",
+        "sufeidata"
+      ],
+      "keywords": [
+        "淘系",
+        "淘宝",
+        "taobao",
+        "tmall",
+        "goofish",
+        "isg",
+        "cna",
+        "goldlog.Etag",
+        "mmstat"
+      ]
+    },
+    {
+      "id": "toutiao-a-bogus",
+      "path": "toutiao-a-bogus",
+      "title": "头条 a-bogus 签名",
+      "category": "platform-signature",
+      "status": "unknown",
+      "summary": "今日头条 feed 请求 query 里的 a-bogus，由 bdms 文件内的 s/U 方法生成，长度不固定。",
+      "aliases": [
+        "a-bogus",
+        "ab"
+      ],
+      "keywords": [
+        "头条",
+        "toutiao",
+        "a-bogus",
+        "bdms"
+      ]
+    },
+    {
+      "id": "wenjuanxing-params",
+      "path": "wenjuanxing-params",
+      "title": "问卷星(答题)提交协议参数：jqsign / jqParam 自定义加密",
+      "category": "platform-signature",
+      "status": "unknown",
+      "summary": "问卷星提交参数：jqsign=dataenc(jqnonce)=逐字符 XOR(ktimes%10)；jqParam 由 rndnum/starttime/activityId 经自定义 abcd1~abcd5（含固定 62 字符表）算出，再 encodeURIComponent。",
+      "aliases": [
+        "jqsign",
+        "jqnonce",
+        "jqParam",
+        "jqpram",
+        "jcn",
+        "dataenc",
+        "abcd1",
+        "abcd5"
+      ],
+      "keywords": [
+        "问卷星",
+        "wjx",
+        "ks.wjx.top",
+        "jqsign",
+        "jqParam",
+        "dataenc",
+        "ob混淆",
+        "jqmobo2.js"
+      ]
+    },
+    {
+      "id": "xhs-x-s",
+      "path": "xhs-x-s",
+      "title": "小红书 Web 请求签名 x-s / x-s-common / x-t（mnsv2 = XXTEA + 自定义 Base64）",
+      "category": "platform-signature",
+      "status": "active",
+      "summary": "小红书 Web 的 x-s = 'XYS_' + 自定义码表 Base64(JSON{x0..x4})，其中 x3 由 window.mnsv2(XXTEA+自定义Base64) 生成；x-t 为毫秒时间戳。",
+      "aliases": [
+        "x-s",
+        "X-s",
+        "x-s-common",
+        "X-s-common",
+        "x-t",
+        "mnsv2",
+        "mns0301",
+        "XYS_"
+      ],
+      "keywords": [
+        "小红书",
+        "xiaohongshu",
+        "xhs",
+        "edith.xiaohongshu.com",
+        "x-s",
+        "mnsv2",
+        "XXTEA",
+        "自定义Base64"
+      ]
+    },
+    {
+      "id": "yanglegeyang-map",
+      "path": "yanglegeyang-map",
+      "title": "羊了个羊 小程序协议参数（map_info_ex / 关卡配置 / game_over_ex）",
+      "category": "platform-protocol",
+      "status": "historical",
+      "summary": "羊了个羊小程序无签名算法，只有请求参数清单：header t 为登录得到的账号信息；game_over_ex 提交 base64(protobuf MatchPlayInfo) + MapSeed2 + Version。",
+      "aliases": [
+        "MatchPlayInfo",
+        "MapSeed2",
+        "map_seed",
+        "map_seed_2",
+        "map_md5",
+        "game_over_ex",
+        "map_info_ex"
+      ],
+      "keywords": [
+        "羊了个羊",
+        "easygame2021",
+        "cat-match",
+        "game_over_ex",
+        "MatchPlayInfo",
+        "protobuf",
+        "小程序"
+      ]
+    },
+    {
+      "id": "zhihu-x-zse-96",
+      "path": "zhihu-x-zse-96",
+      "title": "知乎 x-zse-96 签名（MD5 + 4 种位运算 + 64 字符查表）",
+      "category": "platform-signature",
+      "status": "unknown",
+      "summary": "知乎搜索接口 x-zse-96：对 source 取 md5，末尾补 \\u0000 后倒序三字符一组做 4 种位运算得 m，再查 64 字符表输出签名。",
+      "aliases": [
+        "x-zse-96",
+        "X-ZSE-96",
+        "x_zse_96"
+      ],
+      "keywords": [
+        "知乎",
+        "zhihu",
+        "x-zse-96",
+        "jsvmp",
+        "sign",
+        "md5",
+        "fixed_str",
+        "位运算"
+      ]
+    },
+    {
+      "id": "zhihu-zse-ck",
+      "path": "zhihu-zse-ck",
+      "title": "知乎 __zse_ck Cookie（jsvmp + wasm 多层套娃，魔改 SM4 + 魔改 base64）",
+      "category": "platform-signature",
+      "status": "unknown",
+      "summary": "知乎 __zse_ck cookie：JS 层 ob+jsvmp 加载 wasm，wasm 内再套一层 VM 加密环境指纹，最终经魔改 SM4 + 魔改 base64 生成 003_ 前缀 ck。",
+      "aliases": [
+        "__zse_ck",
+        "_zse_ck",
+        "zse_ck"
+      ],
+      "keywords": [
+        "知乎",
+        "zhihu",
+        "__zse_ck",
+        "zse_ck",
+        "jsvmp",
+        "wasm",
+        "sm4",
+        "魔改base64",
+        "环境检测",
+        "crc32"
+      ]
+    }
+  ]
+}

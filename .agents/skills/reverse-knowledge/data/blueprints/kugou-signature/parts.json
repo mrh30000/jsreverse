@@ -1,0 +1,52 @@
+{
+  "parts": [
+    {
+      "name": "signature",
+      "description": "作用: MD5 校验签名 | 来源: MD5(盐值 + 参数串 + 盐值) | 示例: AD72928A4E0B85FCDC9A34FF1C238AAB"
+    },
+    {
+      "name": "盐值",
+      "description": "作用: 首尾固定盐值 | 来源: 固定常量 | 示例: NVPh5oo715z5DIWAeQlhMDsWXXQV4hwt"
+    },
+    {
+      "name": "clienttime",
+      "description": "作用: 客户端时间 | 来源: 时间戳 | 示例: 1600307100792"
+    },
+    {
+      "name": "mid",
+      "description": "作用: 机器/会话 id | 来源: 2020版=13位时间戳；2022版下载接口用固定 hex | 示例: 1600307100792（2020）"
+    },
+    {
+      "name": "uuid",
+      "description": "作用: 用户 id | 来源: 2020版=13位时间戳 | 示例: 1600307100792（2020）"
+    },
+    {
+      "name": "dfid",
+      "description": "作用: 设备 id | 来源: 搜索时固定为 '-' | 示例: -"
+    },
+    {
+      "name": "srcappid",
+      "description": "作用: 来源 app id | 来源: 固定 | 示例: 2919"
+    },
+    {
+      "name": "clientver",
+      "description": "作用: 客户端版本 | 来源: 固定 | 示例: 2000"
+    },
+    {
+      "name": "callback",
+      "description": "作用: JSONP 回调名 | 来源: 固定 | 示例: callback123"
+    },
+    {
+      "name": "tag",
+      "description": "作用: 标签（2020版存在，2022版无） | 来源: 固定 'em'（仅 2020 版） | 示例: em"
+    },
+    {
+      "name": "userid",
+      "description": "作用: 用户 id（两版取值不同） | 来源: 2020版=-1；2022版=0 | 示例: -1 / 0"
+    },
+    {
+      "name": "token",
+      "description": "作用: 令牌（仅 2022 版，值为空） | 来源: 2022版拼 'token='"
+    }
+  ]
+}

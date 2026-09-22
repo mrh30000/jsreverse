@@ -1,0 +1,103 @@
+{
+  "id": "toutiao-a-bogus",
+  "title": "头条 a-bogus 签名",
+  "category": "platform-signature",
+  "status": "unknown",
+  "version": "1.0.0",
+  "summary": "今日头条 feed 请求 query 里的 a-bogus，由 bdms 文件内的 s/U 方法生成，长度不固定。",
+  "aliases": [
+    "a-bogus",
+    "ab"
+  ],
+  "keywords": [
+    "头条",
+    "toutiao",
+    "a-bogus",
+    "bdms"
+  ],
+  "algorithm": {
+    "family": "unknown",
+    "detail": "文章未给出算法细节（全篇为截图 + 文字步骤），仅指出最终加密逻辑在 bdms 文件里、核心是 U 方法",
+    "key_material": null,
+    "output_encoding": "unknown",
+    "output_length": "文章明确说『a-bogus的长度不是固定的』；作者观察值 168，补环境后输出 160"
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-2048032-JS逆向实战案例之———x日头条【a-bogus】分析.md",
+      "line": 9,
+      "quote": "网站：aHR0cHM6Ly93d3cudG91dGlhby5jb20v",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2048032-JS逆向实战案例之———x日头条【a-bogus】分析.md",
+      "line": 15,
+      "quote": "载荷里面有一个a-bogus参数,长度为168位，a-bogus在字节系的加密里面几乎都有",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2048032-JS逆向实战案例之———x日头条【a-bogus】分析.md",
+      "line": 19,
+      "quote": "3.搜关键字是搜不到的，我们可以用xhr断点试一下，看看能不能断住",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2048032-JS逆向实战案例之———x日头条【a-bogus】分析.md",
+      "line": 27,
+      "quote": "5.发现最终的加密逻辑都是在这个bdms文件里面，我们打一个日志断点这里可以看见",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2048032-JS逆向实战案例之———x日头条【a-bogus】分析.md",
+      "line": 33,
+      "quote": "7.我们再打个条件断点，当长度大于168的时候，我们就断住，再控制台输出来看一下,可以看到输出了a-bogus",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2048032-JS逆向实战案例之———x日头条【a-bogus】分析.md",
+      "line": 39,
+      "quote": "7.进来s这个方法里面可以看到，核心加密逻辑就是这个U方法，所以我们要做的就是把这个U方法导出",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2048032-JS逆向实战案例之———x日头条【a-bogus】分析.md",
+      "line": 45,
+      "quote": "8.所以我们怎么办，使用全扣大法，全部扣下来大概一万行代码,单独放到一个文件里面",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2048032-JS逆向实战案例之———x日头条【a-bogus】分析.md",
+      "line": 49,
+      "quote": "9.最后处理下来大概就是这个样子，然后我们就可以开始补环境了，就是挂上代理一直补就行了",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2048032-JS逆向实战案例之———x日头条【a-bogus】分析.md",
+      "line": 53,
+      "quote": "10.环境补完就是最后这么多，补的差不多就会出值了，长度160",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2048032-JS逆向实战案例之———x日头条【a-bogus】分析.md",
+      "line": 61,
+      "quote": "最后我们也是响应为200，成功拿到数据了，请求模拟成功",
+      "verified_in_article": true
+    }
+  ],
+  "entry": {
+    "location": "bdms 文件（作者：『发现最终的加密逻辑都是在这个bdms文件里面』）；入口方法 s，核心加密逻辑是其中的 U 方法",
+    "trigger": "请求前（feed 请求加载当前页面内容时）",
+    "transport": "载荷(query)参数，参数名文章逐字写作 `a-bogus`（连字符）"
+  },
+  "gaps": [
+    "参数名到底是 a-bogus（连字符）还是 a_bogus（下划线）：文章正文一律写 a-bogus，但无代码字面量佐证（screenshot-only），故标 unknown。",
+    "s 方法 / U 方法的入参、内部算法、输出编码全部未知。",
+    "是否与抖音 a_bogus 同源（都用 bdms）无法从本篇判定，需要另外的字面量证据。",
+    "168 / 160 之外的其它长度分布未知。"
+  ],
+  "self_check": [
+    "该篇 61 行中，第 28 行是 16414 字符的内嵌 base64 图片（data:image/png;base64,...），正文仅有步骤文字 + 截图，属 screenshot-only 级别证据。",
+    "行数核对：全文 61 行 / 19360 字节，其中图片行 13,17,21,25,28,31,35,37,41,43,47,51,55,59 共 14 行是图；正文步骤只有 11 条编号文字。",
+    "文章未出现任何算法名（SM3/RC4/base64）、字母表、密钥、盐值、参数拼接顺序——因此本蓝图 algorithm 除 family=unknown 外全部留空。"
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "parts": [
+    {
+      "name": "bizChannelId",
+      "description": "作用: 业务渠道 id | 来源: 固定值 | 示例: -1"
+    },
+    {
+      "name": "brandIds",
+      "description": "作用: 品牌 id 列表 | 来源: 空数组，拼串时只剩键名 | 示例: []"
+    },
+    {
+      "name": "categoryLv3Ids",
+      "description": "作用: 三级类目 id 列表 | 来源: 空数组，拼串时只剩键名 | 示例: []"
+    },
+    {
+      "name": "endDate",
+      "description": "作用: 结束日期 | 来源: 日期字符串 | 示例: 20230205"
+    },
+    {
+      "name": "startDate",
+      "description": "作用: 开始日期 | 来源: 日期字符串 | 示例: 20230130"
+    },
+    {
+      "name": "timeSpanType",
+      "description": "作用: 时间跨度类型 | 来源: 固定值 | 示例: 2"
+    },
+    {
+      "name": "timeType",
+      "description": "作用: 时间类型 | 来源: 固定值 | 示例: 2"
+    },
+    {
+      "name": "048a9c4943398714b356a696503d2d36",
+      "description": "作用: 待签名串尾部的固定 32 位十六进制常量（文章未说明它是盐值、密钥还是消息的一部分） | 来源: 原样出现在 return_sign 的入参字符串末尾 | 示例: 048a9c4943398714b356a696503d2d36"
+    },
+    {
+      "name": "sign",
+      "description": "作用: 最终签名值 | 来源: return_sign(拼接串) 的返回值"
+    }
+  ]
+}

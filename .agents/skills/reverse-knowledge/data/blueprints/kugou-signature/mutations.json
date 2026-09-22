@@ -1,0 +1,29 @@
+{
+  "mutations": [
+    {
+      "name": "首尾双盐值",
+      "rule": "盐值在拼接串开头和结尾各出现一次",
+      "symptom_if_wrong": "signature 不符，接口返回失败"
+    },
+    {
+      "name": "参数顺序固定",
+      "rule": "无分隔符按序拼接：bitrate,callback,clienttime,clientver,dfid,inputtype,iscorrection,isfuzzy,keyword,mid,page,pagesize,platform,privilege_filter,srcappid,(tag|token),userid,uuid",
+      "symptom_if_wrong": "signature 不符"
+    },
+    {
+      "name": "时间戳单位",
+      "rule": "2020 版 clienttime/mid/uuid 为 13 位毫秒时间戳且三者相同",
+      "symptom_if_wrong": "signature 不符"
+    },
+    {
+      "name": "大小写",
+      "rule": "2020 版输出大写；2022 版输出小写",
+      "symptom_if_wrong": "大小写不符可能被拒"
+    },
+    {
+      "name": "版本参数差异",
+      "rule": "2020 版含 tag=em、userid=-1；2022 版改为 token=（空）、userid=0",
+      "symptom_if_wrong": "参数集混用会导致 signature 不符"
+    }
+  ]
+}

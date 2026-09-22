@@ -1,0 +1,24 @@
+{
+  "mutations": [
+    {
+      "name": "环境必须补全",
+      "rule": "先 AST 解 b 函数，再补环境；位数不足说明漏补",
+      "symptom_if_wrong": "文章：'我补了一天最后还差了200多位。这里正常应该是476位。'"
+    },
+    {
+      "name": "动态数组要逐值插桩",
+      "rule": "lI/lJ/lK 与 0..255 动态数组需 JSON.stringify 分析，不能只看单次值",
+      "symptom_if_wrong": "只看单次会漏掉动态变化部分"
+    },
+    {
+      "name": "插桩点不完整",
+      "rule": "在 'ki+1,kg[\"getUint8\"](ki+1),kb' 与 'kR[\"apply\"](kS, kP)' 处插桩，并保存完整日志",
+      "symptom_if_wrong": "日志不全则 a5/a6 还原不出来"
+    },
+    {
+      "name": "接口强校验",
+      "rule": "某些接口请求几次就强校验",
+      "symptom_if_wrong": "反复请求同一接口后签名失效"
+    }
+  ]
+}

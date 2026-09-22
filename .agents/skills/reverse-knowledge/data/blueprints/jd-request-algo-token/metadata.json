@@ -1,0 +1,116 @@
+{
+  "id": "jd-request-algo-token",
+  "title": "京东 request_algo 远端下发 token/算法体",
+  "category": "platform-signature",
+  "status": "active",
+  "version": "1.0.0",
+  "summary": "h5st 的 token 与签名算法体由远端 request_algo 下发并缓存到 localStorage，本地生成会得到错误的 tk05。",
+  "aliases": [
+    "request_algo",
+    "_onRequestTokenRemotely",
+    "WQ_dy_algo_s_f06cc_4.3",
+    "WQ_dy_tk_s_f06cc_4.3",
+    "tk03",
+    "tk05"
+  ],
+  "keywords": [
+    "京东",
+    "jd",
+    "request_algo",
+    "cactus.jd.com",
+    "token",
+    "tk03",
+    "tk05",
+    "localStorage",
+    "algos"
+  ],
+  "algorithm": {
+    "family": "custom",
+    "detail": "不是本地算法：token 与签名算法体（VM 代码）由服务端下发，本地无法推导。补环境时必须实现可真正发 HTTP 的 XMLHttpRequest，否则 `_onRequestTokenRemotely` 为空函数、token 走本地兜底路径",
+    "key_material": "null（远端下发，无固定盐值）",
+    "output_encoding": "none",
+    "output_length": null
+  },
+  "sources": [
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 258,
+      "quote": "_$rds",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 261,
+      "quote": "— 获取 token",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 312,
+      "quote": "tk05",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 318,
+      "quote": "tk03",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 326,
+      "quote": "_onRequestTokenRemotely",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 332,
+      "quote": "https://cactus.jd.com/request_algo",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092635-h5st-ai-env-patching.md",
+      "line": 351,
+      "quote": "修复后 token 变成了",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1913553-利用 ast 解混淆某东 h5st js 文件并进行参数分析.md",
+      "line": 765,
+      "quote": "可以知道, 这段 js 代码来自 storage 的`WQ_dy_algo_s_f06cc_4.3`, 另外的`WQ_dy_tk_s_f06cc_4.3`是",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1913553-利用 ast 解混淆某东 h5st js 文件并进行参数分析.md",
+      "line": 755,
+      "quote": "简单跟一下`__genKey`函数代码, 发现是 VM 加载的 js 代码, 这段代码定义了使用哪种hamc签名算法",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1669042-京东试用h5st参数.md",
+      "line": 80,
+      "quote": "原来这个test函数，是通过ajax请求拿到的，所以说每次清空cookie之后的算法都是不一样的。",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1669042-京东试用h5st参数.md",
+      "line": 29,
+      "quote": "[在电脑浏览器登录京东试用的时候，cookie中sfstoken就是token]",
+      "verified_in_article": false
+    }
+  ],
+  "entry": {
+    "location": "内部方法 `_onRequestTokenRemotely`（补环境时是空函数，必须自行实现）与 `_$rds`（获取 token）；2022 版对应 `test` 函数",
+    "trigger": "首次签名/清空 cookie 后（文章：『每次清空cookie之后的算法都是不一样的』）",
+    "transport": "内部 HTTP 请求到 https://cactus.jd.com/request_algo（2022 版文中写作 `*.*.com/request_algo?g_ty=ajax`）；结果落到 localStorage"
+  },
+  "gaps": [
+    "request_algo 的请求体/签名/返回 JSON 结构文章未给出",
+    "`WQ_dy_algo_s_f06cc_4.3` 中 `f06cc` 段含义未说明（可能是站点/业务标识）",
+    "2092635 全文**没有验证成功**：修好 token 后依然 403，文章在『第七轮』排查 navigator 的表格中途截断（文件最后一行即 `navigator.userAgent`），结论缺失",
+    "tk03/tk05 前缀的具体编码含义文章未说明"
+  ],
+  "self_check": [
+    "2092635 的 token 来源路径闭环核对：`_$rds` 获取 token → `_onRequestTokenRemotely` 为空 → 未发请求 → token=tk05 → 403；实现 XHR 后 token=tk03，与文章叙述一致（但文章最终仍未成功，见 gaps）"
+  ]
+}

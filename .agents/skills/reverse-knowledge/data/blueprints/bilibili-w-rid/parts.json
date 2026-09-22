@@ -1,0 +1,36 @@
+{
+  "parts": [
+    {
+      "name": "w_rid",
+      "description": "作用: 签名值 | 来源: at(v + a) = MD5(v + a)"
+    },
+    {
+      "name": "wts",
+      "description": "作用: 秒级时间戳 | 来源: u = Math.round(Date.now() / 1e3)"
+    },
+    {
+      "name": "v",
+      "description": "作用: 排序拼接后的 query 串 | 来源: Object.keys(s).sort() 后逐项 push encodeURIComponent(k)+'='+encodeURIComponent(v)，最后 l.join('&')"
+    },
+    {
+      "name": "a",
+      "description": "作用: mixinKey（32 位） | 来源: t=o+i 后按 64 个固定索引取字符，r.join('').slice(0,32) | 示例: ea1db124af3c7062474693fa704f4ff8（我用文章给的 o/i + 索引表算出）"
+    },
+    {
+      "name": "o / imgKey",
+      "description": "作用: wbiImgKey | 来源: localStorage[ct].split('-')[0] 经 ft() 还原；文章实测固定 | 示例: 7cd084941338484aae1ad9425b84077c"
+    },
+    {
+      "name": "i / subKey",
+      "description": "作用: wbiSubKey | 来源: localStorage[ct].split('-')[1] 经 ft() 还原；文章实测固定 | 示例: 4932caff0ff746eab6f01bf08b70ac45"
+    },
+    {
+      "name": "ft()",
+      "description": "作用: Key 还原函数 | 来源: 文章调用了 ft(n)/ft(o) 但未给函数体"
+    },
+    {
+      "name": "ct",
+      "description": "作用: localStorage 键名 | 来源: localStorage.getItem(ct)，文章未给键名字符串"
+    }
+  ]
+}

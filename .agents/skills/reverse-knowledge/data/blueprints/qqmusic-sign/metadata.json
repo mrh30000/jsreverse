@@ -1,0 +1,121 @@
+{
+  "id": "qqmusic-sign",
+  "title": "QQ音乐 sign 参数（zzc 前缀自制签名）",
+  "category": "platform-signature",
+  "status": "active",
+  "version": "1.0.0",
+  "summary": "y.qq.com 请求的 sign：'zzc' 固定前缀 + sha1 摘要按索引抽取的两段字符 + 异或后 base64 的中段，最后整体转小写。",
+  "aliases": [
+    "sign",
+    "zzc",
+    "zzc-sign"
+  ],
+  "keywords": [
+    "QQ音乐",
+    "qqmusic",
+    "y.qq.com",
+    "sign",
+    "zzc",
+    "sha1",
+    "base64"
+  ],
+  "algorithm": {
+    "family": "custom",
+    "detail": "sha1(明文) 大写 hex → (a) 按索引数组抽取字符；(b) 每 2 个 hex 字符按 dict 拼成 1 字节（hi*16+lo），逐字节与 key_list[i] 异或得 20 字节，再 btoa 后 replace(/[\\/+=]/g,'')；(c) 另按索引抽取尾段；最终 zzc + a + b + c 后 toLowerCase()",
+    "key_material": "key_list=[89,39,179,150,218,82,58,252,177,52,186,123,120,64,242,133,143,161,121,179]; indices1=[23,14,6,36,16,40,7,19]; 固定前缀 'zzc'; dict={0-9,A-F}",
+    "output_encoding": "hex(sha1) + 自定义字母表(索引抽取) + base64(去 /+=) → 最终小写",
+    "output_length": "文章示例 o('12345') 结果长 45 字符"
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-2022463-某q音乐sign逆向-多角度.md",
+      "line": 29,
+      "quote": "var i, o = n(350).default;",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2022463-某q音乐sign逆向-多角度.md",
+      "line": 30,
+      "quote": "i = \"GET\" === t.type.toUpperCase() ? o(t.data.data) : o(t.data)",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2022463-某q音乐sign逆向-多角度.md",
+      "line": 40,
+      "quote": "o('12345')='zzca873dd41zwq69wr8hrqun6rvk1b5srwqncdc4c4d03'",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2022463-某q音乐sign逆向-多角度.md",
+      "line": 640,
+      "quote": "简单验证一下 12345 sha1 --> 8CB2237D0679CA88DB6464EAC60DA96345513964",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2022463-某q音乐sign逆向-多角度.md",
+      "line": 879,
+      "quote": "const indices1 = [23, 14, 6, 36 ,16 , 40, 7, 19];",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2022463-某q音乐sign逆向-多角度.md",
+      "line": 868,
+      "quote": "d[139] =  [ 'A', '8', '7', '3', 'D', undefined, 'D', '4' ]  --> A873DD4",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2022463-某q音乐sign逆向-多角度.md",
+      "line": 1157,
+      "quote": "d[85] = {\"0\":0,\"1\":1,\"2\":2,\"3\":3,\"4\":4,\"5\":5,\"6\":6,\"7\":7,\"8\":8,\"9\":9,\"A\":10,\"B\":11,\"C\":12,\"D\":13,\"E\":14,\"F\":15}",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2022463-某q音乐sign逆向-多角度.md",
+      "line": 1213,
+      "quote": "d[87] = [89,39,179,150,218,82,58,252,177,52,186,123,120,64,242,133,143,161,121,179]",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2022463-某q音乐sign逆向-多角度.md",
+      "line": 1287,
+      "quote": "const byteArray = new Uint8Array([213,149,144,235,220,43,240,116,106,80,222,145,190,77,91,230,202,240,64,215]);",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2022463-某q音乐sign逆向-多角度.md",
+      "line": 1288,
+      "quote": "const base64 = btoa(String.fromCharCode(...byteArray));",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2022463-某q音乐sign逆向-多角度.md",
+      "line": 1289,
+      "quote": "console.log(base64); //--> 1ZWQ691L8HRqUN6Rvk1b5srwQNc=",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-2022463-某q音乐sign逆向-多角度.md",
+      "line": 1299,
+      "quote": "zzc(定死) + A873DD4 + 1ZWQ691L8HRqUN6Rvk1b5srwQNc + DC4C4D03  --toLowerCase--> zzca873dd41zwq69wr8hrqun6rvk1b5srwqncdc4c4d03",
+      "verified_in_article": true
+    }
+  ],
+  "entry": {
+    "location": "webpack 模块 n(350).default，即函数 o；打包文件 vendor.chunk...",
+    "trigger": "请求前：i = o(t.data)（非 GET 时），sign 的值即 i",
+    "transport": "随请求参数下发（文章定位为带 sign 参数的接口，未给 query/header 明细）"
+  },
+  "gaps": [
+    "尾段 DC4C4D03 所用的第二组索引数组文章未列出（原文：'自己去找找吧'）",
+    "decodeKeyToNumberArray 里的 dict 与 key_list 正文被省略（原文：'看看日志你也可以做出来的'），key_list 系从日志 d[87] 推得",
+    "未给 sign 的传输位置（query/header）明细",
+    "本批文章未出现 zzb / zzcxxx 等参数，故记 null",
+    "1334257 仅给 'QQ=MD5' 结论并指向外部 PDF 附件，正文无算法细节"
+  ],
+  "self_check": [
+    "复算 sha1('12345') = 8CB2237D0679CA88DB6464EAC60DA96345513964，与文章 640 行一致",
+    "复算 indices1 抽取 = A873DD4，与文章 868/881 行一致",
+    "复算字节数组 → base64 = '1ZWQ69wr8HRqUN6Rvk1b5srwQNc='（去尾 = 得 '1ZWQ69wr8HRqUN6Rvk1b5srwQNc'），与文章 1289/1299 的 '1ZWQ691L...' 第 7、8 字符不符 → 文章该处为笔误",
+    "最终串长度实测 = 45（3+7+27+8），与文章示例 'zzca873dd41zwq69wr8hrqun6rvk1b5srwqncdc4c4d03' 一致"
+  ]
+}

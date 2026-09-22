@@ -1,0 +1,52 @@
+{
+  "parts": [
+    {
+      "name": "第3段",
+      "description": "作用: appId（文章称 signAppId），与 sign 参数里的 appid 是两个不同的值 | 来源: ParamsSign 构造函数传入 | 示例: '01a47'"
+    },
+    {
+      "name": "第5段",
+      "description": "作用: HMAC-SHA256 签名段 | 来源: HMAC-SHA256(加密文本 t, key=token n) | 示例: f = Jd.HmacSHA256(l, n)[o(93, 0, -78)](...)"
+    },
+    {
+      "name": "第8段",
+      "description": "作用: 环境/设备指纹段（详见 jd-env-params） | 来源: navigator/window/document/canvas/webgl/cookie 等采集后加密 | 示例: {\"sua\":\"Linux; Android 11; Pixel 5\",\"pp\":{},\"fp\":\"4975599160384842\"}"
+    },
+    {
+      "name": "token（内部变量 _token / n）",
+      "description": "作用: 派生 HMAC 密钥的输入，也是第 5 段的 key | 来源: 远程 https://cactus.jd.com/request_algo；localStorage `WQ_dy_tk_s_f06cc_4.3`；2022 版试用页 cookie `sfstoken` | 示例: tk03（远程）/ tk05（本地兜底）"
+    },
+    {
+      "name": "algos（内部变量）",
+      "description": "作用: 定义使用哪种 HMAC 签名算法的 VM 源码 | 来源: localStorage `WQ_dy_algo_s_f06cc_4.3`，由 request_algo 请求下发"
+    },
+    {
+      "name": "_fingerprint / fp",
+      "description": "作用: 设备指纹，参与密钥派生 | 来源: this._fingerprint | 示例: 4975599160384842（1669042）/ gta93wizm0httth5（2052845）"
+    },
+    {
+      "name": "C / c / v（时间派生）",
+      "description": "作用: 时间戳与版本后缀 | 来源: C=pw()=Date.now()；c=Db(C,\"yyyyMMddhhmmssSSS\")；v=c+\"22\" | 示例: 1713089999455"
+    },
+    {
+      "name": "s",
+      "description": "作用: 最终签名用的 salt | 来源: this[\"__genKey\"](this[\"_token\"], this[\"_fingerprint\"], v, this[\"_appId\"], this[\"algos\"])[\"toString\"]()"
+    },
+    {
+      "name": "A",
+      "description": "作用: 最终签名值 | 来源: this.__genSign(s, t)，即拼接串的 HmacSHA256，salt=s"
+    },
+    {
+      "name": "body（签名输入字段）",
+      "description": "作用: 请求 body 的 SHA-256 摘要 | 来源: sha256_digest(JSON.stringify(body))，紧凑 JSON | 示例: 4003786fdc49eae4d371309b4e42395f38e243887e470fe2cef2733dc03581c3"
+    },
+    {
+      "name": "functionId / appid / client / clientVersion",
+      "description": "作用: 业务与客户端标识，参与签名拼接串 | 来源: 按 API 变化的 functionId；appid 如 search-pc-java、pc-rate-qa；client=pc；clientVersion=1.0.0 | 示例: functionId: \"pc_search_adv_Search\" / \"mixerOut\""
+    },
+    {
+      "name": "t",
+      "description": "作用: 毫秒时间戳，参与签名拼接串 | 来源: new Date().getTime() / Date.now() | 示例: 1713089999455"
+    }
+  ]
+}

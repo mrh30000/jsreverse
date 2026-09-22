@@ -1,0 +1,24 @@
+{
+  "mutations": [
+    {
+      "name": "多层套娃",
+      "rule": "JS jsvmp 里 eval 胶水 → wasm 里再跑一个 VM；hook 点不对就越跟越远",
+      "symptom_if_wrong": "直接搜 encrypt/sm4 无结果，陷入僵局"
+    },
+    {
+      "name": "环境检测不过则写入假 ck",
+      "rule": "每层都做环境检测，失败即 set 默认 ck",
+      "symptom_if_wrong": "用该假 ck 请求会返回乱码内容"
+    },
+    {
+      "name": "U+200D 分割",
+      "rule": "环境信息明文 6 段用 \\xE2\\x80\\x8D 分割",
+      "symptom_if_wrong": "按普通分隔符切分会解析失败"
+    },
+    {
+      "name": "魔改 SM4 + 魔改 base64",
+      "rule": "SM4 框架经魔改，输出再过一层魔改 base64",
+      "symptom_if_wrong": "直接套标准 SM4/base64 库会解不出/对不上"
+    }
+  ]
+}

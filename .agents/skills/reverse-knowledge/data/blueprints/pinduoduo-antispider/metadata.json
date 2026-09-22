@@ -1,0 +1,63 @@
+{
+  "id": "pinduoduo-antispider",
+  "title": "拼多多(夕夕进宝)商品搜索接口 crawlerInfo 加密参数",
+  "category": "platform-signature",
+  "status": "historical",
+  "version": "1.0.0",
+  "summary": "拼夕夕旗下夕夕进宝商品搜索请求里的随机加密串（参数名 crawlerInfo），入口函数 k()；文章只有截图与配套视频，未给出算法。",
+  "aliases": [
+    "crawlerInfo"
+  ],
+  "keywords": [
+    "拼多多",
+    "pinduoduo",
+    "夕夕进宝",
+    "crawlerInfo",
+    "k()"
+  ],
+  "algorithm": {
+    "family": "unknown",
+    "detail": "文章未给出任何算法细节（正文以 Fiddler/Chrome 截图为主，算法讲解在配套视频里）；仅可确定为「JS 加密运算而成」。",
+    "key_material": null,
+    "output_encoding": null,
+    "output_length": null
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-858765-JS实战系列之解密-拼夕夕反爬虫算法.md",
+      "line": 20,
+      "quote": "在通过关键词搜索后我们通过抓包就可以很清晰的看到请求的参数里包含了加密的算法。",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-858765-JS实战系列之解密-拼夕夕反爬虫算法.md",
+      "line": 25,
+      "quote": "仅仅只有四个字段，我们只需模拟完成这四个字段即可完成整个商品搜索请求",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-858765-JS实战系列之解密-拼夕夕反爬虫算法.md",
+      "line": 30,
+      "quote": "按F12打开Chrome的开发者工具通过搜索关键词：crawlerInfo 找出相关的文件",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-858765-JS实战系列之解密-拼夕夕反爬虫算法.md",
+      "line": 38,
+      "quote": "最终我们会来到一个叫做 k()的函数之中；这个函数便是该加密算法的入口函数",
+      "verified_in_article": false
+    }
+  ],
+  "entry": {
+    "location": "函数 k()（文章称其为该加密算法的入口函数）",
+    "trigger": "搜索请求前",
+    "transport": "请求参数（文章只说是「请求的参数」，字段位于 query 还是 body 需看截图，正文未文字化）"
+  },
+  "gaps": [
+    "algorithm 完全未知：正文只有截图，算法在被引用的视频教程里（evidence: screenshot-only）",
+    "其余三个参数名文章未列出（只在截图中）",
+    "crawlerInfo 的长度、字符集、编码方式、是否 URL 编码全部未知",
+    "是否含时间戳/随机数/环境指纹未知",
+    "文章标记为 historical 的依据：样本为 2019-01，且目标站点为拼夕夕旗下「夕夕进宝」，作者未声明仍有效"
+  ]
+}

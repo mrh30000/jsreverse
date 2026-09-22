@@ -1,0 +1,28 @@
+{
+  "parts": [
+    {
+      "name": "__g[\"ck\"]",
+      "description": "作用: 最终 ck 值（另有环境检测失败时写入的默认假值） | 来源: jsvmp 环境检测 + wasm/VM 计算 | 示例: 003_bdxEeEnJYUXwWmFo0zxaCPNgpkh1+HL9yQr4ya6AXXDDOOQXoausGBAnGBSUqjXGqpIyQJjZ7C2Su/UzpZZCx6xsxiIj/kqzZN/YjmBxgx+="
+    },
+    {
+      "name": "003_",
+      "description": "作用: ck 前缀（版本号） | 来源: 常量前缀 | 示例: 003_"
+    },
+    {
+      "name": "环境信息",
+      "description": "作用: 加密后绑定到 __g.r 返回；明文分 6 部分，以 \"\\xE2\\x80\\x8D\" 分割 | 来源: 环境检测/指纹"
+    },
+    {
+      "name": "ua 的 crc32",
+      "description": "作用: 最终明文末段（与前面两项拼接） | 来源: User-Agent 的 CRC32"
+    },
+    {
+      "name": "明文三项",
+      "description": "作用: 解密出的环境信息取一部分 + VM 额外环境检测 + ua crc32，拼成最终明文 | 来源: 拼接"
+    },
+    {
+      "name": "0x11428/15160",
+      "description": "作用: wasm VM 字节码所在地址与长度（base64 串） | 来源: wasm 内存"
+    }
+  ]
+}

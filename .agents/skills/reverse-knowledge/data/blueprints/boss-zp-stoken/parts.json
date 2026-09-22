@@ -1,0 +1,20 @@
+{
+  "parts": [
+    {
+      "name": "__zp_stoken__",
+      "description": "作用: cookie | 来源: 0f35c990.js 生成"
+    },
+    {
+      "name": "be",
+      "description": "作用: 控制流平坦化分发变量 | 来源: 由传入参数决定；Ee/Ae/Ne 由 be 经固定算法得出 | 示例: 10768 / 1616 / 5553"
+    },
+    {
+      "name": "window['s']",
+      "description": "作用: 首次执行时间戳 | 来源: 首次自执行该 js 时拿到的时间戳"
+    },
+    {
+      "name": "种子参数",
+      "description": "作用: 第 2/第 3 个入参 | 来源: 前面请求或 token 过期时系统返回 | 示例: booubZKQSgODivfbCd8dHDdK8T7BITcNqfge/Jfh7Oo="
+    }
+  ]
+}

@@ -1,0 +1,302 @@
+{
+  "id": "douyin-a-bogus",
+  "title": "抖音 a_bogus 签名",
+  "category": "platform-signature",
+  "status": "active",
+  "version": "1.0.0",
+  "summary": "抖音 web 接口 query 里的 a_bogus，由 bdms.js(jsvmp) 生成：SM3 多轮 + 魔改 RC4 + 魔改 base64，长度不固定。",
+  "aliases": [
+    "a_bogus",
+    "ab",
+    "a_b"
+  ],
+  "keywords": [
+    "抖音",
+    "douyin",
+    "a_bogus",
+    "ab",
+    "bdms",
+    "jsvmp",
+    "SM3",
+    "RC4",
+    "魔改base64"
+  ],
+  "algorithm": {
+    "family": "custom",
+    "detail": "复合链路（按 2092806 的可复现顺序）：① 载荷(URI query 串)尾部拼 `dhzx` → SM3 得 32 字节数组（共 3 个 32 位数组，之间还有 RC4 与 base64，2088330 记为 encrypt1=SM3(载荷+dhzx)、encrypt2=SM3(encrypt1)、encrypt3=SM3(\"dhzx\")、encrypt4=SM3(encrypt3)）；② UA 经 String.fromCharCode + charCodeAt 处理后也进 SM3（2088330 记 encrypt4=SM3(UA_)）；③ 组装 arr_100 = arr_50 + arr_47 + arr_2 + arr_1；④ arr_136 = func(arr_100)（每 3 个取、生成 4 个，尾部余数补上）；⑤ arr_144 = arr_8 + arr_136；⑥ arr_144' = 魔改 RC4(arr_144)；⑦ arr_4 + arr_144' → 魔改 base64 → a_bogus。另有 2088330 的另一种中间量计数：98 位数组 = 50 位数组 + 44 位数组(浏览器指纹) + 4 位数组 + 1 位数组，130 位数组 + 8 位数组 → 138 位数组 → fromCharCode → 魔改 RC4 → 魔改 base64",
+    "key_material": "魔改 base64 字母表（逐字）：Dkdpgh2ZmsQB80/MfvV36XI1R45-WUAlEixNLwoqYTOPuzKFjJnry79HbGcaStCe；固定盐值：dhzx；arr_4 常量：3、82；掩码常量：0xAA/0x55/0xFFFF",
+    "output_encoding": "自定义字母表 base64（字母表见 key_material；作者说'其实也不算魔改，只是把映射表做了替换'，原表为大小写字母+数字++/）",
+    "output_length": "文章未给固定长度。2048032(头条) 称长度不固定；抖音侧样例实测 188 字符(2104414:8266) 与 196 字符(2092806:273 逆向测试串)，均以单个 `=` 结尾"
+  },
+  "sources": [
+    {
+      "file": "docs/references/2092806-douyin-a_bogus-50bytes.md",
+      "line": 12,
+      "quote": "本地纯算生成a_bogus",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2092806-douyin-a_bogus-50bytes.md",
+      "line": 61,
+      "quote": "bdms.js",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2092806-douyin-a_bogus-50bytes.md",
+      "line": 267,
+      "quote": "custom_alphabet = \"Dkdpgh2ZmsQB80/MfvV36XI1R45-WUAlEixNLwoqYTOPuzKFjJnry79HbGcaStCe\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2092806-douyin-a_bogus-50bytes.md",
+      "line": 313,
+      "quote": "CustomBase64()⇒a_bogus",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2092806-douyin-a_bogus-50bytes.md",
+      "line": 324,
+      "quote": "### CustomRC4",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2092806-douyin-a_bogus-50bytes.md",
+      "line": 338,
+      "quote": "256循环，结构性运算中的对明文读取生成读取生成，这特么大概率是个RC4",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2092806-douyin-a_bogus-50bytes.md",
+      "line": 342,
+      "quote": "奇怪，长度并不相同，可能是哪里被魔改了。。。但是我们假装没有发现",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2092806-douyin-a_bogus-50bytes.md",
+      "line": 522,
+      "quote": "def gen_arr_4_base64_prefix():",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2092806-douyin-a_bogus-50bytes.md",
+      "line": 684,
+      "quote": "let base = 1771655150000;",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2092806-douyin-a_bogus-50bytes.md",
+      "line": 729,
+      "quote": "[\"innerWidth\",\"innerHeight\",\"outerWidth\",\"outerHeight\",\"availWidth\",\"availHeight\",\"sizeWidth\",\"sizeHeight\",\"platform\"]",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2092806-douyin-a_bogus-50bytes.md",
+      "line": 821,
+      "quote": "U_index_unsorted = [34,44,56,61,73,29,70,45,35,49,38,66,51,68,28,48,64,47,30,71,26,55,31,69,59,40,62,63,27,72,41,74,57,52,42,39,33,67,53,43,65,46,36,24,60,32,79,80,84,85]",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2092806-douyin-a_bogus-50bytes.md",
+      "line": 833,
+      "quote": "U_index_sorted = [24, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 38, 39",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2092806-douyin-a_bogus-50bytes.md",
+      "line": 943,
+      "quote": "arr_100=arr_50+arr_47+arr_2+arr_1",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2092806-douyin-a_bogus-50bytes.md",
+      "line": 989,
+      "quote": "IKnRLLkdc0tA%3Ddhzx =>v[2]= device_platform=webapp&aid=6383&channel=channel_pc_web",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2092806-douyin-a_bogus-50bytes.md",
+      "line": 990,
+      "quote": "this=> t {reg: Array(8), chunk: Array(0), size: 0} args=> ['device_platform",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2092806-douyin-a_bogus-50bytes.md",
+      "line": 1016,
+      "quote": "我们可以看到第一行，这里是我们的URI最后追加了一个dhzx",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2092806-douyin-a_bogus-50bytes.md",
+      "line": 1020,
+      "quote": "直接扣代码用即可，或者询问AI，得知这里是sm3，这样就完成了。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2092806-douyin-a_bogus-50bytes.md",
+      "line": 1022,
+      "quote": "当然这几个32位的数组之间也有RC4还有一个base64，分析过程与上述类似，故而不再赘述！",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2088330-douyin-ab-params.md",
+      "line": 19,
+      "quote": "**加密点**：二级评论接口(`jsvmp`)",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2088330-douyin-ab-params.md",
+      "line": 49,
+      "quote": "`ab = b64(str1)` # `b64`指魔改的`base64`，其实也不算魔改，只是把映射表做了替换",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2088330-douyin-ab-params.md",
+      "line": 66,
+      "quote": "一个`50`位数组与`3`个数组拼接，组成`98`位数组。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/2088330-douyin-ab-params.md",
+      "line": 83,
+      "quote": "`encrypt1 = SM3`(载荷内容+字符串 `dhzx`) // `SM3`指加密算法，载荷内容就是网站载荷中的内容",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2088330-douyin-ab-params.md",
+      "line": 86,
+      "quote": "encrypt4 = SM3(encrypt3)",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2088330-douyin-ab-params.md",
+      "line": 119,
+      "quote": "`encrypt4 = SM3(UA_)` // 这里的`UA_`指的是处理后的`UA`值",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2088330-douyin-ab-params.md",
+      "line": 130,
+      "quote": "浏览器指纹通过 `CharCodeAt`方法后也得到一个 `44`位数组。",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2088330-douyin-ab-params.md",
+      "line": 136,
+      "quote": "`98`位数组是由`50`位数组与`44`位数组、`4`位数组`4`、`1`位数组拼接起来的。",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2088330-douyin-ab-params.md",
+      "line": 171,
+      "quote": "这 `88`位数组也就是E，可以称之为是个全局数组",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/2088330-douyin-ab-params.md",
+      "line": 191,
+      "quote": "时间戳的差值",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1928860-某音a_bogus纯算分析.md",
+      "line": 82,
+      "quote": "如果请求的ua改变的话，生成的这个加密参数就会失效。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1928860-某音a_bogus纯算分析.md",
+      "line": 148,
+      "quote": "可以发现是生成了长度为256的空数组",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1928860-某音a_bogus纯算分析.md",
+      "line": 270,
+      "quote": "这里的部分其实还是之前xb那样，4位一组，如此遍历",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1928860-某音a_bogus纯算分析.md",
+      "line": 400,
+      "quote": "我们要把大数组的每一位进行异或，得到的一个结果，放到我们环境数组的末尾",
+      "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-2104414-抖音详情页数据采集及a_bogus参数逆向分析.md",
+      "line": 23,
+      "quote": "/* V 1.0.1.19-fix.01 */",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2104414-抖音详情页数据采集及a_bogus参数逆向分析.md",
+      "line": 26,
+      "quote": "if (!window.bdms) {",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2104414-抖音详情页数据采集及a_bogus参数逆向分析.md",
+      "line": 6468,
+      "quote": "if(e.length==2&&e[0]=='a_bogus'){",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2104414-抖音详情页数据采集及a_bogus参数逆向分析.md",
+      "line": 6469,
+      "quote": "window.a_bogus=e[1];",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2104414-抖音详情页数据采集及a_bogus参数逆向分析.md",
+      "line": 7842,
+      "quote": "window.bdms = n",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2104414-抖音详情页数据采集及a_bogus参数逆向分析.md",
+      "line": 7845,
+      "quote": "function get_a_bogus(url){",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2104414-抖音详情页数据采集及a_bogus参数逆向分析.md",
+      "line": 8043,
+      "quote": "return  window.a_bogus",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2104414-抖音详情页数据采集及a_bogus参数逆向分析.md",
+      "line": 8139,
+      "quote": "XMLHttpRequest=function(){}",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2104414-抖音详情页数据采集及a_bogus参数逆向分析.md",
+      "line": 8266,
+      "quote": "# \"a_bogus\": \"mfsVDFtyxxRVPdKGmOju7cHUWtglNBWyerTOWF5THPTka10bx8NT8OGurowL4DjiruBwkqV7TVFMYdnc84UsZKrkwmpfuKhR7T/nnW0ohqw2GM08gNfzSwgzuwMzU5Xil5cSilRRUsMJIdo5VNAuAp3aC5zLQQy2SqZVp/TybDC0ps6TIo/GtrJWOhg=\"",
+      "verified_in_article": true
+    }
+  ],
+  "entry": {
+    "location": "window.bdms（文件 bdms_1.0.1.19_fix.js，版本串 \"1.0.1.19-fix.01\"），jsvmp 解释器内部；作者定位到 bdms.js 就是 a_bogus 生成位置",
+    "trigger": "请求前。先判断 URLSearchParams 里有没有 a_bogus（has），没有才生成，生成后 append 到 URLSearchParams；也可通过构造一个 XHR（get_a_bogus）触发并把 window.a_bogus 取回",
+    "transport": "query 参数，参数名逐字为 `a_bogus`（2104414 的 jsvmp 代码字面量 e[0]=='a_bogus'）"
+  },
+  "gaps": [
+    "魔改 RC4 的完整密钥/初始化细节：2092806 只给『校验通过』截图与文字描述，未逐字给出 KSA/PRGA 里被改动的那一处（只说『长度并不相同，可能是哪里被魔改了』）。",
+    "arr_1、arr_8 的逐字节生成逻辑：2092806 明说『找不到』『很抽象，特么的找不到』，只给出与随机数/arr_8 关联。",
+    "arr_136 = func(arr_100) 的 func 具体规则：文章只说『每次取3个生成4个，循环完成之后将100位中末尾没使用到的拼接到最后』，未给逐字代码。",
+    "U26-36 / U38-53 / U56-59 / U60-70 / U71-74 各段与时间戳、appid、arr_32_1/arr_32_3 的精确映射：文章多处写『暂时写死不做纠缠』。",
+    "魔改 base64 是否有版本位/魔数位：文章未提及，仅 arr_4 是 4 位随机前缀（不是固定魔数）。故本蓝图不写魔数位。",
+    "a_bogus 是否 URL 编码两次：2092806 的 CustomBase64 会输出 '=' 补位，但文章未说明最终 append 前是否 encodeURIComponent。",
+    "2088330 的 encrypt1..encrypt4 命名与 2092806 的『3 个 32 位数组』未一一对齐（数量对不上：4 个 SM3 结果 vs 3 个 32 位数组）。"
+  ],
+  "self_check": [
+    "魔改 base64 字母表 'Dkdpgh2ZmsQB80/MfvV36XI1R45-WUAlEixNLwoqYTOPuzKFjJnry79HbGcaStCe'：长度=64，去重后仍=64（无重复字符），不含 '+'、'_'、'='，含 '-' 与 '/'。与标准表 'ABC...xyz0123456789+/' 不同（标准表含 '+'）。",
+    "2092806:273 的逆向测试串实测 196 字符，以 1 个 '=' 结尾，含 '-'、'/'，不含 '+'。",
+    "2104414:8266 的 a_bogus 示例实测 188 字符，以 1 个 '=' 结尾，含 '/'，不含 '+'、不含 '-'。两例字符集均落在自定义字母表 ∪ {'='} 内，符合魔改 base64 含补位的描述。",
+    "算术核对：2088330:136 的 50+44+4+1=99 ≠ 文中 98（不成立）；2088330:66 的 50+3数组=98 → 其余 3 个共 48（与 :136 的 49 差 1）。2092806 的 arr_100=50+47+2+1=100 成立；arr_144=arr_8(8)+arr_136 → 136 成立。",
+    "『50 bytes』核实：2092806 标题为『含50位数组生成过程』，正文全程说的是 `50 位数组`/`arr_50`（50 个元素的数组，见 :781『这个50位数组是出现在apply中的』、:813『恰好50个』）。全文没有任何地方说 a_bogus 输出是 50 字节。文件名 2092806-douyin-a_bogus-50bytes.md 中的 '50bytes' 系外部命名，与文章内容不符。",
+    "arr_4 掩码核对：(a&0xAA)|(3&0x55) 中 0xAA 与 0x55 互为按位取反，属标准奇偶位分离写法；常量 3、82 逐字抄自文章。",
+    "环境指纹核对：全 5 篇 grep 'canvas|webgl|performance|$_|_0x' 未命中任何与 a_bogus 生成相关的项；2104414:7705 的 'ev_type: \"performance\"' 属于 bdms 埋点上报（/monitor_browser/collect/batch/?biz_id=web_bdms_cn），与签名链路无关。"
+  ]
+}

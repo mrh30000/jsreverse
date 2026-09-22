@@ -1,0 +1,129 @@
+{
+  "id": "yanglegeyang-map",
+  "title": "羊了个羊 小程序协议参数（map_info_ex / 关卡配置 / game_over_ex）",
+  "category": "platform-protocol",
+  "status": "historical",
+  "version": "1.0.0",
+  "summary": "羊了个羊小程序无签名算法，只有请求参数清单：header t 为登录得到的账号信息；game_over_ex 提交 base64(protobuf MatchPlayInfo) + MapSeed2 + Version。",
+  "aliases": [
+    "MatchPlayInfo",
+    "MapSeed2",
+    "map_seed",
+    "map_seed_2",
+    "map_md5",
+    "game_over_ex",
+    "map_info_ex"
+  ],
+  "keywords": [
+    "羊了个羊",
+    "easygame2021",
+    "cat-match",
+    "game_over_ex",
+    "MatchPlayInfo",
+    "protobuf",
+    "小程序"
+  ],
+  "algorithm": {
+    "family": "custom",
+    "detail": "无哈希/签名/加密算法；唯一「编码」是 MatchPlayInfo = base64(protobuf 序列化)。protobuf 定义：message MatchPlayInfo { message MatchStepInfo { required int32 chessIndex = 1; required int32 timeTag = 2; } required int32 gameType = 1; optional int32 mapId = 2; optional int32 mapSeed = 3; repeated MatchStepInfo stepInfoList = 4; }，实际只用到 gameType 与 stepInfoList。gameType: 3 每日挑战 0 GAMEMAIN 1 GAMETOMB 2 过关挑战 4 话题挑战。timeTag：24 号前是操作间隔毫秒，24 号改成 type（方块初始化后的类型）。chessIndex 从第 1 层 0 开始编号。道具操作 id：-1 移出 道具 / -2 撤回道具 / -3 洗牌道具 / -4 复活道具。",
+    "key_material": null,
+    "output_encoding": "base64",
+    "output_length": null
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-1692161-[2022.9.28]羊了个羊协议分析.md",
+      "line": 17,
+      "quote": "1. 地图信息 https://cat-match.easygame2021.com/sheep/v1/game/map\\_info\\_ex?matchType=3",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1692161-[2022.9.28]羊了个羊协议分析.md",
+      "line": 18,
+      "quote": "关于http头t字段 登录小程序得到的账号信息",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1692161-[2022.9.28]羊了个羊协议分析.md",
+      "line": 19,
+      "quote": "{\"err\\_code\":0, \"err\\_msg\":\"\", \"data\":{\"map\\_seed\":[533201918,662591713,712900982,353412173], \"map\\_seed\\_2\":\"1666869550\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1692161-[2022.9.28]羊了个羊协议分析.md",
+      "line": 64,
+      "quote": "3. 游戏结束发送请求 POST https://cat-match.easygame2021.com/sheep/v1/game/game\\_over\\_ex?",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1692161-[2022.9.28]羊了个羊协议分析.md",
+      "line": 65,
+      "quote": "{\"rank\\_score\":1,\"rank\\_state\":1,\"rank\\_time\":233,\"rank\\_role\":2,\"skin\":1,\"MatchPlayInfo\":\"...\",\"MapSeed2\":\"...\",\"Version\":\"0.0.1\"}",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1692161-[2022.9.28]羊了个羊协议分析.md",
+      "line": 67,
+      "quote": "rank\\_state: 1过关 2失败",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1692161-[2022.9.28]羊了个羊协议分析.md",
+      "line": 72,
+      "quote": "Version: 25号新增,固定",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1692161-[2022.9.28]羊了个羊协议分析.md",
+      "line": 73,
+      "quote": "MatchPlayInfo: base64编码protobuf 即游戏点击记录 移出道具 多3个操作 撤销道具 多1个操作",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1692161-[2022.9.28]羊了个羊协议分析.md",
+      "line": 88,
+      "quote": "timeTag 之前是操作间隔毫秒 24号改成type即方块初始化后的类型",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1692161-[2022.9.28]羊了个羊协议分析.md",
+      "line": 102,
+      "quote": "思路通过blockTypeData和levelData 生成stepInfoList即操作记录 即先0开始编号chessIndex并按-layerNum,type,moldType字段升序排序",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1692161-[2022.9.28]羊了个羊协议分析.md",
+      "line": 107,
+      "quote": "-1 移出道具",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1692161-[2022.9.28]羊了个羊协议分析.md",
+      "line": 115,
+      "quote": "块有没有覆盖只需上面的层判断行列值的绝对值差小于8 就是被覆盖",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1692161-[2022.9.28]羊了个羊协议分析.md",
+      "line": 102,
+      "quote": "(**觉的是游戏更新操作加了Version之后失效 游戏可以过关 不加次数 当天不能玩**)",
+      "verified_in_article": true
+    }
+  ],
+  "entry": {
+    "location": "小程序包 sheeps.js（wxapkg 解密 + wxappUnpacker 解包后可见）",
+    "trigger": "地图加载（map_info_ex）/ 游戏结束（game_over_ex）",
+    "transport": "请求头 t（账号信息）；GET query：matchType=3；POST body：JSON（rank_score 等 + MatchPlayInfo + MapSeed2 + Version）"
+  },
+  "gaps": [
+    "header t 的具体格式与获取流程文章未给（只说「登录小程序得到的账号信息」）",
+    "MatchPlayInfo 是否另有校验字段（如 mapId/mapSeed）文章说「只用到2个字段」",
+    "blockTypeData 中 \"15\" 缺失、\"17+\" 为白板的编号规则未说明",
+    "作者未给出可复现的最终请求/响应示例（只说思路），因此 verified_in_article 以「有明确原文描述与 proto 定义」为准，未见对拍成功截图"
+  ],
+  "self_check": [
+    "map_md5 两项均为 32 位十六进制（046ef1bab26e5b9bfe2473ded237b572 / b5b742de1506849f1c1cf2fd2d10dfce），与「两关配置数据 md5」表述吻合；第二项同时是静态关卡 txt 的文件名",
+    "map_seed 为 4 个整数、map_seed_2 为字符串形式的整数，均为种子/透传值，无加密痕迹",
+    "game_over_ex 的 9 个字段与 protobuf 定义核对：rank_* 走 JSON，只有 MatchPlayInfo 内含 binary 序列化"
+  ]
+}

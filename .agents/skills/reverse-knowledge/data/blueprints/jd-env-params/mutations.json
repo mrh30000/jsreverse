@@ -1,0 +1,29 @@
+{
+  "mutations": [
+    {
+      "name": "5.2 的第 8 段是「先分组反转再每 4 字符反转」",
+      "rule": "顺序必须是：UTF-8 字节 → pad 到 3 的倍数 → 每 3 个一组反转组顺序 → 自定义 base64 → 每 4 个字符反转",
+      "symptom_if_wrong": "少做/多做任一步，解出的 JSON 完全错乱（第 5 步输出即为乱序字节，肉眼可见）"
+    },
+    {
+      "name": "自定义字符表不是标准 base64",
+      "rule": "字符表逐字为 hgfedcbaZYXWVUTSRQPONMLKJIHGFEDCBA-_9876543210zyxwvutsrqponmlkji，含 `-` 和 `_`（URL-safe 风格），且不含 `=`",
+      "symptom_if_wrong": "用标准 base64 解码得到乱码；实测输出串中确实没有 `=` 填充符"
+    },
+    {
+      "name": "l 的语义反直觉",
+      "rule": "extend.l 原文逻辑是 `navigator.languages && 0 !== navigator[\"languages\"][\"length\"] ? 0 : 1`",
+      "symptom_if_wrong": "按『有语言列表=1』的直觉实现会写反，导致 extend 段哈希不一致"
+    },
+    {
+      "name": "环境检测表里有字段但不参与 h5st",
+      "rule": "只有 sua/pp/extend/random/v/fp 参与 h5st",
+      "symptom_if_wrong": "把 wc/ua/av/pl/ml 也塞进第8段，服务端校验不过"
+    },
+    {
+      "name": "第8段并非完全固定",
+      "rule": "含 random/canvas/webglFp 等字段，不能当成一次性常量复用",
+      "symptom_if_wrong": "1669042 作者判断『参数8几乎为固定的』；照此硬编码会在 5.2 版本失效"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "parts": [
+    {
+      "name": "params",
+      "description": "作用: 业务参数 JSON 经 AES 双重加密后的密文 | 来源: AES(AES(JSON, '0CoJUm6Qyw8W8jud'), 随机16位) | 示例: 文章未给具体密文值"
+    },
+    {
+      "name": "encSecKey",
+      "description": "作用: 随机 16 位 AES 密钥经 RSA 加密 | 来源: RSA(随机16位, e='010001', m=n长hex) | 示例: 文章未给具体值"
+    },
+    {
+      "name": "n",
+      "description": "作用: RSA 模数 m（公钥 modulus，hex 串） | 来源: JS 内硬编码常量 | 示例: 00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7"
+    },
+    {
+      "name": "e",
+      "description": "作用: RSA 公钥指数 | 来源: 固定 '010001' | 示例: 010001"
+    },
+    {
+      "name": "AES key1",
+      "description": "作用: 第一次 AES 的密钥 | 来源: 固定 '0CoJUm6Qyw8W8jud' | 示例: 0CoJUm6Qyw8W8jud"
+    },
+    {
+      "name": "AES key2",
+      "description": "作用: 第二次 AES 的密钥（每次请求随机） | 来源: a(16) 从字母表随机取 16 位 | 示例: 文章未给具体值"
+    },
+    {
+      "name": "AES IV",
+      "description": "作用: AES-CBC 初始向量 | 来源: 固定 '0102030405060708' | 示例: 0102030405060708"
+    }
+  ]
+}

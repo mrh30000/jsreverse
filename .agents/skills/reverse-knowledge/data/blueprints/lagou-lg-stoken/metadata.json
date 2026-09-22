@@ -1,0 +1,206 @@
+{
+  "id": "lagou-lg-stoken",
+  "title": "拉勾网 positionAjax.json 全套参数（traceparent / __lg_stoken__ / X-S-HEADER / AES 请求体）",
+  "category": "platform-signature",
+  "status": "unknown",
+  "version": "1.0.0",
+  "summary": "拉勾职位接口：__lg_stoken__ 由混淆 JS（window.gt）用 location.search 算出；X-S-HEADER=AES-CBC(JSON{originHeader,code})，其中 code=SHA256(...) 转大写；请求体与响应体同为 AES-CBC。",
+  "aliases": [
+    "__lg_stoken__",
+    "X-S-HEADER",
+    "traceparent",
+    "X-K-HEADER",
+    "X-SS-REQ-HEADER",
+    "x-anit-forge-code",
+    "x-anit-forge-token",
+    "X_HTTP_TOKEN",
+    "user_trace_token"
+  ],
+  "keywords": [
+    "拉勾",
+    "lagou",
+    "positionAjax.json",
+    "__lg_stoken__",
+    "X-S-HEADER",
+    "AES",
+    "RSA",
+    "SHA256"
+  ],
+  "algorithm": {
+    "family": "symmetric",
+    "detail": "两段算法：① X-S-HEADER 的 code = CryptoJS.SHA256( JSON.stringify({deviceType:1}) + u + JSON.stringify(originalData) ).toString().toUpperCase()（u 为接口 URL，如搜索职位是 .../jobs/v2/positionAjax.json）；随后 X-S-HEADER = Rt( JSON.stringify({originHeader: JSON.stringify({deviceType:1}), code: code}), aesKey)。② Rt(t, aesKey) = CryptoJS.AES.encrypt(Utf8.parse(t), Utf8.parse(aesKey), {iv: Utf8.parse('c558Gq0YQK2QUlMc'), mode: CipherMode.CBC, padding: Pkcs7}).toString()；It() 用同样参数做 AES.decrypt 并 JSON.parse。请求体（getRequestData）与响应解密（getResponseData）复用同一 Rt/It。RSA 部分：JSEncrypt.setPublicKey(下方 PEM).encrypt(aesKey) 得到 secretKeyDecode，POST 到 gate.xxx/system/agreement 换取 secretKeyValue。",
+    "key_material": "AES IV 固定值(Utf8) = c558Gq0YQK2QUlMc；aesKey = 32 位随机字符串（示例 dgHY1qVeo/Z0yDaF5WV/EEXxYiwbr5Jt，Utf8.parse 后 32 字节 → AES-256）；RSA 公钥 PEM = -----BEGIN PUBLIC KEY-----MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnbJqzIXk6qGotX5nD521Vk/24APi2qx6C+2allfix8iAfUGqx0MK3GufsQcAt/o7NO8W+qw4HPE+RBR6m7+3JVlKAF5LwYkiUJN1dh4sTj03XQ0jsnd3BYVqL/gi8iC4YXJ3aU5VUsB6skROancZJAeq95p7ehXXAJfCbLwcK+yFFeRKLvhrjZOMDvh1TsMB4exfg+h2kNUI94zu8MK3UA7v1ANjfgopaE+cpvoulg446oKOkmigmc35lv8hh34upbMmehUqB51kqk9J7p8VMI3jTDBcMC21xq5XF7oM8gmqjNsYxrT9EVK7cezYPq7trqLX1fyWgtBtJZG7WMftKwIDAQAB-----END PUBLIC KEY-----",
+    "output_encoding": "base64",
+    "output_length": null
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 20,
+      "quote": "请求头参数：`traceparent`、`X-K-HEADER`、`X-S-HEADER`、`X-SS-REQ-HEADER`",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 22,
+      "quote": "POST 请求数据加密，返回的加密职位信息解密，AES 算法",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 26,
+      "quote": "请求头多了两个参数，即 `x-anit-forge-code` 和 `x-anit-forge-token`",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 60,
+      "quote": "请求参数，time 是时间戳，a 值随便，没有都可以，不影响，其他值都是定值",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 77,
+      "quote": "\"time\": str(int(time.time() * 1000))",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 145,
+      "quote": "return _0x4e6d5d / 0x3e8;",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 155,
+      "quote": "`__lg_stoken__` 这个参数是在点击搜索后才开始生成的",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 161,
+      "quote": "可以看到 d 就是 `__lg_stoken__` 的值，`d = (new g()).a()`、`g = window.gt`",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 183,
+      "quote": "那么还有一个问题，`window.location.search` 的值就是待加密参数了",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 187,
+      "quote": "这说明混淆 JS 传入的参数和 JS 内容应该是相对应的",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 248,
+      "quote": "里面的 `submitCode` 和 `submitToken` 就是 `x-anit-forge-code` 和 `x-anit-forge-token` 的值",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 337,
+      "quote": "return \"00-\" + E() + \"-\" + E(16) + \"-\" + \"01\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 358,
+      "quote": "t 是32位随机字符串，赋值为 `aesKey`，后面紧接着一个 RSA 加密了 `aesKey`",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 360,
+      "quote": "如果这个 key 没有经过 RSA 加密并通过 agreement 接口验证的话，是无效的",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 369,
+      "quote": "for (var e = \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=\", r = \"\", n = 0; n < t; n++)",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 377,
+      "quote": "e.setPublicKey(\"-----BEGIN PUBLIC KEY-----MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnbJqzIXk6qGotX5nD521Vk/24APi2qx6C+2allfix8iAfUGqx0MK3GufsQcAt/o7NO8W+qw4HPE+RBR6m7+3JVlKAF5LwYkiUJN1dh4sTj03XQ0jsnd3BYVqL/gi8iC4YXJ3aU5VUsB6skROancZJAeq95p7ehXXAJfCbLwcK+yFFeRKLvhrjZOMDvh1TsMB4exfg+h2kNUI94zu8MK3UA7v1ANjfgopaE+cpvoulg446oKOkmigmc35lv8hh34upbMmehUqB51kqk9J7p8VMI3jTDBcMC21xq5XF7oM8gmqjNsYxrT9EVK7cezYPq7trqLX1fyWgtBtJZG7WMftKwIDAQAB-----END PUBLIC KEY-----\");",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 412,
+      "quote": "`X-S-HEADER` 你每次翻页都会改变，直接搜索关键字可定位",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 418,
+      "quote": "中间有一个 SHA256 加密，最后返回的 `Rt(JSON.stringify({originHeader: JSON.stringify(e), code: t}))` 就是 `X-S-HEADER` 的值了",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 427,
+      "quote": "t = \"\".concat(JSON.stringify(e)).concat(u).concat(JSON.stringify(originalData))",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 428,
+      "quote": "null === (t = CryptoJS.SHA256(t).toString()) || void 0 === t ? void 0 : t.toUpperCase());",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 437,
+      "quote": "var Ot = CryptoJS.enc.Utf8.parse(\"c558Gq0YQK2QUlMc\"),",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 443,
+      "quote": "padding: CryptoJS.pad.Pkcs7",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 467,
+      "quote": "非常明显了，这部分的 JS 代码大致如下：",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 525,
+      "quote": "\"X-SS-REQ-HEADER\": json.dumps({\"secret\": secret_key_value})",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1773958-【JS 逆向百例】拉勾网爬虫，traceparent、__lg_stoken__、X-S-HEADER 等参数分析.md",
+      "line": 564,
+      "quote": "最终整合所有代码，成功拿到数据：",
+      "verified_in_article": true
+    }
+  ],
+  "entry": {
+    "location": "cookie __lg_stoken__：window.gt（混淆 JS 中即 _0x11db59）的 prototype.a()；AES 加解密：Rt()/It()；X-S-HEADER 组装：jt()；traceparent：E()；X_HTTP_TOKEN：一段 OB 混淆 JS（约 300 行）里的 _0x32e0d2",
+    "trigger": "__lg_stoken__ 在点击搜索后才生成；X-S-HEADER 每次翻页都会改变；traceparent 每次请求生成；aesKey 每次会话重新生成并经 agreement 接口激活",
+    "transport": "cookie: __lg_stoken__ / X_HTTP_TOKEN / user_trace_token；header: traceparent / X-K-HEADER / X-S-HEADER / X-SS-REQ-HEADER / x-anit-forge-code / x-anit-forge-token；POST form: data=<AES 密文>"
+  },
+  "gaps": [
+    "X_HTTP_TOKEN 的具体算法文章未给（OB 混淆约 300 行，作者只贴了改写后的时间戳函数 _0x89ea42）",
+    "X-S-HEADER 的 AES 输出是否为 base64 未逐字说明（CryptoJS AES.encrypt(...).toString() 默认为 base64，属推论，未在文中写明）",
+    "aesKey 字符表含 '+' '/' '='，是否 URL 安全、如何编码传输未说明",
+    "X-K-HEADER 与 X-SS-REQ-HEADER 的完整示例值文章未给（只给 secretKeyValue 变量）",
+    "agreement 接口的完整域名被脱敏处理，无法复现"
+  ],
+  "self_check": [
+    "traceparent 长度核算：E() 不带参数时 substr(0, undefined) 取整串 32 位 hex；E(16) 取 16 位 → \"00-\"+32hex+\"-\"+16hex+\"-01\"，与 W3C traceparent 的 55 字符格式吻合",
+    "IV 长度核算：\"c558Gq0YQK2QUlMc\" = 16 字节 → AES 分组 128bit；aesKey = 32 字节 Utf8 → AES-256-CBC/Pkcs7",
+    "RSA 公钥前缀 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A…IDAQAB = 2048 bit（与 JSEncrypt 常见用法一致）",
+    "SHA256 结果长度 64 hex（32 字节），toUpperCase 后作为 code 参与 AES，符合原文描述"
+  ]
+}

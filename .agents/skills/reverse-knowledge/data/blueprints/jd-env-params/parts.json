@@ -1,0 +1,88 @@
+{
+  "parts": [
+    {
+      "name": "sua",
+      "description": "作用: 从 userAgent 正则抽出的平台串 | 来源: 正则 `RegExp(\"Mozilla/5.0 \\((.*?)\\)\")` 取 ua 内容 | 示例: \"Windows NT 10.0; Win64; x64\""
+    },
+    {
+      "name": "pp",
+      "description": "作用: cookie 相关对象，无则不放 | 来源: cookie：p1: pwdt_id, p2: pin, p3: pt_pin | 示例: {\"p2\": \"jd_67abe4dd6c42e\"}"
+    },
+    {
+      "name": "extend",
+      "description": "作用: 环境检测对象（见下列 extend 字段） | 来源: navigator/window/document/process/Deno/Bun 等 | 示例: {\"wd\":0,\"l\":0,\"ls\":5,...}"
+    },
+    {
+      "name": "random",
+      "description": "作用: 随机串（顶层与 extend 内各一个） | 来源: 随机生成 | 示例: \"jU9UxHEHs\" / \"xeuPIj39auLbz\""
+    },
+    {
+      "name": "v",
+      "description": "作用: h5st 文件版本 | 来源: 固定串 | 示例: \"h5_file_v5.2.0\""
+    },
+    {
+      "name": "fp",
+      "description": "作用: 设备指纹 | 来源: 本地生成/持久化 | 示例: \"gta93wizm0httth5\"（5.2）/ \"4975599160384842\"（4.x）"
+    },
+    {
+      "name": "canvas",
+      "description": "作用: canvas 指纹（MD5 形式） | 来源: canvas 绘制结果哈希 | 示例: \"6f086516fe378bad9ab0ea6c0f7d2faa\""
+    },
+    {
+      "name": "webglFp",
+      "description": "作用: WebGL 指纹 | 来源: WebGL 参数哈希 | 示例: \"a0629ea0cc107adb3e707ade5b3ffcf3\""
+    },
+    {
+      "name": "pf",
+      "description": "作用: 平台 | 来源: window/平台检测 | 示例: \"Win32\""
+    },
+    {
+      "name": "ccn",
+      "description": "作用: 文章未说明含义，仅给出取值 | 来源: unknown | 示例: 6"
+    },
+    {
+      "name": "bu1",
+      "description": "作用: 版本串（与 js_security 版本对应） | 来源: 硬编码 | 示例: \"0.1.9\" / \"0.1.8\""
+    },
+    {
+      "name": "bu4",
+      "description": "作用: 运行时环境标志（Node/Deno/Bun） | 来源: process/Deno/Bun 检测，按位或 | 示例: 0"
+    },
+    {
+      "name": "bu12 / bu10 / bu11 / bu13",
+      "description": "作用: 文章未说明含义，仅给出取值 | 来源: unknown | 示例: -8 / 14 / 3 / \"Fk\""
+    },
+    {
+      "name": "extend.wd",
+      "description": "作用: 是否有 webdriver 属性 | 来源: window[\"navigator\"][\"webdriver\"] ? 1 : 0 | 示例: 0"
+    },
+    {
+      "name": "extend.l",
+      "description": "作用: 语言标志（原文逻辑与常见实现相反） | 来源: navigator.languages && 0 !== navigator[\"languages\"][\"length\"] ? 0 : 1 | 示例: 0"
+    },
+    {
+      "name": "extend.ls",
+      "description": "作用: 插件数量 | 来源: navigator[\"plugins\"][\"length\"] | 示例: 5"
+    },
+    {
+      "name": "extend.wk",
+      "description": "作用: CDP/自动化特征标志 | 来源: cdc_adoQpoasnfa76pfcZLmcfl_Array/Promise/Symbol in window → |=1；$chrome_asyncScriptInfo/$cdc_asdjflasutopfhvcZLmcfl_ in document → |=2 | 示例: 0"
+    },
+    {
+      "name": "extend.bu3",
+      "description": "作用: head 子元素数量 | 来源: document[\"head\"][\"childElementCount\"] | 示例: 97"
+    },
+    {
+      "name": "extend.bu2（表外，代码中存在）",
+      "description": "作用: 特定域名/内容特征标志 | 来源: host 含 sz.jd.com / ppzh.jd.com，再检测 body.innerHTML 含 diantoushi.com / xiaowangshen.com | 示例: 0"
+    },
+    {
+      "name": "extend.bu5/bu6/bu7/bu8",
+      "description": "作用: 文章未说明含义，仅给出取值 | 来源: unknown | 示例: 0 / 25 / 0 / 0"
+    },
+    {
+      "name": "（表内但未参与 h5st 的字段）",
+      "description": "作用: wc/wd/l/ls/ml/pl/av/ua 是环境检测表里列出的字段，但文章明确说参与 h5st 的只有 sua/pp/extend/random/v/fp | 来源: navigator 各项 | 示例: wc: 是否Chrome(1/0)、ml: navigator[\"mimeTypes\"][\"length\"]、pl: navigator[\"plugins\"].length、av: navigator.appVersion、ua: navigator.userAgent"
+    }
+  ]
+}

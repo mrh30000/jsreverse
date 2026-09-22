@@ -1,0 +1,76 @@
+{
+  "parts": [
+    {
+      "name": "shortid",
+      "description": "作用: URL query 参数 | 来源: ks.wjx.top/vm/xxxxx.aspx | 示例: ks.wjx.top/vm/xxxxx.aspx"
+    },
+    {
+      "name": "starttime",
+      "description": "作用: URL query 参数，答题开始时间 | 来源: HTML 页面内获取 | 示例: 2022/4/21 12:10:55"
+    },
+    {
+      "name": "source",
+      "description": "作用: 来源 | 来源: 固定 | 示例: directphone"
+    },
+    {
+      "name": "submittype",
+      "description": "作用: 提交类型 | 来源: 固定 | 示例: 1"
+    },
+    {
+      "name": "ktimes",
+      "description": "作用: 操作时间（可随机）；同时是 dataenc 的 XOR 密钥来源 | 来源: 页面/自定义"
+    },
+    {
+      "name": "hlv",
+      "description": "作用: URL query 参数 | 来源: 固定 | 示例: 1"
+    },
+    {
+      "name": "rn",
+      "description": "作用: 随机数（整数部分参与 jqParam） | 来源: HTML 页面内 var rndnum=\"607374188.63586548\"; | 示例: 607374188.63586548"
+    },
+    {
+      "name": "nw",
+      "description": "作用: URL query 参数 | 来源: 固定 | 示例: 1"
+    },
+    {
+      "name": "jwt",
+      "description": "作用: URL query 参数 | 来源: 固定 | 示例: 4"
+    },
+    {
+      "name": "jpm",
+      "description": "作用: URL query 参数 | 来源: 固定 | 示例: 70"
+    },
+    {
+      "name": "t",
+      "description": "作用: 当前时间戳 | 来源: 当前时间戳"
+    },
+    {
+      "name": "jqnonce",
+      "description": "作用: 随机 nonce，jqsign 的输入 | 来源: HTML 页面内 var jqnonce=\"d0c9ba05-56ab-4938-9b6f-8844f114d279\"; | 示例: d0c9ba05-56ab-4938-9b6f-8844f114d279"
+    },
+    {
+      "name": "jqsign",
+      "description": "作用: nonce 的加密结果 | 来源: dataenc(jqnonce)（用 ktimes%10 做 XOR）"
+    },
+    {
+      "name": "jcn",
+      "description": "作用: 姓名加密后的值（实测可有可无） | 来源: dataenc(填表姓名)，算法与 jqsign 一致"
+    },
+    {
+      "name": "jqpram",
+      "description": "作用: jqParam 的 URL 编码结果 | 来源: encodeURIComponent(jqParam)"
+    },
+    {
+      "name": "jqParam",
+      "description": "作用: 最重要参数，由 rndnum 整数部分 + starttime + activityId 经 abcd 系列算出 | 来源: abcd5(abcd3(_0x24bc24 + _0x37348b + parseInt(activityId), abcd4(...)))"
+    },
+    {
+      "name": "activityId",
+      "description": "作用: 页面加载时解密出的活动 id | 来源: DecodeId(input) = input ^ 2130030173，示例 2035206417 → 129722188 | 示例: 129722188"
+    },
+    {
+      "name": "submitdata",
+      "description": "作用: POST body 字段，答案数据 | 来源: 答题选项数据（文章仅截图）"
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+{
+  "id": "zhihu-x-zse-96",
+  "title": "知乎 x-zse-96 签名（MD5 + 4 种位运算 + 64 字符查表）",
+  "category": "platform-signature",
+  "status": "unknown",
+  "version": "1.0.0",
+  "summary": "知乎搜索接口 x-zse-96：对 source 取 md5，末尾补 \\u0000 后倒序三字符一组做 4 种位运算得 m，再查 64 字符表输出签名。",
+  "aliases": [
+    "x-zse-96",
+    "X-ZSE-96",
+    "x_zse_96"
+  ],
+  "keywords": [
+    "知乎",
+    "zhihu",
+    "x-zse-96",
+    "jsvmp",
+    "sign",
+    "md5",
+    "fixed_str",
+    "位运算"
+  ],
+  "algorithm": {
+    "family": "custom",
+    "detail": "MD5 + 自定义位运算 + 64 字符查表。source→md5(hex 32)→末尾补 \\u0000 → 从末尾倒序每 3 个 charCode 一组 → 4 种位运算之一得 m → fixed_str[m%64],fixed_str[(m>>6)%64],fixed_str[(m>>12)%64],fixed_str[(m>>18)%64] 输出 4 字符/组",
+    "key_material": "fixed_str = \"RuPtXwxpThIZ0qyz_9fYLCOV8B1mMGKs7UnFHgN3iDaWAJE-Qrk2ecSo6bjd4vl5\"",
+    "output_encoding": "自定义字母表",
+    "output_length": "44（自算 33/3*4；文章未给，属推断）"
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-1631378-某乎x-zse-96签名算法python重写.md",
+      "line": 25,
+      "quote": "source:101_3_2.0+/api/v4/search_v3?t=general&q=office&correction=1&offset=0",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1631378-某乎x-zse-96签名算法python重写.md",
+      "line": 25,
+      "quote": "Normal+\"APAdT9SE4hSPTk_l1utlpb-FN6jTF5TgpSY=|1651578807\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1631378-某乎x-zse-96签名算法python重写.md",
+      "line": 28,
+      "quote": "`signature:sign(md5(source))`",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1631378-某乎x-zse-96签名算法python重写.md",
+      "line": 31,
+      "quote": "`md5(source)` 后的字符串末尾补`\\u0000` 通过`charCodeAt`从末尾开始得到3个数字一组的数字",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1631378-某乎x-zse-96签名算法python重写.md",
+      "line": 33,
+      "quote": "fixed_str[m % 64],fixed_str[(m >> 6) % 64],fixed_str[(m >> 12) % 64]",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1631378-某乎x-zse-96签名算法python重写.md",
+      "line": 40,
+      "quote": "def m1(a, b, c): return ((a ^ 42) | (b << 8)) | (c << 16)",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1631378-某乎x-zse-96签名算法python重写.md",
+      "line": 43,
+      "quote": "def m4(a, b, c): return (a | (b << 8)) | (c << 16)",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1631378-某乎x-zse-96签名算法python重写.md",
+      "line": 46,
+      "quote": "第一组的a，b，c 分别为``` a = ord(md5_str[32]) ``b = ord(md5_str[31]) ``c = ord(md5_str[30]) ```",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1631378-某乎x-zse-96签名算法python重写.md",
+      "line": 88,
+      "quote": "另外除了x-zse-96外，cookie和其他参数可以**短时间固定**,但有时会出现`x-zst-81`参数",
+      "verified_in_article": true
+    }
+  ],
+  "entry": {
+    "location": "未定位（文章未给生成函数名/文件；仅给算法与作者 github 还原源码链接）",
+    "trigger": "请求前（搜索接口 /search_v3 携带）",
+    "transport": "header，名疑为 x-zse-96（来自标题；原文未逐字给出请求头写法）"
+  },
+  "gaps": [
+    "文章从未出现 x-zse-93 / d_c0 字样；'101_3_2.0 是 x-zse-93'、'APAdT...= 是 d_c0' 均为我推断，未定位证据",
+    "4 个位运算函数 m1..m4 与 11 个分组如何对应（哪组用哪个）原文未说明",
+    "sign() 内是否还有其它常量/盐值/环境指纹，原文未给",
+    "source 里的 + 与 | 是字面分隔符还是字符串拼接运算符，原文未明说（| 亦可能是疑似 cookie 自带的 值|时间戳 结构）",
+    "输出是否带 2.0_ 前缀：本文章完全未提及",
+    "x-zse-96 放 header 的逐字大小写未给出",
+    "正文无可运行代码，仅『成功留念』截图 + github 源链接，证据强度属作者自述成功"
+  ],
+  "self_check": [
+    "fixed_str 实测长度 64，且 64 个字符互不重复 → 满足 %64 取到合法下标",
+    "md5(32 hex)+\\u0000 = 33 字符 → 33/3 = 11 组 → 11*4 = 44 → 与常见 x-zse-96 44 长度一致（文章未给长度，属自算核对）",
+    "1651578807 换算 UTC 2022-05-03 11:53:27，文章发布 2022-05-04 → 量级为 unix 秒",
+    "m1(1,2,3) 实算 = 197163（用于确认位运算算式）"
+  ]
+}

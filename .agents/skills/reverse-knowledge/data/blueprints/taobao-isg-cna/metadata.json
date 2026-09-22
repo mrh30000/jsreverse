@@ -1,0 +1,227 @@
+{
+  "id": "taobao-isg-cna",
+  "title": "淘系 isg cookie 签名 + cna（getIsg）",
+  "category": "platform-signature",
+  "status": "active",
+  "version": "1.0.0",
+  "summary": "淘系 cookie isg：46 字节字段按宽度描述符序列化后，前置 [0x04, 校验字节]，异或流加密再 URL-safe Base64；cna 从 log.mmstat.com/eg.js 正则取 goldlog.Etag。",
+  "aliases": [
+    "isg",
+    "cna",
+    "getIsg",
+    "_sufei_data2",
+    "sufeidata"
+  ],
+  "keywords": [
+    "淘系",
+    "淘宝",
+    "taobao",
+    "tmall",
+    "goofish",
+    "isg",
+    "cna",
+    "goldlog.Etag",
+    "mmstat"
+  ],
+  "algorithm": {
+    "family": "custom",
+    "detail": "字段宽度描述符 [2,2,4,4,4,1,1,4,4,3,2,2,2,2,2,1,2,1,1,1,1] 展开为 46 字节小端；前置 [4, checksum] 两字节；checksum=(Σ((t<<5)-t+charCode))&255；异或流 r[i]=n[t]^(255&a)，a=~(131*a)（a 初值=checksum）；最后用 URL-safe Base64 字母表编码。",
+    "key_material": "Base64 字母表: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'；异或常量 131；前置字节 4；isg cookie 有效期加成 +15552e6 毫秒",
+    "output_encoding": "自定义字母表（URL-safe base64 变体）",
+    "output_length": "文章未给；我算得 46+2=48 字节 → 64 个 base64 字符（48%3==0，无 '=' 填充）"
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 8,
+      "quote": "提取了浏览器淘系发送请求，cookie中带的isg生成和cna；",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 10,
+      "quote": "cna想要获取比较简单，是通过请求js：<https://log.mmstat.com/eg.js>，通过正则提取goldlog.Etag的值即可；",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 12,
+      "quote": "isg生成若是在浏览器中直接使用，可使用第二段js，调用其中的getIsg函数获取；若想直接在程序中直接访问，且程序没有js的window等对象，可使用第一段js，同样调用getIsg函数，即可",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 26,
+      "quote": "return (4294967295 * Math.random()) >>> 0;",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 30,
+      "quote": "(t = (t << 5) - t + n.charCodeAt(r)), (t >>>= 0);",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 531,
+      "quote": "for (var t = 0, r = 0, i = n.length; r < i; r++) t = (t << 5) - t + n[r];",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 532,
+      "quote": "return 255 & t",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 536,
+      "quote": "(r[i++] = n[t++] ^ (255 & a)), (a = ~(131 * a));",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 579,
+      "quote": "f = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_',",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 606,
+      "quote": "return (pppp.d() / 1e3) >>> 0",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 613,
+      "quote": "(a[1] = pppp.a()),",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 614,
+      "quote": "(a[5] = A._()),",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 616,
+      "quote": "(a[8] = pppp.c(user_agent)),",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 620,
+      "quote": "0 == a[4] && ((a[4] = pppp.a()), (a[3] = t())), (a[2] = t()), (a[16] = A.$());",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 639,
+      "quote": "var a = new B([",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 640,
+      "quote": "2, 2, 4, 4, 4, 1, 1, 4, 4, 3, 2, 2, 2, 2, 2, 1, 2, 1, 1, 1, 1,",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 710,
+      "quote": "var n = new Date(pppp.d() + 15552e6).toUTCString();",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 837,
+      "quote": "function getIsg() {",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 838,
+      "quote": "return S.F();",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 1047,
+      "quote": "return null == m && (m = new x(\"cna\").r() || \"\"), m",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 1265,
+      "quote": "return \"$cdc_asdjflasutopfhvcZLmcfl_\"in document || navigator.webdriver",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 1636,
+      "quote": "for (var n = navigator.platform, t = 0; t < r.length; t++)",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 1638,
+      "quote": "return t + 1;",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 1639,
+      "quote": "return 0",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 1659,
+      "quote": "a[8] = p.c(navigator.userAgent),",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 1687,
+      "quote": "var l = a.na()",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 1688,
+      "quote": ", m = M.pa(l);",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 1999,
+      "quote": "var r = \"_sufei_data2\";",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1856239-淘系浏览器请求验签isg和cna分享.md",
+      "line": 2002,
+      "quote": "document[r] = d;",
+      "verified_in_article": true
+    }
+  ],
+  "entry": {
+    "location": "getIsg() → S.F() → w()（第一段/第二段 JS 均定义 getIsg）；核心构造在 W.sa(n, r) / W.F(n)",
+    "trigger": "页面脚本自执行（document['_sufei_data2'] = 399 时）首次生成；后续请求带 cookie",
+    "transport": "cookie，参数名逐字：\"isg\"、\"cna\"；另有 document['_sufei_data2']、localStorage['isg__']"
+  },
+  "gaps": [
+    "A._() 中 P 表如何被填充（文章只见 P={} 与 x() 遍历）。",
+    "j.G/H/I/J/N/Q/R/S/T/W/Y 等指纹/行为项的具体算法（鼠标轨迹、isTrusted、电量等只看到调用点）。",
+    "user_agent 常量如何与真实 UA 配合（a[8] 用 pppp.c(user_agent) 还是 navigator.userAgent，两段代码不一致：line 616 用 user_agent，line 1659 用 navigator.userAgent）。",
+    "document['_sufei_data2'] = 399（d=399）这个数字的含义。",
+    "g='isg' 时 localStorage['isg__'] 的写入/读取细节（k.v）。"
+  ],
+  "self_check": [
+    "宽度描述符求和 = 2+2+4+4+4+1+1+4+4+3+2+2+2+2+2+1+2+1+1+1+1 = 46；加前置 2 字节 = 48 字节。",
+    "48 % 3 == 0 → URL-safe Base64 无 '=' 填充，输出恰好 64 字符。",
+    "校验字节公式 (Σ((t<<5)-t+c)) & 255 与 e(n) 中 't = (t << 5) - t + n.charCodeAt(r)' 后取低 8 位一致（t 为单字节初值 0）。",
+    "XOR 递推 a_next = ~(131 * a)：~x 在 JS 中为 32 位有符号，但随后用 255 & a 取低字节，等价于 (-131*a - 1) & 255。"
+  ]
+}

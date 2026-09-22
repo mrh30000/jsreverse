@@ -1,0 +1,56 @@
+{
+  "parts": [
+    {
+      "name": "t",
+      "description": "作用: HTTP 头，登录小程序得到的账号信息 | 来源: 小程序登录后可得"
+    },
+    {
+      "name": "matchType",
+      "description": "作用: GET query | 来源: 固定 | 示例: 3"
+    },
+    {
+      "name": "map_seed",
+      "description": "作用: 游戏初始化随机数种子（数组） | 来源: map_info_ex 响应 | 示例: [533201918,662591713,712900982,353412173]"
+    },
+    {
+      "name": "map_seed_2",
+      "description": "作用: 游戏结束用到 | 来源: map_info_ex 响应 | 示例: 1666869550"
+    },
+    {
+      "name": "map_md5",
+      "description": "作用: 两关配置数据的 md5 值（数组，2 个） | 来源: map_info_ex 响应 | 示例: [\"046ef1bab26e5b9bfe2473ded237b572\",\"b5b742de1506849f1c1cf2fd2d10dfce\"]"
+    },
+    {
+      "name": "rank_score",
+      "description": "作用: POST body | 来源: 固定 1 | 示例: 1"
+    },
+    {
+      "name": "rank_state",
+      "description": "作用: POST body | 来源: 1 过关 2 失败 | 示例: 1"
+    },
+    {
+      "name": "rank_time",
+      "description": "作用: POST body，游戏时间秒 | 来源: 游戏计时 | 示例: 233"
+    },
+    {
+      "name": "rank_role",
+      "description": "作用: POST body，1 未使用道具 2 使用过道具 | 来源: 游戏状态 | 示例: 2"
+    },
+    {
+      "name": "skin",
+      "description": "作用: POST body，换装皮肤 id | 来源: 游戏设置 | 示例: 1"
+    },
+    {
+      "name": "MatchPlayInfo",
+      "description": "作用: POST body，base64 编码的 protobuf（游戏点击记录） | 来源: 由 blockTypeData/levelData 生成的 stepInfoList 序列化"
+    },
+    {
+      "name": "MapSeed2",
+      "description": "作用: POST body，第一个包中的 map_seed_2 | 来源: map_info_ex 响应 | 示例: 1666869550"
+    },
+    {
+      "name": "Version",
+      "description": "作用: POST body，25 号新增，固定 | 来源: 固定 | 示例: 0.0.1"
+    }
+  ]
+}

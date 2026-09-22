@@ -1,0 +1,29 @@
+{
+  "mutations": [
+    {
+      "name": "query 末字符被裁掉",
+      "rule": "原文为 s.path+'?'+s.query[:-1]，把 query 的最后一个字符去掉（示例 URL 尾部 model_type= 的 '=' 会被去掉）",
+      "symptom_if_wrong": "签名与服务端不一致，返回 400 / x-ca-error-message"
+    },
+    {
+      "name": "空行数量与位置",
+      "rule": "Method 与第一个签名头之间恰好 3 个空行（对应 Content-MD5 / Content-Type / Date 为空）",
+      "symptom_if_wrong": "HMAC 输入不同 → 签名错误"
+    },
+    {
+      "name": "行尾换行符",
+      "rule": "每个签名头行都带结尾 \\n，PathAndQuery 之后无换行；分隔符是 \\n（不是 & 或 |）",
+      "symptom_if_wrong": "签名错误"
+    },
+    {
+      "name": "x-ca-key 同时出现在两处",
+      "rule": "既作为请求头发送，也以 \"x-ca-key:<appKey>\" 的形式出现在待签名串里",
+      "symptom_if_wrong": "只补 header 不补串 → 签名错误"
+    },
+    {
+      "name": "必须携带登录后 cookie",
+      "rule": "请求接口需要带登录后的 cookie",
+      "symptom_if_wrong": "文章未说明具体报错（1511380 提到未签名的报错是 x-ca-error-message: Header `X-Ca-Key` is Required）"
+    }
+  ]
+}
