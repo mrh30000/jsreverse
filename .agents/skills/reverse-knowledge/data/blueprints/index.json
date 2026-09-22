@@ -592,6 +592,47 @@
         "环境检测",
         "crc32"
       ]
+    },
+    {
+      "id": "iqiyi-cmd5x",
+      "path": "iqiyi-cmd5x",
+      "title": "爱奇艺 dash 接口 vf 参数（cmd5x，加盐 MD5）",
+      "category": "platform-signature",
+      "status": "partial",
+      "summary": "vf = cmd5x(视频地址串)，加盐 MD5 / 32 位 hex；实现被 Emscripten 编成 asm.js 内联在 pcweb.wonder.js（无 .wasm 文件）。盐常量源文章未给出。",
+      "aliases": [
+        "cmd5x",
+        "vf",
+        "iqiyi-vf"
+      ],
+      "keywords": [
+        "爱奇艺",
+        "iqiyi",
+        "cmd5x",
+        "vf",
+        "asm.js",
+        "dash"
+      ]
+    },
+    {
+      "id": "tencent-ckey",
+      "path": "tencent-ckey",
+      "title": "腾讯视频 v.qq.com ckey 参数（wasm 导出函数生成）",
+      "category": "platform-signature",
+      "status": "partial",
+      "summary": "ckey 由 wasm 导出 getckey 生成；用 wasm2c → C → dll/exe → Python 免还原复现。含 _get_unicode_str 闭包补法与两个 dll 加载坑。",
+      "aliases": [
+        "ckey",
+        "txckey",
+        "txckey91"
+      ],
+      "keywords": [
+        "腾讯视频",
+        "v.qq.com",
+        "ckey",
+        "wasm",
+        "wasm2c"
+      ]
     }
   ]
 }

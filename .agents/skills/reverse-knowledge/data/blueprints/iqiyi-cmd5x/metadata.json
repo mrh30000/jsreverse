@@ -1,0 +1,104 @@
+{
+  "id": "iqiyi-cmd5x",
+  "title": "爱奇艺 dash 接口 vf 参数（cmd5x，加盐 MD5）",
+  "category": "platform-signature",
+  "status": "partial",
+  "version": "1.0.0",
+  "summary": "爱奇艺 dash 视频接口的 vf = cmd5x(视频地址串)，是一个加盐 MD5、32 位 hex；实现被 Emscripten 编成 asm.js 内联在 pcweb.wonder.js 里（没有独立 .wasm 文件）。三篇来源都只做到「移植」或「定位」，均未给出盐常量。",
+  "aliases": [
+    "cmd5x",
+    "vf",
+    "iqiyi-vf"
+  ],
+  "keywords": [
+    "爱奇艺",
+    "iqiyi",
+    "iqiyi.com",
+    "cmd5x",
+    "vf",
+    "pcweb.wonder.js",
+    "dash"
+  ],
+  "algorithm": {
+    "family": "hash",
+    "detail": "vf = cmd5x(入参字符串)，输出 32 位 hex。原文明确「实际上这也是一个加了盐的 md5 算法」，但未提取盐常量。生成点：pcweb.wonder.js 里搜索 vf= 只命中一处；实现位于 webpack 模块 295，被 Emscripten 编成 asm.js（-s WASM=0），因此没有 .wasm 文件可下载。第二条来源用 AST 反混淆（大数组字符串还原 → 恒真假分支 → break/return 后死代码）后确认：js 层调用 cmd5x 实际调用的是 g 方法，g 内部四步为「算长度 → 申请长度+1 的内存 → 复制进内存并调 f（wasm 层）→ 读出结果并释放」。",
+    "key_material": "未知。源文章均未给出盐值；要拿盐只能走移植路线，或对 asm.js 产物做常量指纹扫描（wsam-reverse 的 wasm-inspect.js --crypto-constants 可扫 MD5 的 IV 与 T 表）。",
+    "output_encoding": "hex",
+    "output_length": "32"
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-1013338-爱奇艺视频cmd5x解析算法的移植分析和实现 Nodejs （2019-08）.md",
+      "line": 14,
+      "quote": "爱奇艺视频的解析算法cmd5x是dash视频接口的参数vf的生成算法，实际上这也是一个加了盐的md5算法。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1013338-爱奇艺视频cmd5x解析算法的移植分析和实现 Nodejs （2019-08）.md",
+      "line": 27,
+      "quote": "进行了方法名的混淆。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1013338-爱奇艺视频cmd5x解析算法的移植分析和实现 Nodejs （2019-08）.md",
+      "line": 28,
+      "quote": "引入了浏览器端天生具有的而Nodejs这些运行时天生所不具有的document和window。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1013338-爱奇艺视频cmd5x解析算法的移植分析和实现 Nodejs （2019-08）.md",
+      "line": 29,
+      "quote": "进行了非浏览器端JS运行时的识别（如Nodejs中的特有指令process和require的判断）。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1013338-爱奇艺视频cmd5x解析算法的移植分析和实现 Nodejs （2019-08）.md",
+      "line": 167,
+      "quote": "为了检验cmd5x的正确性，我们在浏览器端的运行结果`cmd5x(\"/dash?tvid=2185399200&bid=300&vid=52ec66e4dc5263184c5b1b378ee6eb81&…&ut=0\") = 8f2b8b04a29e5e8d0f10b8e7a7bc7668`来进行首次检验运行的正确性。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1549711-xx艺视频wasm转js分析，cmd5x算法脱离环境限制.md",
+      "line": 39,
+      "quote": "可以出结果了，难道就这么简单？经过测试发现，生成的值和浏览器的不一样，这就是被检测node环境了",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1549711-xx艺视频wasm转js分析，cmd5x算法脱离环境限制.md",
+      "line": 41,
+      "quote": "### 2.ast反混淆，平坦流",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1836908-某网站wasm md5简单分析.md",
+      "line": 14,
+      "quote": "目标参数：&vf=",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1836908-某网站wasm md5简单分析.md",
+      "line": 26,
+      "quote": "传入参数就是链接去头去尾，返回字符串长32",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1836908-某网站wasm md5简单分析.md",
+      "line": 102,
+      "quote": "从还原后的代码可以依稀看出来，是wasm,只不过并没有看到有wasm文件，它是直接编译成了asm.js",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1836908-某网站wasm md5简单分析.md",
+      "line": 130,
+      "quote": "导入了很多函数，一个个分析发现，只要au返回6就行",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1836908-某网站wasm md5简单分析.md",
+      "line": 142,
+      "quote": "返回值是32位很可能是md5，搜索一下关键字",
+      "verified_in_article": true
+    }
+  ],
+  "notes": "status=partial 是如实标注：三篇来源分别覆盖「算法族 + 黄金测试向量」（1013338）、「生成点与调用链 + asm.js 判据」（1549711）、「同平台第二个页面的独立复现 + 环境检测在导入函数」（1836908），但没有任何一篇给出盐常量或可独立复算的公式。跨源一致性：三篇都指认 vf/cmd5x + MD5 族；C 篇是 iqiyi 的另一个页面（v_1r1objti58.html），与 A/B 篇的 /dash 接口不是同一个接口，但同属 vf 家族。"
+}

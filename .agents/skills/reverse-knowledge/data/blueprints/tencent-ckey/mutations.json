@@ -1,0 +1,34 @@
+{
+  "mutations": [
+    {
+      "name": "_get_unicode_str 是闭包型导入，必须「曲线赋值」",
+      "rule": "它在 JS 里是 document.URL + navigator.userAgent + referrer + appCodeName/appName/platform 的拼接。能写死的写死，只有 document.URL 必须进参：在 C 侧定义全局 char *url，用 set_url() 在调用导出函数之前赋值，导入函数里再把 url 与写死串 memcpy 进 wasm 内存",
+      "symptom_if_wrong": "算法能跑完但结果与浏览器不一致；或直接读到空串导致长度错"
+    },
+    {
+      "name": "getTotalMemory 回定值",
+      "rule": "JS 侧返回的是常量，实测 16777216",
+      "symptom_if_wrong": "若返回 0 或错值，内存分配立即异常（通常表现为越界或直接崩）"
+    },
+    {
+      "name": "导入数值（*Base / DYNAMICTOP_PTR / STACKTOP / global.NaN / global.Infinity）",
+      "rule": "先把这些指针符号全部置 NULL 让它过编译，再按编译报错处逐个改成实际引用值",
+      "symptom_if_wrong": "漏改会在运行时读到野指针，症状是随机的、不像参数错的崩溃"
+    },
+    {
+      "name": "dll 加载失败的两个根因（不要只怀疑位宽）",
+      "rule": "① 32/64 位不匹配：用 x86_64-w64-mingw32 的 gcc 重编，且要与 Python 位宽一致；② MinGW 运行时依赖缺失：用 Depends 查看缺哪个 dll，实测缺 libgcc_s_sjlj-1.dll，从 <gcc>/x86_64-w64-mingw32/lib 拷到同目录",
+      "symptom_if_wrong": "报「找不到模块」但文件就在同目录；只改位宽仍失败会白折腾一轮"
+    },
+    {
+      "name": "暂时不想修 dll 时的逃生口",
+      "rule": "把 main() 改成命令行程序（printf 结果 + argv 传参），Python 侧用 os.popen 读回",
+      "symptom_if_wrong": "不换路线会在 dll 加载上无限打转，而算法其实早就对了"
+    },
+    {
+      "name": "字符串参数长度必须 +1",
+      "rule": "wasm 只认字节流且字符串以 \\0 结尾：申请 malloc(strlen+1)、memcpy 时带上结尾 0",
+      "symptom_if_wrong": "能跑但结果差一位（静默），极难发现"
+    }
+  ]
+}

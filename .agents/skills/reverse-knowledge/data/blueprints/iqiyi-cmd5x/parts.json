@@ -1,0 +1,22 @@
+{
+  "parts": [
+    {
+      "name": "input",
+      "role": "cmd5x 的入参：视频播放地址串（原文口径为「链接去头去尾」「视频 url 的一部分」，具体切法源文章未给出）",
+      "source": "见 sources 中 1013338 第 167 行的黄金向量",
+      "example": "/dash?tvid=2185399200&bid=300&vid=52ec66e4dc5263184c5b1b378ee6eb81&src=01010031010000000000&vt=0&rs=1&uid=&ori=pcw&…&ut=0"
+    },
+    {
+      "name": "tm",
+      "role": "毫秒时间戳（出现在入参串中）",
+      "source": "&tm=1566399701976（黄金向量内）",
+      "example": "1566399701976"
+    },
+    {
+      "name": "vf",
+      "role": "输出：32 位 hex 签名",
+      "source": "cmd5x 返回值",
+      "example": "8f2b8b04a29e5e8d0f10b8e7a7bc7668"
+    }
+  ]
+}

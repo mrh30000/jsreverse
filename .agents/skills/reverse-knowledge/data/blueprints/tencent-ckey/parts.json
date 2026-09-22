@@ -1,0 +1,46 @@
+{
+  "parts": [
+    {
+      "name": "platform",
+      "role": "平台号",
+      "source": "示例调用 dll.get_ckey(ctypes.c_int(10201), …)",
+      "example": "10201"
+    },
+    {
+      "name": "appVer",
+      "role": "客户端版本",
+      "source": "示例调用",
+      "example": "3.5.57"
+    },
+    {
+      "name": "vid",
+      "role": "视频 id",
+      "source": "示例调用",
+      "example": "x0041qqe42w"
+    },
+    {
+      "name": "empty_str",
+      "role": "空串参数（位置固定，不可省略）",
+      "source": "示例调用",
+      "example": ""
+    },
+    {
+      "name": "guid",
+      "role": "设备/访客标识",
+      "source": "示例调用",
+      "example": "f13cfbab245307b814a9dad672908bc7"
+    },
+    {
+      "name": "tm",
+      "role": "秒级时间戳",
+      "source": "示例调用",
+      "example": "1643337028"
+    },
+    {
+      "name": "url",
+      "role": "当前页面地址；**不在导出函数签名里**，而是通过导入函数 _get_unicode_str 的闭包取用",
+      "source": "示例调用 set_url(url_str)",
+      "example": "https://v.qq.com/x/cover/mzc00200mp8vo9b/x0041qq"
+    }
+  ]
+}

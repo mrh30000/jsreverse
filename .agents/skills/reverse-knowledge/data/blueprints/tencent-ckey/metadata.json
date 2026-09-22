@@ -1,0 +1,86 @@
+{
+  "id": "tencent-ckey",
+  "title": "腾讯视频 v.qq.com ckey 参数（wasm 导出函数生成）",
+  "category": "platform-signature",
+  "status": "partial",
+  "version": "1.0.0",
+  "summary": "腾讯视频播放页的 ckey 由 wasm 导出函数生成；源文章用 wasm2c → C → dll/exe → Python 复现，未还原算法本身。清单里列出的是「跑通这条路线」必须处理的三个导入函数与两个 dll 加载坑。",
+  "aliases": [
+    "ckey",
+    "txckey",
+    "txckey91"
+  ],
+  "keywords": [
+    "腾讯视频",
+    "v.qq.com",
+    "ckey",
+    "wasm",
+    "wasm2c",
+    "_get_unicode_str",
+    "getTotalMemory"
+  ],
+  "algorithm": {
+    "family": "unknown",
+    "detail": "算法本身未在源文章还原：源文章的做法是 wasm2c 把 .wasm 翻成 C，补 3 个导入函数后编成 dll，再用 ctypes 调用。已知的接口形状：导出函数 getckey 接收 (platform, appVer, vid, empty_str, guid, tm)；返回的是 wasm 内存里的字符串地址（非二级指针）。导入函数里只有 getTotalMemory 与 _get_unicode_str 需要真实现，其余全部 NULL。",
+    "key_material": "不适用（非密码学签名，算法未还原）",
+    "output_encoding": "未知（源文章未给出取值样例）",
+    "output_length": "源文章按 512 字节缓冲读取"
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-1581887-wasm转c调用实战.md",
+      "line": 264,
+      "quote": "### 案例二：某讯视频ckey参数获取",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1581887-wasm转c调用实战.md",
+      "line": 270,
+      "quote": "1. 导入数值处理",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1581887-wasm转c调用实战.md",
+      "line": 275,
+      "quote": "创建完项目后，根据文章中的代码，导入函数中除了getTotalMemory和\\_get\\_unicode\\_str，其他都可以直接给NULL，具体怎么补后面说。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1581887-wasm转c调用实战.md",
+      "line": 291,
+      "quote": "getTotalMemory比较简单，在js中可以看到返回的是一个定值",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1581887-wasm转c调用实战.md",
+      "line": 330,
+      "quote": "可以看到其通过闭包获取了document.URL和window.navigator等等的值。那么这里尽量把可以写死的值写死，document.URL只能够传进去，那么怎么解决？",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1581887-wasm转c调用实战.md",
+      "line": 455,
+      "quote": "编译文件为dll",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1581887-wasm转c调用实战.md",
+      "line": 465,
+      "quote": "运行正常，得出的结果与浏览器结果对比完全一致。完结",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1581887-wasm转c调用实战.md",
+      "line": 239,
+      "quote": "dll调用修复，在6楼Frhvjhhv大佬提到的，是因为缺少引用的dll文件，使用Depends查看编译出来的dll",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1581887-wasm转c调用实战.md",
+      "line": 243,
+      "quote": "可以看到，确实缺少了一个libgcc\\_s\\_sjlj-1.dll。这个dll可以在gcc目录下找到【D:\\MinGW64\\x86\\_64-w64-mingw32\\lib】，把缺少的dll复制到编译出来的dll同目录下。",
+      "verified_in_article": true
+    }
+  ],
+  "notes": "本蓝图的用途是「**免还原地拿到参数**」：与 douyin-a-bogus / jd-h5st 那类「算法已还原」的蓝图不同，这里记录的是**可执行的复现路线 + 该路线的必踩坑**，因此 status=partial、algorithm.family=unknown。通用化后的 wasm2c 路线与命名规则见 skills/wsam-reverse/references/wasm-toolchain-and-decompilation.md。"
+}

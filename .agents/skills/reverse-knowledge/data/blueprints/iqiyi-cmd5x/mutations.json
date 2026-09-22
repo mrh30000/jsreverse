@@ -1,0 +1,39 @@
+{
+  "mutations": [
+    {
+      "name": "非浏览器环境识别开关（try/catch + eval）",
+      "rule": "实现里用 try/catch 包住 eval(\"process;\") / eval(\"require;\")：浏览器抛 ReferenceError，Node 不抛 ⇒ 走不同分支。搜「被 try/catch 包住的 eval/Function 字符串调用」即可定位",
+      "symptom_if_wrong": "本地能跑出 32 位 hex，但与浏览器不一致，而且完全不报错"
+    },
+    {
+      "name": "其他被检测的环境变量",
+      "rule": "除 process / require 外，还有 document.domain、window.screen.clientWidth、window.screen.clientHeight",
+      "symptom_if_wrong": "值不同但不报错，容易误以为是自己还原算法错了"
+    },
+    {
+      "name": "wasm 已被编成 asm.js（无 .wasm 文件）",
+      "rule": "Emscripten 用 -s WASM=0；不要去 Network 面板找 .wasm，也不要把 wasm2c / wasm-decompile 套上去",
+      "symptom_if_wrong": "找不到 .wasm 文件，误判为「这个站没有 wasm」而放弃或走错路线"
+    },
+    {
+      "name": "异步加载被改成同步",
+      "rule": "-s WASM_ASYNC_COMPILATION=0（常与 WASM=0 同时出现）",
+      "symptom_if_wrong": "TypeError: Cannot read properties of undefined (reading 'apply')"
+    },
+    {
+      "name": "环境检测放在导入函数里，不在 wasm 内部",
+      "rule": "逐个分析导入函数；实测只要 aU() 返回 6 即可跑通（该站属于「直接导入检测函数」这一类）",
+      "symptom_if_wrong": "输出与浏览器不一致且不报错，排查方向会被带偏到算法上"
+    },
+    {
+      "name": "「32 位长度」只是线索不是判据",
+      "rule": "长度 32 高概率是 MD5，但仍要回看初始化常量（IV）有没有被魔改、是不是 4 段 × 16 轮循环",
+      "symptom_if_wrong": "误判算法族，之后所有复算都白做"
+    },
+    {
+      "name": "标准 MD5 的轮结构识别法",
+      "rule": "把每轮分发 case 的跳转值统计出来，取出现 16 次的值再画图，可看出 4 段 × 16 轮；再逐 case 对齐 (b&c)|((~b)&d)、safe_add、左移量 = ((i%4)*5+7)",
+      "symptom_if_wrong": "只看常量表就断言「没魔改」，漏掉轮函数或左移量被改的变体"
+    }
+  ]
+}

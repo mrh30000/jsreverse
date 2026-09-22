@@ -122,6 +122,19 @@ browsercli call wasm_vmp_trace --maxEvents 100 --filterModule <name>
 - **选了 wasm2c 后**：`wasm2c app.wasm -o app.c` → `gcc -shared -fPIC -O2 app.c wasm-rt-impl.c -o app.dll`。完整路线、`wasm-rt-impl.c` 位置、跨语言「分配→写入→调用→读出」四步、非 ASCII 传参被静默截断的坑，读 `references/wasm2c-and-memory-semantics.md`。
 - **选了 wasm2js 后**：使用 `binaryen.readBinary(...).emitAsmjs()` 将 `.wasm` 离线转译为纯 Asm.js / JavaScript。脱离 WebAssembly 运行时直接调用，完整 Node.js 脚本与浏览器实时转译配方，读 `references/wasm-to-js-transpilation.md`。
 
+#### 动手前先做三件事（做过一次能省半天）
+
+1. **量三件事定路线**：`node .../wasm-inspect.js -i ./target.wasm --glue-family --crypto-constants --signatures`
+   —— 一次拿到「有几个导入 / 属哪个胶水层家族 / 导出函数签名 / 内嵌标准加密常量」。
+   `--signatures` 给的是**写 C/Python 包装层最需要的参数与返回值类型**。
+   判据与选型矩阵见 `references/wasm-toolchain-and-decompilation.md` §1–§2。
+2. **分清 CFF 还是 VMP**（选错路线会白干一天）：伪代码里是「大量 `while` + 状态变量魔法常量」⇒ CFF；
+   「一个超长字节码数组 + 一个分发器、多数函数都汇进同一个函数」⇒ VMP。
+   判据表与各自路线见 `references/wasm-cff-restoration.md` §11.2。
+3. **能不能不反编译就把 wasm 跑起来**：`references/wasm-runtime-reproduction.md` 给了 Node（含
+   `delete process/global` 的取舍、Go 的 `wasm_exec.js`、Proxy 环境探针）与 Python（wasmer / pywasm）
+   两套骨架。**能跑通就别读算法**——这条在本族里成功的比例最高。
+
 ### Wasm 内存语义（读 WAT 的唯一铁律）
 
 `i32.load` / `i32.store` 是操作内存的唯一手段，读懂它只要两条：
@@ -149,6 +162,10 @@ dump 下来搜特征串（AES S 盒 `63 7c 77 7b`、写死的 key/IV、编码表
 ## VMP 场景
 
 如果 wasm 是**代码保护器**（如某些商业 VMP 用的 wasm 壳），反编译可能输出大量无意义指令（`i32.const` / `local.get` / `i32.xor` 循环）。这时：
+
+> 🔴 **先分清「CFF」和「VMP」再选路**：CFF 是**控制流被打散**（指令集不变），VMP 是**指令集被替换**
+> （自建字节码解释器）。判据与各自路线见 `references/wasm-cff-restoration.md` §11.2–§11.3；
+> **VMP 场景下在 C/JS 转换产物上补环境基本走不通**，正确退路是「不动 wasm、直接扣原 JS 补环境」。
 
 1. `browsercli call wasm_vmp_trace` 抓运行时事件（每次进入 / 退出函数 + 参数摘要）
 2. 用 `node skills/wsam-reverse/scripts/wasm-run.js --input ./target.wasm --invoke <func>` 重放同一个输入多次，看哪条路径被命中
@@ -290,6 +307,21 @@ browsercli jobs cancel <job-id>
 
 ## 关联
 
+- `references/wasm-toolchain-and-decompilation.md`：**工具链选型与反编译路线的唯一权威源** ——
+  开工先量三件事、`wasm2c/wasm2js/wasm-decompile/IDA` 取舍矩阵、`wasm2c → .o → IDA` 路线（4 篇独立来源互证）、
+  `wasm2c` 符号命名与「按可读尾部匹配」、补导入函数的三板斧、`C → DLL/exe → Python`（含 MinGW 运行时缺失坑）、
+  Emscripten asm.js（`WASM=0`）与「没有 .wasm 文件的 wasm」、**「JS 层函数名 ≠ wasm 导出名」**、
+  **两篇来源公式冲突时以 WAT 为准（含实测复核）**。
+- `references/wasm-cff-restoration.md`：**控制流平坦化（CFF）还原的唯一权威源** ——
+  判据、四步法、有效块模板（`call i32_store`+`jmp` / `call i32_load`+`cmp`+`jz`）、
+  ihelp vs 非 ihelp 的 angr hook 策略、**为什么不能用 `angr.options.CALLLESS`**、汇编 patch 的空间坑、
+  AI 反 CFF 的定位、排错顺序，以及 **§11.2–§11.3「CFF vs VMP」判据与 VMP 的正确退路**。
+  ⚠️ 全流程依赖 IDA + angr + keystone，**本技能不含可执行实现、也不声称能自动反 CFF**。
+- `references/wasm-runtime-reproduction.md`：**在 Node/Python 里复现 wasm 运行时的唯一权威源** ——
+  胶水层家族指纹、通用四步、Node 骨架（`delete process/global` 的取舍）、
+  Go-wasm（`wasm_exec.js` + Proxy 环境探针 + `global` 不能自赋值）、wasm-bindgen 导入表与 retptr 二级取值、
+  cargo-web/stdweb 引用表桥、Emscripten 导入表、wasmer/pywasm、**环境识别开关 `try/catch + eval('process')`**、
+  浏览器内内存视图注入与全内存搜索、排错表。
 - `references/wasm2c-and-memory-semantics.md`：wasm2c 完整路线、内存语义与地址推演、字节流密钥反推、Itanium 符号解码表、调试注入。
 - **内存取证（先做这个）**：`references/wasm2c-and-memory-semantics.md` §7 —— HEAPU8 dump 搜常量、
   「结果地址 + 固定偏移」取 key、`_emscripten_run_script` 打桩、Go 产物符号名与流对象状态、
