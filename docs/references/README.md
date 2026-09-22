@@ -19,13 +19,16 @@
 - 补充归档（十一）：**110 篇**（2026-09-21 第十二轮 [`hubcli search` GBK 字符集失效修复 → 浏览器驱动搜索 + 全量分页；30 个高价值历史词复扫命中 88 篇被 `limit 40` 截断的存量老帖]，见第十三节）
 - 补充归档（十二）：**37 篇**（2026-09-22 第十三轮 [历轮全部 586 个历史关键词「浏览器全量分页」复扫至 470 词收口；新增全部来自审计 C/E 表补漏通道，主题集中为 `视频/m3u8/直播源解密` 与 `登录/接口/签名/参数逆向` 两类存量老帖]，见第十四节）
 - 补充归档（十三）：**39 篇**（2026-09-22 第十五轮[第十四轮审计粗筛出的 548 篇 C/E 表候选**逐条抓正文复核**：548 → 196 核心命中 → 定稿 39，主题为 `登录/参数/算法还原` 17 + `扣代码/AST/反调试` 6 + `风控/字体/指纹` 7 + `视频/m3u8/DRM` 9]，见第十五节）
+- CF 盾纯协议实现方案调研（CSDN）：**25 篇**（2026-09-22 第十六轮，见第十六节）
+- 补充归档（十四）：**8 篇**（2026-09-22 第十六轮[审计 **B/G 表首次正文级复核** + 关键词通道见底确认，主题为`浏览器扩展/Electron 逆向` 2 + `前端反调试` 2 + `JS 侧滑块/签名` 1 + `接口逆向` 3]，见第十七节）
 
-> 目录现状（`artifacts/52pojie-fetch15/` 终检，2026-09-22 第十五轮）：
-> 文章 `.md` 共 **739 个**（不含本 README）= `52pojie-<id>-<标题>.md` **682 个** + 早期 `<id>-<slug>.md` **51 个**
-> + 无 ID 的早期手工文件 6 个（`weixin-*.md`、`cloudflare*.md`、`verified.md` 等）。
-> 唯一帖子 ID **731** 个；另有 2 个 `.验证报告.md` 与主文共用同一 ID（`2098573`、`2100076`，非重复）。
-> 空文件（<400B）**0** 个；本轮新增 39 篇中薄文件（<1500B）1 个（`1044889` 58同城字体解析，正文仅说明+附件，属正常）。重复 ID 0 组。
-> 编码扫描（`repair-encoding.py --scan`）740 文件 **0 命中**。
+> 目录现状（`artifacts/52pojie-fetch16/` 终检，2026-09-22 第十六轮）：
+> 文章 `.md` 共 **772 个**（不含本 README）= `52pojie-<id>-<标题>.md` **690 个** + 早期 `<id>-<slug>.md` **51 个**
+> + 无 ID 的早期手工文件 **6 个**（`weixin-*.md`、`cloudflare*.md`、`verified.md` 等）
+> + 其他平台批量归档 **25 个**（`csdn-*` CF 盾专题，见第十六节）。
+> 唯一帖子 ID **739** 个；另有 2 个 `.验证报告.md` 与主文共用同一 ID（`2098573`、`2100076`，非重复）。
+> 空文件（<400B）**0** 个；本轮新增 8 篇均 >1000B（最薄 `1949965` 1046B，油猴脚本帖）。重复 ID 0 组。
+> 编码扫描（`repair-encoding.py --scan`）**773 文件 0 命中**（第十六轮复核）。
 
 ---
 
@@ -1571,3 +1574,77 @@ hubcli 52pojie Thread --page 1 --json                 # 随即恢复
 
 **空正文（3 条）**：`1985832`（121B）/ `1525939`（309B）/ `1482970`（276B）。
 **权限受限（8 条，勿重复进待抓）**：`1867851`(40) / `1831357`(20) / `1778315`(20) / `1655123`(20) / `1638202`(80) / `1587768`(20) / `1467610`(80) / `904285`(20)。
+
+---
+
+---
+## 十六、CF 盾纯协议实现方案调研（25 篇，2026-09-22）
+
+目标：调研 Cloudflare 盾（5秒盾 / JSD / Turnstile）的**纯协议实现方案**（不启动浏览器）。
+来源：`hubcli csdn search` + `csdn article`（CSDN）；GitHub 侧见 `artifacts/cf-protocol/github/`。
+筛选口径：**正文级复核**（硬门槛 = 必须命中 CF 盾核心信号；加权 = 纯协议/补环境/jsvmp/PoW 等；
+负分 = 打码平台广告 / 前端框架集成教程 / Workers 部署）。脚本 `artifacts/cf-protocol/score_bodies.py`。
+
+| ID | 标题 | 文件 |
+| --- | --- | --- |
+| [163402696](https://blog.csdn.net/weixin_28568819/article/details/163402696) | CloudFlare JS加密逆向：从原理到实战的爬虫挑战应对指南 | `csdn-163402696-CloudFlare JS加密逆向：从原理到实战的爬虫挑战应对指南.md` |
+| [163326626](https://blog.csdn.net/weixin_33824385/article/details/163326626) | Python补环境框架实战：13次请求深度解析Cloudflare 5秒盾绕过 | `csdn-163326626-Python补环境框架实战：13次请求深度解析Cloudflare 5秒盾绕过.md` |
+| [161406523](https://blog.csdn.net/weixin_30529023/article/details/161406523) | Cloudflare 5秒盾逆向实战：13次请求拆解与Playwright补环境框架 | `csdn-161406523-Cloudflare 5秒盾逆向实战：13次请求拆解与Playwright补环境框架.md` |
+| [161296797](https://blog.csdn.net/weixin_34254464/article/details/161296797) | Cloudflare Turnstile合规采集：指纹对齐、行为拟真与网络层融入 | `csdn-161296797-Cloudflare Turnstile合规采集：指纹对齐、行为拟真与网络层融入.md` |
+| [161296793](https://blog.csdn.net/weixin_33600816/article/details/161296793) | Cloudflare最严验证的合规交互架构：从TLS指纹到Turnstile v3全链路对齐 | `csdn-161296793-Cloudflare最严验证的合规交互架构：从TLS指纹到Turnstile v3全链路对齐.md` |
+| [161274429](https://blog.csdn.net/weixin_32553219/article/details/161274429) | Cloudflare五秒盾JS逆向实战：cf_clearance生成原理与工程化落地 | `csdn-161274429-Cloudflare五秒盾JS逆向实战：cf_clearance生成原理与工程化落地.md` |
+| [160099121](https://blog.csdn.net/weixin_27199085/article/details/160099121) | Cloudflare 5秒盾逆向实战：从503到cf_clearance的全流程解析 | `csdn-160099121-Cloudflare 5秒盾逆向实战：从503到cf_clearance的全流程解析.md` |
+| [159740614](https://blog.csdn.net/weixin_33734785/article/details/159740614) | JS逆向实战：免费版CloudFlare五秒盾核心逻辑剖析与自动化绕过 | `csdn-159740614-JS逆向实战：免费版CloudFlare五秒盾核心逻辑剖析与自动化绕过.md` |
+| [159629987](https://blog.csdn.net/youxijun/article/details/159629987) | ChatGPT背后：Cloudflare Turnstile程序解密与机器人检测技术揭秘 | `csdn-159629987-ChatGPT背后：Cloudflare Turnstile程序解密与机器人检测技术揭秘.md` |
+| [159429874](https://blog.csdn.net/2601_95249254/article/details/159429874) | 深入理解Cloudflare Turnstile：工作原理分析与Python自动化解决方案 | `csdn-159429874-深入理解Cloudflare Turnstile：工作原理分析与Python自动化解决方案.md` |
+| [159297574](https://blog.csdn.net/weixin_30772105/article/details/159297574) | Cloudflare 5秒盾破解实战：Python补环境框架下的13次请求全解析 | `csdn-159297574-Cloudflare 5秒盾破解实战：Python补环境框架下的13次请求全解析.md` |
+| [158898877](https://blog.csdn.net/weixin_29327977/article/details/158898877) | Cloudflare 5秒盾逆向实战：从503到cf_clearance的全流程拆解（附避坑指南） | `csdn-158898877-Cloudflare 5秒盾逆向实战：从503到cf_clearance的全流程拆解（附避坑指南）.md` |
+| [153381316](https://blog.csdn.net/black/article/details/153381316) | Cloudflare 5秒盾全流程解析与Python补环境实战 | `csdn-153381316-Cloudflare 5秒盾全流程解析与Python补环境实战.md` |
+| [152498871](https://blog.csdn.net/gold/article/details/152498871) | Cloudflare 5秒盾逆向实战：13次请求背后的Python补环境框架搭建指南 | `csdn-152498871-Cloudflare 5秒盾逆向实战：13次请求背后的Python补环境框架搭建指南.md` |
+| [152127111](https://blog.csdn.net/qq_33253945/article/details/152127111) | Cloudflare防护技术深度解析与Turnstile验证实战指南 | `csdn-152127111-Cloudflare防护技术深度解析与Turnstile验证实战指南.md` |
+| [151996635](https://blog.csdn.net/qq_33253945/article/details/151996635) | Cloudflare Turnstile企业级防护：5秒盾bypass与TLS指纹伪造技术解析 | `csdn-151996635-Cloudflare Turnstile企业级防护：5秒盾bypass与TLS指纹伪造技术解析.md` |
+| [149370076](https://blog.csdn.net/rose2/article/details/149370076) | JS逆向实战：免费版CloudFlare五秒盾的攻防解析 | `csdn-149370076-JS逆向实战：免费版CloudFlare五秒盾的攻防解析.md` |
+| [147193430](https://blog.csdn.net/qq_45696543/article/details/147193430) | Cloudflare五秒盾补环境分析 | `csdn-147193430-Cloudflare五秒盾补环境分析.md` |
+| [101367856](https://blog.csdn.net/qq_39802740/article/details/101367856) | 网络爬虫-cloudflare五秒等待验证逆向破解 | `csdn-101367856-网络爬虫-cloudflare五秒等待验证逆向破解.md` |
+| [100394056](https://blog.csdn.net/cuichao1900/article/details/100394056) | JS逆向补环境实战：从原理到破解某验验证码 | `csdn-100394056-JS逆向补环境实战：从原理到破解某验验证码.md` |
+| [99171711](https://blog.csdn.net/weixin_30908941/article/details/99171711) | Cloudflare 5秒盾JS逆向实战：纯请求模拟获取cf_clearance | `csdn-99171711-Cloudflare 5秒盾JS逆向实战：纯请求模拟获取cf_clearance.md` |
+| [99026780](https://blog.csdn.net/weixin_30266885/article/details/99026780) | 绕过Cloudflare 5秒盾的三种思路：补环境、模拟与第三方服务选型指南 | `csdn-99026780-绕过Cloudflare 5秒盾的三种思路：补环境、模拟与第三方服务选型指南.md` |
+| [98274655](https://blog.csdn.net/weixin_30633405/article/details/98274655) | 仿制Cloudflare盾逆向分析：从原理到实战的Web前端安全机制拆解 | `csdn-98274655-仿制Cloudflare盾逆向分析：从原理到实战的Web前端安全机制拆解.md` |
+| [97848186](https://blog.csdn.net/weixin_30664051/article/details/97848186) | Cloudflare 5秒盾逆向实战：13次请求背后的Python补环境框架搭建指南 | `csdn-97848186-Cloudflare 5秒盾逆向实战：13次请求背后的Python补环境框架搭建指南.md` |
+| [94964551](https://blog.csdn.net/weixin_30254435/article/details/94964551) | Cloudflare 5秒盾逆向实战：从初始化到cf_clearance获取全流程拆解 | `csdn-94964551-Cloudflare 5秒盾逆向实战：从初始化到cf_clearance获取全流程拆解.md` |
+
+**产出报告**：`project/cloudflare/xai-cloudflare/PURE-PROTOCOL-RESEARCH.md`（纯协议方案谱系 4 层 + 可离线求解算法 + JSD/Turnstile 链路 + 与 REPORT.md 的硬证据交叉验证）。
+**关键目录**：`artifacts/cf-protocol/`（关键词矩阵 / 候选池 52pojie 245 + CSDN 364 / 84 篇正文 / github 13 仓库 meta + 12 份关键源码 / 可复现脚本）。
+
+## 十七、补充归档（十四）（8 篇，2026-09-22 第十六轮：审计 B/C/G 表正文级复核）
+
+**本轮的核心结论：关键词通道已彻底见底。** 62 个全新组合词（音乐/流媒体/订单支付/列表详情/三字隐称/电商长尾）
+只让候选池从 17569 涨到 17727（+158），最终 **0 篇入选**；同时验证了历轮 103 个「只被 `--limit 40`
+扫过」的历史关键词**本身就是站点真实零结果**（直接打开搜索页可见「找到 “参数还原” 相关内容 0 个」，
+非限频、非 WAF、非字符集问题）。
+
+⇒ 唯一有效召回通道仍是**审计表正文级复核**。历轮只复核过 C/E 表（第十五轮 548 篇），
+本轮首次把 **B 表（NOTWEB 误杀，99 条）** 与 **G 表（历史人工黑名单，192 条）** 一并纳入逐条正文复核，
+共抓取 40 篇正文 → 定稿 **8 篇**真阳性，其余 32 篇固化进 `BLOCK_EXTRA16` 防下轮重复抓取。
+
+| 主题 | ID | 标题 | 文件 |
+| --- | --- | --- | --- |
+| 浏览器扩展 / Electron(JS bundle) | [2116873](https://www.52pojie.cn/thread-2116873-1-1.html) | 简单逆向Web视频插件（CRX 解包 → manifest / background.js / content.js 全量分析） | `52pojie-2116873-简单逆向Web视频插件.md` |
+| ↳ | [2128896](https://www.52pojie.cn/thread-2128896-1-1.html) | 逆向某 AI 编程工具仓库快照加密（Electron app.asar → AES-256-CTR + RSA-OAEP + tar.gz 解密） | `52pojie-2128896-逆向某 AI 编程工具仓库快照加密.md` |
+| 前端反调试 / 反-反调试 | [1504029](https://www.52pojie.cn/thread-1504029-1-1.html) | 记录一次某动漫资源网站前端反-反调试（s_dett.js 跳转 → script 断点定位） | `52pojie-1504029-记录一次某动漫资源网站前端反-反调试.md` |
+| ↳ | [1859296](https://www.52pojie.cn/thread-1859296-1-1.html) | 使用浏览器插件屏蔽小游戏网站的反调试（带随机参数的 JS + override 方案） | `52pojie-1859296-使用浏览器插件屏蔽小游戏网站的反调试.md` |
+| 验证码 / 滑块（JS 侧） | [1949965](https://www.52pojie.cn/thread-1949965-1-1.html) | 油猴脚本：自动过知网在线阅读滑块 | `52pojie-1949965-油猴脚本：自动过知网在线阅读滑块.md` |
+| 签名 / 接口逆向 | [625402](https://www.52pojie.cn/thread-625402-1-1.html) | 哔哩哔哩视频解析 sign 算法（反编译 flash 得出：参数 + 密钥 → MD5） | `52pojie-625402-哔哩哔哩视频解析sign算法(仅仅是sign算法,半成品).md` |
+| ↳ | [576849](https://www.52pojie.cn/thread-576849-1-1.html) | WEB 音乐播放器，裸奔版，QQ音乐接口（抓包找接口 + 伪造 Referer） | `52pojie-576849-WEB音乐播放器，裸奔版，QQ音乐接口.md` |
+| ↳ | [682968](https://www.52pojie.cn/thread-682968-1-1.html) | 酷我音乐各种付费歌曲无损音乐 api 接口（搜索接口 → 歌曲 id → 播放地址接口） | `52pojie-682968-酷我音乐 各种付费歌曲，音质包括ape、flac无损音乐api接口.md` |
+
+### 本轮口径与审计
+
+- 审计 A~G 七表（`artifacts/52pojie-fetch16/audit16.py`）：A 表 240（加解密编程/native 噪声，属预期）、
+  B 表 99、C 表 536、D 表 21、E 表 60、G 表 192。C 粗筛后仍以通用爬虫教程为主，
+  **真阳性已收敛到「浏览器扩展/Electron 逆向」「前端反调试」「JS 侧滑块/签名」三类**。
+- 复核噪声 32 条入 `BLOCK_EXTRA16`：移动端抓包（flutter App / 安卓主题商店 / 图像识别过滑块）8 条、
+  通用爬虫与自动化取数 5 条、加密库教程与自研工具 9 条、纯接口清单与失效资源 8 条、编码规律/协议/CTF 2 条。
+- Thread 拉到第 8 页（900 条，page 9 空），新帖 4 条全为资源求助帖，web 逆向 **0**（第 3~16 轮同一结论）。
+- 环境坑复现：扫描中途标签页 `Page disconnected` → 按坑 25 `browser open` 新开标签页 + `close` 旧页即恢复；
+  恢复后删掉疑似假零的 `search16/*.json` 重跑（本轮 29 个零结果为二次确认后的真实零结果）。

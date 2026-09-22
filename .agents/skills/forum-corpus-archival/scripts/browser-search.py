@@ -76,7 +76,8 @@ def parse(html):
             int(pg.group(1)) if pg else 1, int(cnt.group(1)) if cnt else len(items))
 
 
-def search(kw, tmp):
+def search(kw, tmp, confirm=True):
+    """confirm=True 时对「零结果」做二次确认（坑 17）：首次 [] 不算数，隔一个 GAP 复测。"""
     q = urllib.parse.quote(kw.encode(CFG["encoding"]), safe="")
     url1 = (f"{CFG['base']}/{CFG['path']}&srchtxt={q}"
             f"&orderby=lastpost&ascdesc=desc&searchsubmit=yes")
@@ -97,7 +98,15 @@ def search(kw, tmp):
             continue
         items, sid, pages, cnt = parse(h)
         if sid is None and cnt == 0 and "相关内容 0 个" in h:
-            return [], "zero"
+            if not confirm:
+                return [], "zero"
+            time.sleep(CFG["gap"])
+            again, note2 = search(kw, tmp, confirm=False)
+            if again is None:
+                return None, note2
+            if again:
+                return again, "zero->confirm-hit"
+            return [], "zero(confirmed)"
         if sid is None:
             time.sleep(CFG["gap"])
             continue
@@ -130,6 +139,8 @@ def main():
     ap.add_argument("--encoding", default="gbk")
     ap.add_argument("--gap", type=float, default=12)
     ap.add_argument("--limit-kw", type=int, default=0)
+    ap.add_argument("--zero-fuse", type=int, default=0,
+                    help="连续 N 个「已二次确认的零结果」后收口中止（0=关闭，建议 12）")
     a = ap.parse_args()
     CFG.update(vars(a))
     os.makedirs(a.outdir, exist_ok=True)
@@ -138,6 +149,7 @@ def main():
         kws = kws[:a.limit_kw]
     tmp = os.path.join(a.outdir, "_tmp_page.html")
     total, zero, failed = {}, [], []
+    consec_zero = 0
     for i, kw in enumerate(kws, 1):
         path = os.path.join(a.outdir, re.sub(r'[\\/:*?"<>|\s]', "_", kw) + ".json")
         if os.path.exists(path):
@@ -156,13 +168,18 @@ def main():
                   ensure_ascii=False, indent=1)
         if not items:
             zero.append(kw)
-            print(f"[{i}/{len(kws)}] {kw}: ZERO", flush=True)
+            consec_zero += 1
+            print(f"[{i}/{len(kws)}] {kw}: ZERO (consec={consec_zero})", flush=True)
         else:
+            consec_zero = 0
             for x in items:
                 total[x["id"]] = x
             print(f"[{i}/{len(kws)}] {kw}: {len(items)} ({note}) union={len(total)}",
                   flush=True)
         time.sleep(a.gap)
+        if a.zero_fuse and consec_zero >= a.zero_fuse:
+            print(f"!! 连续 {consec_zero} 个零结果 -> 收口中止（尾部已无收益）", flush=True)
+            break
     out = a.outdir.rstrip("/\\") + "_pool.json"
     json.dump(total, open(out, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     print(f"\n== summary == kw:{len(kws)} union:{len(total)} zero:{len(zero)} failed:{failed}")
