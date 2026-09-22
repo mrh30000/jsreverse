@@ -25,7 +25,6 @@ browsercli list-tools        # 列出所有工具与参数签名
 - `string[]`：`--properties '["a","b"]'` 或 `--properties a,b`
 - `object`：`--capture '{"stack":true,"args":true}'`
 - kebab-case flag 自动转 camelCase 对齐 schema（`--hook-id` → `hookId`）
-- 个别工具的 schema 本身就是 snake_case（如 `hook_jsvmp_interpreter`），flag 用下划线原样传：`--script_url`
 
 ## 1. 页面与导航
 
@@ -48,18 +47,17 @@ browsercli call new_page           # 新开页面
 
 这是补环境的第一手数据来源：先用真实浏览器把对象结构、描述符、原型链、存储态抓下来，再据此补本地环境。
 
-### 2.1 `compare_env` — 环境基准采集
+### 2.1 环境基准采集（原 `compare_env` 已下线）
+
+`compare_env` 工具已从 MCP 工具面移除。替代方式：把 [scripts/collect-browser-env.js](../scripts/collect-browser-env.js)（可直接注入页面的 IIFE）交给 `evaluate_script` 在页面内执行：
 
 ```bash
-browsercli call compare_env
-browsercli call compare_env --properties '["navigator.userAgent","navigator.webdriver","navigator.plugins.length","document.all","document.cookie"]'
+# 采集 navigator / document / screen / canvas+webgl 指纹 / localStorage / sessionStorage 等分组基准，
+# 并以 console.log 输出 JSON
+browsercli call evaluate_script --file skills/web-reverse-env/scripts/collect-browser-env.js
 ```
 
-| 参数 | 类型 | 说明 |
-| --- | --- | --- |
-| `--properties` | string[] | 额外读取的点分隔属性路径，不执行表达式 |
-
-采集 `navigator`/`screen`/`canvas`/`webgl`/`audio`/`timing`/`misc`/`custom` 分组基准，用于与 Node/jsdom 环境对比。
+该脚本不覆盖 audio / performance timing；这两类用 `evaluate_script --function` 自行取值（见 2.2），只读对象结构时用 `inspect_object`（见 2.3）。
 
 ### 2.2 `evaluate_script` — 任意 JS 精确采集
 
@@ -169,58 +167,61 @@ browsercli call inject_preload_script --script "<自定义脚本>"
 
 用于同步加载的 SDK 已持有原生引用、事后 Hook 太晚的场景；配合 `navigate_page --type reload` 重新初始化。
 
-### 3.4 `hook_jsvmp_interpreter` — JSVMP 站点专用
+### 3.4 JSVMP 站点探针（原 `hook_jsvmp_interpreter` 已下线）
+
+JSVMP 运行时探针已从工具层下移到 `skills/web-reverse-hook`，改为「生成脚本 + 通用注入」两步：
 
 ```bash
-browsercli call hook_jsvmp_interpreter --mode transparent --script_url "app.js" --persistent true
-browsercli call hook_jsvmp_interpreter --mode proxy --track_props true --proxy_objects '["navigator","screen","performance"]'
+# 生成探针脚本（proxy 覆盖全但可被检测；transparent 仅观察原型 getter，痕迹更小）
+node skills/web-reverse-hook/scripts/build-hook.js jsvmp-proxy --out jsvmp.js
+node skills/web-reverse-hook/scripts/build-hook.js jsvmp-transparent --script-url app.js --out jsvmp.js
+
+# 注入页面（一次性 / 跨导航持久）
+browsercli call evaluate_script --file jsvmp.js
+# 或：browsercli call inject_hook --hookId hook_jsvmp --script "$(cat jsvmp.js)" --persistent true
 ```
 
-| 参数 | 类型 | 说明 |
-| --- | --- | --- |
-| `--script_url` | string | 用于调用栈过滤的目标脚本 URL 子串 |
-| `--mode` | enum `proxy`/`transparent` | proxy 覆盖全但可检测；transparent 仅观察原型 getter |
-| `--persistent` | boolean | 跨导航保留，默认 true |
-| `--track_calls` / `--track_props` / `--track_reflect` | boolean | proxy 模式下追踪开关 |
-| `--proxy_objects` | string[] | proxy 模式下要代理的 window 属性名 |
-| `--max_entries` | number | `window.__mcp_jsvmp_log` 最大记录数 |
+探针把调用记录写入 `window.__mcp_jsvmp_log`，可用 `evaluate_script --function "() => window.__mcp_jsvmp_log"` 读取。参数与注入时机见 `skills/web-reverse-hook/SKILL.md`。
 
 ## 4. 差异分析与补丁建议
 
-把本地运行时报错映射成缺失能力与下一步补丁：
+`diff_env_requirements` 工具已下线，改用本地脚本 `scripts/diff-env-requirements.js`：
 
 ```bash
-browsercli call diff_env_requirements --runtime-error "navigator is not defined" --observed-capabilities '["navigator","document","localStorage"]'
+node skills/web-reverse-env/scripts/diff-env-requirements.js --error "ReferenceError: navigator is not defined"
+node skills/web-reverse-env/scripts/diff-env-requirements.js -f ./node_error.log --json
 browsercli call diagnose_environment
 ```
 
-| 工具 | 参数 | 说明 |
+| 方式 | 参数 | 说明 |
 | --- | --- | --- |
-| `diff_env_requirements` | `--runtime-error`（string 必填）、`--observed-capabilities`（string[]） | 分析运行时错误 vs 浏览器能力差异，建议 nextPatches |
+| `diff-env-requirements.js` | `--error`（string）、`--file`（日志文件）、`--json` | 分析运行时错误 vs 浏览器能力差异，输出缺失对象与最小补丁代码 |
 | `diagnose_environment` | `--checks`（string[]） | 检查 Node 版本、构建产物、AI 配置、artifacts 目录 |
 
 ## 5. 导出重建 bundle
 
-把采集到的代码、环境补丁、入口文件打包为可独立运行的 Node 重建包：
+`export_rebuild_bundle` 工具已下线，改用本地脚本 `scripts/export-rebuild-bundle.js`，把采集到的代码、环境补丁、入口文件打包为可独立运行的 Node 重建工程：
 
 ```bash
-browsercli call export_rebuild_bundle --auto-generate true --task-id t1 --target-url "https://example.com" --goal "还原签名参数"
-browsercli call export_rebuild_bundle --task-id t1 --entry-code "<entry>" --env-code "<env>" --polyfills-code "<poly>" --capture '{"ua":"..."}'
+# 空脚手架（生成 entry.js / env.js / polyfills.js，含兼容 Node 21+ 的环境代理）
+node skills/web-reverse-env/scripts/export-rebuild-bundle.js --output-dir ./my-rebuild
+
+# 带上目标逆向代码
+node skills/web-reverse-env/scripts/export-rebuild-bundle.js -o ./my-rebuild -t ./dist/extracted_sign.js
+
+# 生成后直接本地试跑：node ./my-rebuild/entry.js
 ```
 
 | 参数 | 类型 | 说明 |
 | --- | --- | --- |
-| `--auto-generate` | boolean | 自动从浏览器收集代码与运行时证据生成重建包 |
-| `--task-id` / `--task-slug` | string | 任务标识，默认 `default` |
-| `--target-url` / `--goal` | string | 目标 URL 与目标描述 |
-| `--target-keywords` / `--target-url-patterns` / `--target-function-names` | string[] | 自动生成时的目标过滤 |
-| `--target-action-description` | string | 目标业务动作描述 |
-| `--max-evidence-items` | number | 证据条数上限，默认 20 |
-| `--entry-code` / `--env-code` / `--polyfills-code` | string | 手动模式必填 |
-| `--capture` | object | 采集数据快照 |
-| `--notes` | string[] | 备注 |
+| `--output-dir` / `-o` | string（必填） | 脚手架输出目录 |
+| `--target-code` / `-t` | string | 目标逆向 JS 代码文件路径（放入 `target.js`） |
+| `--entry-code` | string | 自定义 `entry.js` 文件路径 |
+| `--env-code` | string | 自定义 `env.js` 文件路径 |
+| `--overwrite` | boolean | 允许覆盖已存在目录，默认 true |
+| `--json` | boolean | 以 JSON 输出结果 |
 
-产物写入 `artifacts/tasks/<task-id>/env/{entry.js,env.js,polyfills.js,capture.json}` 与 `report.md`。
+产物直接写入 `--output-dir` 目录：`package.json`、`env.js`、`polyfills.js`、`target.js`、`entry.js`。
 
 ## 6. 源码搜索与脚本源码
 
@@ -281,7 +282,7 @@ browsercli status
 browsercli call navigate_page --url "https://example.com" --type url
 
 # 2. 采集真实环境基准
-browsercli call compare_env --properties '["navigator.userAgent","navigator.webdriver","document.all"]'
+browsercli call evaluate_script --file skills/web-reverse-env/scripts/collect-browser-env.js
 browsercli call get_storage --type all
 
 # 3. Hook 定位参数生成入口
@@ -291,10 +292,10 @@ browsercli call navigate_page --type reload          # 让 hook 覆盖同步初�
 browsercli call get_hook_data --hook-id hk_cookie --view detail
 
 # 4. 差异分析 → 补丁建议
-browsercli call diff_env_requirements --runtime-error "..." --observed-capabilities '["navigator","document"]'
+node skills/web-reverse-env/scripts/diff-env-requirements.js --error "ReferenceError: navigator is not defined"
 
 # 5. 导出重建 bundle
-browsercli call export_rebuild_bundle --auto-generate true --task-id t1 --target-url "https://example.com" --goal "还原签名"
+node skills/web-reverse-env/scripts/export-rebuild-bundle.js --output-dir ./my-rebuild -t ./extracted_sign.js
 ```
 
 补环境仍然遵循 `Observe-first` → `Hook-preferred` → `Breakpoint-last`：先用上面的采集/Hook 命令拿到真实证据，再决定补哪些模块；只有 Hook 不够时才下沉到断点（`set_breakpoint` 等 debugger 工具）。

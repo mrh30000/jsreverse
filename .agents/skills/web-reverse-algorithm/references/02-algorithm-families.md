@@ -131,6 +131,8 @@ w = hex( AES-128-CBC( 紧凑 JSON(data) ) ) + hex( RSA-1024 / PKCS1v15( 同一�
 - 同接口的 `su = base64(encodeURIComponent(手机号))`，是编码不是加密，不要一起当成加密处理。
 - `servertime` 直接来自上一个接口的返回值，`nonce`/`rsakv`/`pcid` 同理——**先把参数分成「固定 / 上次返回 / JS 计算」三类再动手**，详见 `07-antidebug-and-live-patching.md` §6。
 - `prelt`（上一次请求的本地耗时减云端耗时）可以随机化，不需要精确复刻。
+- **登录 / 账号体系**（注册 / 改密 / CAS 单点登录）的参数不在本节展开：它们的**服务器下发字段清单**、
+  **密码加密族判据表**与**提交形态（明文框 + 隐藏字段两段式）**见 `12-login-and-account-params.md`。
 
 ## 三、Cookie / Header / 多参数联动题
 

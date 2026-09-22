@@ -30,11 +30,16 @@ node skills/wsam-reverse/scripts/wasm-disassemble.js --input ./target.wasm -o ./
 # 4) 脱机调用导出函数（优先 Node 原生 WebAssembly，支持 wasmtime / wasmer）
 node skills/wsam-reverse/scripts/wasm-run.js --input ./target.wasm --invoke sign --args 10,20
 node skills/wsam-reverse/scripts/wasm-run.js -i ./target.wasm --invoke encrypt --runtime node --json
+
+# 5) Wasm 离线转译为纯 JavaScript / Asm.js（免 Wasm 引擎环境纯算路线）
+node skills/wsam-reverse/scripts/wasm2js.js --input ./target.wasm -o ./target.asm.js
 ```
 
 ---
 
 ## browsercli 在线捕获与追踪前置
+
+`browsercli` 侧只保留 4 个 wasm MCP 工具：`collect_wasm`（捕获）、`wasm_dump`（导出）、`wasm_vmp_trace`（跨边界追踪）、`wasm_memory_inspect`（线性内存检查）。反编译 / 反汇编 / 离线执行全部由本仓库的离线脚本完成，不再作为 MCP 工具提供。
 
 对于运行在线上网页中的 Wasm 模块，通过 browsercli 进行活体捕获与追踪：
 
@@ -43,15 +48,10 @@ node skills/wsam-reverse/scripts/wasm-run.js -i ./target.wasm --invoke encrypt -
 browsercli browser connect
 browsercli status
 
-# wasm 工具属于 full profile，workflow 下会报
-# "Tool wasm_decompile is not available in profile workflow"
-# → profile 是 worker 侧环境变量：在启动 worker 的进程里设置并重启 worker
-JS_REVERSE_TOOL_PROFILE=full npm run start   # 或在你自己的 MCP host 环境里注入
-
-# 可用性自检：列出工具并过滤 wasm 族
+# 可用性自检：列出工具并过滤 wasm 族（应只剩上述 4 个）
 browsercli list-tools --json | jq -r '.[].name' | grep -E '^(collect_wasm|wasm_)'
 
-# 工具调用通用形式（连字符↔下划线自动转换：wasm-capabilities ⇄ wasm_capabilities）
+# 工具调用通用形式（连字符↔下划线自动转换：wasm-memory-inspect ⇄ wasm_memory_inspect）
 browsercli call <tool-name> [--param value] [--data '{"k":"v"}'] [--file params.json]
 ```
 
@@ -90,35 +90,37 @@ browsercli call wasm_vmp_trace --maxEvents 100 --filterModule <name>
 
 ### 反编译 vs 反汇编
 
-| 场景                     | 选                                    | 原因                     |
-| ------------------------ | ------------------------------------- | ------------------------ |
-| 快速理解模块结构         | `wasm_decompile`                      | 函数级摘要，可疑模式标记 |
-| 看具体指令（VMP opcode） | `wasm_disassemble`                    | 原始 WAT，每条指令可追   |
-| 函数太多要快速定位       | `wasm_decompile --inlineExport true`  | 展开 export 链           |
-| 调试器单步               | `wasm_offline_run`                    | 不用启动完整运行时       |
-| 优化后再看               | `wasm_optimize` → 再 `wasm_decompile` | 常量折叠后逻辑更直白     |
+| 场景                     | 选                                                       | 原因                     |
+| ------------------------ | -------------------------------------------------------- | ------------------------ |
+| 快速理解模块结构         | `node .../wasm-decompile.js -i ./target.wasm`            | 函数级摘要，可疑模式标记 |
+| 看具体指令（VMP opcode） | `node .../wasm-disassemble.js -i ./target.wasm`          | 原始 WAT，每条指令可追   |
+| 函数太多要快速定位       | `wasm-decompile.js -i ./target.wasm --inline-export true` | 展开 export 链           |
+| 调试器单步               | `node .../wasm-run.js -i ./target.wasm --invoke <fn>`    | 不用启动完整运行时       |
+| 优化后再看               | `wasm-opt -O2` → 再 `wasm-decompile.js`                  | 常量折叠后逻辑更直白     |
 
 ### 段信息 vs 直接反编译
 
-`wasm_inspect_sections` 适合：
+`node skills/wsam-reverse/scripts/wasm-inspect.js` 适合：
 
 - 知道模块有 N 个函数但不知道哪个是入口 → 看 export 段
-- 怀疑有内嵌字符串 / URL / 域名 → `--includeStringScan true`
+- 怀疑有内嵌字符串 / URL / 域名 → `--include-strings`（默认开启）
 - 想知道内存布局 → 看 Memory 段
 
 **不要**先反编译再段信息。反编译对超大模块（>10k 函数）很慢。
 
-### 路线选择：扣 JS / 手写算法 / wasm2c
+### 路线选择：扣 JS / 手写算法 / wasm2c / wasm2js
 
-三条路各有明确边界，**先按「要拿到输出」还是「要搞懂算法」选路，再动手**——选错会白干一天：
+四条路各有明确边界，**先按「要拿到输出」还是「要搞懂算法」选路，再动手**——选错会白干一天：
 
 | 路线 | 何时选 | 代价 |
 | --- | --- | --- |
 | 扣 JS | 需长期稳定复现、调用次数多 | 需 wasm 运行时；导入函数要全扣对 |
 | 手写算法 | 算法简单（单轮异或、固定查表） | 耗时最长；VMP 类走不通 |
 | **wasm2c** | **不想读算法、只要能调用**；导出签名清晰 | 需 C 工具链；首次搭建约半天 |
+| **wasm2js** | **环境无 Wasm 引擎**（轻量沙箱/JS引擎）或**需打断点/AST分析** | 依赖 `binaryen`；对超大模块生成 JS 体积偏大 |
 
-选了 wasm2c 后：`wasm2c app.wasm -o app.c` → `gcc -shared -fPIC -O2 app.c wasm-rt-impl.c -o app.dll`。完整路线、`wasm-rt-impl.c` 位置、跨语言「分配→写入→调用→读出」四步、非 ASCII 传参被静默截断的坑，读 `references/wasm2c-and-memory-semantics.md`。
+- **选了 wasm2c 后**：`wasm2c app.wasm -o app.c` → `gcc -shared -fPIC -O2 app.c wasm-rt-impl.c -o app.dll`。完整路线、`wasm-rt-impl.c` 位置、跨语言「分配→写入→调用→读出」四步、非 ASCII 传参被静默截断的坑，读 `references/wasm2c-and-memory-semantics.md`。
+- **选了 wasm2js 后**：使用 `binaryen.readBinary(...).emitAsmjs()` 将 `.wasm` 离线转译为纯 Asm.js / JavaScript。脱离 WebAssembly 运行时直接调用，完整 Node.js 脚本与浏览器实时转译配方，读 `references/wasm-to-js-transpilation.md`。
 
 ### Wasm 内存语义（读 WAT 的唯一铁律）
 
@@ -220,7 +222,8 @@ Object.keys(wasm).forEach(k => { window['__w_' + k] = wasm[k]; });
 curl -s -o target.wasm 'https://target.com/static/app.wasm'
 # 2) 本地 Node 实例化下载的 wasm 重建加密逻辑（WebAssembly API 内置于 Node）
 node loader.js   # loader.js: WebAssembly.instantiate(fs.readFileSync('target.wasm')) → 调导出函数
-# 或走 worker：browsercli call wasm_offline_run --file params.json
+# 或本地 Node 直接实例化（见上方离线脚本路线）
+node skills/wsam-reverse/scripts/wasm-run.js -i ./target.wasm --invoke <exportFn> --args <a,b>
 
 # worker 一旦被卡死：先试取消任务，不行只能重启 worker 进程
 browsercli jobs list
@@ -238,27 +241,27 @@ browsercli jobs cancel <job-id>
 | `target.wasm`             | 原始模块（从浏览器抓出）      |
 | `target.decompiled.wat`   | 反编译输出                    |
 | `target.disassembled.wat` | 反汇编输出（如果做了）        |
-| `target.opt.O2.wasm`      | `wasm_optimize` 优化产物      |
+| `target.opt.O2.wasm`      | `wasm-opt -O2` 优化产物       |
 | `target.sections.json`    | 段信息 + 字符串扫描           |
 | `target.funcs.md`         | export 函数表（按可疑度排序） |
 | `call-graph.md`           | 从 vmp_trace 提取的调用关系   |
-| `record_reverse_evidence` | task artifact 条目            |
+| `evidence.md`             | task artifact 条目（Agent 直接写入） |
 
 ---
 
 ## 失败回退
 
-| 现象                                 | 解决                                                                                        |
-| ------------------------------------ | ------------------------------------------------------------------------------------------- |
-| `wasm_capabilities` 报 wabt 缺失     | `npm i -g wabt` 或 `apt install wabt`                                                       |
-| `wasm_capabilities` 报 wasmtime 缺失 | `curl https://wasmtime.dev/install.sh -sSf \| bash`                                         |
-| `wasm_optimize` 报 wasm-opt 缺失     | 装 Binaryen（`brew install binaryen` / `apt install binaryen`）                             |
+| 现象                             | 解决                                                                                        |
+| -------------------------------- | ------------------------------------------------------------------------------------------- |
+| `wabt` 缺失（脚本报 `Cannot find package 'wabt'`） | `npm i -g wabt` 或 `apt install wabt`                                          |
+| 离线执行报 wasmtime 缺失         | `curl https://wasmtime.dev/install.sh -sSf \| bash`                                         |
+| `wasm-opt` 缺失                  | 装 Binaryen（`brew install binaryen` / `apt install binaryen`）                             |
 | `wasm_dump` 报"未捕获任何 WASM 模块" | 先 `browsercli call collect_wasm --url <url>` 重新导航捕获                                    |
-| `wasm_decompile` 慢 / 卡住           | 加 `--maxWatChars 500000` 限制输出                                                          |
-| 反编译输出看不懂                     | 改用 `wasm_disassemble` 看原始 WAT；或 `wasm_offline_run` 重放输入                          |
-| 找不到入口函数                       | 看 `wasm_inspect_sections` 的 export 段；用 skill `code-analysis` 辅助 JS 侧                |
-| 二进制字符串扫描报敏感               | `--maskSensitiveStrings true` 屏蔽，但记下索引回查                                          |
-| 工具不可用（profile 报错）           | 在 worker 启动环境设置 `JS_REVERSE_TOOL_PROFILE=full` 并重启 worker                         |
+| `wasm-decompile.js` 输出过长 / 卡住 | 加 `--max-wat-chars 500000` 限制输出                                                     |
+| 反编译输出看不懂                 | 改用 `wasm-disassemble.js -i ./target.wasm` 看原始 WAT；或 `wasm-run.js` 重放输入           |
+| 找不到入口函数                   | 看 `wasm-inspect.js -i ./target.wasm` 的 export 段；用 skill `code-analysis` 辅助 JS 侧      |
+| 二进制字符串扫描报敏感           | `wasm-inspect.js --mask-sensitive` 屏蔽，但记下索引回查                                    |
+| 反编译 / 反汇编 / 离线执行不可用 | 这些已不是 MCP 工具，改用 `skills/wsam-reverse/scripts/` 下的离线脚本（需装 `wabt` / `binaryen`） |
 | 页面反调试卡死 worker（409）         | 放弃 DOM 交互，走 curl 拉资源 + 本地 Node 重建；必要时 `browsercli jobs cancel` / 重启 worker |
 | WAT 里全是 `__ZNSt3__2...` 看不懂    | 用 `c++filt` / `llvm-cxxfilt` 解修饰名，先知道它是什么再读指令                               |
 | `i32.load` 出来的地址对不上          | 按小端逐字节还原（§Wasm 内存语义），不要把四字节当十进制相加                                 |
@@ -281,7 +284,7 @@ browsercli jobs cancel <job-id>
 | `wasmtime`              | 离线执行          | `curl https://wasmtime.dev/install.sh -sSf \| bash` |
 | `wasmer`                | 备用运行时        | `curl https://get.wasmer.io -sSf \| sh`             |
 
-`wasm_capabilities` 返回各工具可用性。**全缺失**时仍可做段信息 + 反编译，但离线执行不可用。
+`node skills/wsam-reverse/scripts/wasm-run.js --runtime auto` 会依次尝试 Node 原生 / wasmtime / wasmer；用 `--help` 或直接运行脚本可查看各离线脚本的参数。**全缺失**时仍可做段信息 + 反编译，但离线执行不可用。
 
 ---
 

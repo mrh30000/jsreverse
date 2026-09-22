@@ -199,6 +199,12 @@ def response(flow):
 - 找到加密对象后用 `.call(obj)` 反查定义：搜索 `.call(`，把「被 `call` 进去的函数整体」一起扣走。
 - **注意「上次返回」也是可计算的**。真实案例里 `servertime` = 上次返回的值循环 `+2`（间隔毫秒 / 2），`prelt` = 上一次请求的本地耗时减云端耗时，可以随机化。这类参数不必精确复刻，只要落在合理区间。
 
+> **登录 / 账号体系**（密码加密 + 表单参数 + 会话令牌）在这一节之上还有一套**专有**的清单与判据 ——
+> **服务器下发字段的具体名单**（`formhash` / `csrf` / `execution` / `token_id` / `uuid` /
+> `pwdDefaultEncryptSalt`）、**密码加密族判据表**（MD5 链四形态 / base64 / AES / DES / RSA）、
+> **提交形态两段式（明文框 + 隐藏字段）**、以及 `charCodeAt & 0xff` 与 `CryptoJS.MD5` 的口径差：
+> 见 `12-login-and-account-params.md`（该文是登录提交参数的唯一权威源）。
+
 ---
 
 ## 7. 失败模式表

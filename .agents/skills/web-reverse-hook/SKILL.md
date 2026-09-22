@@ -1,128 +1,97 @@
 ---
 name: web-reverse-hook
-description: 生成并注入页面级运行时 Hook 脚本，用于拦截加密库与 JSVMP 虚拟机行为。当需要 Hook CryptoJS（AES/DES/MD5/SHA/HMAC）、JSEncrypt RSA、SM-crypto 国密（SM2/SM3/SM4）、或给 JSVMP/字节码解释器站点装运行时探针（proxy / transparent）时使用。用户提到“hook CryptoJS”“拦截 RSA 明文密文”“国密 hook”“JSVMP 探针”“hook 加密库”“拦截加解密参数”，或需要把加密库拦截脚本注入页面时都应使用本 skill，即使没有明确说出 CryptoJS / JSEncrypt / SM-crypto / JSVMP 这些名字。
+description: 生成并注入页面级运行时 Hook 脚本，用于拦截加密库（CryptoJS/JSEncrypt/SM-crypto）、JSVMP 虚拟机探针、反调试综合防御绕过（debugger/console/窗口尺寸/强退/iframe原生借用）、关键数据流追踪（Promise/Cookie/Storage/网络/时间）以及 SPA 动态路由深度提取（Vue/React 路由表与守卫清除）。当用户提到“hook CryptoJS”“拦截 RSA 明文密文”“国密 hook”“JSVMP 探针”“绕过反调试”“无限 debugger”“阻止跳转/关闭”“SPA 隐藏路由提取”“拦截 cookie/storage/promise”时使用。
 ---
 
 # Web 运行时 Hook 脚本
 
-生成可直接注入页面的 hook 脚本。本 skill 只负责**脚本生成**：拦截逻辑以纯函数形式放在 `scripts/` 下，注入交给 browsercli 的通用工具完成。
+生成可直接注入页面的 hook 脚本。本 skill 只负责**确定性脚本拼装与生成**：拦截逻辑以纯函数形式放在 `scripts/hooks/` 和 `scripts/probes/` 下，注入交给 browsercli 的通用工具完成（`evaluate_script` 或 `inject_hook`）。
 
-## 为什么拆成两步
+## 核心预设能力一览
 
-原先是 `hook_cryptojs` / `hook_jsencrypt` / `hook_smcrypto` / `hook_jsvmp_interpreter` 四个 MCP 工具，每个把 JS 字符串塞进 `frame.evaluate()`。脚本化后有两处变化，理解它们能避免踩坑：
+| 预设 Preset | 覆盖范围与核心交付 | 特性与绕过机制 |
+|---|---|---|
+| `cryptojs` | 对称加解密（AES/DES）入参、密钥、IV、模式与密文；**Hash / HMAC `finalize` 入参及输出哈希值** | 拦截 `Function.prototype.apply`，靠 `$super` 特征对齐内部分发 |
+| `jsencrypt` | RSA 公私钥、明文与密文（Hex 与 Base64） | 兼容全局 `window.JSEncrypt` 与 **Webpack 闭包内的 RSA 实例特征侦听** (`hasRSAProp`) |
+| `smcrypto` | 国密 SM2 加解密、SM3 哈希摘要、SM4 对称加解密 | 兼容全局 `window.sm*` 与 **Webpack 模块试算探测** (利用内置标准测试向量匹配闭包导出) |
+| `antidebug` | **反调试综合防御与绕过**：无限 debugger、console 保护、窗口尺寸伪造、强退阻断、iframe 原生盗取防护 | 1. 清空 `eval`/`Function`/`constructor` 字符串中的 `debugger`<br>2. Proxy 保护 `console.log/trace`，静默 `clear()` 并抑制 `table()` 耗时探测<br>3. 固定 `innerWidth/innerHeight` 等避开控制台尺寸差检测<br>4. 阻断 `window.close`、`history.go/back`，支持 `onbeforeunload` 跳转断点<br>5. 伪装 `Function.prototype.toString` 并 Proxy `HTMLIFrameElement.prototype.contentWindow` 阻断干净原生借用 |
+| `dataflow` | **关键数据流追踪、环境锁定与限流熔断**：Promise resolve、Cookie 条件断点、Storage、XHR/Fetch、原生编解码（JSON/Base64/URI）、定时器、调用栈行号回溯与防卡死熔断 | 1. 拦截 `Promise` 构造器，记录 resolve 值与调用栈，快速定位异步回调完成点<br>2. 监控 `document.cookie` setter，支持 `--cookie-match` 命中特定 key/value 时触发 `debugger`<br>3. 监控 `localStorage` / `sessionStorage` 增删改查<br>4. 拦截常用 Builtins：`JSON.parse/stringify`、`atob/btoa`、`encodeURI/decodeURI` 及 `setTimeout/setInterval`<br>5. 内置 `--limit-per-api`（默认 50 次）防死循环控制台刷屏卡死，`logAt` 自动提取触发文件名与行号<br>6. 固定 `Date.now`、`performance.now`、`Math.random` 支持脱敏复现 |
+| `spa-vue` | **Vue 2/3 动态路由与接口深度探测** | 1. DOM BFS 扫描自动定位 Vue 2 (`__vue__`) 与 Vue 3 (`__vue_app__`) 根实例并读取完整路由表<br>2. **解除导航守卫**：拦截 `Array.prototype.push` 自动剔除 `beforeEach` 与 `beforeResolve`<br>3. 可选阻断 `router.push/replace/go` 强退 |
+| `spa-react` | **React Fiber 树与路由扫描** | BFS 探测 React 根挂载点 (`__reactContainer$*`, `_reactRootContainer`)，深度扫描 Fiber 树属性，提取 Route 配置 |
+| `jsvmp-proxy` | JSVMP 虚拟机探针（全覆盖） | 代理全局对象、`Function.prototype` 与 `Reflect` |
+| `jsvmp-transparent` | JSVMP transparent 探针（无感） | 只替换原型 getter，痕迹更小，规避强指纹检测 |
 
-1. **脚本本身与注入解耦**。生成脚本是确定性的、可离线校验的（`tests/unit/skills/web-reverse-hook.test.ts` 用 `node:vm` 跑真探针），注入则复用已有的 `evaluate_script` / `inject_hook`。少一层工具，拦截逻辑却因此可测。
-2. **`--file` 只接受函数表达式**。`evaluate_script --file <script.js>` 会把文件内容整体当作 `function` 参数，即最终执行 `(async () => { await (<文件内容>) })()`。所以生成物必须是 `(function f(){...})({...});` 这种**表达式**，不能带顶层 `return` 或半截语句。本 skill 的输出天然满足。
+---
 
-## 生成脚本
+## 常用生成命令
 
 ```bash
-# CryptoJS：默认拦截全部算法
-node skills/web-reverse-hook/scripts/build-hook.js cryptojs --out hook.js
+# 1. 反调试综合绕过（直接生成全套防护）
+node .agents/skills/web-reverse-hook/scripts/build-hook.js antidebug --out hook-antidebug.js
 
-# 只拦 AES 与 MD5，输出用 json 格式便于解析
-node skills/web-reverse-hook/scripts/build-hook.js cryptojs --algorithms AES,MD5 --log-format json --out hook.js
+# 2. 定位页面跳转来源（开启 onbeforeunload 跳转断点）
+node .agents/skills/web-reverse-hook/scripts/build-hook.js antidebug --redirect-trap --out hook-redirect.js
 
-# JSEncrypt RSA
-node skills/web-reverse-hook/scripts/build-hook.js jsencrypt --log-format json --out hook.js
+# 3. 提取 Vue SPA 隐藏路由并清除权限守卫
+node .agents/skills/web-reverse-hook/scripts/build-hook.js spa-vue --block-redirects --out hook-vue.js
 
-# 国密 SM2/SM3/SM4
-node skills/web-reverse-hook/scripts/build-hook.js smcrypto --algorithms SM2,SM4 --out hook.js
+# 4. 追踪特定 Cookie 或 Token 写入
+node .agents/skills/web-reverse-hook/scripts/build-hook.js dataflow --targets cookie,storage --keyword token --out hook-token.js
 
-# JSVMP 探针：transparent 痕迹更小，proxy 覆盖更全但可被检测
-node skills/web-reverse-hook/scripts/build-hook.js jsvmp-transparent --script-url app.js --out hook.js
-node skills/web-reverse-hook/scripts/build-hook.js jsvmp-proxy --script-url app.js --out hook.js
+# 5. 追踪异步 Promise 完成与回调落地
+node .agents/skills/web-reverse-hook/scripts/build-hook.js dataflow --targets promise --out hook-promise.js
+
+# 6. 精准 Cookie 条件断点（仅在写入包含 token 时触发 debugger 断点）
+node .agents/skills/web-reverse-hook/scripts/build-hook.js dataflow --targets cookie --cookie-match token --out hook-cookie-debug.js
+
+# 7. 原生编解码与定时器拦截（带 30 次单接口熔断防刷屏）
+node .agents/skills/web-reverse-hook/scripts/build-hook.js dataflow --targets builtins --limit-per-api 30 --out hook-builtins.js
+
+# 8. CryptoJS 加密库拦截
+node .agents/skills/web-reverse-hook/scripts/build-hook.js cryptojs --algorithms AES,MD5 --log-format json --out hook-crypto.js
+
+# 9. JSEncrypt RSA 拦截
+node .agents/skills/web-reverse-hook/scripts/build-hook.js jsencrypt --log-format json --out hook-rsa.js
+
+# 10. 国密 SM2/SM3/SM4 拦截
+node .agents/skills/web-reverse-hook/scripts/build-hook.js smcrypto --out hook-sm.js
 ```
 
-`--json` 输出的字段刻意只保留 `{"hookId","script"}`，与 `inject_hook` 的 schema 对齐，因此可以直接管道给它做持久注入：
+支持管道直接传给 `inject_hook`：
 
 ```bash
-node skills/web-reverse-hook/scripts/build-hook.js jsvmp-transparent --script-url app.js --json \
+node .agents/skills/web-reverse-hook/scripts/build-hook.js antidebug --json \
   | browsercli call inject_hook --stdin
 ```
 
-（`description` 不在 `inject_hook` 的 schema 里，多带一个字段会被参数校验整体拒绝——所以别把完整结果对象直接喂过去。）
+---
 
-`inject_hook` 没有 `--file` 参数：`--file` 对 `.js` 文件会展开成 `{function: ...}`，那是 `evaluate_script` 的入参形状。要显式传源码就用 `--script "$(cat hook.js)"`。
+## 注入与生效时机
 
-完整参数见 `node skills/web-reverse-hook/scripts/build-hook.js --help`。
+1. **一次性调试注入**（当前文档、当前 Frame）：
+   ```bash
+   browsercli call evaluate_script --file hook-antidebug.js
+   ```
+2. **跨导航持久注入**（对于同步初始化的反调试或 SDK，必须在导航前注册）：
+   ```bash
+   node .agents/skills/web-reverse-hook/scripts/build-hook.js antidebug --json \
+     | browsercli call inject_hook --stdin
+   # 注册后必须重新加载页面以生效
+   browsercli call navigate_page --type reload
+   ```
 
-## 注入脚本
+---
 
-**一次性注入**（当前文档、当前 Frame）：
+## 读取拦截与观测结果
 
-```bash
-browsercli call evaluate_script --file hook.js
-```
-
-**跨导航持久注入**（同步加载的 SDK 必须走这条，否则 hook 装得比 SDK 初始化晚）：生成脚本后用 `--json | inject_hook --stdin` 注册，**然后必须 reload**（见上一节的等价写法）。
-
-⚠️ **`--persistent true` 不作用于当前已加载的文档**，实测确认：`addInitScript` 只在后续导航生效，所以**必须跟一次 reload** 才能让 hook 覆盖同步初始化的 SDK。少了这一步，工具会返回 `success: true / persisted: true`，但页面里什么都没装上——`persisted` 只说明「注册成功」，不代表「已生效」。
-
-## 读取拦截结果
-
-加密库 hook 通过 `console.log` 输出。**默认的 `list_console_messages` 读法在 attach 模式下不可靠**（实测：`evaluate_script` 与页面自身脚本的 `console.log/error/warn` 都不进缓存，只有 `pageerror` 类消息能读到）。要稳定拿到拦截记录，先装一层 console 缓冲，再读页面全局：
-
-```bash
-# 1) 装缓冲（幂等，可重复调用）
-browsercli call evaluate_script --function "() => { if (window.__hookConsoleBuffer) return 'already'; window.__hookConsoleBuffer = []; const o = {log: console.log, error: console.error, warn: console.warn, info: console.info}; for (const k of Object.keys(o)) { console[k] = (...a) => { try { window.__hookConsoleBuffer.push(a.map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' ')); } catch {} return o[k].apply(console, a); }; } return 'buffering'; }"
-
-# 2) 生成并注入 hook（顺序重要：缓冲要在 hook 之前装）
-node skills/web-reverse-hook/scripts/build-hook.js cryptojs --algorithms AES,MD5 --log-format json --out hook.js
-browsercli call evaluate_script --file hook.js
-
-# 3) 读缓冲，只取结构化事件
-browsercli call evaluate_script --function "() => JSON.stringify((window.__hookConsoleBuffer || []).map(s => { try { return JSON.parse(s) } catch { return null } }).filter(o => o && (o.type === 'encrypt' || o.type === 'decrypt')))"
-```
-
-`--log-format json` 让每条记录是一行纯 JSON，上面第 3 步才能直接 `JSON.parse`。用 `compact` 时只能拿到人读的字符串，需要自己切分。
-
-`list_console_messages` 仍然可以用来读页面自己报的错（`pageerror` 路径是通的）：
-
-```bash
-browsercli call list_console_messages --pageSize 100
-browsercli call get_console_message --msgid <id>
-```
-
-JSVMP 探针不走 console，而是写入页面全局：
-
-```bash
-# 探针记录在 window.__mcp_jsvmp_log，由页面内表达式读取
-browsercli call evaluate_script --function "() => JSON.stringify(window.__mcp_jsvmp_log.slice(-50))"
-```
-
-记录条目类型：`fn_apply` / `fn_call` / `fn_bind`（调用追踪）、`proxy_get` / `proxy_set` / `proxy_has`（属性代理）、`reflect_apply` / `reflect_get` / `reflect_set` / `reflect_construct`（Reflect 追踪）、`api_call`（Date.now / performance.now / Math.random）、`transparent_get`（transparent 模式的 getter 读取）。
-
-## 探针行为与边界
-
-**JSVMP proxy 模式是可检测的**。它替换 `Function.prototype.apply/call/bind`、`Reflect.*` 与全局对象为 Proxy，RS/AK 一类的签名型风控会读到被改写的 `toString()` 与对象形状。仅在确认目标没有这类检测时使用；否则优先 `transparent`，它只替换原型 getter 并保留原始 `toString()` 输出。
-
-**探针必须在目标 SDK 执行前安装**。JSVMP 解释器会缓存原生引用，装晚了记录为空。装到已加载文档上时，正确做法是 `navigate_page --type reload` 重新初始化。
-
-**卸载**：两个探针都暴露卸载函数，可在页面内调用并检查恢复结果：
-
-```js
-window.__mcp_jsvmp_uninstall(); // proxy
-window.__mcp_transparent_uninstall(); // transparent
-// 都返回 {restored: string[]}，列出已恢复的属性
-```
-
-**CryptoJS hook 走 `Function.prototype.apply`**。这是原工具的做法：CryptoJS 4 的加解密最终都经 `apply` 分发，且靠 `Object.hasOwn(fn, '$super')` 判定调用来自 CryptoJS 内部，避免误报。代价是会包装全局 `apply`——如果页面有基于 `apply` 的检测，同样会暴露。
-
-## 文件结构
-
-- `scripts/build-hook.js` — CLI 入口，`PRESETS` 表定义所有 preset 与参数映射
-- `scripts/hooks/crypto-libs.js` — CryptoJS / JSEncrypt / SM-crypto 三个 install 函数
-- `scripts/probes/jsvmp.js` — JSVMP proxy / transparent 两个 install 函数
-
-install 函数都会被 `Function.prototype.toString()` 序列化后注入，因此**函数体内不得引用模块级变量**（否则页面里抛 `ReferenceError`）。加配置一律走唯一入参 `config`，这是这些函数看起来"啰嗦地读 `config.xxx`"的原因，改动时别把它内联成闭包。
-
-`probes/jsvmp.js` 由已下线的 `src/tools/jsvmp/hookScripts.ts` 编译产物迁出，逻辑未改动。
-
-## 校验
-
-```bash
-node --test build/tests/unit/skills/web-reverse-hook.test.js
-```
-
-用 `node:vm` 建真实浏览器形态的 realm（含品牌校验的 getter、私有字段、拒绝 Proxy 的变体），跑生成的脚本并断言记录类型、返回值语义未变、卸载后完全恢复。
+- **SPA 路由结果**：写入 `window.__spa_routes__`，直接在控制台或通过 `evaluate_script` 读取：
+  ```bash
+  browsercli call evaluate_script --function "() => JSON.stringify(window.__spa_routes__)"
+  ```
+- **控制台输出缓冲**（在 attach 模式下防止丢失 `console.log`）：
+  ```bash
+  # 1. 装缓冲
+  browsercli call evaluate_script --function "() => { if (window.__hookConsoleBuffer) return 'already'; window.__hookConsoleBuffer = []; const o = {log: console.log, error: console.error, warn: console.warn, info: console.info}; for (const k of Object.keys(o)) { console[k] = (...a) => { try { window.__hookConsoleBuffer.push(a.map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' ')); } catch {} return o[k].apply(console, a); }; } return 'buffering'; }"
+  # 2. 读缓冲
+  browsercli call evaluate_script --function "() => JSON.stringify(window.__hookConsoleBuffer || [])"
+  ```

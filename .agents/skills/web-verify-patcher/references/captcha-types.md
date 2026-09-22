@@ -185,6 +185,8 @@
 
 小游戏、3D、骰子或 Arkose/FunCaptcha Enforcement 类交互题，分类为 `game-challenge`。这类题经常是多状态交互，不能只靠一次 OCR。
 
+厂商实例（极验四代）：消消乐 `risk_type=match`（`ques` 为 **3×3** 矩阵，凑 3 个同色同行/同列）与五子棋 `risk_type=winlinze`（`ques` 为 **5×5** 矩阵，`0` 是空位，凑 5 连）。两者的 `userresponse` 都是**要交换的两个坐标**（如 `[[0,1],[0,0]]`）；🔴 **`ques[0]/ques[1]/ques[2]` 对应第 0/1/2 列而不是行** —— 按行理解会整体转置，症状与「交换错了」完全相同（永远 `fail`）。坐标判对后成功率 100%。
+
 需要题面、初始截图/帧、交互控件、厂商 public key 或 challenge id。方案应说明状态识别、题面理解、人工接管或授权测试中的模型辅助，不给未授权自动通关步骤。
 
 ### `pow-challenge`
@@ -192,6 +194,8 @@
 工作量证明、哈希难题、浏览器计算挑战，分类为 `pow-challenge`。FriendlyCaptcha、ALTCHA、Private Captcha、Cap.js、mCaptcha 等通常属于这个方向。
 
 需要组件脚本、challenge/payload、difficulty、nonce/solution 字段和服务端校验接口。重点是说明这是计算挑战和服务端校验，不是图片识别题。
+
+厂商实例（极验 v4）：`load` 响应里的 `pow_detail{version,bits,datetime,hashfunc}` 决定算法与难度，`pow_msg = version|bits|hashfunc|datetime|captcha_id|lot_number||<16 位 hex 随机串>`，`pow_sign = HASH(pow_msg)`，HASH ∈ {md5, sha1, sha256}。**难度判据不是整数比较**：前导零 `bits//4` 位 + 第 `bits//4` 位 hex ≤ 7/3/1；照抄官方 md5 样本在 `hashfunc != md5` 或 `bits != 0` 的站点会失败，症状是 `param decrypt error`（易被误诊为 `w` 算错）。可执行件：`scripts/geetest_pow.py`。
 
 ### `risk-score`
 

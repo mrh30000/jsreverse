@@ -23,6 +23,17 @@
 > **版本号不是"参考信息"，是必读参数**：`static_path` 变了，字符串表索引、防篡改块切片下标、
 > 固定键值对都可能整体漂移。报结论时一并记版本号与取证日期。
 
+### 零.1 初代 / 二代（在线 / 离线）判据（与 v3/v4 并列的第三、第四种形态）
+
+| 形态 | 判据（一眼可辨） | 票据怎么来 |
+| --- | --- | --- |
+| **初代**（⚠️ **来源作者口径**：文章标题写"初代"，正文自己说明"实为二代离线模式""真正的初代产品无从分析" ⇒ 这一行与下一行"二代·离线"**同源同一篇**，不要当成两个独立样本） | 脚本是 `geetest.0.0.0.js` + `offline.*.js`；**全流程没有 `get.php` / `ajax.php`**，图片路径由本地 JS 生成（两段 MD5） | `validate` 由**本地**算：`A(距离, challenge) + "_" + A(b("rand0", ts), challenge) + "_" + A(b("rand1", ts), challenge)`（`ts` = 13 位时间戳）；**轨迹会被采集但不校验** |
+| **二代·在线** | `netWebServlet.json` 返回 `gt`/`challenge` → `get.php` 返回**新的 challenge** → `ajax.php` → **再回 `netWebServlet.json`** 拿业务字段 | `ajax.php` 返 `validate`；后续业务请求要带上第 2 步的**新 challenge** + `validate` |
+| **二代·离线** | 同初代：`register` 只有 `challenge`/`gt`，其余全本地 | 见上表初代行；图片乱序还原与三代同源，**但图宽不同**，照抄三代的 260 会错 |
+
+> **要点**：初代/二代的"离线"形态**没有 `w`**，只有一个 `validate`。
+> 若你把这一族当成 v3 去逆 `w`，会一直在 JS 里找不到 `"w"` —— 先按本表判代际。
+
 ---
 
 ## 一、v3 七步交互链
@@ -268,15 +279,49 @@ while True:
 
 ### 8.1 PoW（`pow_msg` / `pow_sign`）
 
-```text
-pow_msg  = version | bits | hashfunc | datetime | captcha_id | lot_number || salt(16 hex)
-pow_sign = SHA256(pow_msg)         # 前 bits 个二进制位必须全 0
+```
+pow_msg  = version | bits | hashfunc | datetime | captcha_id | lot_number || <16 位 hex 随机串>
+pow_sign = HASH(pow_msg)        # HASH ∈ {md5, sha1, sha256}，由 pow_detail.hashfunc 决定
 ```
 
-- `bits` **从 `pow_detail` 动态读**（实测见过 8 和 10），写死必偶发失败；
-- 判定用整数比较 `int(pow_sign, 16) < 2 ** (256 - bits)`，不要数 hex 前缀零；
-- `salt` 与 AES key **不是同一个值**，各自独立随机；
-- 末尾 `||` 是空段。
+> ⚠️ **两处曾经写错、照做必失败的细节**（B16 依 `52pojie-1779592` 的原文 JS 逐行复核后修正）：
+> 1. **不是恒定的 SHA256**：哈希函数从 `pow_detail.hashfunc` 读（实测见到 `md5` / `sha1` / `sha256`），
+>    照抄官方 demo 的 `md5` 写法在别的站点会失败。
+>    ⚠️ **该失败现象与具体错误码的对应关系，来源文章没有给出**（原文只说"某些网站不能通过"）——
+>    本文档把它与 `error_03` / `-50002` 并列，属**按字段位置推断**（PoW 在 AES 密文内，服务端解不开就会报这一类），
+>    **不要当成已证实的定论**。
+> 2. **难度判据不是「`int(sign,16) < 2**(256-bits)`」**：那是 SHA256 专属的等价式。
+>    原文的通用判据是 **前导零 hex + 半个 nibble 上界**：
+>
+>    ```
+>    u = bits // 4 ; a = bits % 4
+>    前 u 位必须全是 "0"
+>    a == 0 → 通过
+>    a != 0 → int(sign[u], 16) <= {1: 7, 2: 3, 3: 1}[a]
+>    ```
+>
+>    **原语对照（照抄原文时别抄错）**：原 JS 用的是 `p.indexOf(c) === 0`（`c` = `u` 个 `"0"` 组成的串）
+>    ＋ **JS 的字符串比较** `d <= f`（`d = p[u]`，`f` 依次为 7/3/1）——对十六进制数字而言
+>    与上面的整数比较**等价**（`"7" <= 7` 为真、`"a" <= 7` 为假）；本仓 `geetest_pow.py` 用整数比较实现，
+>    `--selftest` 对 `bits = 1/2/3/5/6/7` 六个分支都做了断言。
+>
+>    （`bits=6` ⇒ 首位 `0` 且第二位 ≤ 3；`bits=4` ⇒ 首位 `0`。）
+>    ⚠️ **方向别写反**：`2 ** (256 - bits)` 只对 **sha256** 成立；套到 md5（128 位）/ sha1（160 位）上，
+>    阈值恒大于摘要取值域 ⇒ **判据恒成立（等于完全没校验）**，而不是「永远不成立」。
+
+- `pow_detail` 是 `load` 响应里的字段：`{version, bits, datetime, hashfunc}`，**四个都要读**；
+- 末尾的 `||` 是空段（原文里那个恒为空的 `o`），**后面才接 16 位 hex 随机串**；
+- PoW 的随机串与 `w` 里 AES/RSA 用的 16 位随机串**是两次独立的随机**，不要复用；
+- **可执行实现**：`scripts/geetest_pow.py`（零依赖，`--selftest` 41 项，含三条哈希 / 全部 `bits%4` 分支 /
+  拒绝路径断言）：
+
+  ```bash
+  S=skills/web-verify-patcher/scripts   # 基准 = 技能库父目录（先 cd .claude 或 cd .agents）
+  python $S/geetest_pow.py solve --from-load load.json --json      # 直接吃 load 响应
+  python $S/geetest_pow.py solve --pow-detail '{"bits":6,"hashfunc":"sha256","version":"1","datetime":"..."}' \
+      --captcha-id <id> --lot-number <lot>
+  python $S/geetest_pow.py check  --from-load load.json --pow-msg <msg> --pow-sign <sign>   # 独立复算校验
+  ```
 
 ### 8.2 动态防篡改块（最阴的一招）
 
@@ -451,3 +496,159 @@ v3 的年代统计口径（老版本更看行为分布）：
 | 10 | 自动化拖动算出负距离 | 选择器 `[class*="geetest_btn"]` 同时命中 svg 容器与按钮，先 `getBoundingClientRect` 确认 |
 | 11 | v4 通过却登录失败 | 固定键值对（异常标记）与 SDK 版本不匹配，见 §十一 |
 | 12 | v3 三个 `w` 的 key 不一致 | 同一文件/同一会话**只生成一次随机 key**，多处重新随机就废了 |
+| 13 | 四代报 `param decrypt error` / `-50002`，但 `w` 公式明明对 | **PoW 没解出来**：哈希函数写死 md5、或难度用 `2**(256-bits)` 判 | 见 §8.1，用 `geetest_pow.py` |
+| 14 | 三代无感"前面每一步都对，最后必挂" | `get.php` 的 `w` 漏带 ⇒ 拿到的 `s` 是**假值** | 见 §十五 |
+| 15 | 消消乐/五子棋坐标"看着没错"却永远 `fail` | `ques` 是**按列**给的，按行理解会整体转置 | 见 §十七 |
+| 16 | 点选类偶发 `duration short` | 生成 `w` 后没停留，流程太快 | 加 ~2s 随机 sleep；注意它在 `success` 壳里 |
+---
+
+## 十五、一键通过（无感 / `risk_type=ai`）模式：**同一个流程里两个 `w`**
+
+无感模式下用户不拖动，但**要发的 `w` 反而更多**，这是最容易漏的一步：
+
+| 处 | 三代无感 | 四代无感 |
+| --- | --- | --- |
+| 第 1 个 `w` | `get.php`（取 `c`/`s`）**必须带 `w`** —— 不带也能拿到 `s`，但那是**假值**，最后一步必挂 | 无（四代只有 `load` / `verify` 两个请求） |
+| 第 2 个 `w` | `ajax.php` 提交 | `verify` 提交 |
+| 两次生成方式 | **不同**，必须分两次扣 | 同一条公式，只是 `data` 分桶不同 |
+
+- 三代无感的第 2 个 `w` 不是"轨迹加密串"，而是**把浏览器环境值 + 鼠标移动数据拼成一个大字符串再 AES**：
+  `ep.ven` / `ep.ren`（显卡）、`ep.fp` / `ep.lp`（首末鼠标位置）、`ep.tm`（`performance.timing`）、
+  以及若干 `captcha_token` 类字段。实测样例里**这几个环境值置空也能过**，
+  但**别默认所有站点都能置空**（"某些站点校验更严"——原文作者的原话）。
+- 无感模式第 2 次 `get.php` 返回的 `s` 是**参与 `aa` 插入重排的服务端盐**（见 §四）；
+  **不带 `w` 时它照样返回，但内容是假的** ⇒ **只有"最终失败"这一个症状**，
+  没有任何报错指向它。判据：**只要是无感，就先去 `get.php` 检查 `w` 有没有带。**
+
+---
+
+## 十六、动态键值对（`h9s9` / `kqg5` / `f019` / `l0zs` / `xnbw` / `olbo`）
+
+三四代 `w` 的 `data` 里总会多出一个**随机键值对**，键名与值都每隔一段时间（小时~天级）变化：
+
+```text
+三代：{h9s9: "1816378497"}      四代滑块：{kqg5: "1557244628"}
+四代点选：{f019: "1024281898"}   四代无感：{l0zs: "53502544"}
+深知 V2：{xnbw: "1158444372"} / {olbo: "1588069361"}
+```
+
+- 它由 `gct.js` / `gct4.js` 生成（路径在 `get.php` / `load` / `gettype` 的响应里给），
+  **量少时写死也能过**，但**大量请求或校验严格的站点会翻车**；
+- 动态获取的固定套路（把 gct 脚本当纯函数导出）：
+
+  ```python
+  # 1) 从接口响应里取 gct.js 地址并下载
+  # 2) 正则取它内部暴露出来的方法名（形如 `)){return <name>(`）
+  function_name = re.findall(r"\)\)\{return (.*?)\(", gct_js)[0]
+  # 3) 在 `return function(t){` 之前插入 `window.gct=<name>;`，再用 execjs/Node 调一次
+  #    var e = {"lang": "zh", "ep": "test data"}; window.gct(e); delete e.lang; delete e.ep; return e;
+  ```
+  
+  ⇒ 返回值即那个键值对（如 `{'h9s9': '1803797734'}`）。
+- ⚠️ **口径边界**：§五 把 `h9s9` 记作"**djb 代码签名**"，而该机制说明**不来自本批 15 篇**
+  （本批只证实"由 gct 生成、键与值随时段变化、量少时可写死"）⇒ 两者是**同值不同视角**，不要互相推导。
+  实操结论不变：**改动过被签名的函数（含补环境改动）就必须重取**，不要复用旧值。
+
+---
+
+## 十七、题型 → `userresponse`（`data` 分桶）写法表
+
+四代 `captcha_type` / `risk_type` 直接给题型，`userresponse` 的写法按题型分五种：
+
+| 题型 | `captcha_type` / `risk_type` | `userresponse` | 附带字段 |
+| --- | --- | --- | --- |
+| 滑块 | `slide` | `setLeft / 1.0059466666666665 + 2`（**定值常量**，不是 1） | `setLeft`、`track`、`passtime` |
+| 文字点选 | 四代 `captcha_type=word`；**三代是第一次 `ajax.php` 返 `type=click`**（不是 `captcha_type`） | 点选坐标（相对底图） | `ques` = 各文字图链接；三代用第二次 `get.php` 的 `pic_type` 细分 |
+| 图标点选 | `icon` | 同上 | — |
+| 语序点选 | `phrase` | 同上（顺序即答案） | — |
+| 空间推理 | `space` | 同上（含箭头/方向语义） | — |
+| 九宫格 | **本批 15 篇未给出独立的类型名**（只到"图标点选 `icon`"这一层） | 格子坐标 | 判据见 §九 |
+| 消消乐 | `match` | **交换的两个坐标**，如 `[[0,1],[0,0]]` | `ques` = **3×3** 矩阵 |
+| 五子棋 | `winlinze` | 同上 | `ques` = **5×5** 矩阵（`0` = 空位） |
+| 无感 | `ai` | 见 §十五 | （`payload_protocol=1` / `pt=1` 是 **v4 的 verify 通用参数**，不只无感带） |
+
+> 🔴 **消消乐的 `ques` 是"按列"给的**：`ques[0] / ques[1] / ques[2]` 分别对应**第 0 / 1 / 2 列**，
+> 不是行。按行理解会把坐标整体转置 ⇒ 结果永远是 `fail`（且和"交换错了"同一个症状）。
+> 五子棋要凑的是**同列 / 同行 / 对角线上的 5 个相同数字**；消消乐是 3 个同色成一行或一列。
+> 判对坐标后**成功率 100%**（消消乐/五子棋实测，坐标判对即必过）；
+> 滑块类约 **95%**（`52pojie-1749808` 实测「100 次大概 95% 的成功率」；`52pojie-1631496` 另测 100 次 89 次）
+> —— 轨迹仍被评分，**不要按"必过"设计重试策略**。
+
+---
+
+## 十八、报错码 → 根因速查（照这个表读，别猜）
+
+| 返回 | 根因 | 处置 |
+| --- | --- | --- |
+| `{"status":"error","error":"param decrypt error","error_code":"error_03"}` | `w` 解不开：①16 位随机串两次不一致 ②无感时 `get.php` 漏带 `w` ③PoW 用了错的哈希/难度 | 见 §十五 / §8.1；先查"随机串是否同一个" |
+| `{"status":"error","error":"illegal challenge","error_code":"error_23"}` | 用了**第 1 次**的 challenge（三代滑块第 5 步会返回**多 2 位尾巴**的新 challenge） | 全程用新值 |
+| `{"status":"error","error":"not proof","error_code":"error_21"}` | 没有轨迹 / 轨迹字段缺失 | 补 `track` 与 `passtime` |
+| `{"success":0,"message":"fail"}` | ①challenge 用错 ②轨迹与缺口距离不匹配 ③题型坐标错（含消消乐行列转置） | 先核对 challenge 与坐标语义 |
+| `{"success":0,"message":"forbidden"}` | ①用了第 1 次 `get.php` 的 `s`（要第 2 次的）②`passtime` 与轨迹末项时间不一致 | 两次 `c`/`s` 用**第二次**的；`passtime = track[-1][2]` |
+| 四代 `{"status":"error","code":"-50002","msg":"param decrypt error"}` | 同 `error_03`（四代版） | 同上 |
+| `{"status":"success","data":{"result":"fail","msg":["duration short"]}}` | **流程走太快**：三代点选类要求"生成 `w` 后随机停留 ~2 秒" | 加随机 sleep；注意这是 **success 壳里的 fail**，别只看外层 |
+| 一直 `fail` 且响应里带**新的** `payload`/`process_token` | 失败后要换题重试（四代 `pt=1`） | 用新票据重走 `verify` |
+
+> **两条读法**：① 失败信息**分成三种壳**：`{"status":"error",...}`（三代/四代）、`{"success":0,...}`（三代）、
+> **`{"status":"success","data":{"result":"fail",...}}`（三代点选，例：`duration short`）**
+> —— 只断言外层 `status` 会把"成功了但没通过"读成通过；
+> ② `error_03` / `-50002` 是**唯一会被误诊成"`w` 算法写错"的一类**，真因常常是 PoW 或随机串。
+
+---
+
+## 十九、补环境两件高频缺失（三代 `slide` 实测位置）
+
+1. `window.crypto.getRandomValues(buf)`：要照规范拒绝超限并带错误码，否则被尺寸/异常探针抓到。
+
+   ```js
+   // buf.length > 65536 时必须抛 QuotaExceededError（code=22）；
+   // Uint16Array 上界 65535、Uint32Array 上界 4294967295，其余 [0,255]
+   ```
+
+2. `window.performance.timing`：**21 个字段**（来源文章的 `timing()` 示例与真实 `ep.tm` 样本都是 21 个），
+   且必须满足**单调递增**关系
+   （`navigationStart ≤ redirectStart ≤ redirectEnd ≤ fetchStart ≤ domainLookupStart ≤ … ≤ loadEventEnd`）。
+   整串照真实浏览器抄或按 `Date.now()` 加固定偏移生成均可，但**不能随机乱序**
+   （`web-reverse-env` 的 `03-special-cases.md` §5（`performance-module`）有同一份约束。）
+   ⚠️ 来源文章给的那段 `timing()` 示例**只用来抄字段清单，本身并不单调**
+   （`redirectStart=0`、`unloadEventStart=now+200` 早于 `fetchStart=now+100`）——照抄它会被时序一致性探针抓到。
+
+---
+
+## 二十、深知 V2（业务风控，不是验证码）：**无键名 payload** 的定位法
+
+`risk_type` 之外的另一个产品线：`v2.sense.js`（带 `id`，即请求里的 `app_id`）+ `gettype`（返回 `gct.js` 路径）
++ `judge`（提交一个**超长、无键名的 `Request Payload`**，通过后返回 `session_id`）+ 业务接口（带 `session_id`）。
+
+- **无键名 ⇒ 全局搜索关键字这条路直接失效**（搜不到任何字段名）：只能
+  ① 跟栈（`sense.*.js` 里形如 `e + h[...]` 的拼接点）② 或直接下 **XHR 断点**；
+- payload 的两段（**与 v3/v4 的 `w = 密文段 + RSA 段` 同构**）：
+  `e`（**AES 密文段**，明文是 `NFeB` —— 里面同时含**浏览器环境指纹 `u`** 与业务 `data`/`id`/`insights`）
+  `+` `h[AUJ_(1173)]`（**RSA 密钥段**，`h` 是 `{aeskey, rsa}` 两个字段）；
+  拼接顺序按原文是 **`e + h[...]`**（`sense.*.js` 第 6144 行），另有一个 `{olbo: "…"}` 型动态键值对（见 §十六）；
+- 判据与四代一致的无感特征：**页面加载即自动完成，不需要用户交互**。
+
+---
+
+## 二十一、复跑命令（本文件新增能力的可执行入口）
+
+```bash
+# 命令基准：`S=skills/web-verify-patcher/scripts` 以**技能库父目录**为基准（先 cd .claude 或 cd .agents）；
+#   从仓库根执行请把 `skills/` 换成 `.claude/skills/`。
+S=skills/web-verify-patcher/scripts
+
+# PoW（§8.1）：求解 + 独立校验 + 自检（断言条数以实跑输出为准）
+python $S/geetest_pow.py --selftest
+python $S/geetest_pow.py solve --from-load load.json --json
+python $S/geetest_pow.py check  --from-load load.json --pow-msg <msg> --pow-sign <sign>
+
+# 底图还原（§三）：v3 = 26×2 片、源 stride 12、左偏移 1，312×160 → 260×160
+# 注意：底图还原只吃 PNG（WebP 先用浏览器 canvas `toDataURL("image/png")` 转码），gt3 要求原图恰为 312×160
+python $S/restore_slices.py --model gt3 --input bg.png --out bg.clear.png
+python $S/restore_slices.py --selftest
+
+# 缺口定位 / 坐标映射 / 轨迹
+python $S/map_coordinates.py --help
+python $S/generate_motion_track.py --mode slider --distance <d> --pretty > track.json
+```
+

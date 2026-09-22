@@ -24,8 +24,8 @@ browsercli 是浏览器控制面(导航/抓包/Hook/断点/离线采集)。遇�
 | 领域分类 | 子技能 | 触发信号 / 关键特征 | 作用与核心交付 |
 | --- | --- | --- | --- |
 | **算法与反混淆** | `ast-deobfuscation` | `_0x` 标识符、字符串表、自执行解码壳、控制流平坦化、opcode 分发链、站点混淆家族(OB/极验/易盾等)、JSVMP IR 反编译 | 分层可回退的 Babel AST 定向反混淆,先 detect-patterns 再 run-pipeline |
-| | `web-reverse-algorithm` | sign/token/hash/hmac/aes/rsa/国密、响应解密、JSVMP/Wasm/PoW、header/cookie 签名 | 从最终写出点倒推 writer→builder→entry→source 的纯算还原,先判题型再判阻塞点 |
-| | `web-reverse-hook` | CryptoJS(AES/DES/MD5/SHA/HMAC)、JSEncrypt(RSA)、SM-crypto(国密SM2/3/4)、JSVMP 探针(transparent/proxy) | 离线确定性生成页面级 Hook/探针脚本,配合 browsercli 拦截加密明密文与探针取证 |
+| | `web-reverse-algorithm` | sign/token/hash/hmac/aes/rsa/国密、响应解密、JSVMP/Wasm/PoW、header/cookie 签名、SPA动态路由与守卫解除、反调试定位 | 从最终写出点倒推 writer→builder→entry→source 的纯算还原,先判题型再判阻塞点 |
+| | `web-reverse-hook` | CryptoJS(AES/DES/MD5/SHA/HMAC)、JSEncrypt(RSA)、SM-crypto(国密SM2/3/4)、JSVMP 探针(transparent/proxy)、反调试防御(debugger/console/尺寸/强退/iframe)、数据流(Promise/cookie/storage)、SPA路由提取与守卫解除 | 离线确定性生成页面级 Hook/探针脚本,配合 browsercli 拦截加密明密文、防御反调试与全量路由取证 |
 | | `webpack-bundle-extraction` | `webpackJsonp`、`webpackChunk`、`__webpack_require__`、模块打包产物抠取 | 定位加载器/缓存表/模块表,静态闭包抠取或导出在 Node 环境复用 |
 | | `wsam-reverse` (目录 `wsam-reverse/`) | WebAssembly 模块(加密提速/VMP 壳/图像处理)、`.wasm` 资源 | 捕获 → 段扫描 → 离线反编译/反汇编 → 离线执行与 VMP 追踪 |
 | **环境与风控** | `web-js-env-patcher` | 需把网页 JS 搬进 Node 复现、环境/指纹依赖、边缘 WAF/CDN Cookie 挑战 (jsl/acw/5s盾/Akamai等) | 补环境 + 指纹回放 + XHR/fetch 同 Session 桥接 + Trace 闭环门禁 |
@@ -263,30 +263,31 @@ crawler_example
 - 是否适合后续维护
   **Step 6:编写采集工程**
   在project目录中生成标准工程结构:
-  <目录名>/
-  ├── config/
-  │  ├── headers.json
-  │  ├── cookies.json
-  │  ├── keys.json
-  │  └── settings.json
-  ├── analysis/
-  │  ├── key_logic.js
-  │  ├── deobfuscated.js
-  │  └── notes.md
-  ├── utils/
-  │  ├── signer.py
-  │  ├── crypto
-  \_utils.py
-  │  ├── session_manager.py
-  │  ├── parser.py
-  │  └── storage.py
-  ├── data/
-  │  ├── raw/
-  │  └── cleaned/
-  ├── main.py
-  ├── test
-  \_api.py
-  └── README.md
+  project/ 
+   <目录名>/
+   ├── config/
+   │  ├── headers.json
+   │  ├── cookies.json
+   │  ├── keys.json
+   │  └── settings.json
+   ├── analysis/
+   │  ├── key_logic.js
+   │  ├── deobfuscated.js
+   │  └── notes.md
+   ├── utils/
+   │  ├── signer.py
+   │  ├── crypto
+   \_utils.py
+   │  ├── session_manager.py
+   │  ├── parser.py
+   │  └── storage.py
+   ├── data/
+   │  ├── raw/
+   │  └── cleaned/
+   ├── main.py
+   ├── test
+   \_api.py
+   └── README.md
   编码原则
 
 1. 先通后全
@@ -373,7 +374,10 @@ crawler_example
   签名接口采集 | sign/token/hmac/md5 | Hook 参数生成函数,验证拼接顺序 | web-reverse-algorithm / ast-deobfuscation / web-reverse-hook
   登录态采集 | cookie/token/sessionStorage | 复用登录态,分析刷新机制 | web-js-env-patcher(需 Node 复现时)
   响应加密 | AES/DES/RC4/Base64/自定义编码 | Hook 解密函数或 JSON.parse 前入口 | web-reverse-algorithm / ast-deobfuscation / web-reverse-hook
-  加密库/JSVMP探针 | CryptoJS/RSA/国密/JSVMP虚拟机 | 离线生成针对性 Hook 脚本,拦截明密文与状态 | web-reverse-hook
+|  加密库/JSVMP探针 | CryptoJS/RSA/国密/JSVMP虚拟机 | 离线生成针对性 Hook 脚本,拦截明密文与状态(支持闭包与试算识别) | web-reverse-hook |
+|  反调试防御与绕过 | 无限debugger/console清空/窗口尺寸/强退/iframe原生借用 | 生成 antidebug hook 脚本注入,清理 debugger、固定尺寸、Proxy保护 console 与 iframe 借用 | web-reverse-hook / web-reverse-algorithm |
+|  SPA路由与隐藏接口提取 | Vue/React 动态路由、beforeEach 守卫拦截 | 注入 spa-vue / spa-react 探针,深度扫描 DOM/Fiber 路由表,解除导航守卫 | web-reverse-hook / web-reverse-algorithm |
+|  数据流与异步溯源 | Promise resolve/Cookie/Storage 写入监控 | 注入 dataflow hook 记录异步落地与存储变更 | web-reverse-hook |
   字体反爬 | 自定义字形映射、woff/ttf、CSS偏移 | 下载字体,解析 cmap 与轮廓指纹,还原 CSS 偏移 | web-font-obfuscation
   动态代码 | eval/new Function/webpack模块 | Hook eval / 提取模块表与加载器 | ast-deobfuscation / webpack-bundle-extraction
   WebAssembly/VMP | WebAssembly.instantiate/加密提速/VMP 壳 | 捕获模块后反编译并离线执行 | wsam-reverse

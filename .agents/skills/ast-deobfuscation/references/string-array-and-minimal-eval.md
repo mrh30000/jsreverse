@@ -163,6 +163,36 @@ for (xL = i, be = x(); ;) {
 `../../web-reverse-algorithm/scripts/waf_clearance_solver.py cf-strtable` 与 `acw-table`；
 判层与厂商上下文见 `../../web-js-env-patcher/references/edge-waf-cookie-challenge.md`。
 
+### 解码求值失败时的自适应错误恢复 (ReferenceError Adaptive Retry)
+
+在自动化执行提取的解密代码块时，常见痛点是：混淆器对外层函数重命名、多层闭包封装或别名分发，导致沙箱在求值目标表达式时抛出 `ReferenceError: 'xxx' is not defined`。
+
+成熟的工程化自适应重试启发式规则（来自 v_jstools 实践）：
+```javascript
+function safeDeobfuscateWithRetry(code, config, runDeob) {
+  try {
+    return runDeob(code, config);
+  } catch (e) {
+    // 捕获 ReferenceError 并提取未定义标识符
+    if (e && (e.name === 'ReferenceError' || Object.getPrototypeOf(e)?.name === 'ReferenceError')) {
+      const match = /^(.*) is not defined/.exec(e.message);
+      if (match && match[1] && match[1] !== config.decFuncName) {
+        console.warn(`[AST-Deob] 触发 ReferenceError: '${match[1]}' 未定义，自动设为候选解密函数并进行二次重试。`);
+        config.decFuncName = match[1];
+        try {
+          return runDeob(code, config);
+        } catch (retryErr) {
+          // 二次重试仍失败则保留堆栈并降级
+          throw retryErr;
+        }
+      }
+    }
+    throw e;
+  }
+}
+```
+**收益**：消除了大量由于局部混淆变量名多重赋值导致的人工手动干预，使得批量自动化反混淆成功率大幅提高。
+
 ## 停止条件
 
 - 主要字符串表已经恢复。

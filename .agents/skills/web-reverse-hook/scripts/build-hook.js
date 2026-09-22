@@ -8,15 +8,21 @@
 /**
  * 生成可直接注入页面的 hook 脚本。
  *
- * 这些 hook 原本是 4 个 MCP 工具（hook_cryptojs / hook_jsencrypt / hook_smcrypto /
- * hook_jsvmp_interpreter）里的 JS 字符串。工具下线后，脚本改成纯本地生成：
- * 本脚本只做确定性拼装，注入仍由 browsercli 的通用工具完成
- * （evaluate_script 一次性注入，或 inject_hook --persistent 跨导航保留）。
- * （compare_env 是环境采集而非 hook，归到 skills/web-reverse-env/scripts/compare-env.js。）
+ * 支持预设：
+ * - cryptojs: 拦截 CryptoJS 对称加解密与 Hash/HMAC finalize
+ * - jsencrypt: 拦截 JSEncrypt RSA（支持全局与 Webpack 闭包特征嗅探）
+ * - smcrypto: 拦截国密 SM2/SM3/SM4（支持全局与 Webpack 模块试算探测）
+ * - jsvmp-proxy / jsvmp-transparent: JSVMP 虚拟机探针
+ * - antidebug: 反调试综合防御（debugger清除、console保护、窗口尺寸伪造、强退拦截、反Hook/iframe原生借用阻断）
+ * - dataflow: 数据流追踪（Promise resolve回调追踪、Cookie写入、Storage存储、网络请求、时间随机数固定）
+ * - spa-vue: Vue 2/3 动态路由深度提取、导航守卫解除、强跳阻断
+ * - spa-react: React Fiber 树与 Router 动态路由提取
  *
  * 用法：
- *   node build-hook.js cryptojs --algorithms AES,MD5 --out hook.js
- *   node build-hook.js jsvmp-proxy --script-url app.js --json | browsercli call inject_hook --stdin
+ *   node build-hook.js antidebug --out hook-antidebug.js
+ *   node build-hook.js spa-vue --out hook-vue.js
+ *   node build-hook.js dataflow --targets promise,cookie --keyword token --out hook-dataflow.js
+ *   node build-hook.js cryptojs --algorithms AES,MD5 --out hook-cryptojs.js
  */
 
 import {writeFileSync} from 'node:fs';
@@ -25,10 +31,20 @@ import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
 
 import {
+  installAntidebugHook,
+} from './hooks/antidebug.js';
+import {
   installCryptoJSHook,
   installJSEncryptHook,
   installSMCryptoHook,
 } from './hooks/crypto-libs.js';
+import {
+  installDataflowHook,
+} from './hooks/dataflow.js';
+import {
+  installSpaReactHook,
+  installSpaVueHook,
+} from './hooks/spa-router.js';
 import {
   installJsvmpProxyHook,
   installJsvmpTransparentHook,
@@ -38,17 +54,37 @@ const PRESETS = {
   cryptojs: {
     hookId: 'hook_cryptojs',
     install: installCryptoJSHook,
-    description: '拦截 CryptoJS 的 AES/DES/MD5/SHA/HMAC 加解密入参与密文',
+    description: '拦截 CryptoJS 的 AES/DES/MD5/SHA/HMAC 加解密入参与密文（含 finalize）',
   },
   jsencrypt: {
     hookId: 'hook_jsencrypt',
     install: installJSEncryptHook,
-    description: '拦截 JSEncrypt RSA 的公私钥、明文与密文',
+    description: '拦截 JSEncrypt RSA 的公私钥、明文与密文（支持全局与 Webpack 闭包）',
   },
   smcrypto: {
     hookId: 'hook_smcrypto',
     install: installSMCryptoHook,
-    description: '拦截国密 SM2/SM3/SM4',
+    description: '拦截国密 SM2/SM3/SM4（支持全局与 Webpack 试算探测）',
+  },
+  antidebug: {
+    hookId: 'antidebug_suite',
+    install: installAntidebugHook,
+    description: '反调试综合防御：debugger清除、console保护、窗口尺寸伪造、强退拦截、反Hook/iframe原生借用阻断',
+  },
+  dataflow: {
+    hookId: 'hook_dataflow',
+    install: installDataflowHook,
+    description: '数据流观测：Promise resolve/回调追踪、Cookie写入、Storage操作、XHR/Fetch及固定时间/随机数',
+  },
+  'spa-vue': {
+    hookId: 'spa_vue_router',
+    install: installSpaVueHook,
+    description: 'Vue 2/3 动态路由深度提取、导航守卫解除、强跳阻断',
+  },
+  'spa-react': {
+    hookId: 'spa_react_router',
+    install: installSpaReactHook,
+    description: 'React Fiber 树与 Router 动态路由扫描与候选提取',
   },
   'jsvmp-proxy': {
     hookId: 'jsvmp_probe',
@@ -78,11 +114,9 @@ const DEFAULT_MAX_ENTRIES = 10_000;
 /**
  * 把 install 函数序列化成表达式。
  *
- * 两点约束，改动时都要守住：
- * 1. install 函数体内不允许引用模块级变量（见 hooks/ 与 probes/ 顶部注释），
- *    否则 `toString()` 出来的脚本在页面里会抛 ReferenceError。
- * 2. 结尾**不能有分号**。evaluate_script 会把 `function` 参数整体包进括号再求值
- *    （`((<脚本>))`），带分号会变成 `(...;)` 直接 SyntaxError。
+ * 两点约束：
+ * 1. install 函数体内不允许引用模块级外部变量。
+ * 2. 结尾不能有分号。
  */
 export function buildHookScript(preset, options = {}) {
   const entry = PRESETS[preset];
@@ -117,8 +151,51 @@ function resolveConfig(preset, options) {
     return {algorithms, logFormat};
   }
 
+  if (preset === 'antidebug') {
+    return {
+      bypassDebugger: options.bypassDebugger ?? true,
+      consoleGuard: options.consoleGuard ?? true,
+      windowDimensions: options.windowDimensions ?? true,
+      navGuard: options.navGuard ?? true,
+      redirectTrap: options.redirectTrap ?? false,
+      antiAntiHook: options.antiAntiHook ?? true,
+      fixedWidth: options.fixedWidth ?? 1366,
+      fixedHeight: options.fixedHeight ?? 660,
+      fixedOuterWidth: options.fixedOuterWidth ?? 1400,
+      fixedOuterHeight: options.fixedOuterHeight ?? 760,
+    };
+  }
+
+  if (preset === 'dataflow') {
+    return {
+      targets: options.targets ?? ['all'],
+      keyword: options.keyword ?? '',
+      cookieMatch: options.cookieMatch ?? '',
+      limitPerApi: options.limitPerApi,
+      logAt: options.logAt ?? true,
+      fixedTime: options.fixedTime,
+      fixedRandom: options.fixedRandom,
+      logFormat,
+    };
+  }
+
+  if (preset === 'spa-vue') {
+    return {
+      clearGuards: options.clearGuards ?? true,
+      blockRedirects: options.blockRedirects ?? false,
+      pollInterval: options.pollInterval ?? 300,
+      maxTries: options.maxTries ?? 10,
+    };
+  }
+
+  if (preset === 'spa-react') {
+    return {
+      pollInterval: options.pollInterval ?? 400,
+      maxTries: options.maxTries ?? 10,
+    };
+  }
+
   const scriptUrl = options.scriptUrl ?? '';
-  // 与原工具一致：同一个 URL 作用域重复注入时保持幂等（探针内部也会再判一次）。
   const idSuffix = `:${scriptUrl || 'all'}`;
   if (preset === 'jsvmp-transparent') {
     return {scriptUrl, maxEntries, idSuffix};
@@ -143,7 +220,7 @@ function parseList(value) {
 
 function printHelp() {
   const presetLines = Object.entries(PRESETS)
-    .map(([name, entry]) => `  ${name.padEnd(18)} ${entry.description}`)
+    .map(([name, entry]) => `  ${name.padEnd(20)} ${entry.description}`)
     .join('\n');
   console.log(`
 生成可注入页面的 hook 脚本。
@@ -159,6 +236,30 @@ ${presetLines}
   --json                输出 {"hookId","description","script"} JSON，便于管道传给 inject_hook --stdin
   --log-format <fmt>    compact（默认）| json | full（full 仅 CryptoJS 支持）
 
+antidebug options:
+  --bypass-debugger=false 关闭 eval/Function debugger 绕过
+  --console-guard=false   关闭 console 保护与 console.clear/table 抑制
+  --window-dimensions=false 关闭 1366x768 窗口尺寸伪造
+  --nav-guard=false       关闭 window.close 与 history 强退拦截
+  --redirect-trap         开启 onbeforeunload 跳转拦截断点（用于定位重定向代码）
+  --anti-anti-hook=false  关闭 Function.toString 伪装与 iframe contentWindow 原生借用阻断
+  --fixed-width <n>       伪造 innerWidth (默认 1366)
+  --fixed-height <n>      伪造 innerHeight (默认 660)
+
+dataflow options:
+  --targets <list>      promise,cookie,storage,network,freeze-time,builtins 逗号分隔（默认 all）
+  --keyword <str>       关键词过滤（匹配 cookie 名、storage key、URL、编解码入参）
+  --cookie-match <str>  对包含该字符串的 Cookie 写入下条件断点 (debugger)
+  --limit-per-api <n>   单类别/单接口最大日志打印限额 (默认 50，防止无限循环卡死)
+  --log-at=false        关闭调用源堆栈 (文件名与行号) 打印
+  --fixed-time <n>      固定 Date.now() 时间戳
+  --fixed-random <n>    固定 Math.random() 返回值 (默认 0.5)
+
+spa-vue / spa-react options:
+  --clear-guards=false  spa-vue: 不自动清除 beforeEach / beforeResolve 守卫
+  --block-redirects     spa-vue: 清空 router.push/replace/go 阻断页面跳转
+  --max-tries <n>       扫描尝试次数 (默认 10)
+
 cryptojs / smcrypto:
   --algorithms <list>   逗号分隔，如 AES,MD5；默认 all
 
@@ -173,20 +274,27 @@ jsvmp-proxy 追踪开关（默认全开，用 =false 关闭）:
   --track-reflect=false 关闭 Reflect 追踪
 
 示例:
+  node build-hook.js antidebug --out hook-antidebug.js
+  node build-hook.js spa-vue --block-redirects --out hook-vue.js
+  node build-hook.js dataflow --targets promise,cookie --keyword token --out hook-data.js
   node build-hook.js cryptojs --algorithms AES,MD5 --out hook-cryptojs.js
-  browsercli call evaluate_script --file hook-cryptojs.js
-  node build-hook.js jsvmp-proxy --script-url app.js --json | browsercli call inject_hook --stdin
 `);
 }
 
-/**
- * 解析 `--flag` / `--flag=true|false` 形式的布尔开关，并把它们从 argv 中摘出去。
- *
- * node:util 的 parseArgs 既不接受 `--flag=false`，也不接受 `--no-flag`，
- * 所以这几个开关先手工解析再交给 parseArgs，避免为每个开关维护第二个 flag。
- * 摘除后剩余的 argv 才拿去 parseArgs，否则它会把这些 flag 当未知选项报错。
- */
-const BOOL_FLAGS = ['track-calls', 'track-props', 'track-reflect'];
+const BOOL_FLAGS = [
+  'track-calls',
+  'track-props',
+  'track-reflect',
+  'bypass-debugger',
+  'console-guard',
+  'window-dimensions',
+  'nav-guard',
+  'redirect-trap',
+  'anti-anti-hook',
+  'clear-guards',
+  'block-redirects',
+  'log-at',
+];
 
 function extractBoolFlags(argv) {
   const rest = [];
@@ -225,6 +333,17 @@ function main() {
       help: {type: 'boolean', short: 'h', default: false},
       'log-format': {type: 'string'},
       algorithms: {type: 'string'},
+      targets: {type: 'string'},
+      keyword: {type: 'string'},
+      'cookie-match': {type: 'string'},
+      'limit-per-api': {type: 'string'},
+      'fixed-time': {type: 'string'},
+      'fixed-random': {type: 'string'},
+      'fixed-width': {type: 'string'},
+      'fixed-height': {type: 'string'},
+      'fixed-outer-width': {type: 'string'},
+      'fixed-outer-height': {type: 'string'},
+      'max-tries': {type: 'string'},
       'script-url': {type: 'string'},
       'max-entries': {type: 'string'},
       'proxy-objects': {type: 'string'},
@@ -240,6 +359,26 @@ function main() {
   const result = buildHookScript(positionals[0], {
     logFormat: values['log-format'],
     algorithms: values.algorithms ? parseList(values.algorithms) : undefined,
+    targets: values.targets ? parseList(values.targets) : undefined,
+    keyword: values.keyword,
+    cookieMatch: values['cookie-match'],
+    limitPerApi: values['limit-per-api'] ? Number(values['limit-per-api']) : undefined,
+    logAt: boolFlags.values['log-at'],
+    fixedTime: values['fixed-time'] ? Number(values['fixed-time']) : undefined,
+    fixedRandom: values['fixed-random'] ? Number(values['fixed-random']) : undefined,
+    fixedWidth: values['fixed-width'] ? Number(values['fixed-width']) : undefined,
+    fixedHeight: values['fixed-height'] ? Number(values['fixed-height']) : undefined,
+    fixedOuterWidth: values['fixed-outer-width'] ? Number(values['fixed-outer-width']) : undefined,
+    fixedOuterHeight: values['fixed-outer-height'] ? Number(values['fixed-outer-height']) : undefined,
+    maxTries: values['max-tries'] ? Number(values['max-tries']) : undefined,
+    bypassDebugger: boolFlags.values['bypass-debugger'],
+    consoleGuard: boolFlags.values['console-guard'],
+    windowDimensions: boolFlags.values['window-dimensions'],
+    navGuard: boolFlags.values['nav-guard'],
+    redirectTrap: boolFlags.values['redirect-trap'],
+    antiAntiHook: boolFlags.values['anti-anti-hook'],
+    clearGuards: boolFlags.values['clear-guards'],
+    blockRedirects: boolFlags.values['block-redirects'],
     scriptUrl: values['script-url'],
     maxEntries: values['max-entries']
       ? Number(values['max-entries'])
@@ -252,8 +391,6 @@ function main() {
     trackReflect: boolFlags.values['track-reflect'] ?? true,
   });
 
-  // --json 的字段名刻意对齐 inject_hook 的 schema（hookId + script，不含 description），
-  // 这样输出可以直接 `| browsercli call inject_hook --stdin`；多带字段会被它拒绝。
   const output = values.json
     ? JSON.stringify({hookId: result.hookId, script: result.script}, null, 2)
     : result.script;

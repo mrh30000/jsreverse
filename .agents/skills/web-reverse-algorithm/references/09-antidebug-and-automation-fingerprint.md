@@ -17,9 +17,9 @@
 | **2. 定时器循环** | `setInterval(()=>{debugger}, 500)` | 断点反复触发、间隔固定 | hook `setInterval`；**必须在定时器首次执行前 hook** |
 | **3. `eval` 内** | `eval("debugg"+"er")`（字符串拼接躲搜索） | 搜 `debugger` 搜不到但仍在断 | 搜 `eval`；hook `eval` 并替换其中的 `debugger` |
 | **4. 构造函数** | `(function(){}["constructor"]("debugger"))()` ≡ `Function("debugger")()` | 堆栈里出现匿名函数 + `constructor` | 重写 `Function.prototype.constructor`（§2） |
-| **5. 窗口尺寸** | `window.outerHeight - window.innerHeight > 400` ⇒ 判定 DevTools 打开 | 断在 `window.close` / `resize` 回调 | 见 §3（**不可置空**，要改判据） |
-| **6. console 探测** | 靠 `console.log` 的对象 `toString` / `console.table` 触发性判断 | 断在 `console.clear` 附近 | `console.clear = ()=>{}`（**不要置空 `console.log`**，见 §3 副作用） |
-| **7. 跳转/关闭/清 DOM** | `window.open()`、`location.href=`、`history.back()`、`body.innerHTML=''`、注入 `blur(20px)` 样式 | 打开 DevTools 后页面被刷新/变空/模糊 | **先抓 sink 再回栈对位**（§4），不要盲改 bundle |
+| **5. 窗口尺寸** | `window.outerHeight - window.innerHeight > 400` ⇒ 判定 DevTools 打开 | 断在 `window.close` / `resize` 回调 | 用 `Object.defineProperty` 固定 `innerHeight/innerWidth/outerHeight/outerWidth` 为标准分辨率（如 1366×660、1400×760） |
+| **6. console 探测与 table 耗时差** | 靠 `console.log` 对象求值或 `console.table` 渲染大量对象产生的同步卡顿（50~200ms）测出 DevTools | 断在 `console.clear` / `console.table` 附近 | `console.clear = ()=>{}; console.table = ()=>{}`，并通过 Proxy 保护 `console.log/trace` 只读（见 §3.2） |
+| **7. 跳转/关闭/清 DOM** | `window.open()`、`location.href=`、`history.back()`、`body.innerHTML=''`、注入 `blur(20px)` 样式 | 打开 DevTools 后页面被刷新/变空/模糊 | 阻断 `window.close` / `history.go/back`；通过 `window.onbeforeunload` 埋断点抓重定向源头（见 §4） |
 | **8. 内存/CPU 压制（内存炸弹）** | 循环构造 `1000×1000` 对象、`setInterval` 里 `new Array(1e4).fill('x')` | 页面卡死、内存飙升 | 只拦该定时器（按调用栈白名单），**不要全局禁 `setInterval`** |
 | **9. 原生方法完整性校验** | `/[native code]/.test(fn.toString())` | 一旦你 hook 过某个 API 就会被判为篡改 | 见 §2（**这是 hook 方案最大的敌人**） |
 | **10. 焦点/可见性伪造检测** | 抢前台后仍报 `hasFocus()===true && visibilityState==='visible'` | 见 §5 | 关掉自动化框架的焦点仿真 |
@@ -43,24 +43,50 @@ return W.contentWindow[t];   // ← 这里拿到的是**未被主窗口 hook 的
 **后果**：只在主窗口 `window` 上做 hook 的方案**全部失效**。
 这是"我明明 hook 了却还是被抓"的第一大原因。
 
-### 2.2 处置：把防护注入到新 iframe
+### 2.2 处置：拦截 iframe.contentWindow 的 原生借用 (现代最佳实践)
+
+过去常尝试在 `appendChild` / `insertBefore` 上逐个挂载拦截，但这容易漏掉通过其他 DOM 操作插入的 iframe。
+
+**更直接、彻底的方案**：直接对 `HTMLIFrameElement.prototype.contentWindow` 的属性描述符（getter）下套，将其返回的子窗口包一层 Proxy：
 
 ```js
-function patchIframeNode(node, reason) {
-  if (!node || node.tagName !== 'IFRAME') return;
-  const install = () => {
-    if (node.contentWindow) installWindowGuards(node.contentWindow, `iframe(${reason})`);
-  };
-  install();          // 立即装一次（contentWindow 可能同步可用）
+const desc = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'contentWindow');
+if (desc && desc.get) {
+  const rawGet = desc.get;
+  Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {
+    configurable: true,
+    enumerable: true,
+    get() {
+      const win = Reflect.apply(rawGet, this, []);
+      if (!win) return win;
+
+      return new Proxy(win, {
+        get(target, prop, receiver) {
+          // 当目标试图从 iframe 借用未被主窗口 hook 的干净原生方法时，回流给主窗口保护版本
+          if (typeof prop === 'string') {
+            if (prop === 'eval' || prop === 'Function') {
+              return window[prop];
+            }
+            if (prop === 'console') {
+              return window.console;
+            }
+          }
+          const val = Reflect.get(target, prop, target);
+          if (typeof val === 'function') {
+            return val.bind(target);
+          }
+          return val;
+        },
+      });
+    },
+  });
 }
-// 挂在所有会插入节点的入口上
-const result = rawAppendChild.call(this, node);  patchIframeNode(node, 'appendChild');
-const result = rawInsertBefore.call(this, newNode, ref);  patchIframeNode(newNode, 'insertBefore');
 ```
 
-**必须挂在**：`appendChild`、`insertBefore`、`replaceChild`、`innerHTML` setter、`insertAdjacentHTML`。
-只挂 `appendChild` 会被其他入口绕过。
-
+**优势**：
+1. **无需关心创建与挂载时机**：无论是 `document.createElement('iframe')` 还是静态 HTML 里的 iframe，在其 `.contentWindow` 被读取的瞬间即刻生效。
+2. **免除漏挂**：不依赖 `appendChild`、`insertBefore`、`replaceChild` 等 DOM 插入入口。
+3. **干净原生借用彻底落空**：目标在拿到 `iframe.contentWindow.Function` 或 `iframe.contentWindow.eval` 时，依旧是已经被主窗口过滤掉 `debugger` 的受控函数。
 ### 2.3 原生完整性校验（第 9 类）的对抗
 
 目标会检查"方法还是不是原生的"：
@@ -92,14 +118,22 @@ n && /\[native code\]/.test(n.toString()) ? ok = true : ok = false;
 
 ## 3. 用 `location` / `console` 做拦截时不能照抄的写法
 
-### 3.1 `location` 的属性与方法**不可重写**
+### 3.1 `location` 的属性与方法不可直接覆写
 
-浏览器禁止重写 `location` 下的属性/方法。直接置空**没有任何效果**；
-`Object.defineProperty` 与 `Proxy` 也**都不起作用**。
+浏览器禁止直接给 `location.href` 或 `window.location` 重新赋值一个普通函数，直接置空没有任何效果。
 
-⇒ 只能：**改条件逻辑让对方走不到那个分支**，或**替换文件注释掉该段**。
-（`location.href` 的 setter **可以**在 prototype 上 patch —— 见 §4 的 trap 写法，那是唯一的例外路径。）
-
+⇒ 最佳处置路径：
+1. **通用断点捕获方案：`onbeforeunload` 埋断点（推荐）**
+   当网站尝试通过 `location.href = ...`、`location.replace(...)` 或 `window.location = ...` 强行跳出时，浏览器必定触发 `beforeunload` 事件。在此处埋设 `debugger`，页面将瞬间断在即将卸载前，此时调用栈完全保留：
+   ```js
+   window.onbeforeunload = function () {
+     debugger;
+     return false;
+   };
+   ```
+   从 DevTools 的 Call Stack 最上层即可一秒定位到底是哪段混淆代码触发了重定向。
+2. **原型 Setter Trap**：在 `Object.getPrototypeOf(window.location)` 上的 `href` 属性描述符上做拦截（见 §4）。
+3. **改条件让代码走不到该分支**，或通过 mitmproxy 响应改写注释掉对应语句。
 ### 3.2 `console.log` 不要置空
 
 很多站点用 `console.log` 的**对象求值副作用**判断 DevTools 是否打开。
@@ -307,4 +341,9 @@ page.run_cdp('Emulation.setFocusEmulationEnabled', enabled=False)
 - **不要用箭头函数做 hook。** `name` / `length` 会变，尺寸类与完整性校验会命中。
 - **不要把「`hasFocus()===true`」单独当机器人判据。** 关键是"被挤到后台却仍报前台"的**矛盾**（§5.1）。
 - **不要改了 `site-packages` 就以为一劳永逸。** 框架升级会被覆盖（§5.1 规避段）。
+- **不要用 DevTools 的「Deactivate breakpoints」当作绕过**。它只影响当前会话，刷新即失效，且掩盖了失败分支的真实行为。
+- **不要手打要替换的字符串**。必须从真实响应里复制（`07-*` §3）。
+- **不要删掉反调试的整段逻辑**。它后面往往跟着正常业务分支，删了会导致页面行为改变、结论失真；只做最小干预（插入 `return;` / 注释调用点）。
+- **不要在同一轮里既改请求体又改响应体**。出错时无法判断是上游还是下游。
+- **不要把「能跑通一次」当作完成**。动态 JS 类目标的验收标准是「连续 N 次（N ≥ 3）跑通且中间不重新扣代码」。
 - **不要在没确认授权的情况下改写第三方站点响应并提交数据。** 改写仅用于本地定位。

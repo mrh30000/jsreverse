@@ -54,6 +54,45 @@
 - 不要在不知道父节点语义的情况下使用批量 `replaceWithMultiple`。
 - 不要只因为“文本更好看”就重排表达式执行顺序。
 
+## 实战 AST 规范化模式库
+
+以下为工业级反混淆中最常见的语法树展开模式（源自成熟工具实践）：
+
+### 1. 三元赋值提升与转 if-else (TransCondition & ConditionToIf)
+- **输入形式**：`a = m ? 11 : 22;`
+- **第一阶段提升 (TransCondition)**：
+  将 Assignment 内部的三元提到外层：`m ? (a = 11) : (a = 22);`
+- **第二阶段转 if-else (ConditionToIf)**：
+  ```javascript
+  if (m) {
+    a = 11;
+  } else {
+    a = 22;
+  }
+  ```
+- **变量声明三元提升 (ConditionVarToIf)**：
+  `var a = m ? 11 : 22;` 拆分为 `var a; if (m) { a = 11; } else { a = 22; }`
+
+### 2. 连续逗号序列表达式拆解 (RemoveComma & RemoveVarComma)
+- **输入形式**：`a = 1, b = 2, c = 3;` 或 `var a = 1, b = 2;`
+- **改写策略**：
+  在语句块（BlockStatement 或 Program）级别，将 `SequenceExpression` 中的各子表达式顺序转换为独立的 `ExpressionStatement`。
+  将多变量 `VariableDeclaration` 拆解为多个单变量 `VariableDeclaration`，消除长链逗号污染。
+
+### 3. 顶层短路与转条件语句 (And2If)
+- **输入形式**：`isReady && doAction();`
+- **改写策略**：
+  若整个 `LogicalExpression` 为单独的 `ExpressionStatement` 且运算符为 `&&`：
+  直接替换为 `if (isReady) { doAction(); }`，使执行逻辑和分支调用栈更加清晰。
+
+### 4. 成员属性方括号访问规范化 (FormatMember)
+- **输入形式**：`_0x1234['removeCookie']['toString']()`
+- **改写策略**：
+  当 `MemberExpression` 的 `property` 为 `StringLiteral`，且其内容符合合法 JavaScript 标识符正则（`/^[a-zA-Z_$][0-9a-zA-Z_$]*$/`）时：
+  将 `property` 转为 `Identifier` 并将 `computed` 设为 `false`，还原为标准点语法 `_0x1234.removeCookie.toString()`。
+
+---
+
 ## 验证建议
 
 - 结构标准化后立即重新 parse。

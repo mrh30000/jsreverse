@@ -28,10 +28,10 @@ description: 面向 Web/JS 逆向中的浏览器补环境技能，覆盖 Proxy �
 | --- | --- | --- |
 | 连接/状态 | `browsercli status`、`browsercli browser connect`、`browsercli list-tools` | 确认 worker 在线、查看工具签名 |
 | 打开页面 | `browsercli call navigate_page --url "<target>" --type url` | 导航到目标站 |
-| 采集环境种子 | `browsercli call compare_env`、`browsercli call evaluate_script --function "..."`、`browsercli call inspect_object --expression "navigator"`、`browsercli call get_storage --type all` | 观察真实浏览器环境，作为补环境基准 |
+| 采集环境种子 | `browsercli call evaluate_script --file skills/web-reverse-env/scripts/collect-browser-env.js`（采集 navigator/document/screen/canvas+webgl/存储）、`browsercli call evaluate_script --function "..."`、`browsercli call inspect_object --expression "navigator"`、`browsercli call get_storage --type all` | 观察真实浏览器环境，作为补环境基准（原 `compare_env` 工具已下线） |
 | Hook 定位入口 | `browsercli call create_hook --type cookie --action log` → `inject_hook` → `get_hook_data`；或 `hook_function --target "..."`、`inject_preload_script --preset log-cookies` | Hook `document.cookie`/`fetch`/`xhr` 等，找回真实调用链 |
-| 差异分析与补丁建议 | `browsercli call diff_env_requirements --runtimeError "..." [--observedCapabilities <arr>]` | 把运行时报错映射为缺失能力与下一步补丁 |
-| 导出重建 bundle | `browsercli call export_rebuild_bundle --taskId <id> --taskSlug <slug> --targetUrl <url> --goal <goal> [--autoGenerate true]` | 一键导出 entry/env/polyfills/capture 到任务 artifacts |
+| 差异分析与补丁建议 | `node scripts/diff-env-requirements.js --error "..."`（原 `diff_env_requirements` 工具已下线） | 把运行时报错映射为缺失能力与下一步补丁 |
+| 导出重建 bundle | `node scripts/export-rebuild-bundle.js --output-dir <dir>`（原 `export_rebuild_bundle` 工具已下线） | 导出独立本地 Node.js 复现工程（entry/env/polyfills） |
 
 核心原则：**先 Observe（真实浏览器采集），再 Hook（不暂停执行），最后才补环境/断点**，与仓库的 `Observe-first`、`Hook-preferred`、`Breakpoint-last` 方法论一致。
 
@@ -85,7 +85,7 @@ node skills/web-reverse-env/scripts/export-rebuild-bundle.js -o ./my-rebuild -t 
 
 优先用 browsercli 在真实浏览器里采集环境基准（Observe-first）：
 
-- `browsercli call compare_env` 采集 `navigator`/`screen`/`canvas`/`webgl`/`audio`/`timing` 基准
+- `browsercli call evaluate_script --file skills/web-reverse-env/scripts/collect-browser-env.js` 直接采集 `navigator`/`document`/`screen`/`canvas`+`webgl`/`localStorage`/`sessionStorage` 基准；`audio` 与 `performance timing` 用 `evaluate_script --function` 自行取值（原 `compare_env` 工具已下线）
 - `browsercli call evaluate_script --function "..."` 精确读取任意属性/描述符/原型链
 - `browsercli call inspect_object --expression "navigator" --depth 3` 看对象结构与原型链
 - `browsercli call get_storage --type all` 采集 cookie / localStorage / sessionStorage 运行态
@@ -95,7 +95,7 @@ node skills/web-reverse-env/scripts/export-rebuild-bundle.js -o ./my-rebuild -t 
 - [collect-browser-env.js](scripts/collect-browser-env.js)：离线采集环境种子
 - [observe-runtime.js](scripts/observe-runtime.js)：Proxy 吐环境与缺口聚合
 
-如果已有运行日志或报错，配合 `browsercli call diff_env_requirements --runtimeError "..." [--observedCapabilities <arr>]` 把报错映射为缺失能力。
+如果已有运行日志或报错，配合 `node skills/web-reverse-env/scripts/diff-env-requirements.js --error "..."` 把报错映射为缺失能力（原 `diff_env_requirements` 工具已下线）。
 
 不要在没有诊断信息的前提下大面积硬补对象。
 

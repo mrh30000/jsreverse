@@ -146,7 +146,7 @@ WebSocket 逆向后建议沉淀：
 | `ws-protocol.md`             | 消息分组表 + 心跳间隔 + 认证参数来源              |
 | `ws-samples/<group>.bin`     | 各分组的 raw 样本（base64 编码）                  |
 | `ws-decode.js`               | protobuf / 自定义格式的解码器（站点无关）         |
-| `ws-record-reverse-evidence` | 写一条 `record_reverse_evidence` 到 task artifact |
+| `evidence.md`                | 证据条目（直接写入 `artifacts/tasks/<task-id>/`，原 `record_reverse_evidence` 已下线） |
 
 ---
 

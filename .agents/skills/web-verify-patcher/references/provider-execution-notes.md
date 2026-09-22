@@ -6,17 +6,16 @@
 
 ### 极验
 
-- 常见类型：`slider`、`click-select`、`grid`（九宫格）、`risk-score`、`token-widget`。
-- 先判代际：**v3**（`gt` + `challenge`，`api.geetest.com`，`fullpage.*.js`）
-  还是 **v4**（`captcha_id` + `lot_number` + `payload`/`process_token`，`gcaptcha4.geetest.com`）。
-  两代的 `w` 结构、编码层、轨迹位置全都不同。
+- 常见类型：`slider`、`click-select`、`grid`（九宫格）、`risk-score`（含**深知 V2 业务风控**）、`token-widget`、`game-challenge`（**消消乐 `match` / 五子棋 `winlinze`**）、`one-click`（**一键通过 / 无感 `ai`**）、`pow-challenge`（v4 的 `pow_detail`）。
+- 先判代际，**四代形态都要认**：**初代**（`geetest.0.0.0.js` + `offline.*.js`，全本地算 `validate`）、**二代在线**（`netWebServlet.json` → `get.php` 给**新 challenge** → `ajax.php`）、**二代离线**（同初代）、**v3**（`gt` + `challenge`，`api.geetest.com`，`fullpage.*.js`）、**v4**（`captcha_id` + `lot_number` + `payload`/`process_token`，`gcaptcha4.geetest.com`）。
+  初代/二代离线**没有 `w`**，只有一个 `validate`（`A(距离, challenge)_A(rand0)_A(rand1)`）——把离线形态当 v3 去搜 `"\u0077"` 会白找半天。
 - 注意点：视觉答案、行为轨迹和加密载荷分离；`challenge` / `lot_number` 短期有效并绑定会话状态。
 
 **协议细节（链路顺序、三个 `w` 的分工、字段来源、底图还原几何、轨迹编码、
-v4 的 PoW / 动态防篡改块 / `td`+`td_sign`、九宫格、以及 12 条实测翻车点）统一维护在
+v4 的 PoW / 动态防篡改块 / `td`+`td_sign`、九宫格、以及 16 条实测翻车点）统一维护在
 `references/geetest-protocol-matrix.md`，动手前先读那一份。**
 
-三条最容易被忽略、且一定会导致失败的点，先记住：
+四条最容易被忽略、且一定会导致失败的点，先记住：
 
 1. **v3 是三个 `w`，不是两个。** 首包 `get.php`、题型确认 `ajax.php`、提交 `ajax.php` 各带一个，
    相互关联；**只逆最后一个会被判 `forbidden`**（"以前能过、现在过不去"的头号原因）。
@@ -25,7 +24,13 @@ v4 的 PoW / 动态防篡改块 / `td`+`td_sign`、九宫格、以及 12 条实�
    IV 是**字符串 `"0000000000000000"`（16 个 ASCII `'0'`）**，不是 16 个 `\x00`。
 3. **极验 v4 判定必须断言 `data.result == "success"`**：失败时 HTTP 仍 200、外层 `status` 仍是
    `success`；且失败响应里带**新票据**，要拿它走 `pt=1` 换题，直接重发旧 `payload` 会无限 fail。
+4. **四代报 `param decrypt error` / `-50002` 时，先怀疑 PoW 而不是 `w`**：
+   哈希函数由 `load` 的 `pow_detail.hashfunc` 决定（`md5`/`sha1`/`sha256`，**不是恒定 SHA256**），
+   难度是 `bits`（判据＝前导零 `bits//4` 位 + 第 `bits//4` 位 hex ≤ 7/3/1），
+   照抄官方 demo 的 md5 写法在别的站点必失败。用 `scripts/geetest_pow.py` 求解。
 
+> 新增章节（B16）：§零.1 初代/二代判据、§8.1 PoW 的**三种哈希 + `bits` 难度判据**、§十五 无感的两个 `w`、§十六 动态键值对（`h9s9`/`kqg5`/`f019`/`l0zs`/`xnbw`）与 gct 动态导出、§十七 题型 → `userresponse` 写法表、§十八 **报错码 → 根因速查**、§十九 补环境两件、§二十 深知 V2。
+> PoW 直接跑 `scripts/geetest_pow.py`（`solve` / `check` / `--from-load` / `--selftest` 41 项）。
 > 算法层（AES/RSA 四元组、变体编码对照、PoW 归约模板、逐字节对拍方法）见
 > `../../web-reverse-algorithm/references/08-mixed-crypto-segmentation.md`。
 > 图像线（v3 52 片底图还原、缺口定位）见

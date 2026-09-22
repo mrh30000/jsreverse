@@ -40,4 +40,4 @@
 }
 ```
 
-请求行可由 `session_get_data` 获取，字段一一对应。
+请求行由 `list_network_requests` 获取，字段一一对应（原抓包会话工具 `session_get_data` 已下线）。

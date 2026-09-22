@@ -1,6 +1,6 @@
 ---
 name: ast-deobfuscation
-description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反混淆。适用于 `_0x` 标识符、字符串表、自执行解码包装、`["$_x"].concat(fn)` + `shift()` 形式的别名族、dispatcher 对象、虚假常量分支、`while/for + switch` 控制流平坦化、`if (literal === opcode)` 分发链、OB 混淆变体（数组元素掺非字符串、去自执行、打乱 base64 码表、解密函数多重赋值分身、字典混淆、外衣函数嵌套）、多入口多层 switch，以及需要按站点或混淆家族命中特征切换专用脚本的场景。需要通过 browsercli 从页面定位、导出或运行时验证混淆脚本，以及用户明确提到 decodeObfuscator、reese84、顶象、极验（v3 的 `$_` 前缀变量族与 v4 的 guarded-switch）、同花顺、网易易盾、小红书、BOSS 直聘/zp_stoken、OB 变种或类似站点适配时也使用本 skill。JSVMP 场景下同样适用于：反汇编产物（IR）的常量折叠 / 死 case 消除 / 短路还原 / CFG 回译成 JS、指令集与 opcode 位域还原、助记符表对齐、插桩日志常量取证。
+description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反混淆。适用于 `_0x` 标识符、字符串表、自执行解码包装、`["$_x"].concat(fn)` + `shift()` 形式的别名族、dispatcher 对象、虚假常量分支、`while/for + switch` 控制流平坦化、`if (literal === opcode)` 分发链、OB 混淆变体（数组元素掺非字符串、去自执行、打乱 base64 码表、解密函数多重赋值分身、字典混淆、外衣函数嵌套）、多入口多层 switch，以及 Sojson（v4/v5/v6 定向解密与自毁反调试清理）、JSFuck 纯算符号递归折叠等场景。需要通过 browsercli 从页面定位、导出或运行时验证混淆脚本，以及用户明确提到 decodeObfuscator、sojson、jsfuck、reese84、顶象、极验（v3 的 `$_` 前缀变量族与 v4 的 guarded-switch）、同花顺、网易易盾、小红书、BOSS 直聘/zp_stoken、OB 变种或类似站点适配时也使用本 skill。JSVMP 场景下同样适用于：反汇编产物（IR）的常量折叠 / 死 case 消除 / 短路还原 / CFG 回译成 JS、指令集与 opcode 位域还原、助记符表对齐、插桩日志常量取证。
 ---
 
 # AST 反混淆
@@ -27,6 +27,10 @@ description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反�
 
 - `scripts/deobfuscate.js`
   自包含一体化反混淆脚本。整合了通用解包（Packer / AAEncode / URLEncode）、十六进制/Unicode 字符串解码、字符串数组沙箱求值内联、AST 常量折叠与逻辑化简、虚假分支消除以及 while-switch 控制流拍平。支持单文件直接 CLI 执行（`node scripts/deobfuscate.js <input.js> [output.js]`）或模块导入。
+- `scripts/deobfuscate-jsfuck.js`
+  JSFuck 纯算与深层符号表达式自动递归折叠（蒸馏自 v_jstools）。将 Unary / Binary / Member 符号树在受控环境中求值并就地还原为 String/Number/Boolean 字面量。
+- `scripts/deobfuscate-sojson.js`
+  Sojson v4/v5/v6 混淆专项还原与反调试自毁防护清理（蒸馏自 v_jstools）。抽取大数组与移位解密函数并在安全沙箱中求值，批量内联调用点，彻底剔除注入的定时器 debugger 与防格式化检测死循环。
 - `scripts/detect-patterns.js`
   根据文件路径、可选 hint 和源码症状判断最可能命中的站点或混淆家族。
 - `scripts/run-pipeline.js`
@@ -136,8 +140,10 @@ description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反�
 - **CFF 还原前先读 `references/mba-and-dispatcher-reduction.md` §3**：`while+switch` 的还原依赖「字符串数组已还原」这一前置，顺序错了不报错、直接清空函数体。多层位切片 dispatcher（`Ci = 31 & li; mi = 31 & fi; ...`）与 MBA 混合布尔算术表达式的归约配方也在该文档。
 - **在线反混淆网站只解开一部分时，读 `references/ob-variant-taxonomy.md`**：按「数组元素掺非字符串 / 去掉自执行 / 打乱 base64 码表 / 格式化检查语句 / 解密函数多重赋值分身 / 字典混淆（value 可为函数）/ 外衣函数嵌套」七类变体对号入座；含「导出目标函数 + AST 主动调用」的通用配方，可在完全不还原算法的前提下拿到结果。
 - **`switch` 嵌套多层、起始 index 由调用传参决定时，读 `references/multi-entry-switch-reduction.md`**：三步还原法（收集 index → 最内层插探针 → 拖进 for 循环取映射），以及两个致命坑（case index 藏在调用点、还原后变量污染必须按入口拆回多个函数）。
-- 处理逗号表达式、IIFE、语句提升时，读 `references/sequence-normalization.md`。
+- 处理逗号表达式、IIFE、语句提升与三元/短路语法展开时，读 `references/sequence-normalization.md`。
+- 处理纯符号编码与表达式求值还原时，读 `references/jsfuck-reduction.md`。
 - 检测器命中后，只读取对应的一份站点规则文档：
+  - `references/patterns/sojson.md`（Sojson v4/v5/v6 架构特征、大数组提取、定时器 debugger 与自毁防篡改代码清理）
   - `references/patterns/reese84.md`
   - `references/patterns/dingxiang.md`
   - `references/patterns/geetest4.md`（含「别名归一 → 字符串表 → 控制流」的**顺序硬约束**、

@@ -1,6 +1,6 @@
 ---
 name: target-analysis
-description: 目标级/会话级逆向分析工作流技能，替代已移除的 analyze_target、session_analyze_purified、session_generate_report 三个 MCP 工具。当需要一键式采集代码+Hook 时间线并给出行动方案、对抓包会话做场景推断/流量提纯/加密切片、或产出会话分析报告时使用。规则逻辑以参考实现形式保留，调用方 Agent 用现有工具（collect_code/create_hook/get_hook_data/session_get_data 等）复现。
+description: 目标级/会话级逆向分析工作流技能，替代已移除的 analyze_target、session_analyze_purified、session_generate_report 三个 MCP 工具。当需要一键式采集代码+Hook 时间线并给出行动方案、对抓包会话做场景推断/流量提纯/加密切片、或产出会话分析报告时使用。规则逻辑以参考实现形式保留，调用方 Agent 用现有工具（collect_code/create_hook/get_hook_data/list_network_requests 等）复现。
 ---
 
 # 目标与会话分析工作流（Agent 自行编排）
@@ -11,7 +11,7 @@ description: 目标级/会话级逆向分析工作流技能，替代已移除的
 
 - 无内置 LLM：所有生成式结论由 Agent 自己产出，不再有 `useAI` 参数或服务端模型调用。
 - 规则优先：场景推断、流量提纯、加密切片都是确定性规则，先跑规则再让 Agent 解读。
-- 证据落盘：结论写回 `record_reverse_evidence`，不要只留在对话里。
+- 证据落盘：结论直接写入任务目录 `artifacts/tasks/<task-id>/`（`record_reverse_evidence` 已下线），不要只留在对话里。
 
 ## A. 目标一键分析（对应 analyze_target）
 
@@ -29,7 +29,7 @@ description: 目标级/会话级逆向分析工作流技能，替代已移除的
 
 ## B. 会话提纯（对应 session_analyze_purified）
 
-1. `session_get_data --sessionId <id>` 取请求与 Hook 记录。
+1. 用 `list_network_requests` 取请求记录、`get_hook_data` 取 Hook 采样（原 `session_get_data` 已随抓包会话工具下线）。
 2. **场景推断**：按 `references/scene-detection.md` 的规则给 auth-token / signature-hash / crypto-cipher / ai-sse / login-flow 打标签与置信度。
 3. **流量提纯**：按 `references/traffic-purifier.md` 过滤静态资源与追踪域名，抽取关键 Header 与 body 预览，上限 100 条。
 4. **加密切片**：按 `references/crypto-slicing.md` 从 Hook 调用栈解析 JS 帧，配合 `get_script_source` 取上下文（±10 行）。
@@ -42,15 +42,15 @@ description: 目标级/会话级逆向分析工作流技能，替代已移除的
 1. 复用 B 的提纯结果（同一套规则）。
 2. 按模式（auto/api_reverse/security/perf/js_crypto）选系统提示词，分析提纯数据。
 3. 生成 Markdown 报告；本技能取代了原「离线降级报告」，Agent 未产出时的兜底结构见 `references/prompt-templates.md` 的 fallback 小节。
-4. 需要持久化时写入会话报告存储（原 `ai_reports` 表已随工具移除，改由 `record_reverse_evidence` + `export_session_report` 落盘）。
+4. 需要持久化时由 Agent 直接写 Markdown 到 `artifacts/tasks/<task-id>/session-report.md`（原 `ai_reports` 表与 `record_reverse_evidence` / `export_session_report` 工具均已移除）。
 
 ## 相关工具
 
 ```bash
-browsercli call session_create --name "<name>" --targetUrl "<url>"
-browsercli call session_get_data --sessionId "<id>"
+browsercli call list_network_requests --urlFilter "<pattern>" --pageSize 50
 browsercli call collect_code --url "<url>" --smartMode priority
 browsercli call get_hook_data --hookId "<id>" --view detail
-browsercli call record_reverse_evidence --taskId "<task>" --entry '{"note":"..."}'
-browsercli call export_session_report --format markdown
+# 证据落盘：直接写入 artifacts/tasks/<task-id>/（原 record_reverse_evidence / export_session_report 工具已下线）
 ```
+
+> 抓包会话隔离工具（`session_create` / `session_list` / `session_get_data` / `session_export`）已下线。会话状态管理现聚焦于浏览器 Cookie/Storage 快照：`save_session_state` / `restore_session_state` / `list_session_states` / `dump_session_state` / `load_session_state` / `delete_session_state`。

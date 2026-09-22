@@ -88,8 +88,8 @@ node ../../../protobuf-reverse/scripts/pb_proto_from_js.js --input ws-bundle.js 
 
 ### 7. 写记录
 
-- `record_reverse_evidence --taskId <id> --taskSlug <ws-proto> ...`
-- 在 task artifact 写：
+- 直接写入 task artifact（`record_reverse_evidence` 工具已下线）：
+  - `evidence.md`（脚本 ID、目标 URL、分组结论、验证口径）
   - `ws-protocol.md`（分组表 + 心跳 + 认证）
   - `ws-samples/<group>.bin`（样本 base64）
   - `ws-decode.js`（解码器）
@@ -111,7 +111,7 @@ node ../../../protobuf-reverse/scripts/pb_proto_from_js.js --input ws-bundle.js 
   - 先确认**是不是漏了内层**：外层帧解出来是个 message，`payload` 里才是业务数据（可能是 gzip）
   - 再确认**方言认错**（`../../../protobuf-reverse/references/dialect-matrix.md` §1 四种方言的定义形式完全不同）
   - 可能不是标准 protobuf（如 flatbuffers / capnproto / 自实现）
-  - 退到 `wasm_offline_run` 跑 wasm 解码器（如果服务端用 wasm 解码客户端发的）
+  - 退到 `node skills/wsam-reverse/scripts/wasm-run.js -i ./decoder.wasm --invoke <fn> --args <...>` 跑 wasm 解码器（原 `wasm_offline_run` 工具已下线；如果服务端用 wasm 解码客户端发的）
 - **WS 连接本身连不上 / 秒断**：
   - **连接常需要 cookie**（真实案例：`ttwid`，由首屏 HTTP 响应下发）→ 先走一次 HTTP 拿 cookie
   - **URL 上常带签名参数**（真实案例：`window.byted_acrawler.frontierSign({...})` 产出的 `X-Bogus`
@@ -119,7 +119,7 @@ node ../../../protobuf-reverse/scripts/pb_proto_from_js.js --input ws-bundle.js 
   - 有的站点该签名**当前不校验**（删掉也能拿到响应），但**不要据此把它从实现里删掉**——
     站点随时可能开始校验
 - **消息加密**：
-  - 看 JS 侧有无 `import` 加密函数，配合 `wasm_decompile` 找密钥派生
+  - 看 JS 侧有无 `import` 加密函数，配合 `node skills/wsam-reverse/scripts/wasm-decompile.js -i ./target.wasm` 找密钥派生
   - 加密是终点，不是起点 — 先确认能拿到明文帧再讨论
 
 ## 输出产物建议

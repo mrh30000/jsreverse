@@ -22,7 +22,7 @@
 
 > 吸收自 hello_js_reverse_skill 的"路径 B 环境伪装六步法"。
 
-1. **用用户确认的取证浏览器采集真实环境指纹**（本 Skill 优先 ruyiPage + RuyiTrace；hello_js_reverse_skill 用 camoufox-reverse 的 `compare_env` / `evaluate_js`）。分批采集，单次 `evaluate_js` 代码不要太长。
+1. **用用户确认的取证浏览器采集真实环境指纹**（本 Skill 优先 ruyiPage + RuyiTrace；hello_js_reverse_skill 用 camoufox-reverse 的环境采集能力）。分批采集，单次采集脚本不要太长。
 2. **在 jsdom / vm 沙箱中运行完全相同的采集代码**，得到沙箱端环境值。
 3. **逐项 diff，按检测影响分级**（致命级 → 高危级 → 中危级）。
 4. **编写 `patchEnvironment()` 全量修复**。

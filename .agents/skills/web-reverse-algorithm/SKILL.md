@@ -1,6 +1,6 @@
 ---
 name: web-reverse-algorithm
-description: 面向 Web/JS 逆向中的纯算、验证码纯算、复杂 header/cookie 签名、混合加密、JSVMP/VMP、Wasm、PoW、响应解密、指纹与 challenge 参数还原工作流。用于需要从最终请求、最终 cookie、最终 verify 或最终 WebSocket 帧倒推 writer、builder、entry、source，设计浏览器与本地对齐检查点，判断何时做 AST 解混、何时插桩、何时做最小补环境、何时拆图像线与参数线、以及如何把研究结果落成 solver、SDK、脚本或服务的场景。用户明确提到纯算、验证码纯算、滑块、点选、旋转、PoW、collect、w、x-s、a_bogus、encSecKey、captchaBody、X-Bogus、Wasm、国密、补环境、指纹、challenge、verify、header 签名、cookie 签名时使用。当目标带无限 debugger / 反调试（打开 DevTools 就断住、document.write 覆写页面、eval 监管脚本）、JS 每次访问都变、响应体是加密的 JS、需要 mitmproxy/Fiddler 改写响应做在线补丁、或要判断某个参数属于「固定 / 上次返回 / JS 计算」时，同样使用本技能。
+description: 面向 Web/JS 逆向中的纯算、验证码纯算、复杂 header/cookie 签名、混合加密、JSVMP/VMP、Wasm、PoW、响应解密、指纹与 challenge 参数还原工作流。用于需要从最终请求、最终 cookie、最终 verify 或最终 WebSocket 帧倒推 writer、builder、entry、source，设计浏览器与本地对齐检查点，判断何时做 AST 解混、何时插桩、何时做最小补环境、何时拆图像线与参数线、以及如何把研究结果落成 solver、SDK、脚本或服务的场景。用户明确提到纯算、验证码纯算、滑块、点选、旋转、PoW、collect、w、x-s、a_bogus、encSecKey、captchaBody、X-Bogus、Wasm、国密、补环境、指纹、challenge、verify、header 签名、cookie 签名、登录密码加密、登录提交参数、表单参数、单点登录、CAS、WebVPN、execution 令牌、RSA 公钥、JSEncrypt、密码 MD5 加盐、`publickey_mod`、DES 解密、`encoded` 隐藏字段时使用。当目标带无限 debugger / 反调试（打开 DevTools 就断住、document.write 覆写页面、eval 监管脚本）、JS 每次访问都变、响应体是加密的 JS、需要 mitmproxy/Fiddler 改写响应做在线补丁、或要判断某个参数属于「固定 / 上次返回 / JS 计算」时，同样使用本技能。
 ---
 
 # Web 逆向纯算
@@ -96,6 +96,33 @@ node skills/web-reverse-algorithm/scripts/detect-crypto.js -i ./dist/sign.js --j
 
 优先读取 [references/02-algorithm-families.md](./references/02-algorithm-families.md)。
 
+#### 登录 / 账号体系（密码加密 + 表单参数 + 会话令牌）
+
+适用信号：
+
+- 目标链路是**登录 / 注册 / 改密 / 单点登录（CAS / WebVPN）**
+- 提交体里出现 `password` / `pwd` / `encoded` / `passwordEnc` / `credentials.password` / `encData` + `encKey`
+- 同接口还有 `formhash` / `csrf` / `execution` / `token_id` / `uuid` / `lt` / `pwdDefaultEncryptSalt`
+- 出现 `h5Fingerprint` / `risk_platform` / `device_type` 一类**风控指纹字段**
+- 「下载器/脚本提示密码不对」「本地算出的密文服务端不认」「同一明文两次密文不同」
+
+**这类题有自己的一套判据与工具**，读 [references/12-login-and-account-params.md](./references/12-login-and-account-params.md)
+（**该文是「登录提交参数怎么判族、怎么复算」的唯一权威源**）并用 `scripts/login_param_probe.py`：
+
+```bash
+S=skills/web-reverse-algorithm/scripts
+python $S/login_param_probe.py classify --cipher "<抓包里的密文>"   # 先判族，再决定扣不扣代码
+python $S/login_param_probe.py --selftest                            # RFC1321 + 文章原样 JS 实跑 + OpenSSL DES 向量
+```
+
+**四条一句话判据**（细节在 12）：
+
+1. **抓两次包**：密码字段**长度也变** ⇒ RSA（非对称）；只有值变 ⇒ 对称/哈希。
+2. **`formhash` / `csrf` / `execution` / `uuid` / `token_id` 是服务器下发**（在登录页 HTML 或前置接口里），
+   不要试图算 —— 这类浪费是这一族最大的一笔。
+3. **32 位 hex 不等于「裸 MD5」**，可能是四种 MD5 链之一；先跑 `md5-chain` 逐个试。
+4. **提交的可能不是你看到的那个字段**：明文框 + 隐藏字段（`encoded` / `passwordEnc`）两段式极常见。
+
 #### JSVMP / VMP / 小红书 / a_bogus / 多参数复杂纯算
 
 适用信号：
@@ -182,7 +209,7 @@ node ../webpack-bundle-extraction/scripts/detect-bundler.js <bundle.js>   # 退�
 
 先判层（十二族一页判层表在 `../web-js-env-patcher/references/edge-waf-cookie-challenge.md`），
 可离线部分读 [references/10-waf-clearance-cookie.md](./references/10-waf-clearance-cookie.md)
-并用 `scripts/waf_clearance_solver.py`（**下面所有命令的路径以本技能根 `.claude/skills/web-reverse-algorithm/` 为基准；
+并用 `scripts/waf_clearance_solver.py`（**下面所有命令的路径以本技能根 `skills/web-reverse-algorithm/` 为基准；
 命令要在本技能根下执行**）：
 
 ```bash
@@ -308,12 +335,30 @@ python scripts/waf_clearance_solver.py --selftest
   三条路线（插桩 / 反编译 / 补环境）的细节权威源指针、插桩纯算落地八步、
   「真实密文当第一道 oracle」的对拍口径、媒体流里 JSVMP 与 `stream-drm-reverse` 的分工、
   「响应加密能不能直接绕过」的判据、以及七条反例。
+- [references/12-login-and-account-params.md](./references/12-login-and-account-params.md)
+  用途：**登录 / 账号体系提交参数的唯一权威源** —— 五步工作流、参数三分类（服务器下发字段清单 /
+  密码加密族 / 风控指纹）、密码加密族判据表（MD5 链四形态 / base64 / AES / DES / RSA）、
+  `charCodeAt & 0xff` 与 `CryptoJS.MD5` 的口径差、提交形态两段式（明文框 + 隐藏字段）、
+  扣 JS 的四处固定修改、webpack 单文件「外部拿不到局部变量」的两种打法、
+  签名类 `md5(pathname + query + body)` 与百分号白名单还原、「不报错但结果错」坑表与反例黑名单。
+- [scripts/login_param_probe.py](./scripts/login_param_probe.py)
+  用途：上条目的可执行实现（**零依赖**）—— `classify`（密文形态 → 加密族，含「base64 解出来是乱码
+  ⇒ 内层是分组密码」这条关键分岔）/ `b64-probe` / `md5-chain`（四种实测 MD5 链）/
+  `rsa-pubkey`（纯 Python 解析 PEM / JSEncrypt base64 / 裸 DER，可与接口下发的
+  `publickey_mod` / `publickey_exp` **逐值对拍**）/ `des`（**本仓库此前没有 DES**，纯 Python DES/3DES ECB+CBC）。
+  `--selftest` 的期望值来自三条**独立**来源：RFC 1321、文章原样 JS 实跑、OpenSSL
+  （夹具与生成器见 `artifacts/skill-evolution/b15-run-20260922-1733/`）。
+- [references/14-browser-rpc-bridge.md](./references/14-browser-rpc-bridge.md)
+  用途：**浏览器 WebSocket RPC 免扣方案** —— 在重度 JSVMP、超高频密钥轮换或极端浏览器环境绑定下，
+  通过轻量 WebSocket 脚本桥接浏览器运行时与本地 Python / 爬虫，实现“免扣代码、秒级交付、零风控差异调用”。
 - [scripts/waf_clearance_solver.py](./scripts/waf_clearance_solver.py)
   用途：上条目的可执行实现（**零依赖，`--selftest` 自带分组断言，含真实样本 oracle 与反例**）——
   `classify` / `jsl-first` / `jsl` / `acw-table` / `acw-v2-old` / `cf-decode` / `cf-strtable` / `pow-drop` / `pow-bigint`。
   其中 `cf-decode` 与 `cf-strtable` 会对本仓 `cloudflare/xai-cloudflare/artifacts/` 的真实样本做逐字节对拍。
 - [scripts/new_case_scaffold.py](./scripts/new_case_scaffold.py)
   用途：新站点或新 challenge 建标准化案例目录。
+- [scripts/browser_rpc_bridge.py](./scripts/browser_rpc_bridge.py)
+  用途：**浏览器 WebSocket RPC 桥接中继服务** —— 支持 `--emit-inject` 打印浏览器注入脚本，支持 `--serve` 启动双向 WS/HTTP 调用中继，支持 `--call` 命令行快速验证。
 - 媒体流 / DRM / ts 分片（判层、AES/SM4 内容解密、许可证体系、白盒 wasm）→ `../stream-drm-reverse/SKILL.md`：
   本技能不覆盖这条链路，遇到 `m3u8` / `EXT-X-KEY` / `GetLicense` / 花屏类现象请直接切过去。
 

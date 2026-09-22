@@ -37,7 +37,7 @@ browsercli call dump_target_scripts --targetId <target-id>
 
 ```bash
 browsercli call hook_function --target <function-path> --hookId <hook-id>
-browsercli call get_hook_data --hookId <hook-id> --view timeline
+browsercli call get_hook_data --hookId <hook-id> --view detail
 browsercli call list_network_requests --urlFilter <pattern>
 browsercli call get_request_initiator --requestId <request-id>
 ```
@@ -46,10 +46,12 @@ browsercli call get_request_initiator --requestId <request-id>
 
 ## 记录证据
 
-把脚本 ID、URL、检测结果、流水线产物和运行时差异记录到任务目录：
+`record_reverse_evidence` 已随 `src/tools/analyzer` 下线。证据改为由 Agent 直接写入任务目录 `artifacts/tasks/<task-id>/`（结构化 JSON/Markdown 均可），不要依赖工具落盘：
 
 ```bash
-browsercli call record_reverse_evidence --taskId <task-id> --taskSlug <slug> --targetUrl <url> --goal <goal> --entry <entries>
+mkdir -p artifacts/tasks/<task-id>
+# 用编辑器/脚本把脚本 ID、URL、检测结果、流水线产物与运行时差异写进
+# artifacts/tasks/<task-id>/evidence.md（或 evidence.json）
 ```
 
 不要记录真实 Cookie、Storage、生产凭证或未脱敏的请求数据。

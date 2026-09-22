@@ -1892,3 +1892,244 @@ base64「基址」403 三步处置 · 接口层两种伪装 · EME/CDM 拦截与
   ④ **`web-reverse-env` 等长期零演化的技能**：按 B7 判据先数 `references/` 文件体量再定批次。
 - 候选新技能 `captcha-flow-orchestration` —— B5–B14 **八次确认不新建**。
 - 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
+---
+
+## 三·M、批次 B15 · 2026-09-22（登录 / 账号体系：提交参数判族与复算）
+
+> ⚠️ **本节是「跨轮补救登记」**：B15（2026-09-22 17:33–17:47）的技能改动**已落盘**
+> （`web-reverse-algorithm`：新增 `references/12-login-and-account-params.md`、
+> `scripts/login_param_probe.py`；改 `SKILL.md`、`02-algorithm-families.md`、
+> `07-antidebug-and-live-patching.md`、`09-antidebug-and-automation-fingerprint.md`；
+> `b15-run-20260922-1733/` 内有 3 个 JS oracle 与 DES 向量），
+> 但**未登记台账、未写 automation memory、未镜像到 `.agents`**。
+> 本轮（B16 开工前）先做闭环补救：① 与并行的「`proxycli` → `browsercli` 改名线」做**非破坏性并集镜像**；
+> ② 重跑自检与本批 oracle；③ **逐篇 grep 字面量回源复核**（`tools/b15-verify-sources.py`，21/21 命中，
+> 含 2 处因大小写/写法导致的假阴性被回源纠正：`1111948` 用 `key_to_encode` 而非 `publickey`、
+> `1627217` 原文小写 `referer`）；④ 补登本节 21 条。
+
+**取材口径**：**一条完整链路一次做全** —— 登录 / 注册 / 改密 / 单点登录（CAS / WebVPN）这条链路上
+「**服务器下发什么** → **密码用什么族加密** → **提交的是哪个字段** → **怎么复算并验收**」四件事，
+覆盖：服务器下发字段清单（页面内 / 前置接口两类）· 密码加密族判据表（MD5 链四形态 / base64 / AES / DES / RSA /
+AES+RSA 混合）· 提交形态两段式（明文框 + 隐藏字段）· 会话与前置（Cookie / `execution` / `csrf` 绑定）·
+扣 JS 的四处固定修改 · webpack 单文件两种打法 · 签名类 `md5(pathname+query+body)` 与百分号白名单。
+
+**选它的理由**：B14 的「下一批建议」把「**签名 / 协议参数系（最大簇）**」列为优先级 ①，
+而「登录提交参数」是其中**判据最集中、返工最贵**的一段；开工前核对
+`web-reverse-algorithm/references/`（11 个文件）确认**没有任何一个文件讲「提交参数的判族」**——
+`07-antidebug-and-live-patching.md` §6 只讲通用的「固定 / 上次返回 / JS 计算」三分类，
+**登录专有的三件事（服务器下发字段清单 / 密码加密族判据表 / 提交形态）在库里是空白**，
+即 B7 判据的「技能名覆盖 ≠ 能力覆盖」。
+
+**产出**：**无新建技能**（第 8 次确认不建 `captcha-flow-orchestration`），
+演化既有技能 **1** 个（`web-reverse-algorithm`）；
+本轮收尾另做**镜像合流**（10 个技能，见下）与**附带修复 5 项**。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 240 | `52pojie-1108756-逆向分析青果教务系统的登录接口.md` | `37fa4c567b553cc9e3c391c28fa070bd` | 2026-09-22 | web-reverse-algorithm | evolve | **「盐在中间」的 MD5 链 + 本仓库首例 DES**：`hex_md5(hex_md5(password) + hex_md5(randnumber.toLowerCase()))`；同一站另一处是 `b64_encode(des_encode(params))` ⇒ 落地为 `md5-chain --preset pwd-then-salt` 与 `login_param_probe.py des`（默认解密；DES 期望值走 `node --openssl-legacy-provider` 独立实现） |
+| 241 | `52pojie-1111948-JS逆向 房天下登录RSA.md` | `afc8f1d204040620bef0e9cc53e8eff1` | 2026-09-22 | web-reverse-algorithm | evolve | **「公钥硬编码在页面」形态的第一条实例**：全局搜 `key_to_encode` 直接复制；技术栈是 `RSA.min.js`（与 JSEncrypt 同族的另一份实现）⇒ §4.4「公钥从哪来」三分类之① |
+| 242 | `52pojie-1217367-强智科技教务系统python爬虫模拟登录分析(湖南).md` | `b0a41cfe5049c534458d42bedc9d4407` | 2026-09-22 | web-reverse-algorithm | evolve | **「盐由前置接口下发、按 `#` 分割」+ 两段式提交**：登录前有一次独立请求返回带 `#` 的串；提交用 `encoded` 隐藏字段；第一次 GET 的 Cookie 必须保存并携带 ⇒ §1 表第 2 行 / §5 / §6 |
+| 243 | `52pojie-1266540-超星学习通登入密码加密算法逆向.md` | `8c24e4f1aabb3d9792a5c0152080f3f9` | 2026-09-22 | web-reverse-algorithm | evolve | **base64 只当外层编码 + jQuery 插件式自实现的处置**：`$.base64.btoa(pwd,"UTF-8")`；扣 JS 要删文件首末行、把 `$.base64 = ` 挂载写法改写成普通调用 ⇒ §4.1 与 §7 第 3 行 |
+| 244 | `52pojie-1316664-记一次猫眼电影登录POST参数分析.md` | `c96952c4768227cb9dddecb8e95e4280` | 2026-09-22 | web-reverse-algorithm | evolve | **风控字段不是加密**：`h5Fingerprint = utility.getH5fingerprint(window.location.origin + url)` —— 入参就是 POST 的完整 URL，换 URL 就得重算，但不需要「理解」它；另证 `uuid` / `token_id` **就在登录页 HTML 里**（去掉 cookie 单独 GET 再搜）⇒ §1.1 第 2 条 / §11 |
+| 245 | `52pojie-1353766-记XX大学身份认证管理平台密码加密解密流程.md` | `b29123be19954810bcd51c76f85de206` | 2026-09-22 | web-reverse-algorithm | evolve | **CAS 系的 AES 链路与两段式落点**：盐读自 HTML 隐藏字段 `pwdDefaultEncryptSalt` → `_etd2(password, salt)` → 加密结果写进 `#passwordEnc`（明文框不提交）⇒ §4.2 第 2 行 / §6 |
+| 246 | `52pojie-1421183-解析某网络教学平台登录时的明文加密方法并使用python实现代码复现.md` | `d0e8eccfd594568e69ac771011f417c8` | 2026-09-22 | web-reverse-algorithm | evolve | **`encoded` 隐藏字段两段式的第二条独立来源**（与 1217367 互证「提交的不是你看到的那个字段」），并给出「先复现再提交」的闭环顺序 ⇒ §6 / §11 第 3 条 |
+| 247 | `52pojie-1522743-Python自学记录--steam密码加密逆向.md` | `1c404aafcb04653b2f5fcf3183f1ec33` | 2026-09-22 | web-reverse-algorithm | evolve | **steam 式：公钥由前置接口下发 `publickey_mod` / `publickey_exp`** ⇒ `rsa-pubkey --match-mod --match-exp` 逐值对拍（对拍不过 exit 1）；也是「抓包只抓登录那一个包不够」的实例 ⇒ §1 表第 2 行 / §4.4 / §5.3 |
+| 248 | `52pojie-1607798-某网站登录参数加密js逆向.md` | `b6c1e10eb501fd7dc2e892bacac2bbf8` | 2026-09-22 | web-reverse-algorithm | evolve | **「少什么补什么」的抠 JS 节奏**：`o(r(e))` 这类链式调用一次抠不干净，必须「跑一次 → 补一个 → 再跑」（反例：一次抠完会陷在报错里定位不到符号）⇒ §7 第 4 行 |
+| 249 | `52pojie-1626143-【JS逆向学习实践】某招标网站登录X-Sign逆向.md` | `7d72eb721a47773d5c6cd222ea0815c3` | 2026-09-22 | web-reverse-algorithm | evolve | **签名类最稳的一种 + 百分号白名单还原**：`md5(url.pathname + query + body)` 三段顺序不可换；`URLSearchParams` 会把 `,` `:` `(` `)` 编码，JS 侧做了一次白名单还原 ⇒ Python 必须显式 `unquote`（`quote(safe=",:()")`）且 `json.dumps(separators=(',',':'))`；多个登录入口可能共用同一套签名 ⇒ §9 |
+| 250 | `52pojie-1627217-某贷登录加密破解思路及加密源码.md` | `c1d340f586f8f4be5449151ab59ae7a4` | 2026-09-22 | web-reverse-algorithm | evolve | **公钥地址藏在另一个请求的 body 里**：公钥地址在 `ajax.post` 的 `t.data` 中，请求那个地址能拿到公钥，但**必须带登录页的 referer**（原文小写「referer」）⇒ §4.4 第 3 行 |
+| 251 | `52pojie-1723994-【JS逆向】某习通登录密码逆向.md` | `c1503664cb90dbfddac6d2f32d5498be` | 2026-09-22 | web-reverse-algorithm | evolve | **AES-CBC 且 key = iv = 固定串**（`u2oh6Vu^HWe4_AES`，16 字符）；更关键的是「**base64 解出来是乱码**」这条判据 —— 作者一开始以为解错，实际内层是 AES-CBC 密文⇒ §2 表「解出来是乱码」行 / §4.2 第 1 行 |
+| 252 | `52pojie-1743808-某登录表单参数逆向分析.md` | `b08a404cb558d17960f8cff9e043c1c5` | 2026-09-22 | web-reverse-algorithm | evolve | **`Sign = md5(<某个参数>)` 的定位法**：先 `initiator` 下断点 → **堆栈回溯**找变量来源；判据是「断点那一层 scope 里没有目标参数 ⇒ 往上一层层跟」；另一个坑是抠出来的 `r` 本身是字符串（控制台打印后直接写死）⇒ §7 第 4 行 / §9 第二类 |
+| 253 | `52pojie-1783614-今天分享一下某Bo的登录参数超简单获取方法.md` | `f21be0b44ab1e8bcd35cea47a9956200` | 2026-09-22 | web-reverse-algorithm | evolve | **webpack 单文件「外部拿不到局部变量」的注入打法**：用 DevTools `Overrides` / 替换 JS 在源码里加一行把函数挂到 `window`（原文 `window.weiboLX = makeRequest`），刷新后从控制台调用；⚠️ 该站 **JS 文件每小时重命名一次** ⇒ 注入突然失效时先看文件名变没变 ⇒ §8 第 1 行 |
+| 254 | `52pojie-1815692-某卢小说网站登录密码逆向.md` | `ae9c231743f180b87a773471a2a6c15f` | 2026-09-22 | web-reverse-algorithm | evolve | **手写 MD5 的字节口径（本批最贵的一个坑）**：`x[i>>2] |= (str.charCodeAt(i) & 0xff) << …` 是 **latin-1 截断**，与 `CryptoJS.MD5` 的 UTF-8 口径**对含非 ASCII 的密码会算出不同结果**，而纯 ASCII 样本永远暴露不出来；另点出扣代码必须保留 `chrsz=8` / `hexcase=0` 两个常量；嵌套 `hex_md5(A + hex_md5(B + pwd + ts))` 链 ⇒ §3.2 / §3.3 / §3.4（自检含区分性断言） |
+| 255 | `52pojie-1861004-某科网登录模块RSA加密分析.md` | `5d3d5fe92694f4be0fa187514f1f0963` | 2026-09-22 | web-reverse-algorithm | evolve | **「js 加密函数每次刷新都不一样」的原始案例** ⇒ 必须「先请求页面拿函数与密钥，再算」，不能把函数硬编码进脚本 ⇒ §4.4 第 2 行（与 §1 表第 2 行同源） |
+| 256 | `52pojie-1904594-某二手房网站登录密码加密分析.md` | `d45d5a58bd9e8fe40278ef929982c486` | 2026-09-22 | web-reverse-algorithm | evolve | **webpack 单文件的第二条打法：遍历导出表找下标**：用替换 JS 拿到导出对象后遍历，实测解密函数在**下标 62**；然后**把加载器一起搬出来**在外部执行 + 补环境 ⇒ §8 第 2 行 |
+| 257 | `52pojie-1980542-某校WebVPN登录接口分析.md` | `ce0d0fcc16f5da86b160e819818a4aae` | 2026-09-22 | web-reverse-algorithm | evolve | **CAS 的 `execution` 来自 `bridgeData`**，且**必须与本次会话的 Cookie 配套**（拿 A 会话的 token 配 B 会话的 cookie 一定失败）⇒ §5 第 2 条 / §10「盐/公钥是上一次刷新的」行 |
+| 258 | `52pojie-1991268-【JS逆向】某手机厂商登录逆向分析.md` | `8b06783532df479b8ff062fbd8c19093` | 2026-09-22 | web-reverse-algorithm | evolve | **AES + RSA 混合（两段等长 base64）**：`encData` = AES(明文, **随机 key**)、`encKey` = 非对称封装该 key；key = 16 位随机 hex、iv = 固定 `16-Bytes--String` ⇒ 处置顺序「先解 `encKey` 再解 `encData`」⇒ §2 表混合行 / §4.2 第 3 行（与 `08-mixed-crypto-segmentation.md` 对接） |
+| 259 | `52pojie-2063774-某店登录用户名与密码参数补环境.md` | `ee3446d2b68d41e6050debbd62ab1921` | 2026-09-22 | web-reverse-algorithm | evolve | **「抓两次包」这条判据的实测来源**：`credentials.username` 与 `credentials.password` 的**长度与内容都会变** ⇒ 直接判出 RSA，不必先读 JS ⇒ §0 第 1 步（本族最省力的一步）；同时是「必须与接口下发的 mod/exp 对拍」的实例 ⇒ §4.4 第 3 行 |
+| 260 | `52pojie-536217-简单分析下吾爱POST登录MD5密码加密找法.md` | `00dcf7d9bc61a9b89f747b0771a7d06c` | 2026-09-22 | web-reverse-algorithm | evolve | **扣 JS 的两处固定修改**：函数一进去就 `return`（有「密码为空直接返回」的短路分支 ⇒ 删第一个 `if`）、满屏 `arguments` 报错（⇒ 改成显式形参）；另证 `formhash` 在登录页源码里、只有 password 一个字段会变 ⇒ §7 第 1/2 行 / §1 表第 1 行 / §3.1 |
+
+### 本批次技能变更汇总（B15）
+
+| 技能 | 变更类型 | 主要落点 |
+| --- | --- | --- |
+| `web-reverse-algorithm` | evolve（唯一） | 新增 `references/12-login-and-account-params.md`（**登录 / 账号体系提交参数的唯一权威源**：§0 五步工作流（第 1 步「抓两次包」一刀砍掉对称/非对称分岔）、§1 服务器下发字段清单（页面内 / 前置接口两类 + §1.1 三条易错点）、§2 密码加密族 30 秒分流表（按**密文形态**判族，含「解出来是乱码 ⇒ 内层是分组密码」这条关键分岔）、§3 MD5 族四形态 + **`charCodeAt & 0xff` 与 `CryptoJS.MD5` 是两个口径**、§4 base64/AES/DES/RSA（AES 的三种 key/iv 来源、DES 三档填充、RSA 三条必查）、§5 会话与前置三件事、§6 提交形态两段式、§7 扣 JS 四处固定修改、§8 webpack 单文件两种打法、§9 签名类 `md5(pathname+query+body)`、§10「不报错但结果错」坑表 10 行、§11 反例 9 条、§12 复跑命令、§13 边界）；新增 `scripts/login_param_probe.py`（**零依赖，`--selftest` 57 项全绿**：`classify`（密文形态 → 加密族）/ `b64-probe`（内层是文本 / gzip / 分组密码密文）/ `md5-chain`（四种实测链 + `--encoding latin1\|utf8` 区分性断言）/ `rsa-pubkey`（纯 Python 解析 PEM / JSEncrypt base64 / 裸 DER，可与 `publickey_mod` / `publickey_exp` **逐值对拍**，不过即 exit 1）/ `des`（**本仓库此前没有 DES**，纯 Python DES/3DES ECB+CBC，默认解密、`--encrypt` 反向）；期望值来自三条**独立**来源：RFC 1321 / 文章原样 JS 实跑 / OpenSSL（`node --openssl-legacy-provider`））；`SKILL.md` 新增「登录 / 账号体系」分节（适用信号 5 条 + 四条一句话判据）+ 12-login 与 login_param_probe 两条资源导航 + description 触发词（登录密码加密 / 单点登录 / CAS / WebVPN / `publickey_mod` / DES / `encoded` 隐藏字段）；`02-algorithm-families.md` 补「登录参数不在此展开」的指针；`07-antidebug-and-live-patching.md` 补「登录体系另有专有清单」的上游指针 |
+| 全库（10 个技能） | mirror-merge（本轮收尾） | **非破坏性并集**（详见下节）：`ast-deobfuscation`、`code-analysis`、`protocol-reverse`、`target-analysis`、`web-reverse-env`、`web-verify-patcher`、`websocket-reverse`、`wsam-reverse` 取并行改名线的新版；`web-reverse-algorithm` 的 `02` / `07` 取 B15 版；`web-reverse-algorithm` 的 `SKILL.md` 与 `09` 因**两侧各有真实新增**做人工并集（登录分节 + RPC 免扣分节；两套反例清单合为 14 条） |
+
+### 本批次的方法论增量（可复用）
+
+1. **「抓两次包」是登录族最高杠杆的一步**：只比对「哪些字段变了」，就能一刀砍掉
+   「密码到底是不是对称加密」这个最大的分岔 —— **长度也变 ⇒ 非对称（RSA）**，只有值变 ⇒ 对称/哈希。
+   把它放在工作流第 1 步（先于读任何 JS），是本族省时间最多的一条（`2063774` 实测）。
+2. **「服务器下发字段」是这一族最大的一笔浪费**：`formhash` / `csrf` / `execution` / `token_id` /
+   `uuid` / `lt` / `pwdDefaultEncryptSalt` **都在登录页 HTML 或前置接口里**，**不要去算**。
+   处置顺序固定为「去掉 cookie 单独 GET 一次登录页 → 正则/XPath 抠 → 前置接口的 XHR 全留着」。
+3. **「解出来是乱码」本身是判据，不是「我解错了」**（`1723994` 的原始心态）：
+   base64 解出乱码且长度是 16 的倍数 ⇒ 内层是分组密码密文。`classify` 直接把这条判据打出来。
+4. **字节口径是「静默错」的重灾区**：同一个非 ASCII 密码，`charCodeAt & 0xff`（latin-1 截断）与
+   `CryptoJS.MD5`（UTF-8）算出**完全不同的哈希**，而**纯 ASCII 样本永远暴露不出来**；
+   同一页面里两个库混用是实测存在的 ⇒ ①复算必须提供 `--encoding` 双口径；②自检里必须有
+   **区分性断言**（两种口径结果必须不同），否则实现会把口径写死还全绿。
+5. **「提交的可能不是你看到的那个字段」**：明文输入框 + 隐藏字段（`encoded` / `passwordEnc`）两段式极常见，
+   「逆对了但服务端不认」多半栽在这里 ⇒ 验收必须比**提交字段名**与输入框 `name`，而不是只看密文算得对不对。
+6. **会话配套是硬约束**：`execution` / `csrf` / `formhash` / 盐 / 公钥都必须与**本次会话**配套，
+   拿 A 会话的 token 配 B 会话的 cookie 一定失败 ⇒ 用会话对象而不是每步新建客户端。
+7. **RSA 的验收口径不是「密文相等」**：每次加密结果都不同（随机填充）⇒
+   唯一验收是「**服务端能解密 / 真的登录成功**」；能机械对拍的是**公钥**（与接口下发的 mod/exp 逐值比），
+   拿错公钥还在算是最隐蔽的错。
+8. **签名类必查「百分号白名单」**：`URLSearchParams` 会把 `,` `:` `(` `)` 编码，JS 侧往往做了一次还原 ⇒
+   Python 侧必须显式 `unquote`（`quote(safe=",:()")`）+ `json.dumps(separators=(',',':'))`，
+   否则签名**永远不匹配**且不报错。
+9. **扣 JS 不要一次抠完**：这一族的调用链深（`1815692` 的 md5 套了 6~7 层），
+   「跑一次 → 补一个 → 再跑」比「一次抠全」快得多，且每次都能定位到具体缺哪个符号（`1607798`）。
+
+### 本轮（B16 开工前）对 B15 的闭环补救与验收
+
+| 动作 | 结果 |
+| --- | --- |
+| `login_param_probe.py --selftest` | ✓ **PASS 57 / 57** |
+| `b15-verify-sources.py`（逐篇 grep 字面量回源） | ✓ **21/21 命中**（2 处假阴性经回源纠正：`key_to_encode` / 小写 `referer`） |
+| 镜像并集（`mirror-merge.py` + `b15-manual-union.py`） | ✓ 10 个技能合流；`web-reverse-hook` 整技能补齐；`.claude` ↔ `.agents` **逐字节一致** |
+| `check_skill_integrity.js --root . --markdown` | ✓ **阻断 0 · 告警 0**（修复前 8 阻断 + 4 告警，见下） |
+| 台账登记 | ✓ 本节 21 条（#240–#260） |
+
+**本轮修掉的 5 项既有缺陷（可追溯）**：
+
+1. **镜像大面积失同步**：B15 未镜像，且**同时存在另一条并行改动线**把
+   `proxycli` 全库改名为 `browsercli` 并新增 JSFuck / Sojson / Wasm2JS / 浏览器 RPC 桥接 / SPA 路由 / Hook 脚本
+   —— 两条线**各写一侧镜像**，导致 23 个文件内容分歧、10 个文件单侧存在。
+   处置：写 `tools/mirror-merge.py`（**非破坏性并集**：单侧文件互补复制，双侧差异按
+   决策表取新版，两侧都有真实新增的走人工并集）+ `tools/mirror-verify.py`（合并后逐行校验「没有丢掉任何一侧的非空行」）。
+   **教训：镜像同步不能默认「单向 rm -rf + cp -r」**——当仓库存在并行改动线时，那会静默删掉对方的新增。
+2. **校验器的镜像判定在 `core.autocrlf=true` 下必然假红**：`.agents` 是 git 跟踪目录，
+   checkout 后工作区是 CRLF，而 `.claude` 被 `.gitignore` 忽略、保持 LF。
+   已改 `check_skill_integrity.js`：**内容判等先归一化 CRLF→LF**（仍为 block），
+   仅行尾漂移降级为 warn 并打印两侧 CRLF 计数。
+3. **`web-reverse-env/references/03-special-cases.md` 章节号重复**：并行线插入新 §6/§7/§8 后
+   未重编号，出现两组 7/8/9（`tools/fix-special-cases-numbering.py` 已改为 1..12 连续并镜像）。
+4. **`login_param_probe.py` 里的裸跨技能引用**：docstring 写
+   `` `stream-drm-reverse/references/key-wrapper-families.md` `` 缺 `../` 前缀（B13 新增的
+   「裸跨技能路径」规则抓到）⇒ 改为 `../../stream-drm-reverse/…`。
+5. **B15 自身的三处未闭环**：未登记台账、未写 automation memory、未镜像 ⇒ 本节 + memory 条目 + 镜像补齐。
+
+> 口径提醒（沿用 B13/B14）：**报告与台账本身也是产物**；本轮对 B15 的验收全部**实跑**，
+> 不采信「B15 自己写的说明」；本批 21 条文章全部做过 **grep 字面量回源**。
+
+### 本批次明确留白（写进文档而非假装支持）
+
+1. **`login_param_probe.py` 不实现 AES / SM4**：显式改走相邻技能
+   `stream-drm-reverse/scripts/media_crypto.py`，避免第四处重复实现（库内已有三处分组密码实现）。
+2. **不实现 SM2 / 国密摘要**：本批 21 篇里没有需要 SM2 的样本，硬写一个没人验证的实现比不给更危险。
+3. **`--verify` 只做「密文逐字节对拍」**：RSA 的随机填充无法对拍 ⇒ 文档明确写「RSA 的验收只能是服务端认」，
+   但**没有可执行的真登录闭环脚本**（需要真实账号与授权）。
+4. **webpack 单文件的两种打法只有文字流程**：`§8` 的「遍历导出表找下标」与「搬加载器」没有可执行脚本
+   （相邻技能 `webpack-bundle-extraction` 承担这一层，本技能只保留判据与指针）。
+
+### 下一批（B16）取材建议（承接本节）
+
+- 待处理 **496** 篇（台账 260 条后；语料目录在这两轮里被并行线大幅新增）。
+- 优先级：
+  ① **签名 / 协议参数系剩余（最大簇）**：登录以外的 header / cookie / 接口签名与 API 协议，
+     与 `protocol-reverse` / `web-reverse-algorithm` 合并评估；
+  ② **验证码图像识别系剩余**：真拼图 / 双缺口 / 旋转系的**协议侧**仍薄；
+  ③ **WAF 剩余**：加速乐 / `acw_sc__v2` / Cloudflare / Akamai / Reese84 的收尾量级；
+  ④ 长期零演化技能：按 B7 判据先数 `references/` 体量再定批次
+     （本批实测 `web-reverse-env` 已被并行线更新，不再是空洞）。
+- 候选新技能 `captcha-flow-orchestration` —— B5–B15 **九次确认不新建**。
+- 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
+---
+
+## 三·N、批次 B16 · 2026-09-22（某验 / 极验全家桶：初代 → 二代 → 三代 → 四代 + 点选 + 五子棋 + 无感 + 深知 V2）
+
+**取材口径**：**单一厂商的全代际 + 全题型一次做全** ——
+初代（= 二代离线模式，**没有 `w`，只有本地算的 `validate`**）· 二代在线（多一次业务接口往返）·
+三代（七步链路 + 三个 `w` + 52 片底图 + 轨迹 `aa`）· 四代（两接口 + `pow_detail` + 动态键值对）·
+点选四子类 · 消消乐 / 五子棋 · 一键通过（无感 `ai`）· 深知 V2 业务风控。
+
+**选它的理由**（B3 的「同厂商全代际可互相交叉验证」经验第三次复用）：
+① B3 建过 `references/geetest-protocol-matrix.md`，但**这一族的专栏文章在库里积压了 15 篇**，
+属于「技能名覆盖、能力没覆盖」的典型；
+② 同一厂商的多篇文章可以**逐值互证**：本批用 1749808 与 B3 的 52 片几何**逐元素对上**（源 312×160 / stride 12 /
+左偏移 1 / 260×160），用 1749803 + 1749808 + 1779592 **三处独立来源**对上 `rp` 公式与错误码文案；
+③ 交叉验证直接**推翻了两条旧结论**（见下），这是单篇文章做不到的。
+
+**产出**：**无新建技能**（第 9 次确认不建 `captcha-flow-orchestration`；本族信息全部落在
+`web-verify-patcher` 的既有文件里，符合「避免滥建冗余技能」的判据），演化既有技能 **1** 个，附带修复 **2** 项。
+
+**本批最重要的两条「改写级」结论（都是旧文档写错、照做必失败）**：
+
+1. **§8.1 的 PoW 判据被推翻**：旧文写「`pow_sign = SHA256(pow_msg)`，判定用
+   `int(pow_sign, 16) < 2 ** (256 - bits)`」。实测（`52pojie-1779592` 的原文 JS 逐行）：
+   **哈希函数由 `load` 的 `pow_detail.hashfunc` 决定**（`md5` / `sha1` / `sha256` 三条分支），
+   难度判据是「**前导零 `bits//4` 位 + 第 `bits//4` 位 hex ≤ 7/3/1**」。
+   用 256 去套 md5（128 位）/ sha1（160 位）**永远不会成立**；且照抄官方 demo 的 md5 写法在别的站点失败，
+   **症状是 `param decrypt error`**（看着像 `w` 算错了，实际是 PoW 没解出来）。
+2. **无感模式要发两个 `w`**（`52pojie-1770958`）：三代 `get.php` 的 `w` **必须带** ——
+   不带也能拿到 `s`，但那是**假值**，最终必挂，且**没有任何报错指向它**。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 261 | `52pojie-1749799-【验证码逆向专栏】某验“初代”滑块验证码逆向分析.md` | `8465e144959ca41181cb75c480111612` | 2026-09-22 | web-verify-patcher | evolve | **「初代」（实为二代离线模式）判据**：脚本是 `geetest.0.0.0.js` + `offline.*.0.js`，**全流程没有 `get.php` / `ajax.php`**，图片路径由本地 JS（两段 MD5）生成；`validate` 由**本地**算：`A(距离, challenge) + "_" + A(b("rand0", ts), challenge) + "_" + A(b("rand1", ts), challenge)`；**轨迹被采集但不校验**；图片乱序还原与三代同源但**图宽不同** ⇒ 落地为 §零.1「初代 / 二代（在线 / 离线）判据」 |
+| 262 | `52pojie-1749803-【验证码逆向专栏】某验二代滑块验证码逆向分析.md` | `a8631f16901a61e854f941f6b1bd3f66` | 2026-09-22 | web-verify-patcher | evolve | **二代在线链路 = 「再回一次业务接口」**：`netWebServlet.json` → `get.php`（返回**新 challenge** + 乱序图 + `c`/`s`）→ `ajax.php`（`w` + 返 `validate`）→ **再回 `netWebServlet.json`** 带新 challenge + `validate` 拿业务字段；`H7z` = RSA(随机串)、`userresponse` 是「距离 + challenge」生成的 9 位串、`rp = md5(gt + challenge.slice(0,32) + passtime)`；并示范「控制流平坦化用 AST 还原后再读」 ⇒ §零.1 / §十八 |
+| 263 | `52pojie-1749808-【验证码逆向专栏】某验三代滑块验证码逆向分析.md` | `084476a57959df7b13369fffb02468b2` | 2026-09-22 | web-verify-patcher | evolve | **v3 全链路的第二份独立实证（与 B3 的矩阵互证）**：`register-slide → gettype → get.php(w可空) → ajax.php(w可空) → get.php(出新 challenge + `c`/`s`) → ajax.php(真 w) → 业务接口`；`w = h + u`（`u` = RSA(16 位随机串)、`h` = 编码(AES(stringify(o), 同一随机串))，**iv 是字符串 `"0000000000000000"`**）；`aa = getAA(轨迹, c数组, s串)`；**52 片底图几何与 B3 的 `--model gt3` 逐值一致**（源 312×160、stride 12、左偏移 1、每块 10×80 → 260×160，Ut 数组 52 项）——**两处独立来源互证**；附 4 类错误码与 100 次 95% 成功率 |
+| 264 | `52pojie-1749842-【验证码逆向专栏】某验四代滑块验证码逆向分析.md` | `f6c8f06fa5fe1866c07b8884bcb5a12c` | 2026-09-22 | web-verify-patcher | evolve | **v4 两接口的字段级实证**：`load` 返回 `bg`（**未混淆**）/`captcha_type`/`gct_path`/`lot_number`/`payload`/`datetime`/`process_token`/`slice`；`verify` 提交 `captcha_id/client_type/lot_number/risk_type/payload/`process_token/w/callback`；**`userresponse = setLeft / 1.0059466666666665 + 2`（定值常量）**；**`device_id = MD5(canvas.toDataURL().replace("data:image/png;base64,",""))`**；`w = ArrayToHex(AES(e, 同一16位随机串)) + RSA(同一16位随机串)`；`kqg5` 为 gct 生成的动态键值对 ⇒ §十七 / §十六 / §8.1 |
+| 265 | `52pojie-1758943-【验证码逆向专栏】某验三代、四代点选类验证码逆向分析.md` | `a8a479d5e2ffac08cb8fee6663177b2a` | 2026-09-22 | web-verify-patcher | evolve | **点选类的四代同构关系**：三代 `register-click-official` → `get.php`（**w 可置空**）→ 两次 `ajax.php`（第一次只返类型但**不请求会报错**）；四代 `load` 的 `captcha_type` 直接给 `word`，`ques` = 各文字图链接；关键结论：**三代图标 / 语序只差 `a` 的写法；四代图标 / 语序 / 九宫格只差 `userresponse` 的写法**，其余逻辑完全一致 ⇒ §十七 题型写法表 |
+| 266 | `52pojie-1758969-【验证码逆向专栏】某验四代五子棋、消消乐验证码逆向分析.md` | `ad7af90b9ae7263247685b114fce26be` | 2026-09-22 | web-verify-patcher | evolve | **消消乐 / 五子棋的题型判据与坐标语义**：`risk_type` = `match`（消消乐）/ `winlinze`（五子棋）；`load` 返回 `ques`（消消乐 **3×3**、五子棋 **5×5**，`0` 是空位）；`userresponse` = **要交换的两个坐标**（如 `[[0,1],[0,0]]`）；🔴 **`ques[0]/ques[1]/ques[2]` 对应第 0/1/2 列而不是行** —— 按行理解会整体转置、症状与「交换错了」相同；verify 额外带 `payload_protocol=1` / `pt=1`；坐标判对后**成功率 100%** ⇒ §十七 |
+| 267 | `52pojie-1770958-【验证码逆向专栏】某验三代、四代一键通过模式逆向分析.md` | `8dbc0d55ebba0d1607670477ec46ae53` | 2026-09-22 | web-verify-patcher | evolve | **无感（一键通过）模式要发两个 `w`**：三代 `get.php` 的 `w` **必须带**（不带也能拿到 `s`，但那是**假值**，最终必挂且无任何报错指向它），且两次 `w` 生成方式**不同** —— 第二个 `w` 是「浏览器环境值（`ep.ven`/`ep.ren` 显卡、`ep.fp`/`ep.lp` 鼠标位置、`ep.tm`）+ `captcha_token` 拼成大字符串再 AES」；实测样例里环境值置空也能过，但**不能默认所有站点都能置空** ⇒ §十五 |
+| 268 | `52pojie-1773476-【验证码逆向专栏】某验深知 V2 业务风控逆向分析.md` | `e99b9d8d4ac4f39c7a09d3f8b0007791` | 2026-09-22 | web-verify-patcher | evolve | **另一条产品线：深知 V2（业务风控，不是验证码）**：`v2.sense.js`（带 `id` = 请求里的 `app_id`）+ `gettype`（返回 `gct.js` 路径）+ `judge`（提交**无键名的超长 `Request Payload`**，通过后返回 `session_id`）+ 业务接口（带 `session_id`）；**无键名 ⇒ 全局搜关键字失效**，只能跟栈（`sense.*.js` 里 `e + h[...]` 拼接点）或直接下 XHR 断点；payload 由 `h`（环境）+ `e`（业务）两段加一个 `{olbo:"…"}` 动态键值对组成 ⇒ §二十 |
+| 269 | `52pojie-1779592-【验证码逆向专栏】某验全家桶细节避坑总结.md` | `921bc0717fb923633148d280c29d3d7a` | 2026-09-22 | web-verify-patcher | evolve | **本批价值最高的一篇（PoW 真算法 + 报错码字典 + 时序要求）**：①**PoW 不是恒定 SHA256** —— 哈希由 `pow_detail.hashfunc` 决定（md5/sha1/sha256），难度判据是「前导零 `bits//4` 位 + 第 `bits//4` 位 hex ≤ 7/3/1」（**修正了本文档 §8.1 原先「`pow_sign = SHA256(pow_msg)` + `int(sign,16) < 2**(256-bits)`」的错误结论**）；② `16 位随机串` 在同一流程里必须**两次一致**（二/三代 `error_03`、四代 `-50002`）；③ `passtime` 滑块必须取轨迹末项时间（否则 `forbidden`），非滑块写随机；④ **流程太快会失败**：三代点选报 `success` 壳里的 `msg:["duration short"]`；⑤ 动态键值对由 gct.js 生成并给出一段可复用的「正则取方法名 + 注入 `window.gct=` 后调用」导出法；⑥ 补环境两件（`crypto.getRandomValues` 的 65536 上限与 Uint16/32 边界、`performance.timing` 20 字段单调递增）⇒ §8.1 / §十五 / §十六 / §十八 / §十九，并落地为 `scripts/geetest_pow.py`（41 项自检） |
+| 270 | `52pojie-1631496-某验四代滑块参数学习.md` | `7012d43620a7ca0558092844440d428e` | 2026-09-22 | web-verify-patcher | evolve | **v4 的 `w` 明文里轨迹是明文**（作者原话「滑块的轨迹居然是明文，感觉还不如三代」）：`w = bytes_tohex(AES) + RSA`，AES key = 16 位随机串、iv = `0000000000000000`；**RSA 公钥与三代同一把**（`n` 以 `00C1E393…` 开头、`e = 010001`）；`e` 里还有 `setleft` / `track` / `passtime` / **动态参数 `svze`**（另一个 js 返回）/ `em`（鼠标操作判定）；100 次实测 89 次成功 ⇒ §十七 / §8.1 |
+| 271 | `52pojie-2017394-【JS逆向】某验三代点选逆向分析.md` | `35922eb6dfa7538aa388cd52d9f7eeef` | 2026-09-22 | web-verify-patcher | evolve | **2025 年的 v3 点选现役样本**（跨 4 年版本回归）：`gettype.php` 链路与 `w` 生成方式**与 2023 年文章一致**，`o` 里仍是 `h9s9` / `rp` / `tt` 三个需要逆的字段 ⇒ 证明「v3 的字段级结论**没有随 SDK 版本漂移**」，可作为 §8.2 / §十六 的「老结论仍然有效」的回归证据 |
+| 272 | `52pojie-1476911-某验滑块图片还原.md` | `db153ae04aece981e6ed463f1a10129e` | 2026-09-22 | web-verify-patcher | evolve | **底图还原的「纯 JS canvas 不可行、必须用 Python/离屏画布」结论**：52 份、每份 **10×80**、顺序表固定（**除非版本更新**）；作者实测「尽量不改原代码、纯 JS canvas 还原」一下午失败，最终改 Python ⇒ 与 §三 的「用 `restore_slices.py --model gt3` 离线还原」同源，并补充「顺序表是版本相关常量」这一口径 |
+| 273 | `52pojie-1479607-某验滑块加密分析(上).md` | `39d3ce9947a2650688d00ad48ed0245d` | 2026-09-22 | web-verify-patcher | evolve | **扣 RSA 闭包的工程技巧（2021 年的老样本，仍是同一把公钥）**：`new Q()[...](...)` 是闭包内的 RSA 类，**在脚本开头 `var testRSA;` 再在类定义后 `testRSA = Q;`** 即可从外部 `new testRSA().encrypt(ue)`；并给出「扣出来的代码带 DOM/window 依赖 ⇒ 只能在浏览器跑，要在 Node 跑必须删代码」的边界；同时重申「扣 JS 能不改就别改」⇒ §8.1 的 RSA 段与 `webpack-bundle-extraction` 的注入打法同源 |
+| 274 | `52pojie-1486705-某验滑块加密分析下.md` | `8d1bcd6b95ca277d62ae4af7c322e9de` | 2026-09-22 | web-verify-patcher | evolve | **v3 `aa` 与 `rp` 的实测参数**：`aa = slideGj["nStF"](t, [12,58,98,36,43,95,62,15,12], "696a3356")` （**轨迹串 + 9 项系数数组 + 6 位字符种子**三件套，与 §四 的 `getAA` 结构一致）；`rp = MD5(gt + challenge[0:32] + passtime)`；`userresponse = U(距离, challenge)` ⇒ §四 / §十八 |
+| 275 | `52pojie-1756692-【验证码逆向专栏】某片滑块、点选验证码逆向分析.md` | `1694a5c7544698d6f482aca5a8a5bc91` | 2026-09-22 | web-verify-patcher | evolve | **「双接口 + 定值 APP_ID」的非极验同类形态（某片）**：图片接口 `cb`/`i`/`k`/`captchaId`（刷新时多带上次的 `token`）→ 滑块返 `bg`/`front`，点选返 `captchaImage`/`wordsImage`，都返 `token`；验证接口 `cb`/`i`/`k`/`token`/`captchaId`；**滑块与点选各有一个写死的 `captchaId`**、`cb`/`i`/`k` 由 `r`/`a.i`/`a.k` 拼 ⇒ 作为 §十七 题型表与「先分清图片接口 / 验证接口」的对照样本（避免把极验的两接口模型套到别家） |
+
+### 本批次技能变更汇总（B16）
+
+| 技能 | 变更类型 | 主要落点 |
+| --- | --- | --- |
+| `web-verify-patcher` | evolve（唯一） | `references/geetest-protocol-matrix.md`：新增 **§零.1 初代 / 二代（在线 / 离线）判据**（离线形态没有 `w`、`validate` 是本地三段式、轨迹采集但不校验）；**重写 §8.1 PoW**（三种哈希 + `bits` 完整判据 + 两处旧错误结论的更正说明 + 脚本入口）；§十四 排错清单补 4 行；新增 **§十五 无感的两个 `w`**、**§十六 动态键值对与 gct 动态导出**（`h9s9`/`kqg5`/`f019`/`l0zs`/`xnbw`/`olbo` 的出处与「与 §五 的代码签名机制是同一件事的两面」口径）、**§十七 题型 → `userresponse` 写法表**（9 种题型 + 消消乐 `ques` 按列 + 滑块 `1.0059466666666665` 常数 + 各题型成功率）、**§十八 报错码 → 根因速查**（8 行，含「三代/四代失败信息有三种壳」的读法）、**§十九 补环境两件**、**§二十 深知 V2 的无键名 payload 定位法**、**§二十一 复跑命令**（26.1 KB → 38.2 KB）；新增 `scripts/geetest_pow.py`（**零依赖，`--selftest` 41 项全绿**：`solve` / `check` / `--from-load`，覆盖 md5·sha1·sha256 三条分支、全部 `bits % 4` 分支、拒绝路径与确定性回归）；`references/provider-execution-notes.md` 极验小节：常见类型补 `game-challenge`/`one-click`/`pow-challenge`、代际判据补初代与二代离线、「三条最容易忽略」补第 4 条（PoW）、协议细节指针补新章节；`references/captcha-types.md`：`pow-challenge` 补极验 v4 的 PoW 实例（含「不是整数比较」的判据）、`game-challenge` 补消消乐/五子棋实例（含 `ques` 按列）；`SKILL.md` 极验路由行扩写（覆盖全代际 + 无感 + PoW + 报错码表 + 新脚本） |
+
+### 本批次的方法论增量（可复用）
+
+1. **「同厂商全代际」是最高杠杆的取材方式（第三次验证）**：本批靠**逐值互证**得到 2 条改写级结论、
+   并证伪 2 条旧判据。做法固定为：**先把待处理文章按「同一对象的同一参数」分组，再逐元素对照**，
+   对上的写进 `--selftest`，对不上的回源再判。
+2. **「哈希函数不是常量」这类错误必须靠「换站点」才能暴露**：PoW 的 `hashfunc` 在官方 demo 上恒为 md5，
+   **只在别的站点才出现 sha1/sha256** ⇒ 凡是「从官方 demo 学来的写法」，都要问一句
+   「这个值在别的站点会不会变」，变了就必须从响应里动态读。
+3. **「静默失败」要单独建表，不要混进排错清单**：本批新立的 §十八 把 8 种返回分成
+   **三种壳**（`status:error` / `success:0` / `success:true` 内嵌 `result:fail`）——
+   只断言外层 `status` 会把「成功了但没通过」读成通过。判据：**先读壳，再读 code**。
+4. **「没有报错指向它」的坑优先记**：无感模式 `get.php` 漏带 `w` 的唯一症状是「最终失败」，
+   而报错码与「`w` 全错」完全相同 ⇒ 这类坑必须在文档里给出**检查顺序**（先查随机串是否同一个 → 再查 PoW → 再查无感 `w`）。
+5. **文档里的「顺序语义」要写清是行还是列**：消消乐 `ques` 是**按列**给的，
+   按行理解会整体转置，而**症状与「交换错了」完全相同**（永远 `fail`）——
+   这类「语义维度」错误比算法错误更难发现，必须在题型表里显式标注。
+6. **旧文档里的「数字结论」要能用脚本复算**：本批把 PoW 判据从「文档断言」变成
+   **可执行 + 41 项自检**（含三条哈希、全部 `bits%4` 分支、以及「错的必须被拒绝」的反向断言）。
+   判据：**凡是「照做会算错」的结论，都要配一条会失败的断言**，不能只写在文档里。
+
+### 本批次明确留白（写进文档而非假装支持）
+
+1. **`geetest_pow.py` 不做「网络重试 / 换题」编排**：它只解 PoW 与校验 PoW，
+   失败换题（`pt=1`）仍由调用方按 §十八 处置。
+2. **无感模式的「环境串构造」只有结构说明，没有生成器**：`ep.ven/ren/fp/lp/tm` 的取值口径已写明
+   （实测可置空但不保证所有站点），未实现「按真实浏览器样本回放」的脚本
+   （那一层归 `web-js-env-patcher`）。
+3. **深知 V2 只有定位方法论**：无键名 payload 的字段级还原未落成脚本（本批只有 1 篇来源）。
+4. **消消乐 / 五子棋只到「坐标怎么算」**：棋盘求解（凑 3 连 / 5 连的搜索）未实现
+   （属图像/算法线，可归 `captcha-model-training.md`）。
+
+### 下一批（B17）取材建议（承接本节）
+
+- 待处理 **460** 篇（台账 275 条后）。
+- 优先级：
+  ① **验证码图像识别系剩余（仍有 ~85 篇）**：真拼图 / 双缺口 / 旋转系的**协议侧**仍薄
+     （本批只覆盖极验一家的题型语义，别家厂商的题型表仍缺）；
+  ② **签名 / 协议参数系剩余（最大簇）**：与 `protocol-reverse` / `web-reverse-algorithm` 合并评估；
+  ③ **WAF 剩余**：加速乐 / `acw_sc__v2` / Cloudflare / Akamai / Reese84 的收尾量级；
+  ④ 本批出现的**非极验同类样本**（如 1756692 某片、1995970 雷池 WAF 滑块、2042898 某天御滑块）
+     可聚成「非极验滑块厂商对照表」，验证「极验的两接口模型不能套到别家」。
+- 候选新技能 `captcha-flow-orchestration` —— B5–B16 **十次确认不新建**。
+- 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
