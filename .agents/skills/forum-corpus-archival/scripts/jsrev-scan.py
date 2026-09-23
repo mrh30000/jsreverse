@@ -92,6 +92,46 @@ SOFT_EXEMPT = re.compile(
     re.I)
 
 
+# —— MAL2 通道（SKILL.md 坑 64，第二十四轮发现 → 第二十五轮做成 `--mal2` 开关）——
+# 为什么需要它：NEG 里 `木马|病毒|远控|勒索|银狐|窃密|免杀|钓鱼|外挂`（−10）是为**移动端/native 恶意样本**
+# 降权设的，但它同时把**「网页恶意脚本 / 油猴劫持 / 网马分析报告」整类打成负分**，而这类帖
+# **既不在恶意网址区（fid 51）、标题也不含站点关键词库的词形** → 只靠 score 排序永远看不到。
+# 第二十五轮把 MAL 词表按上一轮待办扩容（+ 博彩/刷单/返利/挖矿/暗链/黑帽…）。
+MAL = re.compile(
+    r"网马|挂马|钓鱼|恶意网址|恶意脚本|恶意代码|网页病毒|木马网页|劫持|篡改|后门|盗号|窃密|"
+    r"博彩|菠菜|色情站|刷单|返利|挖矿|矿机|首页篡改|SEO\s*引流|暗链|外链注入|黑帽|黑产|流量劫持|"
+    r"网页木马|恶意网页|恶意软件网页|仿冒站|克隆站", re.I)
+MAL_WEBJS = re.compile(
+    r"js|javascript|脚本|源码|代码|html|iframe|加密|解密|逆向|分析报告|分析|还原|解密实例|实录|"
+    r"接口|请求|player|jquery|网页|网站|浏览器|小程序|h5|域名|油猴|篡改猴|userscript", re.I)
+# ⚠️ 两道负例必须保留：去掉它们会立刻涨到 300+ 条（全是「求 js 逆向课程」与 DLL 劫持）。
+MAL_NOISE = re.compile(
+    r"求|悬赏|请教|请问|帮忙|有没有|哪里|哪位|大神|推荐|寻找|谁有|找个|"
+    r"课程|教程|培训|电子书|电子版|pdf|epub|书籍|教材|网盘|资源|样本下载|"
+    r"软件分享|工具分享|安装包|破解版|汉化|激活|注册机", re.I)
+MAL_NATIVE = re.compile(
+    r"msimg32|lpk|dll劫持|劫持补丁|劫持源码|劫持代码|劫持工具|代码生成器|易语言|汇编|"
+    r"aheadlib|winmm|version\.dll|winspool|游戏|外挂|辅助|注册机|脱壳|加壳|壳|"
+    r"apk|安卓|android|ios|iphone|驱动|内核|远控|勒索|银狐", re.I)
+
+
+def mal2_rows(pool_items, dead):
+    """MAL2 候选：MAL ∧ WEBJS ∧ ¬NOISE ∧ ¬NATIVE（坑 64）。"""
+    out = []
+    for it in pool_items:
+        tid = str(it.get("id") or "").strip()
+        t = (it.get("title") or "").strip()
+        if not tid or not t or tid in dead:
+            continue
+        if not MAL.search(t) or not MAL_WEBJS.search(t):
+            continue
+        if MAL_NOISE.search(t) or MAL_NATIVE.search(t):
+            continue
+        out.append({"id": tid, "title": t, "forum": (it.get("forum") or "").strip()})
+    out.sort(key=lambda r: -int(r["id"]))
+    return out
+
+
 def load_id_file(path):
     """把任意 id 列表文件读成 set[str]。"""
     out = set()
@@ -143,19 +183,28 @@ def main():
     ap.add_argument("--min-score", type=int, default=1)
     ap.add_argument("--soft-forums", action="store_true",
                     help="对软件发布/水贴/站务类版块做分版块降权（坑 63，推荐开启）")
+    ap.add_argument("--mal2", action="store_true",
+                    help="额外产出 MAL2 通道候选（网马/钓鱼/劫持/油猴/博彩·刷单 等网页恶意脚本，坑 64）")
+    ap.add_argument("--mal2-out-json", default="", help="MAL2 候选 JSON 输出路径（配合 --mal2）")
+    ap.add_argument("--mal2-out-txt", default="", help="MAL2 候选 TXT 输出路径（配合 --mal2）")
     a = ap.parse_args()
 
     pool = json.load(open(a.pool, encoding="utf-8"))
-    items = pool.values() if isinstance(pool, dict) else pool
+    items = list(pool.values()) if isinstance(pool, dict) else list(pool)
     arch = archived_ids(a.ref)
     excl = set()
     for g in a.exclude:
         for f in glob.glob(g):
             excl |= load_id_file(f)
+    crawled = set()
     for g in a.exclude_bodies:
         for d in glob.glob(g):
-            for f in os.listdir(d):
-                excl.add(os.path.basename(f).split(".")[0])
+            if os.path.isdir(d):
+                for f in os.listdir(d):
+                    crawled.add(os.path.basename(f).split(".")[0])
+            else:
+                crawled.add(os.path.basename(d).split(".")[0])
+    excl |= crawled
 
     rows = []
     soft_dropped = 0
@@ -189,6 +238,23 @@ def main():
     if a.soft_forums:
         print("  分版块降权：命中表内保留 %d 条 / 被降权剔除 %d 条（软化版块噪声，坑 63）"
               % (sum(1 for r in rows if r.get("soft_penalty")), soft_dropped))
+
+    if a.mal2:
+        dead = arch | excl
+        m2 = mal2_rows(items, dead)
+        if a.mal2_out_json:
+            json.dump(m2, open(a.mal2_out_json, "w", encoding="utf-8"),
+                      ensure_ascii=False, indent=1)
+        if a.mal2_out_txt:
+            with open(a.mal2_out_txt, "w", encoding="utf-8", newline="\n") as fh:
+                fh.write("MAL2 候选: %d\n\n" % len(m2))
+                for r in m2:
+                    fh.write("%s  [%s] %s\n" % (r["id"], r["forum"], r["title"]))
+        print("  MAL2 通道候选：%d 条（MAL ∧ WEBJS ∧ ¬NOISE ∧ ¬NATIVE，坑 64）" % len(m2))
+        for r in m2[:40]:
+            print("    %s [%s] %s" % (r["id"], r["forum"], r["title"][:64]))
+        if len(m2) > 40:
+            print("    … 其余 %d 条见 %s" % (len(m2) - 40, a.mal2_out_txt or a.mal2_out_json))
 
 
 if __name__ == "__main__":
