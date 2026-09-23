@@ -2992,3 +2992,237 @@ python artifacts/skill-evolution/tools/append-b21-ledger.py
   ⑤ **JSVMP 剩余**：符号执行 / 中间代码优化，落 `ast-deobfuscation` 既有文件。
 - 候选新技能 `captcha-flow-orchestration` —— B5–B21 **十五次确认不新建**。
 - 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
+
+
+
+---
+
+## 批次 B22 · 2026-09-23（第二十二次执行）
+
+取材口径：待处理队列 **485 篇**中，取两个**成规模且互相独立**的主题簇 ——
+**A 簇 14 篇**（ts / m3u8 / DRM，全部演化既有 `stream-drm-reverse`）与
+**B 簇 35 篇**（小程序，全部落地**新技能 `miniprogram-reverse`**）。
+两簇刻意选在同一批：A 簇验证"双源互证"的收益，B 簇验证"**技能库里没有最近邻模块时应当建新技能**"
+（与 B5–B21 十五轮"不建 `captcha-flow-orchestration`"是**同类判据的两个方向**）。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 399 | `52pojie-1475807-分析某视频网站将 HLS 流伪装成图片以隐藏视频源.md` | `cd9a261f067222b9224d00e1607f840c` | 2026-09-23 | stream-drm-reverse | evolve | **分片伪装层的唯一来源**：站点把 ts 分片前拼上**真图片头（212 字节）**让每个分片看起来是"只有中间一个白点"的 PNG，骗过对象存储**按文件头判类型**的校验（图床白嫖）；浏览器侧去掉头部再喂播放器 ⇒ **网络面板里没有 Media 请求、只有一堆 .png**。判据不靠硬编码 212，而是 **MPEG-TS 同步字节 0x47 + 188 步长的连中数** ⇒ 新增 `scripts/container_disguise.py`（`--selftest` 21 项，覆盖 0/1/7/100/188/213/1024 各前缀、随机数据无假阳性、多解时全部列出不静默取一个）。 |
+| 400 | `52pojie-1479898-获取优酷视频真实m3u8播放链接，非vip也可得到原视频最高画质.md` | `cb20911e15ad3eb739e75bb71da3ed54` | 2026-09-23 | stream-drm-reverse | evolve | **优酷 mtop 系取播放地址的接口签名**（新增 `vendor-key-schemes.md` §2.14）：`sign = MD5(token + "&" + t + "&" + appKey + "&" + data)`；`token` 取 cookie `_m_h5_tk` 的**下划线前那一段**；`appKey` 固定 `24679788`；`data` 是请求体 JSON **原文**；`steal_params.client_ts` 用 **秒级**（`t[:10]`）而 `t` 是毫秒；`emb = base64(videoId + "www.youku.com/")`；响应是 **JSONP** 要去包裹；最高清晰度 = 按 `size` 排序后**最后一条**；**失败判据可直接定位错在哪**：`FAIL_SYS_ILLEGAL_ACCESS::非法请求`=sign 错、`FAIL_SYS_TOKEN_EXOIRED::令牌过期`=`_m_h5_tk` 过期。 |
+| 401 | `52pojie-1640483-M3U8加密key计算.md` | `63c5f166f1cf8042dd5a0ae4e4f30ec3` | 2026-09-23 | stream-drm-reverse | evolve | **"缓存侧 key 与网页侧 key 不等价"的判据**：离线缓存目录里同样有 `.key`/m3u8/`.json`（seed 相同、json 只改了命名规则），但**缓存里的 `.key` 与网页抓的 `.key` 内容不同** ⇒ 算出的 key 不同；而**用网页抓的 `.key` 算出的 key 能解缓存的 ts** ⇒ 差异在 **IV**（缓存侧换了一组 IV）。配套取证顺序：三件套按 `.key` / `.m3u8` / `.json` 三个关键字过滤下载，注意多清晰度会有多份 m3u8。 |
+| 402 | `52pojie-1686788-【在线M3U8音视频加密安全与技术防护】.md` | `22ea5f6a4e45aacdba0d326b80d82558` | 2026-09-23 | stream-drm-reverse | evolve | HLS/TS 的**教科书级全景**：m3u8 两级（master/media）与全部常用标签语义、TS 三层与 PAT/PMT 解包步骤、**"图床白嫖"的完整原理**（接口只校验开头几字节 ⇒ 拼真图片头骗过）；**厂商 key 位数表**（某威 32 位 / 某场景 21 位 / 腾某某 16 位但**是假的**、要先 JSVMP 随机 key+iv 再 AES 解 / 气某某 20 位且**二次请求返回假随机 key** / 某度云对 key 再做 AES / 阿某某走 JSVMP 且是 **ECB** 非 CBC / i某某是 **xxtea + canvas 指纹**）；**试看场景的"切片名自增盲猜"风险**与"随机命名"对策。 |
+| 403 | `52pojie-1715277-HLS-M3U8流媒体视频加密KEY介绍以及平台案例！.md` | `5a11b54851095fcca33a9dc22d951dc7` | 2026-09-23 | stream-drm-reverse | evolve | **厂商 KEYFORMAT / METHOD 清单**（做判派表用）：Apple FairPlay `skd://` + `com.apple.streamingkeydelivery`、腾讯视频 Google Widevine `SAMPLE-AES-CTR` + `urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed`、阿里云/气球云（token）/保利威 的 `AES-128` + `IV` 形态；另：分片格式不止 ts（`m4s`/`bbts`/`mp4`），key 来源不止 URI（key 文件 / 网址 / **明文**）；AES 五种工作模式与六种填充的清单。 |
+| 404 | `52pojie-1730445-M3U8 KEY解密探讨--已解决.md` | `ceea84437f58a7e5beecac2b8ff58055` | 2026-09-23 | stream-drm-reverse | evolve | 百度 BCE DRM 的**三级 token 链**取证顺序（与既有 §2.2 互证）：m3u8 里 `METHOD=AES-128` 且 **IV 已明写** ⇒ 难点全在 key；key 地址 `drm.media.baidubce.com/v1/tokenVideoKey?...&token=<a>_<b>_<ts>` 需要 token，token 来自 `api-*/v1/authex/.../valid?f=&m=&e=&k=` 返回的 JSON（`encryptedVideoKey`）；作者贴出的 JS 是**标准 AES 的 T 表实现**（`_tables`/`_key`/S 盒四表展开）⇒ 判据：**看到 `_tables[1]` / `o = e ^ s[0]` 这类结构即可确定是 AES，不必逐行读**。 |
+| 405 | `52pojie-1769707-Google Widevine DRM 逆向破解原理.md` | `467b7277441befba3676a6ea3a42fdc6` | 2026-09-23 | stream-drm-reverse | evolve | **Widevine 原理源**：三级（L1 硬件 / L2 混合 / L3 纯软件）与"L3 破解工具最多"的结论；厂商用 Widevine 加密后产出 **mpd + 分片 + KID/key + 许可证代理服务器**，mpd 是 XML 且**内含请求所需的 PSSH**；播放时用 `device_client_id_blob` + `device_private_key` 建初始化信息、携 pssh 向代理服务器换 token 再转 Widevine 官方 ⇒ 浏览器请求 **代理许可证服务器**而不是 Google。 |
+| 406 | `52pojie-1851955-某网课m3u8视频流hls.js算法逆向.md` | `6b60495c8ed77dacde106251b01f8e13` | 2026-09-23 | stream-drm-reverse | evolve | **W6 外部掩码异或族的唯一来源**（新增 `key-wrapper-families.md` §6.5 + `key_wrapper.py dataview-xor`）：`.key` 返回 **16 字节（长度完全正常）**、下载器却报"文件解码失败，请检查 key 是否正确"；JS 在 `DefaultConfig.loader` 的 `onSuccess` 里用 `DataView.setInt32(i, getInt32(i) ^ b[i])` 异或，而 `b`（4 个 int32）**不在 JS 里**——写在 HTML 的 `<div id="app-key" data-keys="3854078970,2917115795,3887476043,3350876132">`；真实 key `eMgqyypl7TGO7cAb`（hex `654d67717979706c3754474f37634162`）。**两个必须点破的坑**：① `DataView` 默认**大端**，与 `Uint32Array`（平台端序）不等价且都不报错；② 文章另给的 Python 助手 `n.to_bytes((n.bit_length()+7)//8,"big")` 对首字节为 0 的掩码**只产 3 字节**、整串错位。顺带落实：hls.js 定位靠 `aes-128` / `decryptdata.key` / `buffer` 三个关键词 + `softwareDecrypt(n, key.buffer, iv.buffer)` 断点。 |
+| 407 | `52pojie-1892868-某鹅通M3U8分析.md` | `7445af2a046cba958396469ab2663267` | 2026-09-23 | stream-drm-reverse | evolve | **"key 长度正常但仍不对"的第二种成因**：m3u8 明文、key 响应**正好 16 字节**，下载器却报 KEY 无效 ⇒ key 被**二次加密**；解法是断 `decryptdata.key`（4 处全断）取 JS 里的真 key，`btoa(String.fromCharCode.apply(null, key))` 即可取出。**第二个坑**：分片地址比 m3u8 里多三个参数 `sign / t / us` 且 **BaseUrl 也不同** ⇒ 分片 403，必须从 ts 发包处跟栈找到 URL 重写点；接口响应体是"去掉 `__ba` 前缀 + 把 `@#$%` 换回 `1234` 再 base64"的自定义混淆 ⇒ **"看起来像 base64 但解不开"时先试"字符替换 + 前缀剥离"**。 |
+| 408 | `52pojie-1939931-某OF网站的OB解密及DRM过校验思路(上).md` | `098df028708aff511180ee0785830d24` | 2026-09-23 | stream-drm-reverse | evolve | **OF 站（上）+ 国际派 E 层的入口**：OB 反混淆（两参调用链内联 + 正则抠解密函数 + 对象成员表内联）；`BCToken = SHA1( btoa(时间戳).btoa(随机).btoa(随机).btoa(UA) )`；`sign = [fixedPrefix, SHA1(前缀\n时间\nurl\nauth_id), hashFunc(token), signEnd].join(":")`；**HTTP/2 才是"Postman 成功 cmd 失败 powershell 成功"的真解**（改 cipher 顺序不够）；`.wvd` = RSA 私钥 + Client ID Blob；KeyDive（真机 root + MagiskFrida）与 AVD dumper（**必须 Pie**、frida-server 版本必须与 pip 一致、模拟器回环代理 `10.0.2.2`）两条提取路线；`pywidevine create-device -l 3`；`yt-dlp --allow-u` 只为拿到**加密**媒体。 |
+| 409 | `52pojie-1939939-某OF网站的OB解密及DRM过校验思路(下).md` | `832494935c4b9a9dbaaa2898a053a508` | 2026-09-23 | stream-drm-reverse | evolve | **国际派 E 层的核心三源之一（本文最重要）**：`0804`（`\x08\x04` / base64 `CAQ=`）是 **`generateRequest()` 的固定返回值**、可直发许可证服务器换**服务证书** ⇒ **两步提交（先取证书再提 challenge）**，对应 `pywidevine.set_service_certificate`（Privacy Mode / **VMP 强制**）；**不设证书的后果是"请求 200 但 key 是假的"**；mpd 里两个 `cenc:pssh` —— **长的给 PlayReady、短的给 Widevine**；`get_keys` 返回多条 CONTENT key，**ffmpeg 全怼进去也能自己识别**；`mp4decrypt --key KID:KEY` 则必须按 KID 对齐；EME 的两个 hook 点（`generateRequest` / `addEventListener("message")`，且**不要顺 promise 跟栈**，只有 `license-request`/`license-renewal` 才要走 license）；`x-hash`/`x-of-rev` 过期 ⇒ **请求正常但 cookies 是假的**；**把 CDM 包成 flask + pyinstaller 的本地服务**（空闲端口 / `/ping` 心跳 / debounce 300s 自动销毁 / 端口占用检查）。 |
+| 410 | `52pojie-1945555-m3u8视频问题，aes-128加密，找不到密钥.md` | `e0632e6dcd625df8567a30be7adda5b7` | 2026-09-23 | stream-drm-reverse | evolve | **厂商托管 key URI 的五参形态**（补进 `hls-and-ts-structure.md` §4.6 判据表）：`URI="…/xxx.key?pid=null&ts=<毫秒>&sign=<32hex>&ms=<32hex>&audit=&appId="` + `IV=0x…` ⇒ `ts/sign/ms` 是**时效鉴权四件套**，`sign`/`ms` 由页面接口下发、**不能自己算**，必须"取一次马上用"。本篇本身是求助帖（无代码块、130 行正文 + 一整段压缩后的 player.js），取证价值仅在"厂商托管的 key URI 长什么样"，故只做单条判据入库、不另立配方。 |
+| 411 | `52pojie-2060041-某网站 DRM Clear Key 密钥获取.md` | `9423f705fda7265fdc63c9e4b7abf967` | 2026-09-23 | stream-drm-reverse | evolve | **ClearKey 完整链路源**：`mp4info` 显示 `[ENCRYPTED] Coding: enca` + `Scheme Type: cbcs` ⇒ 有 DRM；网络里有 **`bilidrm` 文件 + 公钥** ⇒ **明文 DRM、一定有解**；JS 里是带注释的 EME 三段 （`case 2` 公钥生成 SPC / `case 6` 请求许可 CKC / **`case 12` 的 return 处就是 kid 与 key**）；KID 可用 `mp4dump | findstr KID` 从媒体文件读，**但代码里已给出可省这一步**；key 是 base64 ⇒ 需 `atob` + `charCodeAt.toString(16)` 补零转 hex；**两种解密写法**：`mp4decrypt --key KID:KEY`（必须给 KID）与 `ffmpeg -decryption_key <KEY>`（**可省略找 KID**）。 |
+| 412 | `52pojie-609243-Chrome CDM框架重大缺陷，DRM视频轻易复制.md` | `14c04ef49802390ecdcbe855f5b67447` | 2026-09-23 | stream-drm-reverse | evolve | **浏览器侧 CDM 取证的历史路线（保留为判据）**：老版 32 位 Chrome 的 Widevine 是**可代理的 DLL**（`widevinecdmadapter.dll` → `widevinecdm.dll`，`CreateCdmInstance` 建实例），关键接口是 `cdm::ContentDecryptionModule_8::Decrypt(encrypted_buffer, decrypted_buffer)` ⇒ **在两层 DLL 之间插代理就同时拿到密文与明文**；落地三要点：① DLL 在**沙盒进程**里（`ReadProcessMemory`/`CreateFile`/`OutputDebugString` 全被禁）；② 直接 patch `chrome.exe` 加载代理 DLL（**启动时沙盒尚未启用**）；③ 还需 `--no-sandbox` 才能写文件；日志形态 `Decrypt(IV:<hex>, encData(N), decData(N))`，**比对前 16 字节可见 CBC/CTR 的差异位置**。现代 Chrome 已不再是可代理形态 ⇒ 作判据而非操作保留。 |
+| 413 | `52pojie-1050690-支付宝小程序抓包与源码获取.md` | `68a71bd5a576e52fed1f55bb2e600ca7` | 2026-09-23 | miniprogram-reverse | create | **支付宝小程序的两条路 + 抓包前提**：源码在 `/data/user/0/com.eg.android.AlipayGphone/files/nebulaInstallApps/<tinyAppId>/`，**是未加密的 tar**（`adb pull` 解压即得工程）；Frida hook **必须选中小程序进程**（如 `com.eg.android.AlipayGphone:lite1`，挂主进程"什么都没发生"）；证书校验点在 `org.apache.http.conn.ssl.AbstractVerifier`（hook 其 `verify(String,String[],String[],boolean)` 直接 return 即可放行），**而 `onReceivedSslError` 那条路实测调不到**。 |
+| 414 | `52pojie-1214662-python 逆向某咖啡小程序接口.md` | `397d1171dbc6e55ca2188fae7587ca85` | 2026-09-23 | miniprogram-reverse | create | **AES-ECB + 自实现 MD5 的小程序范式**：`q = aes.en(JSON.stringify(data), key)` 后 `sign = md5([cid=…, q=…].sort().join(";") + key)`，响应再 `aes.de` ⇒ **"先解 body 再解 sign"的顺序**；key 是明文写死的 20 字符；**自实现 `md5()` 把 16 字节摘要按 4 个大端 int32 取 `Math.abs` 再拼十进制**（不是 hex！）⇒ **"长度/形态不像 md5"时的第三类成因**（不是加盐，是"摘要被二次编码成十进制"）；ECB 模式下 `iv: ""` 且**必须忽略 iv**。 |
+| 415 | `52pojie-1336342-搜索编程的艺术之C#实现小程序包解密算法.md` | `01cdb37cfcfb9f216236489d1c259a2d` | 2026-09-23 | miniprogram-reverse | create | **PC 微信加密包（`V1MMWX`）解密算法的唯一来源**：文件布局 = `magic(6B "V1MMWX") + aes(1024B) + xorBody`；`key = PBKDF2-HMAC-SHA1(pass = wxid, salt = "saltiest", iter = 1000, dkLen = 32)`；`iv = "the iv: 16 bytes"`（字面量）；头部 `AES-256-CBC` 解密 1024 字节、**PKCS7 填充后恰好 1024 ⇒ 真头部是前 1023 字节**；体部从偏移 1024 起逐字节异或 **`wxid` 倒数第 2 个字符**，**`wxid` 长度 < 2 时兜底 `0x66`（'f'）**；安卓端包**本来就不加密**，别在安卓侧折腾解密。 |
+| 416 | `52pojie-1464031-Python爬虫之社区团购某团、某心、某多、某马微信小程序商品数据.md` | `3768bc2259b8733faae48de7d562d674` | 2026-09-23 | miniprogram-reverse | create | **商品数据类小程序的采集侧判据**：接口直连 + **`t` 头承载 token**（`headers={"t": token, ...}`）；UA 必须是 `…MicroMessenger/… NetType/WIFI MiniProgramEnv/Windows WindowsWechat` 形态；多平台同一业态（某团/某心/某多/某马）接口结构高度同构 ⇒ **"换一家照抄结构"是有效策略**。 |
+| 417 | `52pojie-1474964-某商超小程序加密算法解析.md` | `45f7dc102ab7996cabf10682db011099` | 2026-09-23 | miniprogram-reverse | create | **商超小程序：HmacSHA256 签名 + base64 输出 + 固定盐**（本技能 S3 族的最佳实例）：`n = JSON.stringify(data) + data.isSimulator + data.viewSize + data.networkType + data.time`；`sign = Base64.stringify(HmacSHA256(n, "@653yx#*^&HrTy99"))` ⇒ **签名是 base64 不是 hex**、盐是**三目表达式**按环境选（BETA 一套、线上另一套，**抄错环境就全错**）；经纬度只是**单纯 base64**（`MTIwLjE1NDc3NQ==` ⇄ `120.154775`）；工程侧：`regeneratorRuntime is not defined` 的修法（`npm i regenerator@0.13.1`、拷 `runtime.js`、把 `import` 改成 `require`）；**"破译"转为"利用"**：把 crypto-js + 自实现 `stringify` 拼成独立 JS 工具库，Java 侧用 `ScriptEngine`+`Invocable` 调用（比全量重写省几个数量级）。 |
+| 418 | `52pojie-1482566-[另类方式破解]支付宝的小程序sign验签参数算法.md` | `d2f2a75ce0e4b63d1252dc99d0a5529b` | 2026-09-23 | miniprogram-reverse | create | **改包回写会失效，以及正确姿势**：把改过的 `index.worker.js` 放回 `.tar` 后小程序**重新加载了该文件**（目录里的 `cert.json` / `sign.json` 做完整性校验）；**正确做法是 Fiddler AutoResponder 返回改后的 JS**；顺带给出支付宝 `sign` 的完整派生式：`h = Σ(k+v)`（`Object.keys(p).sort()` 后 **key 与 value 直接相连**）→ `sign = hexMD5(Base64.encode(h))`，参与签名的 `p` 含 `appid/nonce/timestamp/os/v/token/_url`。 |
+| 419 | `52pojie-1484716-某付宝APP之某加油小程序对称加解密算法解析.md` | `ae81552fbb7a5b0fd999335d992be915` | 2026-09-23 | miniprogram-reverse | create | **"转置表"型自定义编码**（不是标准 base64）：`U = A-Za-z1234567890`、`q = 打乱后的 50 字符表`，`X(map, str)` 把每个字符按其 UTF-8 字节逐个**查表替换**；`G()/Q()` 建双向 Map；**伪 base64 的判据**：表被换过，但**输出仍是合法 base64 字符集** ⇒ "直接 base64 解出来是乱码但长度对"；key/iv 由同一个长串切片（`key=q.substr(1,16)`、`iv=q.substr(16,16)`）；外层再套 AES-CBC/PKCS7/128。 |
+| 420 | `52pojie-1684583-【逆向分析】抖音小程序逆向ttpkg.js文件解包记录.md` | `24aa31ff21ab17f30aeff4d09a18cbe9` | 2026-09-23 | miniprogram-reverse | create | **抖音 `TPKG` 包结构**（明文、可直接解析）：文件头 = 版本号 + 4 个空字节 + **文件个数** + 第一个文件名长度；**每条索引之间的空隙是 12（`0x0C` 即十进制的 18）字节**，其中**第 9–12 字节 = 文件名长度**；文件名之后紧跟 4 字节 = **文件内容起始偏移**；**索引里的整数一律大端**（`6F 25 00 00` 要读成 `00 00 25 6F`）；工具：`ttpkgUnpacker`（支持 `.pkg` 与 `.ttpkg.js`，可提 `ttss`/`ttml`）；**只覆盖小程序，不覆盖抖音小游戏（小游戏是 `asm` 格式）**。 |
+| 421 | `52pojie-1708787-抓取微信小程序源码【附逆向工具wxappUnpacker使用方法】.md` | `39604376694f7a3b359c81aa34e40697` | 2026-09-23 | miniprogram-reverse | create | **解包后跑不起来的修复清单 + 分包命令**：缺 `app.json` = 站点做了**反编译加固**；`this package is a subPackage which should be unpacked with -s=<MainDir>` ⇒ 分包要用 `node ./wuWxapkg.js 分包路径 -s=主包路径`；`wxappUnpacker` 需 7 个 npm 依赖（`esprima`/`css-tree`/`cssbeautify`/`vm2`/`uglify-es`/`js-beautify`，**逐个装**）；PC 端包在 `Applet` 目录、**改默认存储位置**可避免 C 盘爆；操作习惯：先把目录清空再打开小程序，好区分包归属。 |
+| 422 | `52pojie-1709344-PCVX小程序抓包分析.md` | `eddc92baa63077fc2e7a01b4bfac5bed` | 2026-09-23 | miniprogram-reverse | create | **PC 端抓小程序加密网络流的帧格式（原生层兜底）**：x64dbg 附加**标题里带小程序名的** `WeChatAppEx.exe`，断 `recv`；帧 = `状态位(1B) + 协议类型(2B, 小程序 = 03 03) + content 长度(2B 大端) + content`；**状态位 16/17 是业务正常数据、15 是失败**；解析顺序：读前 5 字节 → 取后 2 字节当长度 → 读 `buffer+5` 的 data → 再取前 8 字节当 head、其余当 body；**body 过一次 AES-128-GCM 解密**后才是明文 JSON。版本坐标：微信 `3.7.6.44` + `WMPFRuntime 1.9.4648.2`。 |
+| 423 | `52pojie-1724382-WX小程序 喵桑活下去 破解--详细教程,提供思路,举一反三.md` | `6546505cbe807681d256ebc2cbf76806` | 2026-09-23 | miniprogram-reverse | create | **抓包四分类**（本技能 §1 的原型）：① 明文无签 ⇒ 直接改；② 加密无签 ⇒ 找加解密；③ 明文有签 ⇒ 找签名；④ 都加密 ⇒ 两个都找。**"两个等号"是第一判据**（base64 或 AES）；**"先用 base64 试一把"**（实测确有纯 base64 的站）；小游戏类目标（客户端数值）的落地思路：模拟请求 / 上传时注入。 |
+| 424 | `52pojie-1738723-完整逆向某小程序破解签名算法过程记录.md` | `5d8fb158b418e68301ab72749d47a8b0` | 2026-09-23 | miniprogram-reverse | create | **"密钥是本地值 + 远端值拼接"**（本技能 §4 的关键一类）：按 ascii 序对参数 value 排序后做 HmacSHA256，密钥看起来是 `p.globalData.tk`，**但单用它算不对** ⇒ 真相是 **`getconfig` 接口返回的 tk 与本地 tk 拼接**才是真密钥（"单个值试不对"正是这类的典型症状）；配套链路：先取 token → 传七牛云 → 再把图片 URL 提交给服务端。 |
+| 425 | `52pojie-1751688-洗衣小程序逆向.md` | `a463c1dc6d1edfd7fd600a511d8dfca6` | 2026-09-23 | miniprogram-reverse | create | **固定前缀 + 大写 + md5 的签名族**（本技能 S2 族）：`u = "SING=HLYF"` 起手 → 按 `i.sort()` 顺序 `u += "&" + k + "=" + v`，**显式剔除 `tokenId` / `ssid` / `sign`**，再去掉值为空/undefined 的项；`u = u.toUpperCase()`；**若 u 恰好等于前缀则补一个 `&`**；最后 `hex_md5(u)`。**排除名单是高频坑**：漏一个或错一个，sign 就是错的且**没有任何报错提示**。 |
+| 426 | `52pojie-1764292-VX小程序逆向分析.md` | `e89fca180dc3629ddf790f60492d3f8a` | 2026-09-23 | miniprogram-reverse | create | **安卓原生层 hook `wx.*` 的原理与进程陷阱**：小程序由 WebView + JSBridge 承载，`wx.*` 由 `WxJsApiBridge` 提供 ⇒ **可以 hook Java 层**（不必 hook JS）；`wx.request` 在 Java 层**不叫 request**，正确定位入口是 `com.tencent.mm.appbrand.commonjni.AppBrandJsBridgeBinding`；**小程序以 `com.tencent.mm:appbrand0` … `:appbrand4` 独立进程运行、最多 5 个**（开第 6 个会顶掉最久未用的），所以 `frida -U com.tencent.mm` 或 `objection -g com.tencent.mm` **会挂到主进程、什么都看不到**，**必须指定 pid**。 |
+| 427 | `52pojie-1774754-微信小程序签名逆向分析.md` | `ac922cfc986b63d1f1ac003bc756ecd3` | 2026-09-23 | miniprogram-reverse | create | **"先拿包再看算法"的最小闭环**：PC 端取 `__APP__` 主包 → `pc_wxapkg_decrypt` 解密 → wxUnpack 解包 → 全局搜 `enc` 或直接读路由附加逻辑；本例 `sign = MD5(参数名排序后拼接 + "cmscms")` ⇒ **"难度与 web 前端加密一致，关键在拿到源码"** 这一结论的最短实例。 |
+| 428 | `52pojie-1795558-某台葫芦娃小程序系列协议开源C++,QT6,X-HMAC-SIGNATURE算法,X-HMAC-DIGEST学习研究.md` | `0f0fbda2496ce98ec7874e227a0b6c13` | 2026-09-23 | miniprogram-reverse | create | **`X-HMAC-SIGNATURE` / `X-HMAC-DIGEST` 双头**（本技能 §1 的"sign 在请求头"一类）：小程序配置信息里有这两个头；工程实现（C++/Qt6 导出 DLL）无算法细节 ⇒ **只登记头名与"这类站点用双头分别做签名与摘要"的判据**，具体派生式不臆造。 |
+| 429 | `52pojie-1832406-windows下通杀wx小程序云函数实战.md` | `0c3d9f2404f3059e3a9a2acc135e4fec` | 2026-09-23 | miniprogram-reverse | create | **云函数（`wx.cloud.callFunction`）的完整 RPC 流水线**（本技能最有工程价值的一条）：云开发的数据不走普通 HTTPS ⇒ 抓包拿不到；解包 → 找入口（`app-service.js` 搜 `"app.js"`）→ **开 debug + 注入探针**（包一层 `wx.cloud.callFunction`，在 `config.success` 里 `console.log`）→ 重打包（`unveiler wx -wp`）→ **重打包会因完整性校验而加载失败** ⇒ frida 附加 `WeChatAppEx.exe`、**把"当前 MD5"覆盖成"原始 MD5"** ⇒ 注入生效并弹出 vConsole ⇒ 再接 websocket 把数据外发即得 RPC。**该 frida 脚本写死了 `RadiumWMPF = 6945` 的 RVA ⇒ 换版本必须重新定位**。 |
+| 430 | `52pojie-1843617-某XX自考小程序的AES加密分析.md` | `ff338206ffbcc041bdb7c112d86002f0` | 2026-09-23 | miniprogram-reverse | create | **"返回密文带 `_`/`-`" 的 URL-safe base64 处置**：`c.replace(/_/g,"/").replace(/-/g,"+")` 后再 `Base64.parse` → `AES.decrypt(CBC, Pkcs7)`；key/iv 来自 `crpytoConfig.AES_KEY/AES_IV`；调试落点：搜 `decrypt`（而非 `encrypt`）下断更快命中。 |
+| 431 | `52pojie-1856275-记一次纯小白对某去水印小程序的加密字段算法解析.md` | `291e70ef56e9bc05d0a9dbba1f430605` | 2026-09-23 | miniprogram-reverse | create | **`wx.login` 的 `code` 不可复现，但可以"解出来复用"**：token 由 `AES(md5(小程序id) 当 key, {appid, time, code, id})` 生成；`code`/`id` 无法伪造 ⇒ **但既然参数进了 AES，就"直接解抓到的 token"把它们读出来**（且这俩**不参与签名**时可直接复用）；另有 `updateCode` 类接口可自行刷新 ⇒ **"不可复现的参数"要分两步判：能不能解出来 / 参不参与签名**。 |
+| 432 | `52pojie-1915411-微信小程序逆向之牛仔城游戏厅签到接口.md` | `26e30ac5d9f1b50aca1137208ac55ece` | 2026-09-23 | miniprogram-reverse | create | **"长度即判据" + 时间戳独立校验**：`sign` 是 32 位 ⇒ 猜 md5（**先上 CyberChef 验证是不是裸 md5**）；**只改 `time` 重放会失败**（说明 time 进了签名）；`member_no` 是会员号、`store_no` 是门店号等语义字段的判读。取证习惯：`everything` 搜 `.wxapkg` 按修改时间倒序取最新；PC 微信 `3.7.0.26` 时代可用 `wxapkg-convertor` 拖拽解包。 |
+| 433 | `52pojie-1924937-小程序泡泡玛特小程序解包.md` | `42cb11e418f7b8d77cc0fd22224cb985` | 2026-09-23 | miniprogram-reverse | create | **`X-Sign` 与 `sign` 双签名的两种结构 + 开发者工具修复三连**：`x-sign = md5(ts + "," + client_key) + "," + ts`，其中 **`client_key` 明文走网络** ⇒ 抓包直接读；`sign = MD5(buildQueryString(params) + "&noceStr=<固定串>").toUpperCase()`，而 `buildQueryString` = **键值排序后 `k=v` 并用 `&` 连接、末尾留 `&`**；**参数在本地生成** ⇒ 即便"合法域名"校验把请求全拦下，仍能在生成处拿到 sign；工程修复：删 `plugins`、`componentFramework` 之类报错逐条处理、渲染层网络错误无解但**不影响本地参数**。 |
+| 434 | `52pojie-1934003-某壁纸小程序sign逆向分析.md` | `3b49a36cf50d21ba8df712ebfdc5bb03` | 2026-09-23 | miniprogram-reverse | create | **"sign 的输入来自缓存" + 跨平台换赛道**：`sign = s(e.getToken())`，`getToken → getUserInfo → getCache → wx.getStorageSync("userInfo")`，**token/openid/unionid 就存在 storage 里**；token 由 `getOpenid` 接口下发并写缓存；**"同一 App 常在多平台上架（uni-app 等跨端方案）"⇒ 遇到不熟的平台（如抖音）就去微信搜同名小程序**；工具链：`proxypin` 抓包（可按进程转发）+ `Unveilr`/`wxappUnpacker` 解包；签名写法 `function a(b){return function(b){return b+"###"}(b)}` 这类"看着怪但等价于拼后缀"的读法。 |
+| 435 | `52pojie-1934663-某迪汽车品牌小程序逆向.md` | `b36396156e88b8b7d8f0d046853ba51d` | 2026-09-23 | miniprogram-reverse | create | **A 簇双源之"2024 版"**：响应 `base64 + AES-CBC/Pkcs7`，`aes_key` 与 `aes_iv` 藏在 `constant-obfuscated.js` 的数组里；请求头四个非标准头 **`x-clienttraceid`（类 UUID）/ `Nonce` / `Curtime` / `Checksum`**；**`Checksum = sha256(appSecret + Nonce + 时间戳)`**（hex 小写）；`appSecret = %4_CA*U$GM6N#0EP`、`iv = uDEHPGzSIHIWBlNT`；**失败判据可直接定位**：`请在设置中将手机时间调成北京时间` = `Curtime` 不是当前真实时间；`checkSum error` = 签名错。另：路由型接口（`?s=…&serviceDir=…`）与"返回两个等号 ⇒ base64 或 AES，先试 base64"的起手式。 |
+| 436 | `52pojie-1944883-php重写校友邦微信小程序签到加密逻辑.md` | `5140335cf28a4e39e92866c9d2d1fdb5` | 2026-09-23 | miniprogram-reverse | create | **"字符表乱序取字符"签名族**（本技能 S5 族）：62 字符表 `t` + `0..61` 数组 `n`，`r = shuffle(n).slice(-20)`，再 `s += t[e]` 拼出 20 字符的随机串；主体是**对参数字典排序后拼接 value + 秒级时间戳**，并**显式跳过一长串业务字段**（`content`/`file`/`openid`/`code`…）；落地方式：**PHP 重写**（跨语言重写的取证顺序：先照抄表与循环，再逐字符对拍）。 |
+| 437 | `52pojie-1949927-某听书小程序升级了，分享破解思路.md` | `a457bda5abbfc6c5a75fdafc30acabb4` | 2026-09-23 | miniprogram-reverse | create | **业务层"客户端权限位"的适用边界**：把返回里的 `playInfo.userPermission` 置 `true` 即可静默通过；并给出"小程序转 App"的手段 —— **微信开发者工具的「多端应用模式」**（绕开模拟器/真机限制，拿到完整本地运行时）；播放地址解密用 `CryptoJS.AES.decrypt(Base64url.parse(link), Hex.parse(key), {mode: ECB, padding: Pkcs7})` ⇒ **注意是 `Base64url` + `Hex` key 的组合**。 |
+| 438 | `52pojie-1975366-记录某小程序做任务伪造微博发帖.md` | `ddb9a8a967c6232885e1b2f1b3b1f93f` | 2026-09-23 | miniprogram-reverse | create | **"校验发生在客户端可控文本上"的判据**：任务只校验"提交的 URL 页面里含指定关键词" ⇒ 把正常页面 HTML 存到自建静态托管、提交这个自建 URL 即通过。价值在于**判据本身**：此类校验永远不可信（防守方应服务端直连抓取），而攻方只需"换一个能被自己控制的文本源"。 |
+| 439 | `52pojie-1989465-修改某信小程序数值.md` | `1acd2d04909b896972ccad55e4d3e6b9` | 2026-09-23 | miniprogram-reverse | create | **MITM 改客户端数值（存档类小游戏）**：不需要碰包，直接在代理里改请求体/响应体的 JSON（`request()` 改上传存档、`response()` 改下载存档）；**前置硬约束：改之前先删掉小程序的本地缓存（`wxid_*/Applet/wx*`）**，否则改的是"旧版本"资源、改了没反应。 |
+| 440 | `52pojie-2013121-【小程序】绝味鸭脖 xmSign参数逆向.md` | `3747dec809a7a3ded32ea7241ff4bfed` | 2026-09-23 | miniprogram-reverse | create | **真机小程序在线调试闭环**：真机微信打开 `http://debugxweb.qq.com/?inspector=true` → PC 端 `chrome://inspect/#devices`（或 `edge://inspect/#devices`）→ 刷新页面重取全部文件 → 断点调试。`xmSign = MD5(nonceStr + xmTimestamp + Base64.parse("dWgzJEhn…").toString(Utf8))`，**盐是"base64 字符串解出来的一段明文"**（`p.default.enc.Base64.parse(...).toString(enc.Utf8)` 只是编码转换、是写死值）；`nonceStr` 由 `Math.random()` 与位运算生成 32 位；`tokenSign` 同构但换成另一个盐；`getUrlParameter("li")` 是活动 id（固定）；**断点打不上时"打最后一处"** 的实证。 |
+| 441 | `52pojie-2027025-记一次某电网e充电小程序逆向.md` | `9dd631afa872b1e0338ecdc173ef89d5` | 2026-09-23 | miniprogram-reverse | create | **国密 + 魔改**：请求头 `x-evone-signature` 用 **SM3（标准）+ 魔改 SM4**；设备 id 为固定值、请求 id 用随机函数生成；**判据：不要假设"名字叫 sm4 就是标准 sm4"** —— 拿浏览器真实值当 oracle 逐轮对拍；工具：`WeChatOpenDevTools`（打开小程序 devtools）。 |
+| 442 | `52pojie-2038738-抖音小程序逆向工具重磅发布.md` | `33353bcc23f02135e81d0487dfbd6764` | 2026-09-23 | miniprogram-reverse | create | **抖音包的两个落点与导出流程**：`/data/data/com.ss.android.ugc.aweme/files/bdp/launchcache/<appid>_*/ver_*/`；用 MT 管理器**按时间倒序**排最新小程序；`.meta` 文件里能看到小程序名称（用于确认归属）；`/data/data/` 需 root 才能访问 ⇒ **先复制到 `/sdcard` 再分享**（或用 `adb` 导出）；**工具暂时不能解抖音小游戏（`asm` 格式）**。 |
+| 443 | `52pojie-2055333-某Y院WX小程序挂号，算法还原.md` | `bd685fea772a6cc926d37f383c0c5584` | 2026-09-23 | miniprogram-reverse | create | **`uni-app` 工程 + RSA 私钥前端签名**：解包产物里页面都是 html（uni-app 特征）、能直接定位到 `wechatLogin.js`；签名是 **`SHA256withRSA`**：`KEYUTIL.getKey("-----BEGIN PRIVATE KEY-----\n" + priK + "\n-----END PRIVATE KEY-----")` → `new KJUR.crypto.Signature({alg:"SHA256withRSA"})` → `p.sign()` → **`hextob64`**；**私钥就写在包里**（`n.priK`）⇒ 纯算复现；请求体固定字段 `{app, charset, partner, plat, ticket, bizContent, timestamp, sign}`；`iv` + `encryptedData` 同现 ⇒ 大概率 AES（登录包）；**模拟器登录微信会封号** ⇒ 用 PC 版微信。 |
+| 444 | `52pojie-2058182-某小程序修复及发送参数，header头和返回参数加解密逆向.md` | `54c94e4e1856cf751ca5ddc5e21a99fc` | 2026-09-23 | miniprogram-reverse | create | **双层自描述 AES + 开发者工具修复实操**：第一层解出 JSON，里面再取 **`UTS` / `UVER` 当第二层的 key/iv**（`teldAESDecrypt` 解两遍）；`getKI(aType)` 按类型取 key/iv，且 `key` 缺省时用 **`padEnd(x,16,"0")` 右补 `0` 到 16 位**；请求侧 `SVER` 是"固定文本 + 时间戳"再做 AES **取 0–16 位**、`STS` 是时间戳、`SSDI` 是设备 id（可伪造）、`Teld-RequestID` 由 SSDI + 时间戳 + 文本构成；修复清单：`componentFramework` → `"glass-easel"`、`setting` 加 `"ignoreUploadUnusedFiles": false` / `"ignoreDevUnusedFiles": false`；**调用栈里 `R` 就是 `XMLHttpRequest`，断 `R.response` 即可拿到加密返回值**。 |
+| 445 | `52pojie-2063588-某迪汽车vx小程序逆向及每日签到--站在巨人的肩膀上确实可以少走弯路.md` | `1187213a76740c09e37179313080ff36` | 2026-09-23 | miniprogram-reverse | create | **A 簇双源之"2025 版"（本批最有价值的一对）**：同一个小程序升级后 —— `aes_key` **没变**（`3993014457161851`）、`aes_iv` **没变**（`PDVcDRWMrBlLHTqh`），但 **`appSecret` 从 `%4_CA*U$GM6N#0EP` 换成了 `Kfl%BOk6C5PwARw8`** ⇒ **"照抄文章里的常量必然失效，而遍历常量数组这一招跨版本依然有效"**；且 AI 读混淆数组给出的候选（`3917763gCFENO`）**是错的** ⇒ 爆破才是判据；**"同一把 key 换不同 iv 会解出部分相同明文"** 的实测记录（CBC 逐块独立 + 填充校验歪打正着）⇒ 这就是必须用 **JSON 可解析性**当判据的原因；`session_id` 由登录后服务端下发并存本地、**代码里不处理** ⇒ 签到流程的最后一个卡点。 |
+| 446 | `52pojie-2088971-某安充电小程序js逆向.md` | `403458412852be010187bf5617c8c26d` | 2026-09-23 | miniprogram-reverse | create | **"参数排序 + 固定 key 拼 md5" 的最短实例**：`md5(排序后的 k=v 串 + "&key=8989898")`（小写）；定位路径：全局搜 `sign` → 看到 `MD5` → 搜 `MD5` 找加密点 → 让 AI 解释（"它会将 post 的参数加上 key 再 MD5"）；**"看不懂代码就让 AI 解释"** 的实操价值与边界（AI 能解释结构，但**常量/候选值必须自己验证**，见 2063588）。 |
+| 447 | `52pojie-2122149-爬取某顺的业绩预告小程序，帮你避坑.md` | `7ffe034ebdd3eaf538dfa5380e82ae53` | 2026-09-23 | miniprogram-reverse | create | **"爬小程序数据"≠"逆小程序加密"的对照**：本篇其实是**网页端**（`data.10jqka.com.cn`）的表格抓取（DrissionPage + DOM 提取 + 翻页等待），小程序侧仅作为入口提及 ⇒ **判据：先确认目标是"小程序内的接口"还是"PC 网页版"** —— 后者根本不需要解包，本文登记为"边界用例"，避免后续同类文章被误当成小程序逆向任务。 |
+
+### 本批次技能变更汇总（B22）
+
+| 技能 | 变更类型 | 主要落点 |
+| --- | --- | --- |
+| `miniprogram-reverse` | **create** | **新技能**：`SKILL.md`（分流判据表 / 工作流 7 步含 3 个 CHECKPOINT / 失败模式 18 行 / 反例黑名单 14 条 / 命令入口 / 与其它技能的边界）+ `references/unpack-and-decrypt.md`（平台↔格式↔是否加密对照、PC 包解密全参数、六个落点路径、`TPKG` 索引、支付宝 `nebula` 双路、**解包后修复清单 7 条**、改包失效处置、"解包后怎么读得动" 5 条）+ `references/request-crypto-and-sign.md`（抓包四分类、sign 五族、加密四类、key/iv/盐五来源+爆破法、**参数来源矩阵**、14 条坑表）+ `references/runtime-and-debug.md`（三条调试入口、断点五套路、**云函数 RPC 流水线**、原生层、MITM、权限位边界）+ `scripts/wxapkg_tool.py`（`--selftest` **29 项**）+ `scripts/const_bruteforce.py`（`--selftest` **11 项**） |
+| `stream-drm-reverse` | evolve | 新增 `references/widevine-cdm-and-eme.md`（**国际派 E 层唯一权威源**：判派表、L1/L2/L3、**`0804` 三步链**、长短 pssh、`.wvd` 三路线、ClearKey、EME 两个 hook 点、HTTP/2、CDM DLL 代理历史、本地服务工程形态、坑表 12 条）；新增 `scripts/container_disguise.py`（**分片伪装成图片的定位与还原**，`--selftest` **21 项**）；`references/key-wrapper-families.md` 新增 **W6 外部掩码异或**整节（`DataView` 大端 vs `Uint32Array` 平台端序）+ §1 判据补"长度对 ≠ 没有包装"；`scripts/key_wrapper.py` 新增 `dataview-xor` 子命令（`--endian` / `--allow-search`），`--selftest` 52 → **66 项**；新增 `references/vendor-key-schemes.md` §2.14（优酷 mtop `sign` 派生式与失败判据）并**把 §2.13 从"边界/放弃"改写成指向新文档的指针**（原文与新文档自相矛盾，B20 教训型问题）；`references/hls-and-ts-structure.md` §4.6 判据表补"厂商托管 key URI 五参形态"；`SKILL.md` 分层表 +6 行、失败模式 +6 行、反例 +4 条、命令入口 +2 组、资源清单重写、description 补 20+ 触发词 |
+| `web-js-env-patcher` | evolve | 边界声明由"**不处理**小程序"改为"**不处理小程序，请改走 `miniprogram-reverse`**；只有「把小程序 JS 搬进 Node 复现」这一步回到本 Skill"（description 同步加指针）—— 修掉"边界声明把用户指向空白"的问题 |
+| `license-and-key-hierarchy.md` | evolve | 标题与导语明确限定为**国内派**，并加一段**国际派指针**（两派判据/工具/失败现象不通用；国际派没有 Provision 步骤） |
+| `hls-and-ts-structure.md` | evolve | 导语补"容器伪装（分片被拼图片头）不在本文件、先用 `container_disguise.py` 还原再回来判层" |
+
+### 结构性收敛（B22）
+
+| 项 | 处置 |
+| --- | --- |
+| **同一份知识写两处且已经自相矛盾** | `vendor-key-schemes.md` §2.13 原写"Widevine 标注为边界，不做纯算实现"，与新建的 `widevine-cdm-and-eme.md`（给出完整可解链路）**直接冲突** ⇒ 把 §2.13 降级为**指针 + 判据表**，只保留"如何识别是哪一派"。这正是 B20 的结论「**自相矛盾的句子比写错的常量更危险**」的第二次实践：常量错会被来源核对抓住，这类句子不会。 |
+| **"边界声明"不能只写"不做什么"** | `web-js-env-patcher` 原来只写"不处理小程序"，用户被推到空白。新技能落地后**同批**把边界改成"指向 `miniprogram-reverse`"，并保留"补环境这一步仍回到本 Skill"的分工。 |
+| **新技能必须同时补"镜像 + 边界 + 台账"三处** | 双镜像 `b20-mirror-sync.py --sync`（14 文件）→ `0 mismatch`；边界改指针；台账登记 —— 三处缺一即为"半成品技能"。 |
+
+### 证伪与审计留痕（B22）
+
+```bash
+# 1) 新技能脚本自检（29 + 11 项）
+python .agents/skills/miniprogram-reverse/scripts/wxapkg_tool.py --selftest
+python .agents/skills/miniprogram-reverse/scripts/const_bruteforce.py --selftest
+
+# 2) stream-drm-reverse 全脚本回归（含新增 container_disguise 21 项、key_wrapper 66 项）
+for f in .agents/skills/stream-drm-reverse/scripts/*.py; do python "$f" --selftest || echo "FAIL $f"; done
+
+# 3) 故障注入阳性验证（每个新断言点都必须"变红"）
+#    证据：artifacts/skill-evolution/b22-run-20260923/ 的注入记录
+#    实测：wxapkg_tool 3/3 变红（xorKey 边界、索引截断分支 A、分支 B）、
+#          const_bruteforce 1/1、key_wrapper 2/2、container_disguise 1/1
+
+# 4) 来源保真度（138 条声称 / 35 篇源文件 / 0 未命中）
+python artifacts/skill-evolution/tools/b22-verify-sources.py
+
+# 5) 机械校验 + 双镜像
+node artifacts/skill-evolution/tools/check_skill_integrity.js --root . --markdown
+python artifacts/skill-evolution/tools/b20-mirror-sync.py
+
+# 6) 台账幂等复跑（应打印「已登记，跳过」）
+python artifacts/skill-evolution/tools/append-b22-ledger.py
+```
+
+### 下一批（B23）取材建议（承接本节）
+
+- 待处理 **436** 篇（台账 447 条后）。
+- 优先级：
+  ① **小程序簇仍有余量**：本批 35 篇已建技能，后续同簇**一律走 `miniprogram-reverse` 的 evolve**，
+     重点补"**云函数/RPC**"与"**原生层**"两个薄区（本批各只有 1~2 源）。
+  ② **WebView / Electron / asar / jsc / v8 字节码簇**（`forum-corpus-archival` 记录的覆盖盲区）仍未建档，
+     同样按"有没有最近邻模块"判据评估。
+  ③ **验证码图像识别系剩余**（真拼图 / 双缺口 / 旋转点选坐标侧）。
+  ④ **Cloudflare / WAF 簇**：B21 已收口，后续一律先量化再决定。
+  ⑤ **ts 帧加密簇剩余**（`keep` 状态的几篇）。
+- 候选新技能 `captcha-flow-orchestration` —— B5–B22 **十六次确认不新建**。
+- 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
+  **注**：B1-17 / B13-216 的"不建小程序技能"结论在 B22 被**推翻并取代**（见本节 B 簇）——
+  当时的判据是"样本量不足以支撑独立技能"，而 B22 时该簇已积累到 **35 篇**且**连续 6 轮为最大单簇**，
+  判据从"样本不足"变成了"**无最近邻模块 + 规模最大**" ⇒ **建**。旧结论保留可追溯，但不再作为处置依据。
+
+---
+
+## 批次 B23 · 2026-09-23（第二十三次执行）
+
+取材口径：待处理队列 **454 篇**中取两个**互相独立**的簇 —— **A 簇 16 篇**（桌面客户端 / Electron / asar / `.jsc` / V8 字节码，全部落地**新技能 `desktop-client-reverse`**）与 **B 簇 15 篇**（无感/行为验证的请求链与签名头、验证码图像识别剩余，落地 `web-verify-patcher` 与 `web-js-env-patcher`）。两簇刻意同批：A 簇验证「**技能库里没有最近邻模块（`miniprogram-reverse` 是小程序、`web-js-env-patcher` 是浏览器补环境）时应当建新技能**」，B 簇验证「同一主题已有成熟技能时应当**只 evolve**」。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 448 | `2092084-web-js-rev-v8-ast-bytecode.md` | `0a3ca55625c4e9f1f2752c08fdc3ae39` | 2026-09-23 | desktop-client-reverse | create | **34 万字节的 V8 长文，只取「读懂反汇编」的部分**：词法/语法分析 → AST → 作用域与闭包 → Ignition 的**累加器模型**（`Lda…` 系列、`Star`、`CallProperty`）→ 二元表达式的求值顺序 → 常量池里的 `SharedFunctionInfo` 需要**递归**反汇编（d8 补丁里的 `visited` 集合就是防重/防爆栈）。**边界写进文档**：这些知识用来读反汇编与调试栈，**不用来「还原源码」**。 |
+| 449 | `52pojie-1307664-半夜逆向一个Cocos2D-JS做的棋牌App,解密Jsc拿下Authorization算法.md` | `4588a277bab282d6e10aef04eaf9efdf` | 2026-09-23 | desktop-client-reverse | create | **Cocos2d-JS 的 `.jsc` = xxtea(+gzip)**：引擎里是 `ungzip(xxtea_decrypt(file, key))`（`ZipUtils::isGZipBuffer`）；密钥取证给了一条**可复用套路**——从原包搜报错串 `Can't decrypt code for %s`，密钥就在其邻近；亦可「自己用 cocos 打个 demo 再在产物里搜预设 key」。业务侧：`Authorization` 来自服务端下发（未登录也下发）。 |
+| 450 | `52pojie-1362276-Cocos2DX-JS 加密逆向探究解密app实战.md` | `d8da99168c29f1896bf2181e4e03a89c` | 2026-09-23 | desktop-client-reverse | create | **同题的独立第二来源**（从 so 侧正向确认 key）：`armeabi-v7a/libcocos2djs.so` → `JNI_OnLoad` 链 → 搜 `decrypt`；明确「**按目标机型取对应架构的 so**」；并点破「网上文章你抄我我抄你」，以及 **cocos2d-x 与 cocos2d-html5 的 jsc 不是一回事**（后者才是真字节码）。 |
+| 451 | `52pojie-1553861-asar unpack细节.md` | `a2fbee560e8ee4ad476822e707c73241` | 2026-09-23 | desktop-client-reverse | create | asar 的最小工作面：`asar e app.asar ../abc` 解包 / `asar p ../abc app.asar` 回包；口径「命令行在 Linux 上更稳」；附一段 AES-CBC + PKCS7 的解密脚本用于被二次加密的 js。 |
+| 452 | `52pojie-1657066-PJ一个小游戏（js逆向）.md` | `641e372b7d240843425e5ef5d4f4dd8e` | 2026-09-23 | desktop-client-reverse | create | **WebView 类客户端 → 网页游戏**的标准开局：jadx 发现是 WebView → 去 `assets/` 解压 → 双击跑不起来 → `python3 -m http.server 8088` 起服务后**就是网页游戏**（源码全文可搜）。定位要改哪个值：**先确定「要什么」再搜业务名词**，命中展示变量后**必须跟到真正消费的那一层**；字典 key 反查三法（对照自己数值 / 查配置项 id / 继续跟解析）。 |
+| 453 | `52pojie-1664417-Electron 逆向实战.md` | `3a92779926add21d6673e64f12c921cd` | 2026-09-23 | desktop-client-reverse | create | **信息量极低的视频帖（只有三句结论）**，登记它只为一条判据：**桌面端并不都存在混淆** —— 原文口径是「过程非常简单，没有混淆，没有 AST」 ⇒ **先解包读源码，再决定要不要上反混淆**；预设「必须反混淆」会把简单任务做成大工程（与本轮的 `desktop-client-reverse` 反例清单同源）。 |
+| 454 | `52pojie-1859296-使用浏览器插件屏蔽小游戏网站的反调试.md` | `d32b24d85522c6d00fca7ad88f929fb2` | 2026-09-23 | desktop-client-reverse | create | **反调试的「网络层」解法**：DevTools 的本地 override **必失效**，因为脚本 URL 带**随机参数**、override 只能同名替换；改用浏览器插件 + `declarativeNetRequest` 按 URL 规则**把脚本替换成空文件**（`rules_1.json` 规则 + 替身脚本 + 后台脚本三件套）。判据价值：**随机参数打死静态替换，打不死请求层重定向**。 |
+| 455 | `52pojie-1913191-某 xor + xxtea 加密 jsc 解密记录.md` | `9caf6a5db3610cb350d2eef1d6659df6` | 2026-09-23 | desktop-client-reverse | create | **网易系 `.jsc` 的第二层包装**：文件头 `netease` + `01 01 01 EF`（共 11 字节）先剥掉，再**重复密钥异或**，然后才是 xxtea（`cc::FileUtils::getDataFromFile` 的实现已逐行核对）。方法论最值钱的一条：作者**先用「两个 key 命名与格式对称 ⇒ 生成算法同源」的推理去 so 里枚举 16 位字符串爆破拿到 xor_key，再回 IDA 正向证实** —— 「先爆破拿结果、再静态证机制」是取证顺序上的最优解。 |
+| 456 | `52pojie-1921927-对webview2 客户端资源爬取.md` | `3a2532e4bd890fc71fb08d3f5cbba911` | 2026-09-23 | desktop-client-reverse | create | **WebView2 的开工具路线**：目标只加载 `EmbeddedBrowserWebView.dll`（路径 `C:\Program Files (x86)\Microsoft\EdgeWebView\Application\<版本>\EBWebView\x64`，**不同版本不通用**）；`OpenDevToolsWindow` 与 `Navigate` 同属 `embedded_browser_webview_current` 虚表 ⇒ **把虚表里的 `Navigate` 指向 `OpenDevToolsWindow`** 即可弹出 DevTools；随后导出全部资源 + 记下**虚拟域名**，用官方 `Win32_GettingStarted` 的 `SetVirtualHostNameToFolderMapping` 本地复现（比 DevTools 本地覆盖更稳）。 |
+| 457 | `52pojie-1926574-【Web逆向】基于Electron的CrackMe详细教程.md` | `36f0bb601e901a9e23245bb69134f036` | 2026-09-23 | desktop-client-reverse | create | **最便宜的入口是本地端口**：`netstat -na` 找 `127.0.0.1:<port>` 直接当网页调；Electron 是多进程 ⇒ 选「点开界面时新建的那个」，其他进程没反应；`F12`/`Ctrl+Shift+I` 被 `preventDefault` 挡掉但菜单仍可用；无限 debugger 的**正确改法是破坏表达式**（`'debu'+'gger'` → 去掉一个 g），删整行会让后续逻辑进奇怪分支。 |
+| 458 | `52pojie-2005677-electron asar 加密包解压 偏移修复.md` | `014e15b0bf31b6614e9e14073d0973e7` | 2026-09-23 | desktop-client-reverse | create | **asar 「解压成功但内容全是垃圾」= 偏移错位，不是加密**：归档前多 25 字节（还要在数据段里再删同样一段），**因为 `package.json` 是第一个文件，改它的偏移会让后续所有文件同时归位**。本轮把这套手工流程工具化：`asar_offset_repair.py` 用「按扩展名的内容合理性」反推**单一 delta**，只改包头长度字段即可修复（`--selftest` 22 项，含前缀/后移/虚高/目录被改四类故障注入）。 |
+| 459 | `52pojie-2054765-JSC字节码反编译初探——以Typora 1.10.8为例.md` | `96b342a9c1b77d5c3073aa4951db3035` | 2026-09-23 | desktop-client-reverse | create | **V8 字节码这条路要先看代价**：给 d8 加 `Disassemble`/`LoadJSC`（`CodeSerializer::Deserialize` + `AlignedCachedData`）、还必须**严格对齐 V8 版本**（Electron 32.1.2 ⇒ v8 `12.8.374.33`；自 v12 起 API 大改导致网上补丁失效）、连 `objects-printer.cc` 里的 `PrintSourceCode` 都要改。产出是**反汇编而非源码** ⇒ 本技能的处置是：**只有在目标无法在环境里运行时才值得**，否则一律走「当 Node 模块 `require` 进来 + 劫持 API」。 |
+| 460 | `52pojie-2084047-Typora v1.12.4 安全分析：反反调试与激活劫持.md` | `8c6f07a4a357604acd6a8d33530fb9e0` | 2026-09-23 | desktop-client-reverse | create | **本批 A 簇的骨干来源**：① 入口 `launch.dist.js` 自定义 V8 环境并 `require` 字节码 ⇒ **`.jsc` 就是个 Node 模块**（决定了后续全走劫持）；② `OnlyLoadAppFromAsar` fuse 锁死加载优先级，用 `@electron/fuses` 的 `flipFuses` 关掉（会改 exe 哈希，先备份）；③ 完整性校验用 `fs/promises.readFile` 比对**四个文件**的 hash、失败即 `app.quit`，**同一个 `fs` 对象**决定了可以把 `resources\app\` 的读取重定向到 `app.bak\`；④ 入口注入骨架（拦 `app.quit` + `browser-window-created` 后等 `dom-ready` 开 DevTools + `ipcMain.handle` 日志 + `electron.net.request`/`protocol.handle` 伪造响应，转发必须 `bypassCustomProtocolHandlers`）；⑤ **黑盒推数据结构**：假 Buffer → `Proxy` 观察 `toString/length` → 再 `Proxy` `JSON.parse` 看读了哪些键 ⇒ 得到 `deviceId/fingerprint/email/license/version/date/type`；⑥ 界面 `Machine Code` 是 base64（`v`/`i`/`l` 三个键）。 |
+| 461 | `52pojie-2085249-代码整理【Typora v1.12.4 安全分析：反反调试与激活劫持】.md` | `9be3c5f8ee44998e1adced4c853ae247` | 2026-09-23 | desktop-client-reverse | create | **同题的独立第二来源（可交叉验证）**：同一套 hook 的完整工程化版本（`@electron/fuses` + winreg/readlineSync 交互），验证「拦截 `app.quit` + `readFile` 重定向 + `crypto.publicDecrypt` 返回伪造明文」是一条**可复现**的路线，不是单篇孤证。 |
+| 462 | `52pojie-2106643-秒盗账号钱包！伪装Electron程序暗藏后门窃取加密数据.md` | `3b499ce0776668306db56026b572fdc8` | 2026-09-23 | desktop-client-reverse | create | **防守侧（火绒）对同一技术栈的分析，用作「识别」判据**：入口 `main.js` 加载 **bytenode 编译的 `decrypted_payload.jsc`**、并在**运行时恢复**主 payload ⇒ 再次印证「字节码只是载体，行为在运行时通过 Node API 展开」（**行为/API 劫持比反编译字节码有效**）。窃取面画像（`Login Data`/`Web Data`/`Cookies`/`Local Storage` 的 leveldb + 从 `Local State` 恢复 Chromium 密钥 + `App-Bound` 第二阶段）**只登记为「这是不是恶意载荷」的判据，不提供任何提取实现**。 |
+| 463 | `52pojie-2112074-某OpenClaw 一键部署包激活绕过思路分享（Node.js pkg 二进制 patch）.md` | `473c009aa18a863e30699fc6a9f95f9e` | 2026-09-23 | desktop-client-reverse | create | **Node.js pkg 单文件 exe：`strings` + 等长字节补丁**。判据与操作：`activated:!1`（false）→ `activated:!0`（true）是**等长替换**，原文共 patch **15 处**覆盖「在线校验 / 本地缓存 / 离线 fallback」三条返回路径 ⇒ **只改一处必然漏**（这就是 `byte_flag_patch.py` 的 `--expect` 前置断言的由来）。**⚠️ 溯源标注**：该原文无复现步骤、样本走网盘，本批只采纳其**方法论与「备份 + 断言 + 复检」操作契约**，不背书其数值。 |
+| 464 | `52pojie-1978737-某云无感滑块逆向之“大爷，饶了我吧！”（上）.md` | `9cf816d50e830fc86059464b160b1e33` | 2026-09-23 | web-verify-patcher | evolve | **阿里云验证码 2.0 的前两个请求**：`Action=InitCaptchaV2`（`Version=2023-03-05`；`SignatureMethod=HMAC-SHA1`；真正要逆的只有 `SignatureNonce` + `Signature`，其余多为固定值或起始页下发）与 `Action=Log2`（**`Version=2020-10-15`，与前者不同**；`Data` = 两重 AES-CBC + base64，且必须先解响应里的 `deviceconfig`（同为 AES-CBC+base64）拿到 key/iv，而 key/iv 在 `AliyunCaptcha.js` 里）。**定位坑**：同站有 **6–8 份 `feilin*.js`**，断点可能落在不执行的那份上；**可复用判据**是「表单写了 `SignatureMethod: HMAC-SHA1` ⇒ 直接搜 `SHA1`」，以及基础数据**用 `#` 连接**这一特征串。 |
+| 465 | `52pojie-1982617-某云无感滑块逆向之懵了几天（下）【修改一下有始有终】.md` | `8d18e7b262e110c474ccf2e549da9d45` | 2026-09-23 | web-verify-patcher | evolve | **同目标的第二会话（下篇）**：`Action=VerifyCaptchaV2` 的 `CaptchaVerifyParam` = `{sceneId, certifyId, deviceToken, data}`；轨迹明文是 **`TrackList`**（`mc` 起始点 + `mp`/`mm` 的 `x,y,t,1|…` + 7 个空串占位 + `si` + `startTime`，外层 `TrackStartTime`/`VerifyTime`/`arg`）。**判据**：断点处出现 **`TextEncoder`/`Uint8Array`** ⇒ 轨迹是「对象→数组→二进制→拼装」后才进 AES，**不是普通 AES/HMAC 路线**；并且那条代码里有 `prototype` ⇒ **必须整块扣，否则掉进补环境地狱**。`si` 语义未明 ⇒ 本批口径是**一律透传、不臆造公式**。参数时效性：两次会话 `AccessKeyId` 相同但 `CertifyId`/`deviceToken`/`SignatureNonce` 全换（**取一次马上用**）。 |
+| 466 | `52pojie-1697353-快手滑块—逆向分析（web）.md` | `46519a526dfbcbe8f3b592f9a9fc1146` | 2026-09-23 | web-verify-patcher | evolve | **快手滑块的提交侧**：校验接口 `captcha.zt.kuaishou.com/rest/zt/captcha/sliding/kSecretApiVerify`，主参数 `verifyParam`（内含加密后的轨迹 `c`）。轨迹容器=`x|y|Δt` **逗号连接**，`Δt` 相对**整条轨迹起点**（`t.trajectory[0][2]`，且在 `slice(-100)` **之外**计算），浏览器里的原始 `c` 带**前导逗号**、提交前 `.slice(1)`。**断点位置的判据**：行 6374 时 `c` 仍是 `undefined`，F8 到 6394 才算出来 ⇒ 值不在第一次断下的那一层。 |
+| 467 | `52pojie-1745678-抖音 滑块验证方案 s_v_web_id 参数分析.md` | `784eec05ae7f2a1a701e274e7c9257c6` | 2026-09-23 | web-verify-patcher | evolve | **抖音 `s_v_web_id`**：过滑块后的 `s_v_web_id` 可免 `signature` 验证；它本身就在**验证码中间页 HTML 的 `fp` 参数**里。可本地生成的形态=`verify_` + base36 毫秒时间戳 + `_` + **36 位 UUID v4 变体**（第 8/13/18/23 位固定 `_`、第 14 位固定 `4`）。**用途边界（关键）**：自造的那份**不能用于采集评论**，评论必须用页面取下来的那份 ⇒ **同一参数在不同接口的可复现性不同**。两个实测坑：下载图片报「当前网络不稳定」要补 `「app_name」: 「」`；2023 元旦后轨迹校验收紧，**selenium 基本过不了**。 |
+| 468 | `52pojie-1857712-【验证码逆向专栏】百某网数字九宫格验证码逆向分析.md` | `d946725cfd865c4c72080be7e8e8d78c` | 2026-09-23 | web-verify-patcher | evolve | **九宫格类的难点在 cookie 状态机，不在算法**：冷启动必是 **307** → Set-Cookie `_trackId`/`__city` → **必须真实请求 `bf.js`**（否则一直 307）→ 两次 `s.webp`（带 `cf`/`s`/`f`）→ 第二次响应的 `sbxf`（值同 `bxf`）**激活 cookie** → 再请求主页才是验证码页。参数派生：`s = MD5(固定串 fc276cce08ba22dc + 35 位串)`、`f` = 那个 35 位串 = `MD5(canvas 图 base64)` 分 4 组 8 位后用 `1` 连接（三目判断恒 true ⇒ 直接写 `1`）；第二次把固定串换成「第一次响应的新 base64 的 MD5」。**三条可直接复用**：① 同设备同浏览器 canvas 结果固定 ⇒ **取一次写死，不必补 canvas 环境**；② header **只加 `Referer` + `User-Agent`**（多个 `Host` 都可能失败）；③ 「值对但不成功」有两个独立来源（cookie 状态机不全 + 坐标本身的坑）。 |
+| 469 | `52pojie-1872638-某备案查询网站 汉字点选逆向分析.md` | `0cfd3600859494a936f7dcc20959a09d` | 2026-09-23 | web-verify-patcher | evolve | **点选类「验证通过只是拿到一个 header」的最清晰实例**：521(jsl) → `/auth`（`authKey`=MD5(时间戳+盐)、`timeStamp`）拿 `token` → `/getCheckImagePoint`（`clientUid`=设备 id，**存 localStorage**）返回 `bigImage`/`smallImage`/`secretKey`/`uuid`/`wordCount` → `/checkImage`（`clientUid`+`pointJson`+`secretKey`+`token`）通过后**多返回一个 `sign`** → `/queryByCondition` 需要 **`Cookie`/`Sign`/`Token`/`Uuid` 四头齐全**。定位技巧：设备 id 搜不到生成点就搜 **`localStorage.getItem`**。 |
+| 470 | `52pojie-1903272-某东常用验证码逆向流程分析.md` | `c2c8349ae1a0b2ec89abb01b67c9edc7` | 2026-09-23 | web-verify-patcher | evolve | **站点自研滑块的 `g`/`s` 双接口形态**：`g` 取图 + 下发参数（`appId`/`scene`/`product`/`lang` 可写死、**`callback` 的随机数也能写死**，真正要跟的是 `e`/`j`，跟进去会进 VM），`s` 做校验（`c`≈challenge，**重点是 `d`**）。**同站多形态并存**（登录滑块 / `cfe` 链接滑块 / `cfe` 链接点选）⇒ 不要假设「一个站只有一套验证码」。风险提示（原文口径）：旋转验证码一旦触发基本等于高风险标记，手势验证码只出现在固定接口。 |
+| 471 | `52pojie-2088578-某雷云盘验证码逆向思路总结.md` | `a69abc5def0454577bfdef775d6d84e2` | 2026-09-23 | web-verify-patcher | evolve | **`ck0.` 无感 token 的「只登记结构」案例**：`x-captcha-token = ck0.<Part1>.<Part2>`，`Part1` 是 **base64url**（用 `-`/`_`）的加密数据，`Part2` 解码后疑似 **protobuf**（`client_id`/`version=1.92.33`/`domain`/`device_id`/`signature`）；配套头 `x-device-id`/`x-client-id`。**⚠️ 原文对「生成原理」给的是明确推测（「根据结构推测」）** ⇒ 本批只登记**结构 + 判据**，并写明取证建议是「先判能否沿用现成 token / 设备一致性，再走浏览器侧 hook」，**不登记任何公式**。 |
+| 472 | `52pojie-1882302-易盾点选踩坑.md` | `c9caf2c8fe913cae2b2d0351eb790235` | 2026-09-23 | web-verify-patcher | evolve | **正确率四因素（本批最有操作价值的一条）**：① **请求头完整性**（`Accept`/`Accept-Language`/`Cache-Control`/`Connection` 这些「平时懒得不加」的头是重要变量）；② **`callback` 随机范围不能大于 10**；③ **`fp` 必须与站点域名对应**（滑块写死域名仍有 ~80%+，**点选写死且站点不对只有 0–10%**）；④ **发送间隔**（轨迹耗时 1s 就别在 0.1s 后提交，点选有**时间一致性校验**）。配套分级：**无感 < 滑块 < 点选**（无感**不发 `d`/`b` 包**、防御最低；「能过无感」≠「能过点选」）。补充：点选对**轨迹形状本身**校验很松（直线也能过）⇒ 四因素没达标时换什么轨迹都没用。 |
+| 473 | `52pojie-1868945-[补环境流]易盾智能无感逆向fp参数.md` | `1eab7bbf0e2fb2940876b4a021aa012c` | 2026-09-23 | web-js-env-patcher | evolve | **易盾无感 `fp`（cookie `gdxidpyhxdE`）的环境检测点**：`localstorage`/`body`/`openDatabase` 存在性检测 + canvas/DOM 检测；**最值钱的一条**是 `div.style.color='ActiveBorder'` 后 `getComputedStyle(div).getPropertyValue('color')` **必须返回 `rgb(...)`**（实测同一系统色在 Firefox 与 Edge 下 rgb 不同 ⇒ 判据是「**形态必须是 rgb**」而非某个值，随机色也能过）；**直接用 jsdom 的 `getComputedStyle` 会被立刻识破**。 |
+| 474 | `52pojie-2074942-steam hcaptcha 一些环境监测点分享.md` | `83c825baccdc3f45425c7e135300859a` | 2026-09-23 | web-js-env-patcher | evolve | **hCaptcha 的环境检测点清单**（补环境流的对照表）：Math 精度（`cos(13*Math.E)`/`pow(PI,-100)`/`sin(39*Math.E)`/`tan(6*Math.LN2)` 与 Node 有**微小差异**）、`getImageData` 必须与本次 **`fillStyle` 自洽**（按 rgb 动态解析，不能写死）、`measureText` 字体 **7 个值 + 92 个 emoji**、`OfflineAudioContext` 求和、`toDataURL` **四次**、Worker/SharedWorker（**只要能触发 `message` 即可，不必新开 VM**）、**15 处描述符批量检测**（最容易出图的一项）。三条取证口径：**CSP 只删最后一处 script 校验**（`object-src 'none'; base-uri 'self'; worker-src blob:` 不能删）、**wasm 初始化那次可以不实现**（日志减半）、**先用「写死浏览器指纹数组」做二分**（写死能过 ⇒ 问题在你生成的数组上）。 |
+| 475 | `52pojie-1606710-非深度学习非调用API过猿人学第八题点选验证.md` | `1208dab9ca6d2f71d05065e772b106b7` | 2026-09-23 | web-verify-patcher | evolve | **点选的第三条路线：不识别文字，只做相似度**（生僻字/繁体字九宫格的最优解）：用**同款字体（微软雅黑粗体，88pt）把题面渲成 85×85 单字图**，把九宫格按**估算分割坐标**切块（原文坐标表 + `block_list`），逐块用**像素相同数量或余弦距离**比对取最大（实测两者都准，「10 次基本无错」）。三个必须调对的细节：**干扰线判据是「同色像素 > 10」**、**分割坐标要估且最右侧补全居中**、**字体必须接近目标**。 |
+| 476 | `52pojie-1606904-某网站captcha 机器人检测原理分析.md` | `5a835d8dfc8415429d67b2687d8544ad` | 2026-09-23 | web-verify-patcher | evolve | **「本地通过 ≠ 服务端认可」的机制级证据**：未混淆的 `captcha.js` 里 `options.onSuccess` 需要 `e.verified` 与 `e.spliced` 同时为真（`e` 来自 `n.verify()`）；而 `verified` 的判定**可配置为本地校验或把鼠标轨迹发服务器校验**（该站用本地）。⇒ 看到「通过」只能说明这一层过了，业务接口的返回才是判据。 |
+| 477 | `52pojie-1634219-pyppeteer过某里纯滑块【通用】.md` | `03aa8262aeac46cb5effc7b8912ec782` | 2026-09-23 | web-verify-patcher | evolve | **两个与算法无关但极高频的坑**：① 自动化被检测的直接原因是 **pyppeteer 启动参数 `--enable-automation`**（在 `launcher` 源码里注释掉即过）⇒ **「被检测」有时在驱动层，不在 JS 指纹层**；② **验证结果的参数映射**：业务请求 `session_id`/`sig`/`token` 分别对应滑块成功返回的 **`csessionid`/`value`** 与请求自身的 `token` ⇒ 排查「过了验证却登录失败」第一步应**逐字段对表**。 |
+| 478 | `52pojie-867169-小学数学破解滑动拼图验证码.md` | `4f523ba713c50832ca036e903d523157` | 2026-09-23 | web-verify-patcher | evolve | **零依赖缺口定位法（竖线灰度方差扫描）**：3×3 方块竖向扫描，比较「**第三列方差 B3**」与「三行方差 A1/A2/A3」（B3 大于其中两个即疑为缺口左边缘）；因单点噪声大，必须**按列聚合**——每列命中块数 **> 20** 才建分，得分 =「该列内**连续**命中块数之和」，取最高列。**适用前提（必须点破）**：缺口形状**每轮不变**（左边缘是一条 ~40px 竖线）；形状随机时立刻失效。 |
+
+### 本批次技能变更汇总（B23）
+
+| 技能 | 变更类型 | 主要落点 |
+| --- | --- | --- |
+| `desktop-client-reverse` | **create** | **新技能**：`SKILL.md`（分流判据表 11 行 / 工作流 7 步含 2 个 🔴 CHECKPOINT / 失败模式 15 行 / 反例黑名单 11 条 / 命令入口 / 与 6 个技能的边界）+ `references/electron-asar-and-fuses.md`（asar 三段布局与 `data_start = 8 + header_size`、偏移错位两种成因与「只改长度字段」的修复原理、`integrity` 与 fuse 的关系、八个 fuse、完整性校验四文件与 `fs.promises.readFile` 重定向、入口注入顺序、IPC/`electron.net`/`protocol.handle` 接管、`Proxy(Buffer)`+`Proxy(JSON.parse)` 黑盒推字段、本地端口与反调试、12 条坑表、反例）+ `references/jsc-and-v8-bytecode.md`（`.jsc` 两类形态判据、Cocos `ungzip(xxtea_decrypt())`、网易 `netease`+`01 01 01 EF` 与重复密钥异或、密钥取证三落点、d8 打补丁的真实代价、**「字节码不进环境就别想调」**、pkg `strings`+等长补丁、V8 侧只读知识的用途边界、恶意载荷识别画像与边界）+ `references/desktop-runtime-surfaces.md`（WebView2 虚表开工具与虚拟域名复现、Cocos/WebView 资源包与 `http.server`、插件 `declarativeNetRequest` 覆盖反调试、本地端口、客户端数值目标五路线）+ `scripts/asar_offset_repair.py`（`--selftest` **22 项**）、`scripts/jsc_xxtea_tool.py`（**29 项**）、`scripts/byte_flag_patch.py`（**15 项**） |
+| `web-verify-patcher` | evolve | 新增 `references/behavior-verify-and-sign-headers.md`（**无感/行为验证的请求链唯一权威源**：无感<滑块<点选分级、阿里云验证码 2.0 四请求链与 `deviceconfig`→`Data` 依赖、`CaptchaVerifyParam`/`TrackList`、快手 `verifyParam`、抖音 `s_v_web_id` 的用途边界、九宫格 cookie 状态机、点选 `sign` 与业务四头、站点自研 `g`/`s` 双接口、`ck0.` 只登记结构、正确率四因素、本地通过≠服务端认可、14 条坑表 + 反例）；`references/motion-and-coordinate.md` 新增两节（**轨迹容器与时间校验**、**竖线灰度方差零依赖缺口定位**）；`references/click-select-and-order.md` 新增**路线 0（渲染图相似度）**；新增 `scripts/trajectory_codec.py`（`--selftest` **24 项**，含快手真实轨迹夹具 `KUAISHOU_FIXTURE`）；`SKILL.md` 两处指针 + description **在加入 6 组新触发词的同时把同义堆叠压缩到上限内** |
+| `web-js-env-patcher` | evolve | `references/webapi-env-detection-matrix.md` 新增整节「风控 / 验证码类目标的高频环境检测点（B23）」8 项探测点（Math 精度 / `getImageData`↔`fillStyle` / 系统色→rgb / 字体 7 值+92 emoji / `OfflineAudioContext` / `toDataURL`×4 / Worker 只需 `message` / 15 处描述符）**并显式声明「本节不新增触发类别」**（映射到既有枚举，避免与 `check_webapi_env_detection_matrix.js` 的闭集冲突）；`SKILL.md` 加指针 + description 触发词 |
+
+### 结构性收敛（B23）
+
+| 项 | 处置 |
+| --- | --- |
+| **description 已超出 1024 上限**（`web-verify-patcher` 实测 **1026**） | 借本轮新增触发词之机**压缩同义堆叠**（点选/旋转/切片乱序等 8 处重复说法、以及厂商长括号里的修饰语）⇒ **990 字符**，**新触发词进得来、总量回到上限内**。这是「不改功能只改表达」的结构性收敛，不是功能性删减。 |
+| **新技能的「边界」不能只写「不做什么」** | `desktop-client-reverse` 一次性写清与 6 个技能的分工（Web 算法/补环境/WASM/WebSocket/流媒体/小程序的归属），并**反向不做修改**（避免把别人的能力面写坏）。 |
+| **未明字段一律透传** | `TrackList.si`（阿里云）与 `ck0.` 的 `Part1` 生成公式**都不臆造**：文档写明「语义未明/原文是推测」，工具里做成**原样透传参数**（`--si`）。 |
+| **语料 Markdown 转义会制造假未命中** | 保真度脚本新增 `norm()`（`\_`/`\*`/`\-`/`\|` 归一化）：本轮 269 条断言里 **8 条**假未命中全部由转义造成（`JNI\_OnLoad`/`vm\_data`/`app\_name`/`session\_id`/`rules\_1.json`…）。 |
+| **只登记结构、留可追溯缺口** | `2088578`（`ck0.`）与 `1664417`（视频帖）都按「信息量不足」口径登记：**登记判据与边界，不写公式、不写实现**。 |
+
+### 证伪与审计留痕（B23）
+
+```bash
+# 1) 本批新脚本自检（22 + 29 + 15 + 24 = 90 项）
+python .agents/skills/desktop-client-reverse/scripts/asar_offset_repair.py --selftest
+python .agents/skills/desktop-client-reverse/scripts/jsc_xxtea_tool.py --selftest
+python .agents/skills/desktop-client-reverse/scripts/byte_flag_patch.py --selftest
+python .agents/skills/web-verify-patcher/scripts/trajectory_codec.py --selftest
+
+# 2) 既有脚本回归（web-verify-patcher 全部脚本）
+for f in .agents/skills/web-verify-patcher/scripts/*.py; do python \「$f\」 --selftest || echo \「FAIL $f\」; done
+
+# 3) 故障注入阳性验证（4/4 变红；证据见下方口径）
+python artifacts/skill-evolution/tools/b23-fault-injection.py
+
+# 4) 来源保真度（31 篇源文件 / 222 条事实 + 47 条产物断言 / 0 未命中）
+python artifacts/skill-evolution/tools/b23-verify-sources.py
+
+# 5) 机械校验 + 双镜像
+node artifacts/skill-evolution/tools/check_skill_integrity.js --root . --markdown
+python artifacts/skill-evolution/tools/b20-mirror-sync.py
+
+# 6) 台账幂等复跑（应打印「已登记，跳过」）
+python artifacts/skill-evolution/tools/append-b23-ledger.py
+```
+
+**故障注入明细（基线绿 → 注入后红）**：
+
+| 注入点 | 结果 |
+| --- | --- |
+| `asar_offset_repair.py`：把「所有抽样文件都命中」放宽成「允许少一个」 | rc 0 → 1，命中 `自检-L 目录被改必须报 inconsistent` ✓ |
+| `jsc_xxtea_tool.py`：交换「剥签名头」与「异或」的顺序 | rc 0 → 1（以异常形式失败，**不是静默通过**）✓ |
+| `byte_flag_patch.py`：`--expect` 只告警不中止 | rc 0 → 1，命中 `--expect 不符时不得落盘` ✓ |
+| `trajectory_codec.py`：`Δt` 基准改成相邻点差 | rc 0 → 1，命中 `limit-last=2 … dt 仍相对全轨迹首点` ✓ |
+
+**清点**：台账 **447 → 478**（本批登记 **31** 条，编号 **#448–#478**）；待处理 **454 → 423**；新建技能 **1**、演化技能 **2**。
+
+### 下一批（B24）取材建议（承接本节）
+
+- 待处理 **423** 篇（台账 478 条后）。
+- 优先级：
+  ① **桌面客户端簇的「下一步」**：`asar`/fuse 已收口，若再遇到同族，优先补「**Tauri / node:sea / NE 打包**」与「**原生模块（.node / .dll 加壳）**」这两个薄区；
+  ② **验证码图像识别系的坐标侧**（真拼图 / 双缺口 / 旋转点选）仍有剩余，一律走 `web-verify-patcher` 的 evolve；
+  ③ **无感/行为验证**剩余（更多厂商的「多请求链 + 签名头」形态）继续并入 `references/behavior-verify-and-sign-headers.md`，**不要为每家建新文件**；
+  ④ **环境检测点**继续并入 `web-js-env-patcher` 的矩阵节（注意：新检测点必须映射到既有触发类别，枚举是闭集）；
+  ⑤ 小程序 / ts 帧加密 / Cloudflare 三簇 **按已有结论走**（前者 evolve，后两者先量化再决定）。
+- 候选新技能 `captcha-flow-orchestration` —— B5–B23 **十七次确认不新建**（证据池仍未跨越「单站一流程」到「可复用编排协议」的门槛）。
+- 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
+  **注**：B1-17 / B13-216 的「不建小程序技能」结论在 B22 已被**推翻并取代**（改判为「无最近邻模块 + 规模最大 ⇒ 建」），旧结论只保留可追溯性。
+

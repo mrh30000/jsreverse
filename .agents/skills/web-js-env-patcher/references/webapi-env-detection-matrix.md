@@ -186,6 +186,38 @@ Promise resolved、Worker 回包出现或 probe 不报错都不能单独视为�
 - `CSSStyleSheet.insertRule()`、`CSSStyleRule.selectorText/style`、`CSSRuleList.item()`、`getComputedStyle()` 对目标选择器的最小一致性。
 - `document.links/images/forms/title/on*`、`document.cookie` 可见性与 descriptor。
 
+### 风控 / 验证码类目标的高频环境检测点（B23）
+
+> **本节不新增触发类别**：下列每一项都按最后一列映射到上面既有的 `CATEGORIES`
+> （校验器 `scripts/check_webapi_env_detection_matrix.js` 的枚举是闭集，不要自创 id）。
+> 来源：`52pojie-2074942`（hCaptcha 的环境监测点）、`52pojie-1868945`（易盾无感 `fp` 补环境）。
+
+| # | 检测点 | 浏览器侧"正确形态" | 映射类别 |
+| --- | --- | --- | --- |
+| 1 | **Math 精度** | `[Math.cos(13*Math.E), Math.pow(Math.PI,-100), Math.sin(39*Math.E), Math.tan(6*Math.LN2)]` —— 浏览器与 Node 的结果**有微小差异**，必须回放浏览器真实值 | `object-shape`（值级 baseline） |
+| 2 | **`getImageData` ↔ `fillStyle` 自洽** | 流程：`clearRect` → 画布宽高设为 2 → 设 `fillStyle`（**随机色**）→ 填充 → `getImageData`。返回值**必须与本次 `fillStyle` 一致** ⇒ 按 rgb 动态解析，**不能写死**（`a` 通道观察到恒为 1） | `dom-cssom` |
+| 3 | **系统色 → rgb 转换** | `div.style.color = 'ActiveBorder'` 后 `getComputedStyle(div).getPropertyValue('color')` **必须是 `rgb(...)`**（不是关键字）。实测同一系统色在 **Firefox 与 Edge 下 rgb 值不同**，所以判据是"**形态必须是 rgb**"而不是某个具体值 | `dom-cssom` |
+| 4 | **字体指纹** | `measureText` 取 **7 个**宽度值；另有 **92 个 emoji** 的测量数据 | `dom-cssom` |
+| 5 | **音频指纹** | `OfflineAudioContext` 渲染后对两组数据取 `Math.abs` 求和（可做轻微扰动模拟不同设备） | `object-shape`（值回放；枚举无音频类别，按"值级 baseline"归此） |
+| 6 | **`toDataURL`** | 同一路径会取**四次**（不同 `hsw.js` 获取顺序可能不同） | `dom-cssom` |
+| 7 | **Worker / SharedWorker** | 指纹数组里有两项来自它们；**不要求新开 VM**：只要能触发 `message` 事件、收到消息即可 | `worker-task` |
+| 8 | **描述符批量检测** | 会对 **15 个方法**集中取描述符，结果必须与浏览器**逐项一致**（"坐得住就能补出来"，是本族**最容易出图**的一项） | `object-shape` |
+
+**三条取证口径（同一来源实测）**：
+
+1. **CSP 不要整段删**：只删最后那处 script 校验，`<meta http-equiv="Content-Security-Policy"
+   content="object-src 'none'; base-uri 'self'; worker-src blob:">` **这两项不能删**；带 `integrity` 的地方全部删掉。
+2. **wasm 只保留需要的那次**：该指纹的 wasm 会被调用两次（第一次初始化、第二次生成加密数据）；
+   **初始化那次可以不实现**，日志量直接减半（对照环境时更省事）。
+3. **先做"写死能否过"的二分**：把浏览器的 `vm_data` / `motionData` 与指纹数组**先原样写死**
+   （注意转义字符）；"写死能过、不写死过不了" ⇒ 问题一定在**你生成的数组**上。
+   反之若写死也过不了，就不要继续在数组里挖，先查链路/时序。
+
+**一个必须避开的"看起来能用"的坑（`1868945`）**：直接用 **jsdom 的 `getComputedStyle`** 会被立刻识破
+（原文口径："jsdom 被检测烂了"）。该检测点还伴随 `localStorage` / `body` / `openDatabase` 一类
+DOM 存在性检测 —— 这些都必须按真实浏览器 baseline 回放，而不是"返回一个空对象"，
+详见 `references/env-object-model.md` 的 `CSSStyleDeclaration / getComputedStyle` 一行。
+
 ### Error / clone / native shape
 
 检查：

@@ -1,6 +1,6 @@
 ---
 name: web-js-env-patcher
-description: "面向网页端 JavaScript 的 Node.js 补环境 Skill。用于 env.js/runner.js、缺失环境追踪、RuyiTrace/Proxy 日志分析、Trace API 首轮覆盖与 runtime contract、浏览器对象模型与 native-like、addon/xbs native-first、私有状态泄露阻断、对象形状审计、iframe/Worker/DOM-CSSOM/Performance/WebAPI 行为矩阵、Canvas/WebGL/WebGPU/Audio/字体/DOM 几何真实值回放、XHR/fetch no-send 语义审计、TLS 指纹兼容 Session bridge、curl_cffi 同 Session、动态资源刷新、Cookie 生成链路、source/entry/builder/writer 定位、阶段报告和最终交付门禁。也覆盖边缘 WAF / CDN 准入 Cookie 挑战的判层与链路（首访 403/412/429/503/521 + clearance cookie：加速乐 jsl 521、阿里 acw_sc__v2、Cloudflare 5s 盾与 Turnstile、Akamai `_abck`/`sensor_data`、F5 Shape/Reese84、Imperva、Kasada、DataDome、HUMAN/PerimeterX、AWS WAF、Fastly）。不要用于 App、移动端、小程序、Windows/Native 逆向或纯算重写；默认不主动分析 JSVMP 源码。"
+description: "面向网页端 JavaScript 的 Node.js 补环境 Skill。用于 env.js/runner.js、缺失环境追踪、RuyiTrace/Proxy 日志分析、Trace API 首轮覆盖与 runtime contract、浏览器对象模型与 native-like、addon/xbs native-first、私有状态泄露阻断、对象形状审计、iframe/Worker/DOM-CSSOM/Performance/WebAPI 行为矩阵、Canvas/WebGL/WebGPU/Audio/字体/DOM 几何真实值回放、XHR/fetch no-send 语义审计、TLS 指纹兼容 Session bridge、curl_cffi 同 Session、动态资源刷新、Cookie 生成链路、source/entry/builder/writer 定位、阶段报告和最终交付门禁。也覆盖边缘 WAF / CDN 准入 Cookie 挑战的判层与链路（首访 403/412/429/503/521 + clearance cookie：加速乐 jsl 521、阿里 acw_sc__v2、Cloudflare 5s 盾与 Turnstile、Akamai `_abck`/`sensor_data`、F5 Shape/Reese84、Imperva、Kasada、DataDome、HUMAN/PerimeterX、AWS WAF、Fastly）。不要用于 App、移动端、小程序（小程序见 `miniprogram-reverse`）、Windows/Native 逆向或纯算重写；默认不主动分析 JSVMP 源码。、Math 精度差异（Math.E/Math.PI 参与运算的微小偏差）、getImageData 与本次 fillStyle 自洽、系统色 ActiveBorder/activecaption 经 getComputedStyle 必须转成 rgb、measureText 字体与 emoji 指纹、描述符批量检测"
 ---
 
 # 网页端 JS Node.js 补环境
@@ -12,6 +12,8 @@ description: "面向网页端 JavaScript 的 Node.js 补环境 Skill。用于 en
 
 - 目标是运行原始网页 JS，而不是优先重写算法。
 - 不处理 App、Android、iOS、小程序、EXE、DLL、Frida、IDA、JADX、Ghidra 等 Native 任务。
+  - **小程序**请改走 `miniprogram-reverse`（包解密 / 解包 / sign / 云函数 / 原生层）；
+    只有"把小程序 JS 搬进 Node 复现"这一步（补 `wx.*` / `getApp()` / `App()` 等宿主对象）才回到本 Skill。
 - 默认不主动还原 JSVMP、opcode 或虚拟机解释器；只定位环境依赖、请求链和 writer。需要进入 JSVMP 源码时先暂停并让用户明确改变范围。
 - TLS 指纹兼容只用于授权验证浏览器网络栈差异，不得用于绕过登录、验证码、MFA、访问控制或批量访问。
 
@@ -76,6 +78,12 @@ description: "面向网页端 JavaScript 的 Node.js 补环境 Skill。用于 en
 ### WebAPI、对象形状与指纹
 
 - iframe、Worker、PerformanceTimeline、DOM/CSSOM、EventTarget、timer、writer 分支：读取 `references/webapi-env-detection-matrix.md`。
+  - 目标是**风控/验证码站**（hCaptcha、易盾 `fp` 一类）时，同一文件里另有一节
+    「风控 / 验证码类目标的高频环境检测点（B23）」：**Math 精度**、**`getImageData` 必须与本次 `fillStyle` 自洽**、
+    **系统色 `ActiveBorder` → 必须是 `rgb(...)` 形态**、`measureText` 字体（7 值与 92 个 emoji）、
+    `OfflineAudioContext`、`toDataURL` 四次、Worker/SharedWorker 只需触发 `message`、**15 处描述符批量检测**，
+    以及「只删最后一处 CSP 校验」「wasm 初始化那次可以不实现」「先用写死指纹数组做二分」三条取证口径。
+    （该节**不新增触发类别**，全部映射到既有枚举；`jsdom` 的 `getComputedStyle` 实测会被立刻识破。）
 - 对象 ownKeys、descriptor、prototype walk 或 `_` / `__` 私有状态泄露：读取 `references/object-shape-private-state.md`。
 - Canvas、WebGL、WebGPU、Audio、字体、DOM 几何等真实值采样和回放：读取 `references/fingerprint-value-replay.md`。
 - 浏览器与 Node fixture 对比：读取 `references/fixture-validation.md`。

@@ -114,6 +114,69 @@ python scripts/generate_motion_track.py --mode slider --distance 128 --duration-
 
 > ❌ 上表**只能逐站实测**填；把任何一行的常量套到别的站，症状是"识别看着对、就是过不去"。
 
+## 缺口定位的零依赖法：竖线灰度方差扫描（B23）
+
+不需要 OpenCV / 不训模型，也能定位**左侧边缘是一条 40px 左右竖直亮线**的滑块缺口
+（`52pojie-867169` 的原始做法，纯灰度矩阵 + 方差比较）：
+
+1. 转灰度（丢掉色彩信息）；
+2. 用 **3×3 方块竖向扫描**整图；对每块求**三行的方差** A1/A2/A3 与**第三列（缺口边缘那一列）的方差** B3；
+3. 若 **B3 比 A1/A2/A3 中至少两个大** ⇒ 该块**可能**在缺口左边缘
+   （原理：缺口边缘是竖线 ⇒ 同一列内灰度稳定、跨列突变 ⇒ 列方差 > 行方差）；
+4. 单点判据噪声很大（正常区域也会命中）⇒ 必须**按列聚合**：
+   统计每列命中块数，**> 20 才给该列建分**；得分 = 「该列内**连续**命中块数之和」；
+   得分最高的一列即缺口左边缘。
+
+```python
+# 逐列聚合（原文 scan_array 的语义）
+score = {}
+for x in range(start_x, w):
+    runs, cur, hits = 0, 0, 0
+    for y in range(start_y, h):
+        if is_border(pixels(y, x)):      # 3×3 方差判据
+            cur += 1; hits += 1
+        else:
+            runs += cur; cur = 0
+    runs += cur
+    if hits > 20:
+        score[x] = runs
+gap_x = max(score, key=score.get)
+```
+
+**适用边界（必须点破）**：这条路线的**唯一前提是「缺口形状每轮不变」**
+（缺口左边是一条竖直线）。若缺口形状随机（星星/月亮/拼图轮换），
+方差扫描立刻失效 ⇒ 换 §三 匹配与指派 / 图像相似度路线。
+
+## 轨迹容器与时间校验（B23）
+
+`scripts/trajectory_codec.py`（`--selftest` **24 项**）把下面两族容器做成可复现编解码，
+用来"拿浏览器真实值当 oracle 对拍"，而不是凭印象拼字符串。
+
+| 容器 | 形态（**逐字符口径**） | 来源 |
+| --- | --- | --- |
+| 快手 `kuaishou-comma` | `x\|y\|Δt` 用 `,` 连接；**原始值带前导逗号**（`"," + join`），提交前 `.slice(1)`；`Δt` 相对**整条轨迹的起点**（`t.trajectory[0][2]`），**不是相邻点差**；只取 `slice(-100)` | `52pojie-1697353` |
+| 阿里云 `aliyun-tracklist` | 对象：`TrackList.mc`=`x,y,t, ,1`、`mp`/`mm`=`x,y,t,1\|…`（`mm` 是 `mp` 尾部子集）、`tc/mu/te/tmv/ks/fi` 空串占位、`si` 语义未明；外层 `TrackStartTime`/`VerifyTime`/`arg` | `52pojie-1982617` |
+
+**三条容易踩的**：
+
+1. **`Δt` 的基准点**：快手是"相对首点"，且**截断取点（`slice(-100)`）不改变基准** —— 基准在 `slice` 之外计算。
+   写成"相邻点差"或不截断时重算基准，都会与服务端不一致（**不报错，只失败**）。
+2. **前导逗号**：浏览器里 `c` 的值是 `"," + join`，**提交前 `slice(1)`**。对拍时拿到的到底是哪一个，
+   要按"扣出来的代码里传的是 `c` 还是 `c.slice(1)`"判断，不要凭"看起来一样"。
+3. **时间一致性校验**：点选类尤其明显 —— 轨迹自身耗时 1s，就别在 0.1s 后把 check 发出去
+   （`52pojie-1882302` 实测；该文同时给出另外三条同样重要的因素：请求头完整性、
+   `callback` 随机范围 ≤10、`fp` 必须对应站点域名）。详见
+   `references/behavior-verify-and-sign-headers.md` §9。
+
+```bash
+S=.agents/skills/web-verify-patcher/scripts
+python $S/trajectory_codec.py identify --value "<抓到的轨迹串>"
+python $S/trajectory_codec.py decode --format kuaishou-comma --value "<c>" --t0 <首点时间戳>
+python $S/trajectory_codec.py encode --format aliyun-tracklist --points points.json --si "<原样透传>"
+```
+
+> ⚠️ 不要把 `si` 这类**语义未明**的字段"补全"成公式：来源只给了观测值，本仓库一律透传。
+
 ## 旋转 / 弧线滑块（轨迹带旋转角度）
 
 滑块沿**弧线**移动且自身**旋转**时，只有水平距离不够，要把角度一起算出来：

@@ -1,7 +1,12 @@
 # HLS / TS 分层与 A~D 层实战配方
 
 > 本文件是**分层判据与配方**的唯一权威源。SKILL.md 的 30 秒分流表由此展开。
-> 许可证体系（E 层）见 `references/license-and-key-hierarchy.md`；wasm/白盒（F 层）见 `references/whitebox-and-wasm-crypto.md`。
+> 许可证体系（E 层）见 `references/license-and-key-hierarchy.md`（国内派）与
+> `references/widevine-cdm-and-eme.md`（国际派：Widevine / EME / ClearKey）；
+> wasm/白盒（F 层）见 `references/whitebox-and-wasm-crypto.md`。
+>
+> **「分片本身根本不是标准 TS」** 的情形（被拼上真图片头伪装成 `.png`、网络面板只有一堆图片请求）
+> 不在本文件里：那是**容器伪装**，用 `scripts/container_disguise.py locate/strip` 先还原出真分片再回来判层。
 
 **目录**
 
@@ -245,6 +250,7 @@ python $S/nalu_frame_crypto.py split-derive --data "AAAABBBBCCCCDDDDeeeeffffgggg
 | 现象 | 结论 |
 | --- | --- |
 | key URI **403 / 需要 token** | URI 被加固，不是 key 的问题；先补 token（与 §10.1 同源） |
+| key URI 形如 `…/xxx.key?pid=null&ts=<毫秒>&sign=<32hex>&ms=<32hex>&audit=&appId=` | **厂商托管（videocc.net / 某利威系）**：`ts`+`sign`+`ms` 是**时效鉴权四件套**；`sign/ms` 由页面接口下发，**不能自己算**，必须"取一次、马上用" |
 | key 文件 **32 字节** | 一层 AES-CBC 包装，取解出后的**前 16 字节** |
 | key 文件 **33 字节** | 同上（多 1 字节是 padding/换行残留）；**先试「去掉尾部 1 字节再解」** |
 | 同一个 MD5 字符串既当 key 又当 IV | 这是**切片式**用法（前 16 / 后 16），不是取两次 MD5 |

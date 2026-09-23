@@ -1,8 +1,13 @@
-# DRM 许可证体系与密钥层级（E 层）
+# DRM 许可证体系与密钥层级（E 层 · 国内派）
 
-> 本文件是 **E 层（DRM 许可证）** 的唯一权威源。C 层的 TS/PES/NALU 分层见 `references/hls-and-ts-structure.md`。
+> 本文件是 **E 层（DRM 许可证）· 国内派** 的唯一权威源。C 层的 TS/PES/NALU 分层见 `references/hls-and-ts-structure.md`。
 > 适用对象：CDRM / STSDK 一类**自研 DRM**（`GetProvision` + `GetLicense` + 国密套件），
 > 以及带 `CENC` / `KID` / `protectedLicenses` 字段的同构体系。
+>
+> ⚠️ **国际派在另一份**：出现 `cenc:pssh`、`enca`/`cbcs`、`KEYFORMAT="urn:uuid:edef8ba9-…"`、`skd://`、
+> ClearKey 的 `bilidrm`、`MediaKeys`/`requestMediaKeySystemAccess` 时，
+> **去 `references/widevine-cdm-and-eme.md`**（Widevine L3 / `.wvd` / `0804` / `mp4decrypt` / EME）。
+> **两派的判据、工具、失败现象都不通用**——本文件里的"Provision"在国际派里没有对应步骤。
 
 **目录**
 

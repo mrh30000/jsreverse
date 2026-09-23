@@ -303,30 +303,74 @@ k = (e*k + f) % g
 该 token 是访问分片的**唯一凭据**，**每个 ts 的 URL 也必须带上它**。
 不要只给 m3u8 带 token；也不要把 `upt` 当签名重算（它由服务端下发）。
 
-### 2.13 Widevine（CDM）：**不在 JS 层——这是明确的边界**
+### 2.13 Widevine / 国际派 DRM：**不在 JS 层** —— 但**不等于不可解**（指针）
 
 **现象**：m3u8 / 初始化段解不开，JS 里搜不到任何 key 逻辑；
-`#EXT-X-KEY:METHOD=SAMPLE-AES` 且 `KEYFORMAT` 是 Widevine 的 KID
+`#EXT-X-KEY:METHOD=SAMPLE-AES`（或 `.m4s` 的 `enca`/`cbcs`）且 `KEYFORMAT` 是 Widevine 的 KID
 （`urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed`）；页面提示浏览器不支持。
 
-**结论**：解密发生在 **CDM（Content Decryption Module）** 内部，JS 层拿到的**只有解密后的帧**。
-「扣 JS 拿 key」这条路**不存在**，不要在这里空转。
+**结论**：解密发生在 **CDM（Content Decryption Module）** 内部，**JS 层拿到的只有解密后的帧**
+⇒「扣 JS 拿 key」这条路确实不存在。
 
-**可行路线（原文思路）**：自己编译 Chromium → 打开编译开关 `enable_widevine = true` →
-在编译产物目录建 `WidevineCdm/` 放入 Google 官方 CDM 包 →
-在 `MojoDecryptor::OnVideoDecoded` 处拿到 `VideoFrame`（I420），转 ARGB/PNG 或重新编码落盘。
-
-**本技能的处置**：**标注为边界，不做纯算实现**；只提供「识别 + 绕行/放弃」的判据。
+> ⚠️ **但"扣不出 JS" ≠ "拿不到 key"**（B22 修正）：
+> 浏览器上的 Widevine 绝大多数是 **L3（纯软件 CDM）**，可以用**自己的 `.wvd` 设备**向同一个 license 服务器
+> 走一遍 **`0804` → 证书 → challenge → license → CEK**，拿到 KID:KEY 后用 `mp4decrypt` / `ffmpeg` 解。
+> **本技能已给出完整链路与工具**，不再是"边界/放弃"。
+> ⇒ 完整判派、三步链、`.wvd` 三条提取路线、ClearKey、EME hook 点、坑表：
+> **`references/widevine-cdm-and-eme.md`**（唯一权威源）。
 
 **识别判据**（用来把这题和自有 DRM 区分开）：
 
 | 判据 | 含义 |
 | --- | --- |
-| `METHOD=SAMPLE-AES` + Widevine KID | 大概率 Widevine |
-| 有 `GetLicense` / `protectedLicenses` / `KID` / `CEK` 且走自有 TLV | **自有 CDRM/STSDK 系** ⇒ 走 `license-and-key-hierarchy.md`，可解 |
-| JS 里完全没有任何 key/解密逻辑，但能播 | CDM 系 ⇒ 走「取解码后帧」或放弃 |
+| `METHOD=SAMPLE-AES` + Widevine KID / `cbcs` / `cenc:pssh` | **国际派** ⇒ `widevine-cdm-and-eme.md`（L3 可解） |
+| `bilidrm` 小文件（含公钥）+ `cbcs` | **ClearKey** ⇒ 同文 §4（明文 key，最好解） |
+| 有 `GetLicense` / `protectedLicenses` / `KID` / `CEK` 且走自有 TLV | **自有 CDRM/STSDK 系** ⇒ 走 `license-and-key-hierarchy.md` |
+| JS 里完全没有任何 key/解密逻辑，但能播 | CDM 系；先判 L1/L2/L3，别直接放弃 |
+| 只有"自己编译 Chromium 在 `MojoDecryptor::OnVideoDecoded` 取帧"一条路被提及 | 那是 L1/硬件路径或作者的备用方案，**先试 L3** |
 
 ---
+
+### 2.14 优酷 mtop 系：**取播放地址的接口签名**（`sign` 在 query，不在 body）
+
+**现象**：页面里能拿到 `m3u8_url`，但直接请求接口报 `FAIL_SYS_ILLEGAL_ACCESS::非法请求`；
+接口是 `https://acs.youku.com/h5/mtop.youku.play.ups.appinfo.get/1.1/`。
+
+**派生式**（四条都要对）：
+
+```
+sign = MD5( token + "&" + t + "&" + appKey + "&" + data )
+
+token   = cookie `_m_h5_tk` 的值里**下划线之前**那一段
+          （ccookie 形态是 `xxxx_yyyy`；正则 `_m_h5_tk=(.*?)_.*?;`）
+t       = 毫秒时间戳（字符串）
+appKey  = "24679788"                       # 固定值
+data    = 请求体的 JSON 串**原文**（要逐字节一致，含转义）
+```
+
+**请求体三段**（`data` 里嵌了三个 JSON 字符串，实测形态）：
+
+| 字段 | 关键项 |
+| --- | --- |
+| `steal_params` | `utid`（同 token 来源的 `cna`）、**`client_ts` = `t[:10]`（秒级！）**、`version`、写死的 `ckey`（长 base64） |
+| `biz_params` | `vid`（`currentEncodeVid`）、`current_showid`、`emb`、`preferClarity`、`master_m3u8:1` |
+| `ad_params` | `emb`、`bt:"pc"`、`os:"win"`、`rst:"mp4"` |
+
+- `emb = base64("<videoId>www.youku.com/")`
+- query 里 `type=jsonp&dataType=jsonp&callback=mtopjsonp1` ⇒ **响应是 JSONP**，要**去掉外层包裹**再 `json.loads`。
+- 播放列表在 `data.data.stream[]`，字段 `m3u8_url` / `width` / `height` / `size`；
+  **"最高清晰度"= 按 `size` 排序后的最后一条**（不是第一条）。
+
+**失败判据（很值，能直接定位是哪个参数错）**：
+
+| 返回 | 含义 |
+| --- | --- |
+| `FAIL_SYS_ILLEGAL_ACCESS::非法请求` | **sign 算错**（token / t / appKey / data 四者之一不一致） |
+| `FAIL_SYS_TOKEN_EXOIRED::令牌过期` | cookie 里的 `_m_h5_tk` 过期 ⇒ **重新访一次页面**刷新它 |
+
+> ⚠️ 两个最容易错的点：① `token` 要**按下划线切出前半段**（整串拿去算必错）；
+> ② `client_ts` 是**秒**、`t` 是**毫秒**，两者不能混用同一个值。
+
 
 ## 3. 跨配方判据表（先查表，再读 JS）
 

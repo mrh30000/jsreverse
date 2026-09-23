@@ -1,6 +1,6 @@
 ---
 name: stream-drm-reverse
-description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链路逆向技能：先定位「加密发生在哪一层」，再逐层解密。当目标站或 App 的播放地址、m3u8、ts 分片解不出来，或分片能下载却不能播放、播放花屏 / 绿屏 / 只有声音没画面 / 卡在首帧，或页面与接口里出现 `EXT-X-KEY`、`#EXT-X-KEY:METHOD=AES-128`、`METHOD=AES-128-PES`、`METHOD=AES-128-ECB`、`decryptdata.key`、`decryphtdata.key`、`qiniuDRMKey`、`encrypt_info`、`protectedLicenses`、`GetLicense`、`GetProvision`、`service_name=mdcm`、`KID`、`CEK`、`CENC`、`cdm`、`widevine`/`playready`、`overlayKey`、`tokenVideoKey`、`h5e`、`jsdecVOD`、`liveLineUrl`、`streamName`、`hcdnlive`、`MediaKeys.createSession`、`requestMediaKeySystemAccess` 时使用。覆盖 HLS/m3u8 与 EXT-X-KEY 语义（含厂商扩展 METHOD）、TS→PES→ES/NALU 分层与「整片 vs 仅 PES 载荷 vs 逐 NALU」覆盖范围判据、AES-128/256-CBC 与 SM4 内容解密、**key 二次构造 / 包装层（重复 XOR 三段链、字符表滚动 + 前缀标记 + 噪声插入、定长正文 + hex 标记串、两半异或、字母表覆盖性与单射性守卫）**、key/IV 四种来源（明文 URI、接口返回、固定串派生、DRM 许可证）、**直播流捕获（移动端 UA 换发行版、MSE 源码注入 dump 明文分片、base64「基址」403 与 `$0..$3` 占位符 / md5 盐拼最终地址）**、**播放器侧与反录制判据（`<video>`+MSE 可 dump vs `<canvas>` 自渲染失效、wasm 内封装解码库与 YUV 流的识别）**、**EME/CDM 拦截取 `eme.keys`**、厂商 key 配方与 URL 差值法、CDRM/STSDK 式 Provision→License（TLV、SM2、MACKey、HMAC-SM3、SM4-ECB 解 CEK）、iqiyi `mdcm` 的 `dcm` 混合模式（CTR + 周期性 XOR）与 NALU 尾部 CRC16、wasm / wasm2js 白盒 AES（DFA 与 CTR 差分反推写死 key）、wasm 媒体解密器内存取证（HEAPU8 dump / 地址差法 / `_emscripten_run_script` 打桩）与文件头解密、wasm VMP 反汇编到 IR、`importObject` 代理捕获环境取值、解密后重新封装 TS（保留 PES 头、重算 adaptation field）与 m3u8 本地化改写。用户提到 m3u8 解密、ts 解密、视频解析、直播源、切片解密、DRM、数字版权、白盒密码、白盒 AES、加密播放器、RPC 免扣（sekiro）、ffmpeg 重封装、EPUB / 电子书 / 在线阅读器章节解密、课件视频解密、**下载器提示 key 错误 / key 长度不对 / 填充错误**、**拿到的 key 是 32 位或 47 位或 64 位、不是 16 字节**、**页面能播但网络面板看不到 m3u8**、**PC 抓不到只有移动端能抓到**、**m3u8 地址解出来 403**、**播放器是 canvas 而不是 video**、**录屏会被录上浮动水印**、或说「视频能下载但不能播放 / 花屏 / 只有前几帧正常」、`SAMPLE-AES` / `METHOD=SAMPLE-AES`、`PES` 载荷加密、NAL 单元级加密、帧加密、hls.js 的 `SampleAesDecrypter` / `getAvcEncryptedData`、wasm 解密函数（`funcNN_TEA` 一类）带环境检测、`key` 文件是 33 字节、有声音但画面花、部分画面正常部分花、改完全局解密反而不能播时都应使用本技能。
+description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链路逆向技能：先定位「加密发生在哪一层」，再逐层解密。当目标站或 App 的播放地址、m3u8、ts 分片解不出来，或分片能下载却不能播放、播放花屏 / 绿屏 / 只有声音没画面 / 卡在首帧，或页面与接口里出现 `EXT-X-KEY`、`#EXT-X-KEY:METHOD=AES-128`、`METHOD=AES-128-PES`、`METHOD=AES-128-ECB`、`decryptdata.key`、`decryphtdata.key`、`qiniuDRMKey`、`encrypt_info`、`protectedLicenses`、`GetLicense`、`GetProvision`、`service_name=mdcm`、`KID`、`CEK`、`CENC`、`cdm`、`widevine`/`playready`、`overlayKey`、`tokenVideoKey`、`h5e`、`jsdecVOD`、`liveLineUrl`、`streamName`、`hcdnlive`、`cenc:pssh`、`enca`、`cbcs`、`bilidrm`、`data-keys`、`skd://`、`mp4decrypt`、`pywidevine`、`wvd`、`MediaKeys.createSession`、`requestMediaKeySystemAccess` 时使用。覆盖 HLS/m3u8 与 EXT-X-KEY 语义（含厂商扩展 METHOD）、TS→PES→ES/NALU 分层与「整片 vs 仅 PES 载荷 vs 逐 NALU」覆盖范围判据、AES-128/256-CBC 与 SM4 内容解密、**key 二次构造 / 包装层（重复 XOR 三段链、字符表滚动 + 前缀标记 + 噪声插入、定长正文 + hex 标记串、两半异或、字母表覆盖性与单射性守卫）**、key/IV 四种来源（明文 URI、接口返回、固定串派生、DRM 许可证）、**直播流捕获（移动端 UA 换发行版、MSE 源码注入 dump 明文分片、base64「基址」403 与 `$0..$3` 占位符 / md5 盐拼最终地址）**、**播放器侧与反录制判据（`<video>`+MSE 可 dump vs `<canvas>` 自渲染失效、wasm 内封装解码库与 YUV 流的识别）**、**EME/CDM 拦截取 `eme.keys`**、厂商 key 配方与 URL 差值法、CDRM/STSDK 式 Provision→License（TLV、SM2、MACKey、HMAC-SM3、SM4-ECB 解 CEK）、**国际派 DRM（Widevine L1/L2/L3、`mpd`/`cenc:pssh`、`KID`/`CEK`、`enca`/`cbcs`/CENC、`0804` 挑战与 `set_service_certificate`、`pywidevine`、`.wvd`/KeyDive/wvdumper、`mp4decrypt --key KID:KEY`、`ffmpeg -decryption_key`、ClearKey 的 `bilidrm` 公钥与 SPC→CKC→KEY 三步、FairPlay `skd://`、PlayReady 长 pssh、EME 的 `generateRequest`/`message` 事件与 `videojs-contrib-eme`）**、pssh 长短两个的归属与 HTTP/2 / TLS 指纹导致的「Postman 能过脚本过不去」、iqiyi `mdcm` 的 `dcm` 混合模式（CTR + 周期性 XOR）与 NALU 尾部 CRC16、wasm / wasm2js 白盒 AES（DFA 与 CTR 差分反推写死 key）、wasm 媒体解密器内存取证（HEAPU8 dump / 地址差法 / `_emscripten_run_script` 打桩）与文件头解密、wasm VMP 反汇编到 IR、`importObject` 代理捕获环境取值、**分片被伪装成图片 / 加了文件头（网络面板只有一堆 `.png`、打开只有一个白点、`dd bs=4 skip=53`、图床白嫖）**、解密后重新封装 TS（保留 PES 头、重算 adaptation field）与 m3u8 本地化改写。用户提到 m3u8 解密、ts 解密、视频解析、直播源、切片解密、DRM、数字版权、白盒密码、白盒 AES、加密播放器、RPC 免扣（sekiro）、ffmpeg 重封装、EPUB / 电子书 / 在线阅读器章节解密、课件视频解密、**下载器提示 key 错误 / key 长度不对 / 填充错误**、**拿到的 key 是 32 位或 47 位或 64 位、不是 16 字节**、**拿到的 key 正好 16 字节但下载器仍报 key 错误**、**`data-keys` 属性 / 4 个 int32 掩码 / DataView**、**页面能播但网络面板看不到 m3u8、只能看到一堆 png**、**PC 抓不到只有移动端能抓到**、**m3u8 地址解出来 403**、**播放器是 canvas 而不是 video**、**录屏会被录上浮动水印**、或说「视频能下载但不能播放 / 花屏 / 只有前几帧正常」、`SAMPLE-AES` / `METHOD=SAMPLE-AES`、`PES` 载荷加密、NAL 单元级加密、帧加密、hls.js 的 `SampleAesDecrypter` / `getAvcEncryptedData`、wasm 解密函数（`funcNN_TEA` 一类）带环境检测、`key` 文件是 33 字节、有声音但画面花、部分画面正常部分花、改完全局解密反而不能播时都应使用本技能。
 ---
 
 # 流媒体 / 视频内容保护逆向
@@ -31,7 +31,14 @@ description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链�
 | `METHOD=NONE` 出现在**全部** KEY 上 | **PLAIN**：这份列表本身没加密 | 别在这层找 key，去看 B/C/E 层 |
 | 响应字段是密文（`encrypt_info`、`o`/`v`、`url`、`params`） | **D 接口层**：与媒体流无关 | `scripts/media_crypto.py` |
 | 出现 `protectedLicenses` / `GetLicense` / `GetProvision` / `KID` / `CEK` / `CENC` | **E DRM 许可证层** | `references/license-and-key-hierarchy.md` |
-| 页面用 `navigator.requestMediaKeySystemAccess` / `MediaKeys.createSession` | **E 层（EME 变体）**：不走自建许可证 | 拦截 `MediaKeySession.addEventListener("message")` 后在栈帧里取 `eme.keys`，见 `references/player-and-live-capture.md` §5 |
+| 分片是 `.m4s`/`.mp4`，`mp4info` 显示 `[ENCRYPTED] Coding: enca` / `Scheme Type: cbcs` | **E 层 · CENC/CBCS** | `mp4decrypt` / `ffmpeg -decryption_key`；`references/widevine-cdm-and-eme.md` |
+| 清单里有 `cenc:pssh` / `KEYFORMAT="urn:uuid:edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"` / `skd://` | **E 层 · 国际派（Widevine / FairPlay / PlayReady）** | `references/widevine-cdm-and-eme.md` §0 判派 → §2 三步链 |
+| 网络里有个 `bilidrm` 小文件（含公钥），或页面用 ClearKey | **E 层 · ClearKey（明文 key）** | 同文 §4：SPC → CKC → KEY，三步就完 |
+| 页面用 `requestMediaKeySystemAccess` / `MediaKeys.createSession` / `generateRequest` | **E 层（EME 变体）**：不走自建许可证 | 断 `generateRequest` 与 `message` 事件；见 `references/widevine-cdm-and-eme.md` §5 与 `player-and-live-capture.md` §5 |
+| **请求头/HTML 里出现 `data-keys="…, …, …, …"`（4 个 int32）** | **W6 外部掩码异或**（key 长度正常，下载器却报 key 错） | `scripts/key_wrapper.py dataview-xor --mask <4个int32>` |
+| `.key` 返回 16 字节、下载器报「key 不正确」 | **W6 或 W1**（长度正常 ≠ 没有包装） | `key_wrapper.py dataview-xor`；当 ASCII 读得出来吗 |
+| **网络面板里只有一堆 `.png`，没有 Media 请求** | **伪装层**：分片被拼上图片头 | `scripts/container_disguise.py locate/strip <伪图片>` |
+| 清单里没有 KEY，但 JS 里有 `decryptdata.key` / `this.decryptkey` / `qiniuDRMKey` | **B 播放器层**：key 由 JS 拼或由接口给 | 断点打 `decryptdata.key`；`license_parse.py mdcm` |
 | 加密函数在 wasm 或 wasm2js 产物里 | **F 白盒 / wasm 层** | `references/whitebox-and-wasm-crypto.md` |
 | 内容不是分片，而是「一章一份的加密正文」（EPUB / PDF / 阅读器章节接口） | **容器层** | `references/ebook-and-container-drm.md` |
 | 分片只有**文件头**被加密，或解密后长度变了、ffmpeg 报 NALU size | **回写层** | `scripts/ts_repack.py`（§10.2） |
@@ -116,12 +123,21 @@ description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链�
 | ★ base64 解出的地址 **403** | 那是「基址」不是最终地址 | 找 `$0 $1 $2 $3` 占位符 + `md5(拼接串)` 盐 + 改域名后缀（§3.1） |
 | ★ 容器是 `<canvas>`，录屏还带上浮动水印 | 反录制：自解码 + 自渲染，不走 MSE | MSE dump 失效，改走 wasm 取证（§2.3） |
 | 合并时报 `dts non monotonically increasing` | 下载/合并顺序，非解密 | 换 MKV，或改「先下载再解密」（§2.4） |
+| ★ 网络面板**只有一堆 `.png`**、没有 Media 请求 | 分片被拼上**真图片头**（图床白嫖） | `scripts/container_disguise.py locate <伪图片>` → `strip --offset N` |
+| ★ `.key` 是 16 字节、下载器却报 key 错 | **W6**：掩码不在 JS 里（在 DOM 属性 / 常量数组） | `key_wrapper.py dataview-xor --mask <4个int32>` |
+| ★ license 请求 200 但 key 是空的/假的 | 没设 **service certificate**（Privacy Mode） | 先 POST `\x08\x04` 拿证书 → `set_service_certificate`（`widevine-cdm-and-eme.md` §2） |
+| ★ `mp4decrypt` 直接报错 | 它必须显式 `--key KID:KEY` | 或换 `ffmpeg -decryption_key <KEY>`（免 KID） |
+| ★ Postman/curl 能过、脚本过不去 | CDN 强制 **HTTP/2** + TLS 指纹 | 改用 HTTP/2 发包，别只改 cipher 顺序 |
 
 ## 反例黑名单（不要做的事）
 
 - **不要用「m3u8 里没有 KEY」推断「没有加密」**。B 层与 E 层都不在 m3u8 里写 KEY，判据是 `decryptdata.key` / `GetLicense` 是否存在。
 - **不要用「拿到 16 字节 key 了」推断「包装层已经没有了」**。W 族的产物**也可能是 16 字节**；
   反过来，**不是 16 字节就一定是包装层**。这条判据单向成立（B14）。
+  **B22 第二次应验**：W6（外部掩码异或）的产物就**正好 16 字节**，表现只是"下载器报 key 错"。
+  补充判据：**"当 ASCII 读得出来吗"**（真实 key 常是 16 个可打印字符）；W6 见 `key-wrapper-families.md` §6.5。
+- **不要因为「页面上是 `<video>` 却看不到 Media 请求」就以为走的是 MSE 加密**。
+  先看是不是**分片被伪装成了图片**（`container_disguise.py locate`）——这一类连"加密"都还没有。
 - **不要在噪声字符非 ASCII 空白时假设「三侧行为一致」**。实测 Python / Node / 浏览器处置可以是「忽略 / 静默改字节 / 抛错」三种（`atob('YQxx==') → "aq"`，不报错、长度还对）。
   **判据必须在目标运行时里实测**，且 `n == 0` 的样本永远暴露不出这个问题。
 - **不要照抄文档里的字符表 / 字母表**。先跑 `key_wrapper.py alpha-check`（覆盖性 + 单射性），
@@ -140,6 +156,11 @@ description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链�
   流里会有**两份 SPS**，播放器用第一份照样播（§1）。
 - **不要把「解出来是合法 UTF-8 / JSON」当成功**。D 层的密文解出 JSON 只说明接口层对了，媒体流可能还是加过密的。
 - **不要在只有一组明文密文对时反推白盒 key 就宣称完成**。白盒 AES 的 key 是写死的，**必须换一个随机输入再对拍一次**（`references/whitebox-and-wasm-crypto.md` 的差分法自带这条断言）。
+- **不要把国际派与国内派 DRM 混着打**。看到 `pssh`/`KID`/`enca` 就走 `widevine-cdm-and-eme.md`（`mp4decrypt` / `ffmpeg -decryption_key`）；
+  看到 `mdcm`/`protectedLicenses`/TLV 才走 `license-and-key-hierarchy.md`。**两派的判据与工具完全不通用。**
+- **不要在没设 service certificate 的情况下就断定"license 通了"**。请求会 200、key 会是空的；
+  **两次提交**（第一次 `\x08\x04`）才是国际派的正常形态（B22）。
+- **不要挑「长的那个 pssh」**。mpd 里常有两个 `cenc:pssh`：**长的给 PlayReady、短的给 Widevine**（不确定就排序取最短）。
 - **不要跳过 CRC16 / HMAC 校验直接解**。这两处校验是**唯一能在本地区分「key 对但轮次错」和「key 错」的信号**；跳过会把错误往下一层推。
 - **不要用「浏览器能播」证明本地链路已对齐**。带 `vmpTag` / `mediaTagID` 一类会话状态的链路，浏览器与本地结果**本来就可能不一致**，判据是本地解出的分片能否原样重封装（见 `references/whitebox-and-wasm-crypto.md` §5「路线四」）。
 
@@ -157,6 +178,16 @@ python $S/license_parse.py --selftest
 python $S/m3u8_probe.py --selftest
 python $S/key_wrapper.py --selftest
 python $S/nalu_frame_crypto.py --selftest
+python $S/container_disguise.py --selftest
+
+# 0.7) ★ 分片被伪装成图片（网络面板只有 .png、没有 Media 请求）
+python $S/container_disguise.py locate <伪图片或伪分片>          # 报出真实 TS 起点偏移 + 候选
+python $S/container_disguise.py strip  <伪分片> -o out.ts [--offset N]
+
+# 0.8) ★ W6 外部掩码异或（掩码常写在 DOM 属性 data-keys 上）
+python $S/key_wrapper.py dataview-xor --input 80f5f48bd4a6d7ffd0e26a04f0d90e86 \
+       --mask 3854078970,2917115795,3887476043,3350876132 --raw
+python $S/key_wrapper.py dataview-xor --input-hex <32位hex> --mask-file masks.txt --allow-search
 
 # 0.6) ★ C 层帧加密三件套（EBSP / SAMPLE-AES 粒度 / key 派生与内联）
 python $S/nalu_frame_crypto.py ebsp-unescape payload.bin -o payload.clear.bin --loose
@@ -222,7 +253,8 @@ python $S/key_wrapper.py noise-check --chars "-_! " --json
 - `references/hls-and-ts-structure.md`：HLS/m3u8 全字段语义与判层、TS→PES→ES/NALU 分层、
   **加密覆盖范围判据**、key/IV 四类来源与派生式、A/B/C/D 层实战配方、RPC 桥接、排错速查。
 - `references/key-wrapper-families.md`：**key 二次构造 / 包装层（W 族）唯一权威源** ——
-  W1~W4 四族结构签名与还原、W5 **字母表守卫**（覆盖性 / 单射性 / 越界下标）、
+  W1~W4 四族结构签名与还原、**W6 外部掩码异或（int32 / `DataView` 默认大端 vs `Uint32Array` 平台端序）**、
+  W5 **字母表守卫**（覆盖性 / 单射性 / 越界下标）、
   **噪声字符三侧宽容度矩阵**（Python / Node / 浏览器对同一字符可分别为「忽略 / 静默改字节 / 抛错」）、
   `substr` vs `substring` 导致的「窗口长度随下标变化」、两处「录入错必须自己算」的实例、「不报错但结果错」坑表。
 - `references/player-and-live-capture.md`：**直播流捕获 / 播放器侧 / 反录制唯一权威源** ——
@@ -237,9 +269,16 @@ python $S/key_wrapper.py noise-check --chars "-_! " --json
   与流媒体不同的分层判据、某东 PC/H5-1 的 `utf16ToBytes` 自写加解密、H5-2 的 `enc=1` 家族
   （**AES/DES 由时间戳奇偶切换**、`uuid`/`sign` 的派生与 `localStorage` 陷阱）、某学堂 EPUB 的
   双层 AES/ECB + 长度前置（`dpbt`）、拿到明文后的 EPUB 回填与验收。
-- `references/license-and-key-hierarchy.md`：CDRM/STSDK 式 **Provision → License** 全流程、许可证 TLV 单元编码、
+- `references/license-and-key-hierarchy.md`：**国内派 E 层唯一权威源** —— CDRM/STSDK 式 **Provision → License** 全流程、许可证 TLV 单元编码、
   密钥层级（DevPrK → SessionKey/MACKey → CEK）、SM2/SM4/HMAC-SM3 参数口径、`mdcm` 与 `dcm` 混合模式、
   NALU 尾部 CRC16、ffmpeg 重封装接入点。
+- `references/widevine-cdm-and-eme.md`：**国际派 E 层唯一权威源（B22 新增）** —— 判派表（CENC/CBCS/`enca` × `pssh`/`KID`）、
+  Widevine **L1/L2/L3** 与"为什么 L3 可解"、**`0804` 固定值三步链（取证书 → `set_service_certificate` → challenge）**、
+  长短两个 pssh 的归属、`.wvd` 三条提取路线（真机 KeyDive / AVD dumper / 在线）与 `create-device -l 3`、
+  **ClearKey 三步（SPC → CKC → KEY）** 与 `mp4decrypt` / `ffmpeg -decryption_key` 两种解密、
+  **EME 的两个 hook 点**（`generateRequest` / `message` 事件）与"不要顺 promise 跟栈"、
+  HTTP/2 与 TLS 指纹这一类"Postman 能过脚本过不去"、老版 Widevine CDM DLL 代理（历史，作判据保留）、
+  **把 CDM 包成本地 HTTP 服务**的工程形态（空闲端口 / 心跳 / debounce / 端口占用检查）、坑表 12 条。
 - `references/whitebox-and-wasm-crypto.md`：wasm / wasm2js 白盒 AES 的**四条路线选择**、
   `importObject` 代理捕获环境、DFA 故障注入、**CTR+XOR 差分反推写死 key**、wasm VMP → IR 中间产物、
   AI 补环境重放 worker 的适用边界。
@@ -250,9 +289,14 @@ python $S/key_wrapper.py noise-check --chars "-_! " --json
   未知 METHOD 才落 `A?` 并回填 `vendor_method` 字段供程序化分支。
 - `scripts/key_wrapper.py`：**key 包装层（W 族）还原** —— `alpha-check`（字母表覆盖性 / 单射性 / 越界下标）、
   `noise-check`（噪声字符三侧宽容度矩阵）、`xiaoe` / `xm`（两个字符表滚动族，含与文章原样 JS 对拍过的 encode 方向）、
-  `xor`（三段链 `b64→xor→b64`）/ `xor-halves`。自带 `--selftest`（断言数**以实跑输出为准**）；
+  `xor`（三段链 `b64→xor→b64`）/ `xor-halves` / **`dataview-xor`（W6 外部掩码异或，`--endian big|little`、`--allow-search`）**。
+  自带 `--selftest`（断言数**以实跑输出为准**）；
   所有「静默出错」路径（末 3 字符非数字、表外字符、明文长度不符、空 XOR 密钥）一律**报错退出**。
 - `scripts/ts_probe.py`：零依赖 TS 解复用（PAT/PMT/PES/`service_name`/CEI），NAL 切分、CRC16 与逐 NALU 解密。自带 `--selftest`（42 项）。
+- `scripts/container_disguise.py`：**「分片被伪装成图片 / 加了文件头」的定位与还原（B22 新增）** ——
+  不靠硬编码偏移，靠 **MPEG-TS 同步字节 `0x47` + 188 步长的连中数**定位真实起点；
+  支持任意前缀长度、`--max-scan`、多解时**全部列出不静默取一个**、图片 magic 嗅探（PNG/JPEG/GIF/ICO…）。
+  `--selftest` **21 项**（文章原样的 212 字节、0/1/7/100/188/213/1024 各前缀、随机数据无假阳性、多解可见、截断不崩）。
 - `scripts/media_crypto.py`：纯 Python 零依赖 AES-128/192/256（ECB/CBC/CTR）+ SM4（ECB/CBC/CTR）+ `dcm` 混合模式 + CRC16 变体探针。
   自带 `--selftest`（**95 项**：FIPS-197 分组向量、**SP 800-38A 的 CBC/CTR 模式向量**、GB/T 32907 SM4 向量、dcm 往返、拒绝路径）；
   `--slow-selftest` 追加 SM4 **百万次迭代**标准向量（约 38 秒）。

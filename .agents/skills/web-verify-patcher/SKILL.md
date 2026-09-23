@@ -1,6 +1,6 @@
 ---
 name: web-verify-patcher
-description: "网页验证码识别、方案选择与授权验证流程分析技能。当用户询问验证码识别、验证码类型、这是什么验证码、验证码方案、风控验证、WAF challenge、captcha recognition/type，或提到滑块/拼图、点选/文字点选/九宫格/图标点选/语序点选/按语序点击、旋转/旋转滑块/手势验证码/手势、文字/数字/算术、GIF 动图、语音、拖放、轨迹绘制、刮刮卡、图片/图像复原、切片乱序、分块乱序、图片分割、瓦片重排、分割顺序打乱、区域/面积选择、差异点击/找茬、字体识别、空间语义、小游戏、PoW/工作量证明、无感/无痕/风险评分、一键/checkbox、多轮、问答、活体/人脸，或提到极验、易盾、腾讯云 turing、360 天御、阿里云、数美、顶象、百度、京东云、云片、螺丝帽、安居客、房天下、当当、同花顺、东方财富、快手滑块、v5/verify5、vaptcha、雷池 SafeLine、reCAPTCHA、hCaptcha、Turnstile、AWS WAF、DataDome、Arkose/FunCaptcha、Akamai、Imperva、PerimeterX/HUMAN、Kasada、ALTCHA/FriendlyCaptcha 等国内外验证码/风控厂商时使用。用于识别网页验证码/验证产品、输出方案，并在用户确认后编排离线求解、图片还原、坐标换算、用户手动成功样本基线采集、轨迹生成、模型训练、打码平台请求模板、失败复盘/方案切换和授权验证测试；打开真实网页时按 ruyiPage/Camoufox/CloakBrowser 取证模式。当需要拆解具体厂商的提交参数与交互链路（如极验 v3 的 gt/challenge/三个 w 七步链路与 seccode 绑定、极验 v4 的 captcha_id/lot_number/payload/w/td/td_sign/pow 两接口链路、易盾推理拼图的 token/data.* 构造与 JSONP 提交、顶象 c1/a/v1 三段链路与 ac/ua 组装、腾讯防水墙 cap_union 系的 ua/sess/collect/eks/vData 五参数与魔改 TEA、Akamai 的 sensor_data 与环境指纹分层诊断），或排查「底图还原正确但提交坐标对不上」「验证通过却登录失败」「以前能过现在过不去」这一类问题时，也必须使用本技能。"
+description: "网页验证码识别、方案选择与授权验证流程分析技能。当用户询问验证码识别、验证码类型、这是什么验证码、验证码方案、风控验证、WAF challenge、captcha recognition/type，或提到滑块/拼图、点选/文字点选/九宫格/图标点选/语序点选、旋转滑块/手势验证码、数字/算术、GIF 动图、语音、拖放、轨迹绘制、刮刮卡、图像复原、切片/分块乱序、图片分割、瓦片重排、区域/面积选择、找茬、字体识别、空间语义、小游戏、PoW/工作量证明、无感/无痕/风险评分、一键/checkbox、多轮、问答、活体/人脸，或提到极验、易盾、腾讯云 turing、360 天御、阿里云、数美、顶象、百度、京东云、云片、螺丝帽、安居客、房天下、当当、同花顺、东方财富、快手滑块、v5/verify5、vaptcha、雷池 SafeLine、reCAPTCHA、hCaptcha、Turnstile、AWS WAF、DataDome、Arkose/FunCaptcha、Akamai、Imperva、PerimeterX/HUMAN、Kasada、ALTCHA/FriendlyCaptcha 等国内外验证码/风控厂商时使用。用于识别验证码产品、输出方案，并在用户确认后编排离线求解、坐标换算、用户手动成功样本基线采集、轨迹生成、模型训练、打码平台请求模板、失败复盘/方案切换和授权验证测试；打开真实网页时按 ruyiPage/Camoufox/CloakBrowser 取证模式。当需要拆解具体厂商的提交参数与交互链路（如极验 v3/v4 的 gt/challenge/w/td/td_sign/pow、易盾推理拼图 token/data.*、顶象 c1/a/v1、腾讯防水墙 cap_union 的 ua/sess/collect/eks/vData、Akamai sensor_data、阿里云验证码 2.0、快手 verifyParam/x|y|Δt 轨迹容器、九宫格 cookie 状态机（bf.js/s.webp/sbxf）、抖音 s_v_web_id、点选四头（authKey/pointJson/Sign/Token/Uuid）、ck0. 无感 token），或排查「底图还原正确但提交坐标对不上」「验证通过却登录失败」「以前能过现在过不去」这一类问题时，也必须使用本技能。"
 ---
 
 # Web Verify Patcher（网页验证码识别与验证方案分析）
@@ -33,6 +33,11 @@ description: "网页验证码识别、方案选择与授权验证流程分析技
    - 使用开源/本地方案时读 `references/open-source-recipes.md`。
    - 使用打码平台时读 `references/solver-platform-recipes.md`。
    - 需要坐标换算、滑块/拖放/刮刮卡/轨迹绘制时读 `references/motion-and-coordinate.md`，优先用 `scripts/map_coordinates.py` 和 `scripts/generate_motion_track.py` 生成离线结果。**旋转/弧线滑块（`rotate = attrs × 视觉偏移`、轨迹点到缺口的最小距离选目标）、各厂商轨迹字段对照（`i/ud/wi` 距离、`gq/mv/th` 轨迹、`vs/gk` 时间）、以及「格式化或改写 JS 后提交必失败」也在该文件。B19 新增「轨迹格式与变异」节：各厂商的**容器形态**（对象以 x 为 key / 三元组数组需抽稀 / pipe 串 / `x,y,t:` 串）与**轨迹点变异**（快手 `sx/sy/ix/iy` 与 `q/a/d`）都在那里。**
+   - **B23 新增「轨迹容器与时间校验」小节 + `scripts/trajectory_codec.py`（`--selftest` 24 项）：**
+     已把两族容器做成可复现编解码 —— **快手 `x|y|Δt` 逗号串**（原始值带前导逗号、提交前 `.slice(1)`、
+     `Δt` 相对**整条轨迹起点**而非相邻点、仅取最后 100 点）与 **阿里云 TrackList**（`mc`/`mp`/`mm`/`si`
+     与 `TrackStartTime`/`VerifyTime`/`arg`，`si` 语义未明一律透传）。**服务端会做轨迹时间一致性校验**
+     （轨迹耗时 1s 就不该在 0.1s 后提交）—— 容器对不上或时间对不上，症状都是"不报错只失败"。
    - **切片乱序底图还原、顺序数组语义判定（正/逆置换）、视觉坐标与提交坐标换算（固定偏移 / `speed` / CSS 缩放）时，必须读 `references/tile-scramble-and-coordinate-mapping.md`，并用 `scripts/restore_slices.py` 做还原与语义判优。`--model grid` 是均匀网格通用几何（顶象 / 接口下发数组）；带间隙的专用几何（如极验 v3 的 26×2 片、源 stride 12）用 `--model gt3`。**
    - **需要训练验证码识别模型（YOLO 标注训练闭环、自举标注、切片拼接、去噪、计算题按 x 排序求值、空间语义题保留全部候选再按题面筛）、用遗传算法还原真拼图，或用「特征提取 + 余弦相似度」做九宫格/图标点选这类**每轮内容都不同、无法分类**的题时，读 `references/captcha-model-training.md`（九宫格/图标点选的**特征相似度**路线见其 §八，**与 §四 的分类路线是两类不同的题**）。**
    - **点选类（文字 / 图标 / 语序 / 图文 / 空间语义）要判子类、把题目匹配到坐标、还原语序、生成点击坐标时，必须读 `references/click-select-and-order.md`，并用 `scripts/assign_by_similarity.py`（相似度矩阵的贪心/匈牙利指派，含 top1–top2 分差门槛）与 `scripts/order_restore.py`（词频表 + `len² × log(freq+1)` 打分做语序还原）。**语序点选把"题面顺序"当"提交顺序"会静默失败**；重复目标未从可用池移除会让同一坐标返回两遍。**
@@ -60,6 +65,15 @@ description: "网页验证码识别、方案选择与授权验证流程分析技
      角度识别侧（插值伪影 / 鬼影 / 双旋咬合互相关）在同文件 §2.1。
      换算与还原用 `scripts/rotation_and_gesture_calc.py`（`baidu-ac-c` / `vaptcha-order` /
      `vaptcha-restore` / `murmur3`，`--selftest` 27 项）。
+   - **链路里出现「提交参数 + 签名头」形态（无感/无痕、`SignatureNonce`/`Signature`/`SignatureMethod=HMAC-SHA1`、
+     `Action=InitCaptchaV2`/`Log2`/`VerifyCaptchaV2`、`deviceconfig`、`CaptchaVerifyParam`、`sbxf`/`bf.js`/`s.webp`、
+     `s_v_web_id`、`verifyParam`、`authKey`、`pointJson`、`ck0.`/`x-captcha-token`/`x-device-id`、四头
+     `Sign`+`Token`+`Uuid`+`Cookie`）时，必须读 `references/behavior-verify-and-sign-headers.md`**：
+     无感/滑块/点选**防御等级不同**（无感不发 `d`/`b` 包、点选最严）、阿里云验证码 2.0 的四请求链与
+     `deviceconfig`→`Data` 依赖、快手 `verifyParam`、抖音 `s_v_web_id` 的"能自造但不能用于评论"、
+     九宫格 cookie 状态机（`_trackId`→`bf.js`→`s.webp`×2→`sbxf`）、点选 `sign` 与业务四头的关系、
+     以及**正确率四因素（请求头完整性 / `callback` 随机范围 ≤10 / `fp` 必须对应站点域名 / 发送间隔）**。
+     该文件同时明确"**只有结构是观测事实时只登记结构**"（`ck0.` 一例）与"本地 `verified=true` ≠ 服务端认可"。
    - 需要厂商执行注意点时读 `references/provider-execution-notes.md`（含百度旋转验证码的代际判据与三条高频坑、数美/树美的 DES-ECB 与格式化检测、同盾自有 base64 变体、aj-captcha 的 `pointJson`、腾讯六宫格 AI 图、GIF 动图验证码）。
    - **判为 `waf-challenge` 且「无图无交互、只有准入 Cookie 链」时，先分流再动手**：定族用 `node ../web-js-env-patcher/scripts/classify_edge_challenge.js --html <页面> --status <码> --cookies <Set-Cookie> --markdown`；判层与链路读 `../web-js-env-patcher/references/edge-waf-cookie-challenge.md`，可离线求解读 `../web-reverse-algorithm/references/10-waf-clearance-cookie.md`。**这类目标不属于本技能的 Phase-2 流程**（没有图片、没有人工成功样本基线）。
    - 进入真实网页验证前，先评估用户手动成功样本基线：默认同一授权目标至少 5 次成功样本；若观察到新的验证码类型，该类型至少 2 次成功样本。基线不足时输出强提示，但用户确认后仍可继续离线分析或受控验证。

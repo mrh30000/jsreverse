@@ -8,13 +8,14 @@ key_wrapper.py —— 「key 二次构造 / 包装层」辨识与还原（B 层�
     站点会在服务端先做一层「包装」，浏览器里再由播放器 JS 还原。
     只抓 URI 就往下解，现象是「下载器报填充错误 / 解出来是垃圾 / ffmpeg 打不开」。
 
-    本脚本覆盖 5 个已实测的包装族，并对每个族给出**机械判据**而不是「大概像」：
+    本脚本覆盖 6 个已实测的包装族，并对每个族给出**机械判据**而不是「大概像」：
 
     W1  单字节 / 重复密钥 XOR        （`strdecode` 家族：b64 → xor → b64）
     W2  字符表滚动变换 + 前缀标记    （xiaoe `Strdecode`：前缀 1 字符 + 末 3 字符 + 噪声插入）
     W3  字符表滚动变换 + 定长明文    （虾m `encrypt`：固定 60 字符 + MD5 窗口 + hex/标记串）
     W4  两半异或 / 定长截取          （`a ^ b` 逐字节，常见于「前后各 16 字节」）
     W5  字母表守卫                   （覆盖性 / 单射性 / 越界下标机械校验）
+    W6  外部掩码异或（int32）        （`DataView.setInt32(getInt32() ^ m)`，掩码在 DOM 属性 / 常量数组）
 
     另有 `--enforce` 开关：把「静默出错」变成「报错退出」，见 §坑表。
 
@@ -27,6 +28,7 @@ import base64
 import binascii
 import hashlib
 import json
+import re
 import sys
 import urllib.parse
 
@@ -463,6 +465,60 @@ def w4_xor_halves(data, half=None):
 
 
 # ----------------------------------------------------------------------------
+# W6 外部掩码异或（int32 / DataView 语义）
+# ----------------------------------------------------------------------------
+
+def parse_masks(text):
+    """解析逗号/空白分隔的 int32 掩码，支持十进制与 `0x` 前缀。
+
+    拒绝负数与 > 0xFFFFFFFF 的值：这两类在 JS 里会走 `| 0` / `>>>` 的隐式转换，
+    直接当无符号处理会得到另一种结果，且**不报错**。
+    """
+    parts = [p for p in re.split(r"[,\s]+", (text or "").strip()) if p]
+    out = []
+    for p in parts:
+        v = int(p, 0)
+        if not (0 <= v <= 0xFFFFFFFF):
+            raise ValueError("掩码 %r 越界：必须是 0..0xFFFFFFFF 的无符号 32 位整数" % p)
+        out.append(v)
+    return out
+
+
+def w6_dataview_xor(data, masks, endian="big"):
+    """把 data 按每 4 字节与一个 int32 掩码异或（模拟 `DataView.setInt32(i, getInt32(i) ^ m)`）。
+
+    ⚠️ **`DataView` 默认大端**（`littleEndian` 省略 = false），而 `Uint32Array` 视图是
+    **平台端序**（x86 为小端）⇒ 同一个整数摊成字节串的结果不同。两者**都不报错**，
+    只是结果全不同 ⇒ 故这里把端序做成显式参数，并在自检里断言 big ≠ little。
+    """
+    if len(data) % 4 != 0:
+        raise ValueError("数据长度 %d 不是 4 的倍数 ⇒ 这不是 4×int32 的掩码结构" % len(data))
+    n = len(data) // 4
+    if len(masks) != n:
+        raise ValueError("掩码个数 %d 与数据所需的 %d 个 int32 不符（一份掩码一次只能用在一个 16 字节 key 上）"
+                         % (len(masks), n))
+    out = bytearray(data)
+    for i, m in enumerate(masks):
+        chunk = bytes(data[4 * i:4 * i + 4])
+        v = (int.from_bytes(chunk, endian) ^ (m & 0xFFFFFFFF)) & 0xFFFFFFFF
+        out[4 * i:4 * i + 4] = v.to_bytes(4, endian)
+    return bytes(out)
+
+
+def w6_looks_like_key(data):
+    """本族唯一可用的判据：解出来是不是「能当字符串读的 16 字节」。
+
+    长度对、字节数对、每个字节都变了 —— 这些在本族里**毫无信息量**；
+    真实 key 实测是 16 个可打印 ASCII 字符（如 `eMgqyypl7TGO7cAb`）。
+    """
+    try:
+        s = data.decode("ascii")
+    except UnicodeDecodeError:
+        return False
+    return all(0x20 <= ord(c) < 0x7F for c in s)
+
+
+# ----------------------------------------------------------------------------
 # CLI
 # ----------------------------------------------------------------------------
 
@@ -555,6 +611,57 @@ def cmd_xor(args):
 
 def cmd_xor_halves(args):
     _emit(w4_xor_halves(_read_input(args), half=args.half), args)
+
+
+def cmd_dataview_xor(args):
+    # 本族的输入几乎一定是 hex（16 字节 key 的十六进制写法）；
+    # `--input` 给的是纯 hex 时**自动按 hex 解释**，避免把 "80f5f48b…" 当成 32 个 latin-1 字符
+    # （那样长度是 32，会被误判成"8 个 int32"从而报一个看似合理的错）。
+    if args.input and re.fullmatch(r"[0-9a-fA-F]+", args.input) and len(args.input) % 2 == 0:
+        data = binascii.unhexlify(args.input.encode())
+    elif args.input_hex:
+        data = binascii.unhexlify(args.input_hex.encode())
+    else:
+        data = _read_input(args)
+    masks = []
+    if args.mask:
+        masks += parse_masks(args.mask)
+    for path in (args.mask_file or []):
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip() and not line.strip().startswith("#"):
+                    masks += parse_masks(line)
+    if not masks:
+        raise SystemExit("需要 --mask 或 --mask-file（掩码常写在 DOM 属性里："
+                         "<div id=\"app-key\" data-keys=\"…, …, …, …\">）")
+    n = len(data) // 4
+    if len(masks) != n:
+        if not args.allow_search:
+            raise SystemExit("掩码个数 %d ≠ 所需的 %d；若不确定是常量数组里的哪一段，加 --allow-search"
+                             % (len(masks), n))
+        hits = []
+        for off in range(0, max(0, len(masks) - n) + 1):
+            win = masks[off:off + n]
+            out = w6_dataview_xor(data, win, args.endian)
+            if w6_looks_like_key(out):
+                hits.append({"offset": off, "mask": win, "out_ascii": out.decode("ascii")})
+        if not hits:
+            print(json.dumps({"len": len(data), "tried": max(0, len(masks) - n + 1), "hits": [],
+                              "hint": "没有窗口解出可打印 ASCII；确认端序（--endian little）与掩码来源"},
+                             ensure_ascii=False, indent=2))
+            return 3
+        print(json.dumps({"len": len(data), "hits": hits,
+                          "endian": args.endian}, ensure_ascii=False, indent=2))
+        return 0
+    out = w6_dataview_xor(data, masks, args.endian)
+    if not args.raw and not args.out:
+        print(json.dumps({"len": len(out), "hex": binascii.hexlify(out).decode(),
+                          "ascii": out.decode("ascii", "replace"),
+                          "looks_like_key": w6_looks_like_key(out),
+                          "endian": args.endian}, ensure_ascii=False, indent=2))
+        return 0
+    _emit(out, args)
+    return 0
 
 
 def cmd_noise_check(args):
@@ -729,6 +836,42 @@ def _selftest():
     chk("两半异或往返", w4_xor_halves(b"\x01\x02\x03\x04") == bytes([0x01 ^ 0x03, 0x02 ^ 0x04]))
     raises("奇数长度对半异或必须拒绝", lambda: w4_xor_halves(b"\x01\x02\x03"), "奇数")
 
+    # --- 7.5) W6 外部掩码异或（int32 / DataView） ---
+    #     真实数值来自 52pojie-1851955（某网课 m3u8，掩码写在 DOM 属性 data-keys 上）。
+    W6_ENC = bytes([128, 245, 244, 139, 212, 166, 215, 255, 208, 226, 106, 4, 240, 217, 14, 134])
+    W6_MASKS = [3854078970, 2917115795, 3887476043, 3350876132]
+    chk("W6 复现文章真实数值（大端）→ eMgqyypl7TGO7cAb",
+        w6_dataview_xor(W6_ENC, W6_MASKS) == b"eMgqyypl7TGO7cAb",
+        binascii.hexlify(w6_dataview_xor(W6_ENC, W6_MASKS)).decode())
+    chk("W6 结果 hex 与文章一致",
+        binascii.hexlify(w6_dataview_xor(W6_ENC, W6_MASKS)).decode() == "654d67717979706c3754474f37634162")
+    chk("W6 大端 ≠ 小端（两者都不报错，结果全不同 —— 必须显式区分）",
+        w6_dataview_xor(W6_ENC, W6_MASKS, "big") != w6_dataview_xor(W6_ENC, W6_MASKS, "little"))
+    # 文章里另给了一份 Python「工具」：n.to_bytes((n.bit_length()+7)//8, 'big')。
+    # 它对 < 2^24 的掩码只会产出 3 字节 ⇒ 整串错位。这是真实的坑，不是假想。
+    trap = 0x00ABCDEF
+    chk("W6 陷阱：文章式 int_to_bytes 对首字节为 0 的掩码只产 3 字节（会整串错位）",
+        len(trap.to_bytes((trap.bit_length() + 7) // 8, "big")) == 3)
+    chk("W6 本脚本固定按 4 字节处理，不受首字节 0 影响",
+        len(w6_dataview_xor(b"\x01" * 16, [trap] + W6_MASKS[1:])) == 16)
+    chk("W6 幂等（再掩一次回到原密文）", w6_dataview_xor(w6_dataview_xor(W6_ENC, W6_MASKS), W6_MASKS) == W6_ENC)
+    chk("W6 判据：真 key 是 16 个可打印 ASCII", w6_looks_like_key(b"eMgqyypl7TGO7cAb"))
+    chk("W6 判据：错端序产物不满足可打印 ASCII", not w6_looks_like_key(
+        w6_dataview_xor(W6_ENC, W6_MASKS, "little")))
+    raises("W6 长度不是 4 的倍数必须拒绝",
+           lambda: w6_dataview_xor(b"\x01\x02\x03", [1]), "4 的倍数")
+    raises("W6 掩码个数不符必须拒绝（不允许静默截断/补齐）",
+           lambda: w6_dataview_xor(W6_ENC, W6_MASKS[:2]), "掩码个数")
+    raises("W6 掩码为负必须拒绝", lambda: parse_masks("-1"), "越界")
+    raises("W6 掩码超过 32 位必须拒绝", lambda: parse_masks("4294967296"), "越界")
+    chk("W6 掩码支持 0x 前缀", parse_masks("0xE5B893FA, 0") == [3854078970, 0])
+    chk("W6 掩码解析忽略空白与逗号混用", parse_masks(" 1,2   3 ") == [1, 2, 3])
+    # 滑动窗口：把真掩码藏在更长的候选序列里，必须能自己找出来
+    cand = [111, 222] + W6_MASKS + [333]
+    found = [off for off in range(len(cand) - 3)
+             if w6_looks_like_key(w6_dataview_xor(W6_ENC, cand[off:off + 4]))]
+    chk("W6 --allow-search 能在更长候选串里定位真掩码（offset=2）", found == [2], str(found))
+
     # --- 8) 交叉实现对拍（若同目录放了 JS oracle 的产物则一并核） ---
     #     真实回归见 docs/references/verified.md 的 B14 段复跑命令。
     chk("xiaoe 已知样本对拍（salt=appbgzjnopv1917, prefix=5, noise=2）",
@@ -817,6 +960,17 @@ def main(argv=None):
     p.add_argument("--table", required=True)
     p.add_argument("--enforce", action="store_true", help="不同构时以退出码 2 拒绝")
     p.set_defaults(func=cmd_alpha_check)
+
+    p = sub.add_parser("dataview-xor", help="W6：外部掩码异或（int32，DataView 语义）")
+    common(p)
+    p.add_argument("--mask", help="逗号分隔的 int32 掩码，如 3854078970,2917115795,3887476043,3350876132")
+    p.add_argument("--mask-file", action="append",
+                   help="从文件读掩码（每行一组逗号分隔；# 开头为注释）；可重复")
+    p.add_argument("--endian", choices=["big", "little"], default="big",
+                   help="DataView 默认大端；Uint32Array 视图是平台端序（x86=little）")
+    p.add_argument("--allow-search", action="store_true",
+                   help="掩码个数多于所需时，滑动窗口找「能解出可打印 ASCII」的那一段")
+    p.set_defaults(func=cmd_dataview_xor)
 
     p = sub.add_parser("noise-check", help="噪声字符三侧宽容度矩阵")
     p.add_argument("--chars", help="要检查的字符（默认一组代表样本）")
