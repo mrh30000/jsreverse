@@ -43,7 +43,11 @@ def load_pool(path):
 def existing_ids(ref):
     ids = set()
     for f in os.listdir(ref):
-        m = re.match(r"(?:[A-Za-z0-9_]+-)?(\d{5,})-?.*\.md$", f)
+        # 坑 56：不要用 `(?:[A-Za-z0-9_]+-)?(\d{5,})` —— `[A-Za-z0-9_]+` 含数字，
+        # 贪婪匹配会吃掉文件名开头的数字（"2080428-x.md" → "80428"）
+        # ⇒ 早期 `<id>-<slug>.md` 命名的 ID 全部提取错误。
+        # 正确做法：文件名里第一个长度 ≥5 的数字串即帖子 ID。
+        m = re.search(r"(\d{5,})", f)
         if m:
             ids.add(m.group(1))
     return ids
@@ -55,7 +59,8 @@ def final_check(ref):
     ids = collections.defaultdict(list)
     noid, empty, thin = [], [], []
     for f in files:
-        m = re.match(r"(?:[A-Za-z0-9_]+-)?(\d{5,})-(.*)\.md$", f)
+        # 坑 56：同上，改用「第一个 ≥5 位数字串」（勿用 [A-Za-z0-9_]+ 前缀贪婪匹配）。
+        m = re.search(r"(\d{5,})", f)
         if m:
             ids[m.group(1)].append(f)
         else:
