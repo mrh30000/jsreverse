@@ -62,6 +62,35 @@ NEG = [
     (r"招聘|急招|岗位|简历|面试", 4),
 ]
 
+# —— 分版块降权（SKILL.md 坑 63，第二十四轮落地）——
+# 软件发布 / 水贴 / 站务类版块整区是「软件·工具·资源·闲聊」发布，命中表高分项**全是假阳性**
+# （第 23 轮实测：精品软件区 27548 帖，web 逆水产出一篇未出）。
+# **不能加进全局 NEG** —— 会误杀「插件逆向 / 扩展逆向 / 油猴脚本逆向」这类真阳性标题。
+# 故做成**分版块降权**：仅当帖子**所在版块**属软化版块、且标题**没有**具体逆向信号时，才扣分。
+# 用 --soft-forums 开启（默认关闭，保持历史行为可复现）。
+SOFT_FORUMS = {
+    "精品软件区": 12, "『精品软件区』": 12,
+    "水漫金山": 12, "『水漫金山』": 12,
+    "招聘求职": 12, "『招聘求职』": 12,
+    "申请专区": 10, "『申请专区』": 10,
+    "站务处理": 12, "『站务处理』": 12,
+    "投诉举报": 12, "站点公告": 12,
+    "福利经验": 8, "『福利经验』": 8,
+    "电子书策划制作区": 10, "教学培训区": 6,
+    "2014CrackMe大赛": 6, "吾爱破解2016安全挑战赛": 6,
+    "腾讯游戏安全技术竞赛": 8, "往届吾爱破解动画大赛": 6, "周边活动作品区": 8,
+}
+# 命中以下任一「真阳性形态」，即使在软化版块也**不降权**。
+# ⚠️ 只放**具体逆向信号**，不要放 `m3u8/接口/插件/脚本/抓包` 这类**泛 web 词** ——
+# 精品软件区整区就是「m3u8 播放器 / 抓包工具 / 插件」发布帖，泛词豁免 = 降权形同虚设。
+# 注意中英混排**不要加 \b**（坑 51）。
+SOFT_EXEMPT = re.compile(
+    r"逆向|加密|解密|密文|明文|密钥|签名|验签|算法还原|滑块|验证码|captcha|"
+    r"hook|反调试|debugger|混淆|反混淆|扣代码|扣js|js逆向|web逆向|webpack|jsvmp|"
+    r"字节码|opcode|wasm|electron|asar|jsc|\bdrm\b|widevine|补环境|jsdom|"
+    r"js脚本|脚本分析|插件逆向|扩展逆向|反编译",
+    re.I)
+
 
 def load_id_file(path):
     """把任意 id 列表文件读成 set[str]。"""
@@ -112,6 +141,8 @@ def main():
     ap.add_argument("--out-json", required=True)
     ap.add_argument("--out-txt", required=True)
     ap.add_argument("--min-score", type=int, default=1)
+    ap.add_argument("--soft-forums", action="store_true",
+                    help="对软件发布/水贴/站务类版块做分版块降权（坑 63，推荐开启）")
     a = ap.parse_args()
 
     pool = json.load(open(a.pool, encoding="utf-8"))
@@ -127,6 +158,7 @@ def main():
                 excl.add(os.path.basename(f).split(".")[0])
 
     rows = []
+    soft_dropped = 0
     for it in items:
         tid = str(it.get("id") or "").strip()
         t = (it.get("title") or "").strip()
@@ -134,9 +166,15 @@ def main():
             continue
         pos = sum(w for r, w in POS if re.search(r, t, re.I))
         neg = sum(w for r, w in NEG if re.search(r, t, re.I))
-        if pos - neg >= a.min_score:
-            rows.append({"id": tid, "score": pos - neg, "pos": pos, "neg": neg,
-                         "forum": it.get("forum") or "", "title": t})
+        pen = 0
+        fm = (it.get("forum") or "").strip()
+        if a.soft_forums and fm in SOFT_FORUMS and not SOFT_EXEMPT.search(t):
+            pen = SOFT_FORUMS[fm]
+            if pos - neg >= a.min_score:
+                soft_dropped += 1
+        if pos - neg - pen >= a.min_score:
+            rows.append({"id": tid, "score": pos - neg - pen, "pos": pos, "neg": neg,
+                         "soft_penalty": pen, "forum": fm, "title": t})
     rows.sort(key=lambda x: (-x["score"], -int(x["id"])))
     json.dump(rows, open(a.out_json, "w", encoding="utf-8"),
               ensure_ascii=False, indent=1)
@@ -148,6 +186,9 @@ def main():
           % (len(pool), len(arch), len(excl), a.min_score, len(rows)))
     for k in (12, 8, 6, 4, 1):
         print("  score>=%2d: %d" % (k, sum(1 for r in rows if r["score"] >= k)))
+    if a.soft_forums:
+        print("  分版块降权：命中表内保留 %d 条 / 被降权剔除 %d 条（软化版块噪声，坑 63）"
+              % (sum(1 for r in rows if r.get("soft_penalty")), soft_dropped))
 
 
 if __name__ == "__main__":
