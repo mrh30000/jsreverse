@@ -1,0 +1,145 @@
+# 油猴脚本-通过Hook来禁用disable-devtool插件
+
+> **作者**: evlon | **发布时间**: 2025-07-10 18:53:00 | **版块**: 『脱壳破解区』 | **查看/回复**: 8017 / 95
+> **原文**: [https://www.52pojie.cn/thread-2044857-1-1.html](https://www.52pojie.cn/thread-2044857-1-1.html)
+
+---
+
+*жң¬её–жңҖеҗҺз”ұ evlon дәҺ 2025-7-10 18:55 зј–иҫ‘*
+
+### 01. иғҢжҷҜ
+
+йЎ№зӣ®дёӯпјҢд№ жғҜзңӢзҪ‘з«ҷзҡ„жөҸи§ҲеҷЁжәҗз ҒпјҢдҪҶжҳҜиҝҷж¬ЎеҸӘиҰҒдёҖжү“ејҖејҖеҸ‘иҖ…е·Ҙе…·(devtool)пјҢжөҸи§ҲеҷЁе°ұи·іиҪ¬еҲ°дәҶвҖңabout:blank"гҖӮдәҺжҳҜпјҢжңүдәҶиҝҷдёӘж–Үз« гҖӮ
+
+### 02. з ҙи§ЈжҖқи·Ҝ
+
+1. жү“ејҖзҷҫеәҰ
+2. жү“ејҖејҖеҸ‘иҖ…е·Ҙе…·(devtool),зӮ№еҮ»жәҗд»Јз Ғж ҮзӯҫпјҢжүҫеҲ°вҖңдәӢд»¶зӣ‘еҗ¬еҷЁж–ӯз”өвҖқпјҢйҖүдёӯвҖңеҠ иҪҪвҖқпјҢеӢҫйҖүвҖңbeforunload","unload"гҖӮиҝҷдёӘж„ҸжҖқжҳҜеңЁи·іиҪ¬еҲ° вҖқabout:blank"д№ӢеүҚпјҢдёӯж–ӯ
+3. дҝқжҢҒејҖеҸ‘иҖ…е·Ҙе…·жү“ејҖпјҢеңЁең°еқҖж Ҹиҫ“е…Ҙзӣ®ж ҮзҪ‘еқҖпјҢжү“ејҖпјҢзӯүеҫ…дёӯж–ӯгҖӮ
+4. йҖҡиҝҮе Ҷж ҲпјҢжүҫеҲ°зӣ®ж Үд»Јз ҒгҖӮ
+
+   ```
+   loadjs.d("./app/study/course/detail/index", function(e, n, a) {
+   var t, l, i, s, o = e("lodash/collection"), r = e("./app/util/aes"), c = e("./app/util/business/fsearch-view-util"), d = e("disable-devtool"), u = function() {
+   В  В  d({
+   В  В В  В В В clearIntervalWhenDevOpenTrigger: !1,
+   В  В В  В В В ondevtoolopen: function() {
+   В  В В  В В  В В  В window.open("about:blank", "_self")
+   В  В В  В В В },
+   В  В В  В В В detectors: [0, 1, 3, 4, 5, 6, 7]
+   В  В  })
+   },
+   ```
+5. еҸ‘зҺ°жҳҜloadjs жқҘеҠ иҪҪdisable-devtool, йӮЈе°ұжғіеҠһжі•пјҢеңЁ d({})зҡ„ж—¶еҖҷпјҢдҝ®ж”№и®ҫзҪ®е°ұиЎҢгҖӮ
+
+### 03 жңҖз»ҲжҲҗжһңпјҢжІ№зҢҙи„ҡжң¬
+
+<https://github.com/evlon/hook-loadjs-disable-disable-devtool/blob/main/hook-loadjs-disable-disable-devtool>
+
+```
+// ==UserScript==
+// @nameВ  В В  В В  В hook-loadjs-disable-disable-devtool
+// @namespaceВ  В  http://tampermonkey.net/
+// @versionВ  В В  В 2025-07-09
+// @descriptionВ В try to take over the world!
+// @AuThorВ  В В  В  You
+// @matchВ  В В  В В В *://*/*
+// @IconВ  В В  В В  В https://www.google.com/s2/favicons?sz=64&domain=chinamobile.com
+// @grantВ  В В  В В В none
+// ==/UserScript==
+
+(function() {
+В  В  'use strict';
+В  В  console.clear = ()=>{
+console.log('console.clear()');
+В  В  };
+
+В  В  Object.defineProperty(window, 'loadjs', {
+В  В В  В В В set(val_loadjs) {
+В  В В  В В  В В  В // жЈҖжҹҘжҳҜдёҚжҳҜдҪ иҰҒжӢҰжҲӘзҡ„еҜ№иұЎ
+В  В В  В В  В В  В //debugger;
+В  В В  В В  В В  В console.log('set loadjs = ',val_loadjs);
+
+В  В В  В В  В В  В Object.defineProperty(val_loadjs, 'd', {
+В  В В  В В  В В  В В  В  set(val_d) {
+В  В В  В В  В В  В В  В В  В В В // жЈҖжҹҘжҳҜдёҚжҳҜдҪ иҰҒжӢҰжҲӘзҡ„еҜ№иұЎ
+В  В В  В В  В В  В В  В В  В В В //debugger;
+В  В В  В В  В В  В В  В В  В В В console.log('set loadjs.d = ',val_d);
+
+В  В В  В В  В В  В В  В В  В В В let hook_val_d = new Proxy(val_d, {
+В  В В  В В  В В  В В  В В  В В  В В  В apply(target, thisArg, argumentsList) {
+В  В В  В В  В В  В В  В В  В В  В В  В В  В  // жҳҫзӨәеҸӮж•°
+
+В  В В  В В  В В  В В  В В  В В  В В  В В  В  console.log('loadjs.d args:', argumentsList);
+В  В В  В В  В В  В В  В В  В В  В В  В В  В  let oldargfn = argumentsList[1];
+В  В В  В В  В В  В В  В В  В В  В В  В В  В  argumentsList[1] = (fnLoadModule,b,c)=>{
+
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В В let hookfn_loadmodule = new Proxy(fnLoadModule,{
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В apply(target2, thisArg2,[moduleName,...rest]){
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В  console.log('load module:',moduleName);
+
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В  const result2 = Reflect.apply(target2, thisArg2, [moduleName,...rest]);
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В  console.log('loaded module:',moduleName, result2);
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В  // дҝ®ж”№иҝ”еӣһеҖј
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В  if(moduleName == "disable-devtool"){
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В В //debugger;
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В В let disable_devtool = result2;
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В В const hook_result2 = (conf)=>{
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В console.log('disable_devtool:(',conf,')');
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В conf = {
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В  clearIntervalWhenDevOpenTrigger: true,
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В  ondevtoolopen: function() {
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В В console.log("about:blank", "_self")
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В  },
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В  detectors: []
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В }
+
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В return disable_devtool(conf);
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В В };
+
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В В return hook_result2;
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В  }
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В  return result2;
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В }
+
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В В });
+
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В В let ret = oldargfn(hookfn_loadmodule,b,c);
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В В console.log('define module:',ret);
+В  В В  В В  В В  В В  В В  В В  В В  В В  В В  В В В return ret;
+В  В В  В В  В В  В В  В В  В В  В В  В В  В  };
+
+В  В В  В В  В В  В В  В В  В В  В В  В В  В  // и°ғз”ЁеҺҹеҮҪж•°
+В  В В  В В  В В  В В  В В  В В  В В  В В  В  const result = Reflect.apply(target, thisArg, argumentsList);
+
+В  В В  В В  В В  В В  В В  В В  В В  В В  В  // дҝ®ж”№иҝ”еӣһеҖј
+В  В В  В В  В В  В В  В В  В В  В В  В В  В  return result;
+В  В В  В В  В В  В В  В В  В В  В В  В }
+В  В В  В В  В В  В В  В В  В В В });
+
+В  В В  В В  В В  В В  В В  В В В // зңҹжӯЈиөӢеҖј
+В  В В  В В  В В  В В  В В  В В В Object.defineProperty(val_loadjs, 'd', {
+В  В В  В В  В В  В В  В В  В В  В В  В value: hook_val_d,
+В  В В  В В  В В  В В  В В  В В  В В  В writable: true,
+В  В В  В В  В В  В В  В В  В В  В В  В configurable: true,
+В  В В  В В  В В  В В  В В  В В  В В  В enumerable: true
+В  В В  В В  В В  В В  В В  В В В });
+В  В В  В В  В В  В В  В  },
+В  В В  В В  В В  В В  В  configurable: true
+В  В В  В В  В В  В });
+
+В  В В  В В  В В  В // зңҹжӯЈиөӢеҖј
+В  В В  В В  В В  В Object.defineProperty(window, 'loadjs', {
+В  В В  В В  В В  В В  В  value: val_loadjs,
+В  В В  В В  В В  В В  В  writable: true,
+В  В В  В В  В В  В В  В  configurable: true,
+В  В В  В В  В В  В В  В  enumerable: true
+В  В В  В В  В В  В });
+В  В В  В В В },
+В  В В  В В В configurable: true
+В  В  });
+
+})();
+```
+
+![](https://attach.52pojie.cn/forum/202507/10/185442yop00kx0ccpoh4az.png)
