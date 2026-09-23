@@ -100,6 +100,7 @@ def main():
     rows = {}
     for fid in [int(x) for x in a.fids.split(",") if x.strip()]:
         name = FALLBACK_FORUMS.get(fid, "fid%d" % fid)
+        stale = 0
         for pg in range(1, a.maxpage + 1):
             path = os.path.join(a.out, "%d_p%d.json" % (fid, pg))
             if os.path.exists(path):
@@ -114,13 +115,24 @@ def main():
                     break
                 json.dump(d, open(path, "w", encoding="utf-8"),
                           ensure_ascii=False, indent=1)
+            added = 0
             for x in d:
                 tid = tid_of(x.get("url", ""))
+                if tid and tid not in rows:
+                    added += 1
                 if tid:
                     rows[tid] = {"id": tid, "title": x.get("title", ""),
                                  "url": x.get("url", ""), "forum": name, "fid": fid}
+            # 坑 54：版块翻到末页后，Discuz **不会返回空列表**，而是**回卷到第 1 页内容**
+            # （实测 安全工具区 fid41 只有 8 页，p9~p150 全是 thread-1859777 那一页的复制）。
+            # 只判「空列表」的旧写法会白抓上百页 → 加「连续 2 页零新增」熔断。
+            stale = stale + 1 if added == 0 else 0
+            if stale >= 2:
+                print("%s p%d: 连续 2 页零新增（已到末页，站点回卷第 1 页）-> break"
+                      % (name, pg), flush=True)
+                break
             if pg % 5 == 0 or pg <= 2:
-                print("%s p%d: union=%d" % (name, pg, len(rows)), flush=True)
+                print("%s p%d: union=%d (+%d)" % (name, pg, len(rows), added), flush=True)
             time.sleep(a.sleep)
 
     json.dump(rows, open(os.path.join(a.out, "board_pool.json"), "w",

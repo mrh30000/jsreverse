@@ -91,7 +91,11 @@ def archived_ids(ref):
     if not os.path.isdir(ref):
         return ids
     for f in os.listdir(ref):
-        m = re.match(r"^[a-z0-9]*-?(\d{5,})-?.*\.md$", f, re.I)
+        # 坑 56：**不要**用 `^[a-z0-9]*-?(\d{5,})` —— `[a-z0-9]*` 会把文件名开头的数字
+        # 一起吃掉（"2080428-x.md" → group(1)="80428"），使**全部早期 slug 命名文件
+        # （`<id>-<slug>.md`）的 ID 提取错误** ⇒ 已归档集漏掉 49 个 ID ⇒ 老帖被重复抓取/重复归档。
+        # 正确做法：正文（去掉扩展名）里**第一个长度 ≥5 的数字串**就是帖子 ID。
+        m = re.search(r"(\d{5,})", f)
         if m:
             ids.add(m.group(1))
     return ids
