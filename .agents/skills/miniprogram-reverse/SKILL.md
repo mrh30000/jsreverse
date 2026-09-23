@@ -1,6 +1,6 @@
 ---
 name: miniprogram-reverse
-description: 微信 / 抖音 / 支付宝小程序（含小游戏、云开发）的逆向与数据采集技能：**从包出发**而不是从抓包硬啃。当目标不是普通网页而是小程序——`wxapkg`、`__APP__.wxapkg`、`V1MMWX`、`ttpkg.js`、`TPKG`、`nebula`、`app-service.js`、`app.json`、`project.config.json`、`subPackage`、`unveilr`、`wxappUnpacker`、`wxapkg-convertor`、`UnpackMiniApp`、`wx.request`、`wx.getStorageSync`、`wx.login`、`wx.cloud.callFunction`、`openid`/`unionid`/`session_id`、`x-clienttraceid`/`Nonce`/`Curtime`/`Checksum`、`X-Sign`/`x-sign`、`xmSign`/`tokenSign`、`paramsMD5`、`getHmacSha256`、`X-HMAC-SIGNATURE`、`x-evone-signature`、`constant-obfuscated.js`、`app-key` 出现时使用。覆盖：包落点（PC `WeChat Files\Applet` / 新版 `xwechat\radium\Applet\packages` / 安卓 `appbrand/pkg` / 抖音 `bdp/launchcache`）与「全删再打开」定位法、PC 加密包解密（`V1MMWX` + PBKDF2(`saltiest`,1000) + AES-256-CBC(`the iv: 16 bytes`) + `wxid[-2]` 异或，含 `<2` 位兜底 `0x66`）、安卓/抖音/支付宝包无需解密、`TPKG` 明文索引（**大端**、12 字节间隔、第 9–12 字节为名字长度）、支付宝 `nebulaInstallApps` tar 源码包、解包后修复清单（`componentFramework`→`glass-easel`、`ignoreUploadUnusedFiles`、删 `plugins`、不校验合法域名）、分包解包、**常量表爆破**（AES key+iv 双遍历、md5 盐爆破、int32 大端掩码异或）、sign 五族（排序拼接+盐 / 固定前缀+大写 / HmacSHA256 / 时间戳+client_key / 62 字符表乱序）、双层 AES（内层 key/iv 在第一次解密结果里）、国密 sm2/sm3/魔改 sm4、RSA 私钥前端签名、URL-safe base64 与自实现字符表、`padEnd(key,16,"0")`、**哪些参数不可纯算复现**（`wx.login` 的 `code`）、云函数重打包 + frida 掰直 MD5 校验 + `wx.cloud.callFunction` 探针 + websocket RPC、开发者工具 / `debugxweb`+`chrome://inspect` / `WeChatOpenDevTools` / x64dbg 附加带小程序标题的 `WeChatAppEx.exe`、安卓 `com.tencent.mm:appbrand0-4` 必须指定 pid（**模拟器登录微信会封号**）、MITM 改存档与改响应、`cert.json`/`sign.json` 完整性校验导致改包失效、以及「同一小程序跨版本常量会轮换、文章里的常量不可照抄」的判据。用户提到小程序逆向、小程序解包、反编译小程序、wxapkg 解密、微信小程序签名、小程序 sign、小程序抓包、小程序云函数、小程序源码获取、小程序改数值、ttkg/ttpkg 解包、校友邦 / 某迪汽车 / 绝味鸭脖 / 泡泡玛特 / 葫芦娃 / 洗衣 / 咖啡 / 充电桩一类小程序接口、或说「小程序抓包抓不到、小程序代码看不懂、小程序包解密失败、解包后打不开、改了包没用」时都应使用本技能。
+description: 微信 / 抖音 / 支付宝小程序（含小游戏、云开发）逆向与数据采集技能：**从包出发**，不从抓包硬啃。触发词：`wxapkg`、`__APP__.wxapkg`、`V1MMWX`、`ttpkg.js`、`TPKG`、`nebula`、`app-service.js`、`app.json`、`subPackage`、`unveilr`、`wxappUnpacker`、`wx.request`、`wx.login`、`wx.cloud.callFunction`、`openid`、`x-clienttraceid`/`Nonce`/`Curtime`/`Checksum`、`X-Sign`/`x-sign`、`xmSign`/`tokenSign`、`paramsMD5`、`getHmacSha256`、`X-HMAC-SIGNATURE`、`constant-obfuscated.js`、`app-key`、`x-evone-signature`。覆盖：包落点 +「全删再打开」定位法、PC 加密包解密（PBKDF2 + AES-256-CBC + `wxid[-2]` 异或）、`TPKG` 大端索引、支付宝 `nebulaInstallApps` tar、解包修复清单、常量表爆破、sign 五族与国密 / 双层 AES / RSA、`wx.login` 的 `code` 不可纯算、云函数重打包 + frida + RPC、`debugxweb` / `WeChatOpenDevTools` / `WeChatAppEx.exe`、安卓 `appbrand0-4` 必须指定 pid（模拟器登录微信会封号）、MITM 改存档与改响应、`cert.json`/`sign.json` 校验、**Uniapp / Weex 混合 App 的 `app-service.js`**（hook `WXSDKInstance.render`）、跨版本常量会轮换不可照抄。用户说「小程序逆向 / 小程序解包 / 反编译小程序 / wxapkg 解密 / 小程序签名 / 小程序抓包 / 小程序云函数 / 小程序源码获取 / 小程序改数值 / ttpkg 解包 / 小程序抓包抓不到 / 小程序代码看不懂 / 小程序包解密失败 / 解包后打不开 / 改了包没用」时都应使用本技能。
 ---
 
 # 小程序逆向：包 → 算法 → 运行时
@@ -35,6 +35,7 @@ description: 微信 / 抖音 / 支付宝小程序（含小游戏、云开发）�
 | 小程序小游戏 / 存档数值 | 客户端信任 | MITM 改 JSON 即可，**不必碰包** |
 | 改完包放回去小程序又自己拉资源 | `cert.json`/`sign.json` 校验 | 改成 MITM 改写响应（§6） |
 | 目标站同一 App 在多平台上架 | **可换赛道** | 去微信搜同名小程序（解包套路更成熟） |
+| **拿不到包**，但字符串/抓包里出现 `app-service.js` | **Uniapp / Weex 混合 App**（不是小程序） | 从原生渲染入口抠（`runtime-and-debug.md` §4.4，hook `WXSDKInstance.render`） |
 | 只是网页站的 JS 加密参数 | 不是本技能 | `web-reverse-algorithm` |
 | 只是缺浏览器环境要补 | 不是本技能 | `web-js-env-patcher` |
 
@@ -152,9 +153,11 @@ python $S/const_bruteforce.py xor-int32 --data "<b64 或 hex>" --mask 3854078970
   断点五条套路（sign 位置↔断点、打不上怎么办、本地生成所以拦不住）、
   **云函数流水线（解包 → 探针 → 重打包 → frida 掰直 MD5 → RPC）**、
   安卓 `appbrand0-4` 进程与 `AppBrandJsBridgeBinding`、PC 端 `recv` 帧格式与 AES-128-GCM、
-  MITM 改存档/改响应骨架与"清缓存"前置、权限位改法的适用边界、排错 9 条。
+  **非微信混合 App（Uniapp / Weex）从 `WXSDKInstance.render` 抠 `app-service.js`**（含两个重载的区分、
+  `Script.mContent` 读改回写、`Plus_InitURL` 分流），
+  MITM 改存档/改响应骨架与"清缓存"前置、权限位改法的适用边界、排错 11 条。
 - `scripts/wxapkg_tool.py`：识别 / PC 解密 / 列举 / 提取，**零依赖**（PyCryptodome 缺失时自走纯 Python AES），
-  `--selftest` **27 项**（NIST SP800-38A F.2.1 向量、加解密往返、`xorKey` 边界、错 wxid 必须被抓住、索引截断不静默）。
+  `--selftest` **29 项**（NIST SP800-38A F.2.1 向量、加解密往返、`xorKey` 边界、错 wxid 必须被抓住、索引截断不静默）。
 - `scripts/const_bruteforce.py`：常量表爆破三件套（`aes-pair` / `md5-salt` / `xor-int32`），
   `--selftest` **11 项**（复现两篇文章的真实数值、大端≠小端、假阳性可复现）。
 

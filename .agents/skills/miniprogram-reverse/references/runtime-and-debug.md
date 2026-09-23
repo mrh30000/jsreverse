@@ -100,6 +100,77 @@
 
 ---
 
+### 4.4 非微信混合 App（Uniapp / Weex）：从原生渲染入口抠 `app-service.js`
+
+`52pojie-2021863`（Uniapp 加固 App，**注意它不是小程序**）。
+
+**为什么归到本文件**：这类 App 的 JS 入口**也叫 `app-service.js`**，
+但**没有 `wxapkg` 可解**（它是个原生 App）⇒ 只能从**原生渲染入口**把 JS 抠出来。
+判据：拿不到包、也没有 `__APP__.wxapkg`，但抓包/字符串里能看到 `app-service.js`。
+
+**抓手是"渲染入口的第 2 个参数"，不是"文件落地"**：
+
+1. 在 Java 层**全局搜字符串 `app-service.js`**（加固只保护 dex/资源，**Java 方法签名照样可 hook**）。
+2. 落到 Weex 的渲染入口 —— `com.taobao.weex.WXSDKInstance`：
+
+```java
+// 重载 A：第 2 参是 String（JS 源码）
+render(String url, String script, Map options, String jsonName, WXRenderStrategy strategy)
+// 重载 B：第 2 参是 Script 对象，源码在它的 mContent 字段里
+render(String url, Script script, Map options, String jsonName, WXRenderStrategy strategy)
+```
+
+3. frida 先**只做日志**（不改行为）确认是哪个重载、哪个参数是 JS：
+
+```javascript
+if (Java.available) {
+  Java.perform(function () {
+    var WX = Java.use("com.taobao.weex.WXSDKInstance");
+    WX.render.overload('java.lang.String', 'java.lang.String', 'java.util.Map',
+                       'java.lang.String', 'com.taobao.weex.common.WXRenderStrategy')
+      .implementation = function (url, script, options, jsonName, strategy) {
+        console.log('url=' + url + ' scriptLen=' + (script ? script.length : null)
+                    + ' jsonName=' + jsonName);
+        return this.render(url, script, options, jsonName, strategy);
+      };
+  });
+}
+```
+
+   实测结论：**第 4 个参数是"JS 名"**（是一个 JSON，里面有 `Plus_InitURL`；
+   `app-service.js` 就出现在这个字段里），**第 2 个参数才是 JS 内容**。
+   ⇒ 用 `Plus_InitURL` 做**分流**（只处理 `app-service.js` 那一次），不要对所有渲染调用都动手。
+
+4. Xposed 版本（读 → 改 → 回写）：
+
+```java
+Class<?> wx  = XposedHelpers.findClass("com.taobao.weex.WXSDKInstance", classLoader);
+Class<?> scr = XposedHelpers.findClass("com.taobao.weex.Script", classLoader);
+Class<?> st  = XposedHelpers.findClass("com.taobao.weex.common.WXRenderStrategy", classLoader);
+XposedHelpers.findAndHookMethod(wx, "render", String.class, scr, Map.class, String.class, st,
+  new XC_MethodHook() {
+    protected void beforeHookedMethod(MethodHookParam p) throws Throwable {
+      if (p.args[3] instanceof String) {
+        String url = new JSONObject((String) p.args[3]).getString("Plus_InitURL");
+        if (url.contains("app-service.js")) {
+          String content = (String) XposedHelpers.getObjectField(p.args[1], "mContent");
+          XposedHelpers.setObjectField(p.args[1], "mContent", content.replace("旧", "新"));
+        }
+      }
+    }
+  });
+```
+
+**要点**：
+- **`Script` 重载的对象里有 `mContent` 字段 = JS 源码**；`getObjectField` 读、`setObjectField` 回写，
+  **改完立即生效**（不需要重打包，也不碰签名校验）。
+- 加固不影响这条路：**hook 的是宿主自己的公开方法**，与 dex 是否被加固无关。
+- 与小程序的关系：Uniapp 也能编译成小程序（那时 `app-service.js` 在小程序包里）；
+  **编译成 App 时没有包**，只能走本节。
+  ⇒ 同一份业务代码可能同时有多端产物，**先判断目标形态再选路线**（第 1 行分流表已给判据）。
+
+---
+
 ## 5. MITM 直接改包 / 改响应（成本最低的"改数据"）
 
 适用：**客户端数值**（游戏存档、金币、任务状态）与**需回写的 JS**。
@@ -162,3 +233,5 @@ def response(flow: http.HTTPFlow):
 | frida 重打包脚本无效 | `RadiumWMPF` 版本不同 ⇒ RVA 失效 | 重新定位比较点 |
 | 模拟器上微信被封 | **模拟器登录微信会封号**（实测结论） | 用 PC 版微信；静态度优先 |
 | 改了 JS 但行为没变 | 本地缓存命中 | 先清 `wxid_*/Applet/wx*` 再试 |
+| 目标没有 `wxapkg`，但字符串里有 `app-service.js` | **不是小程序，是 Uniapp/Weex 混合 App** | 从原生渲染入口抠（§4.4），搜 `WXSDKInstance.render` |
+| §4.4 里 frida 只打日志看不到内容 | 命中的是**另一个重载**（`Script` 对象版） | 换 `Script` 重载；内容在 `mContent` 字段里 |

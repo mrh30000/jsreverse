@@ -1,6 +1,6 @@
 ---
 name: desktop-client-reverse
-description: 桌面客户端逆向技能（Electron / Tauri / WebView2 / Node.js 打包产物 / V8 字节码 / Cocos2d-JS）。当目标的"前端"不在浏览器里，而是在一个装了壳的桌面程序或原生客户端里时使用：`app.asar`、`app.asar.unpacked`、`resources/app`、`OnlyLoadAppFromAsar`、`@electron/fuses`、`flipFuses`、`EnableEmbeddedAsarIntegrityValidation`、`launch.dist.js`、`main.js`、`package.json` 的 `main`、`nodeIntegration`、`ipcMain.handle`、`ipcRenderer.invoke`、`electron.net.request`、`electron.protocol.handle`、`webContents.openDevTools`、`BrowserWindow`、`app.quit`、`--inspect`、`--debug`、`.jsc`、`bytenode`、`vm.Script`+`cachedData`、`CodeSerializer`、`SharedFunctionInfo`、`BytecodeArray`、`d8`、`Ignition`、`LdaSmi`/`Star`/`CallProperty`、`node:sea`/`Node.js pkg` 单文件 exe、`WebView2`、`EmbeddedBrowserWebView.dll`、`OpenDevToolsWindow`、`Navigate` 虚表、`Cocos2d-JS`、`cocos2d-x-lite`、`xxtea`、`assets/src`、`libcocos2djs.so`、`Can't decrypt code for %s`、`netease` 签名头、`.luac`、`asar extract/pack`、`netstat -na` 找本地端口、`declarativeNetRequest` 覆盖反调试脚本、Typora、CrackMe、asar 偏移修复、pkg 二进制 `!1`/`!0` patch。用户说「Electron 逆向 / asar 解包报错 / 解压出来是乱码 / 打不开开发者工具 / 改了 JS 程序自动退出 / 完整性校验 / jsc 反编译 / 字节码看不懂 / 这个是 exe 不会逆 / 桌面程序抓包 / WebView2 资源提取 / 小游戏客户端 / PC 客户端协议」时都应使用本技能。
+description: 桌面客户端逆向技能（Electron / Tauri / WebView2 / Node.js 打包产物 / V8 字节码 / Cocos2d-JS）。当目标的"前端"不在浏览器里，而在装了壳的桌面程序或原生客户端里时使用：`app.asar`、`resources/app`、`OnlyLoadAppFromAsar`、`@electron/fuses`/`flipFuses`、`EnableEmbeddedAsarIntegrityValidation`、`launch.dist.js`、`package.json` 的 `main`、`ipcMain`/`ipcRenderer`、`electron.net.request`、`electron.protocol.handle`、`webContents.openDevTools`、`app.quit`、`--inspect`/`--debug`、`.jsc`、`bytenode`、`CodeSerializer`、`BytecodeArray`、`d8`、`loadjsc`、`0xC0DE0687`、`jsc2js`、`view8`、`Ignition`、`node:sea`/`Node.js pkg` 单文件 exe、`WebView2`、`EmbeddedBrowserWebView.dll`、`Cocos2d-JS`、`xxtea`、`assets/src`、`libcocos2djs.so`、`Can't decrypt code for %s`、`netease` 签名头、`.luac`、`asar extract/pack`、`netstat -na`、`declarativeNetRequest`、Typora、pkg `!1`/`!0` patch。用户说「Electron 逆向 / asar 解包报错 / 解压出来是乱码 / 打不开开发者工具 / 改了 JS 程序自动退出 / 完整性校验 / jsc 反编译 / 字节码看不懂 / V8 版本对不上 / 这个是 exe 不会逆 / 桌面程序抓包 / WebView2 资源提取 / 小游戏客户端 / PC 客户端协议」时都应使用本技能。
 ---
 
 # 桌面客户端逆向：壳 → 入口 → 运行时
@@ -31,6 +31,7 @@ description: 桌面客户端逆向技能（Electron / Tauri / WebView2 / Node.js
 | 有本地 `127.0.0.1:xxxxx` 监听端口 | Electron/本地服务 | 直接当网页调（`netstat -na` 找端口，`references/desktop-runtime-surfaces.md` §4） |
 | 文件后缀 `.jsc`，同在 `assets/src` | **Cocos2d-JS** | `jsc_xxtea_tool.py identify`（`references/jsc-and-v8-bytecode.md` §2） |
 | `.jsc` 被 `require` 进来（`launch.dist.js` 里） | **V8 字节码（Node 模块）** | **别解字节码**：劫持 Node/Electron API（`references/jsc-and-v8-bytecode.md` §5） |
+| `.jsc` 首 4 字节以 `C0 DE` 开头（实测 `C0DE0687`） | **V8 code cache**（且没有额外加壳） | 先读 V8 版本；要**看懂**走 §5.3 的三条现成路线，要**拿逻辑**仍走 §5.2 |
 | 单个大 exe（几十 MB），内嵌 JS 常量仍是明文 | **Node.js pkg 打包** | `strings` 定位 → `byte_flag_patch.py`（`references/jsc-and-v8-bytecode.md` §6） |
 | HTTP 响应里带平台签名 / 客户端 ID | 协议层 | 套本仓库其它技能（见末尾边界） |
 
@@ -65,8 +66,12 @@ description: 桌面客户端逆向技能（Electron / Tauri / WebView2 / Node.js
    | 原生桥（WebView2 / JNI） | 虚表 / JNI 符号（`references/desktop-runtime-surfaces.md` §1） |
 6. **`.jsc` 只有两条路，先分类再选路**：
    - Cocos xxtea 系 ⇒ `jsc_xxtea_tool.py decrypt`，密钥从 `libcocos*.so` 取（`references/jsc-and-v8-bytecode.md` §4）。
-   - V8 字节码 / bytenode ⇒ **不解字节码**：d8 打补丁反汇编（只为了"看懂"）或
+   - V8 字节码 / bytenode ⇒ **默认不解字节码**：d8 打补丁反汇编（只为了"看懂"）或
      直接在 Node/Electron 环境里 `require` 它 + 劫持它调用的 API（`references/jsc-and-v8-bytecode.md` §5）。
+   - **要看懂时的顺序（`2115726`）**：① 先开调试读 **V8 版本**（这步最重要，版本不符 `Deserialize` 必失败）；
+     ② 用现成的 `jsc2js` / `d8 … loadjsc(...)` + `view8` 反编译；③ 需要更高可读性时用 AI + CDP 动态调用，
+     但它**只覆盖被触发的函数**（`references/jsc-and-v8-bytecode.md` §5.3）。
+     **拿业务逻辑仍优先走劫持** —— §5.3 只是"看懂"。
 7. **等长字节补丁（可选，最快的一条路）**：
    `!1`→`!0` 这类布尔判定在二进制里是**明文等长**的，可用
    `byte_flag_patch.py scan/patch`（默认干跑 + `--expect` 前置断言）直接翻。
@@ -149,7 +154,8 @@ python $S/byte_flag_patch.py patch --in server.exe --pattern "activated:!1" \
 - `references/jsc-and-v8-bytecode.md`：**`.jsc` 两类形态的唯一权威源** ——
   Cocos 系（`ungzip(xxtea_decrypt())`、密钥取证三处落点、网易 `netease`+`01 01 01 EF` 签名头与
   重复密钥异或、`.luac` 类比）、V8 字节码系（bytenode、`CodeSerializer.Deserialize`、
-  d8 打补丁加 `Disassemble/LoadJSC` 的判据与代价、`SharedFunctionInfo` 递归反汇编的坑）、
+  **首 4 字节 `C0 DE` 前缀判据**、d8 打补丁加 `Disassemble/LoadJSC` 的判据与代价、`SharedFunctionInfo` 递归反汇编的坑）、
+  **§5.3 "看懂"的三条现成路线**（`jsc2js`/`view8`、`d8 … loadjsc` + `view8`、AI+CDP；含 V8 版本前置与覆盖边界）、
   **"字节码不进环境就别想调"** 的工程结论、pkg 单文件 exe 的 `strings` 定位与等长补丁、
   V8 侧**只读**知识点（Ignition / accumulator / `LdaSmi`·`Star`·`CallProperty` / 常量池）与它们的用途边界。
 - `references/desktop-runtime-surfaces.md`：**非 Electron 壳层唯一权威源** ——

