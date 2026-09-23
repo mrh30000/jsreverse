@@ -1,6 +1,6 @@
 ---
 name: stream-drm-reverse
-description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链路逆向技能：先定位「加密发生在哪一层」，再逐层解密。当目标站或 App 的播放地址、m3u8、ts 分片解不出来，或分片能下载却不能播放、播放花屏 / 绿屏 / 只有声音没画面 / 卡在首帧，或页面与接口里出现 `EXT-X-KEY`、`#EXT-X-KEY:METHOD=AES-128`、`METHOD=AES-128-PES`、`METHOD=AES-128-ECB`、`decryptdata.key`、`decryphtdata.key`、`qiniuDRMKey`、`encrypt_info`、`protectedLicenses`、`GetLicense`、`GetProvision`、`service_name=mdcm`、`KID`、`CEK`、`CENC`、`cdm`、`widevine`/`playready`、`overlayKey`、`tokenVideoKey`、`h5e`、`jsdecVOD`、`liveLineUrl`、`streamName`、`hcdnlive`、`MediaKeys.createSession`、`requestMediaKeySystemAccess` 时使用。覆盖 HLS/m3u8 与 EXT-X-KEY 语义（含厂商扩展 METHOD）、TS→PES→ES/NALU 分层与「整片 vs 仅 PES 载荷 vs 逐 NALU」覆盖范围判据、AES-128/256-CBC 与 SM4 内容解密、**key 二次构造 / 包装层（重复 XOR 三段链、字符表滚动 + 前缀标记 + 噪声插入、定长正文 + hex 标记串、两半异或、字母表覆盖性与单射性守卫）**、key/IV 四种来源（明文 URI、接口返回、固定串派生、DRM 许可证）、**直播流捕获（移动端 UA 换发行版、MSE 源码注入 dump 明文分片、base64「基址」403 与 `$0..$3` 占位符 / md5 盐拼最终地址）**、**播放器侧与反录制判据（`<video>`+MSE 可 dump vs `<canvas>` 自渲染失效、wasm 内封装解码库与 YUV 流的识别）**、**EME/CDM 拦截取 `eme.keys`**、厂商 key 配方与 URL 差值法、CDRM/STSDK 式 Provision→License（TLV、SM2、MACKey、HMAC-SM3、SM4-ECB 解 CEK）、iqiyi `mdcm` 的 `dcm` 混合模式（CTR + 周期性 XOR）与 NALU 尾部 CRC16、wasm / wasm2js 白盒 AES（DFA 与 CTR 差分反推写死 key）、wasm 媒体解密器内存取证（HEAPU8 dump / 地址差法 / `_emscripten_run_script` 打桩）与文件头解密、wasm VMP 反汇编到 IR、`importObject` 代理捕获环境取值、解密后重新封装 TS（保留 PES 头、重算 adaptation field）与 m3u8 本地化改写。用户提到 m3u8 解密、ts 解密、视频解析、直播源、切片解密、DRM、数字版权、白盒密码、白盒 AES、加密播放器、RPC 免扣（sekiro）、ffmpeg 重封装、EPUB / 电子书 / 在线阅读器章节解密、课件视频解密、**下载器提示 key 错误 / key 长度不对 / 填充错误**、**拿到的 key 是 32 位或 47 位或 64 位、不是 16 字节**、**页面能播但网络面板看不到 m3u8**、**PC 抓不到只有移动端能抓到**、**m3u8 地址解出来 403**、**播放器是 canvas 而不是 video**、**录屏会被录上浮动水印**、或说「视频能下载但不能播放 / 花屏 / 只有前几帧正常」时都应使用本技能。
+description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链路逆向技能：先定位「加密发生在哪一层」，再逐层解密。当目标站或 App 的播放地址、m3u8、ts 分片解不出来，或分片能下载却不能播放、播放花屏 / 绿屏 / 只有声音没画面 / 卡在首帧，或页面与接口里出现 `EXT-X-KEY`、`#EXT-X-KEY:METHOD=AES-128`、`METHOD=AES-128-PES`、`METHOD=AES-128-ECB`、`decryptdata.key`、`decryphtdata.key`、`qiniuDRMKey`、`encrypt_info`、`protectedLicenses`、`GetLicense`、`GetProvision`、`service_name=mdcm`、`KID`、`CEK`、`CENC`、`cdm`、`widevine`/`playready`、`overlayKey`、`tokenVideoKey`、`h5e`、`jsdecVOD`、`liveLineUrl`、`streamName`、`hcdnlive`、`MediaKeys.createSession`、`requestMediaKeySystemAccess` 时使用。覆盖 HLS/m3u8 与 EXT-X-KEY 语义（含厂商扩展 METHOD）、TS→PES→ES/NALU 分层与「整片 vs 仅 PES 载荷 vs 逐 NALU」覆盖范围判据、AES-128/256-CBC 与 SM4 内容解密、**key 二次构造 / 包装层（重复 XOR 三段链、字符表滚动 + 前缀标记 + 噪声插入、定长正文 + hex 标记串、两半异或、字母表覆盖性与单射性守卫）**、key/IV 四种来源（明文 URI、接口返回、固定串派生、DRM 许可证）、**直播流捕获（移动端 UA 换发行版、MSE 源码注入 dump 明文分片、base64「基址」403 与 `$0..$3` 占位符 / md5 盐拼最终地址）**、**播放器侧与反录制判据（`<video>`+MSE 可 dump vs `<canvas>` 自渲染失效、wasm 内封装解码库与 YUV 流的识别）**、**EME/CDM 拦截取 `eme.keys`**、厂商 key 配方与 URL 差值法、CDRM/STSDK 式 Provision→License（TLV、SM2、MACKey、HMAC-SM3、SM4-ECB 解 CEK）、iqiyi `mdcm` 的 `dcm` 混合模式（CTR + 周期性 XOR）与 NALU 尾部 CRC16、wasm / wasm2js 白盒 AES（DFA 与 CTR 差分反推写死 key）、wasm 媒体解密器内存取证（HEAPU8 dump / 地址差法 / `_emscripten_run_script` 打桩）与文件头解密、wasm VMP 反汇编到 IR、`importObject` 代理捕获环境取值、解密后重新封装 TS（保留 PES 头、重算 adaptation field）与 m3u8 本地化改写。用户提到 m3u8 解密、ts 解密、视频解析、直播源、切片解密、DRM、数字版权、白盒密码、白盒 AES、加密播放器、RPC 免扣（sekiro）、ffmpeg 重封装、EPUB / 电子书 / 在线阅读器章节解密、课件视频解密、**下载器提示 key 错误 / key 长度不对 / 填充错误**、**拿到的 key 是 32 位或 47 位或 64 位、不是 16 字节**、**页面能播但网络面板看不到 m3u8**、**PC 抓不到只有移动端能抓到**、**m3u8 地址解出来 403**、**播放器是 canvas 而不是 video**、**录屏会被录上浮动水印**、或说「视频能下载但不能播放 / 花屏 / 只有前几帧正常」、`SAMPLE-AES` / `METHOD=SAMPLE-AES`、`PES` 载荷加密、NAL 单元级加密、帧加密、hls.js 的 `SampleAesDecrypter` / `getAvcEncryptedData`、wasm 解密函数（`funcNN_TEA` 一类）带环境检测、`key` 文件是 33 字节、有声音但画面花、部分画面正常部分花、改完全局解密反而不能播时都应使用本技能。
 ---
 
 # 流媒体 / 视频内容保护逆向
@@ -10,7 +10,12 @@ description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链�
 这一族 80% 的返工来自层判错——最常见的是把 E 层（DRM 许可证体系）当成 A 层（m3u8 的 AES-128）做，
 费两天扣不出来；其次是 C 层（ES/NALU 逐帧加密）当 A 层做，**解不报错、只是花屏**。
 
-> 判据、结构常量与坑表都在 `references/` 三个文件里；本文只给分层判据与执行顺序。
+> 判据、结构常量与坑表都在 `references/` 里；本文只给分层判据与执行顺序。
+> **C 层（帧加密）单独有一份权威源**：`references/frame-encryption-and-wasm-decryptors.md`
+> ——帧加密五形态、`SAMPLE-AES` 的逐字节覆盖粒度、EBSP 严格/宽松分歧、
+> 「算法在 wasm 里且导出函数带环境检测」时的两条调用路线（`wasm2c` vs `wasm2wat` 改导出表）、
+> 以及 hls.js 侧的五个 hook 点。**只要出现「有声音花屏 / 部分 NALU 解了部分没解 /
+> 本来能播、改完反而不能播」，先去那一份。**
 
 ## 分层判据（30 秒分流）
 
@@ -19,8 +24,9 @@ description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链�
 | m3u8 里有 `#EXT-X-KEY:METHOD=AES-128,URI="..."` | **A 容器层**：整片同一 key | `scripts/m3u8_probe.py <playlist.m3u8>` |
 | **拿到的 key 不是 16 字节**（32/47/64 位、或一长串 hex） | **W 包装层**：key 被二次构造过 | `scripts/key_wrapper.py alpha-check --enforce` → 再解 |
 | m3u8 里**没有** KEY，但 JS 里有 `decryptdata.key` / `this.decryptkey` / `qiniuDRMKey` | **B 播放器层**：key 由 JS 拼或由接口给 | 断点打 `decryptdata.key`；`license_parse.py mdcm` |
-| m3u8 有 KEY、解出来仍花屏 / 只有一部分画面正常 | **C ES 层**：加密在 PES 之后的 NALU 上 | `scripts/ts_probe.py <seg.ts>` |
+| m3u8 有 KEY、解出来仍花屏 / 只有一部分画面正常 | **C ES 层**：加密在 PES 之后的 NALU 上 | `scripts/ts_probe.py <seg.ts>`；`references/frame-encryption-and-wasm-decryptors.md` §1 |
 | `METHOD=AES-128-PES` | **C 层（厂商扩展）**：只加密 **PES 载荷** | `m3u8_probe.py` 会直接标出；`ts_probe.py --nalu` |
+| `METHOD=SAMPLE-AES` | **C 层**：**苹果那套「每 160 字节只加密 16 字节」** | **别当连续块解**；`scripts/nalu_frame_crypto.py sample-aes-range --len <N>` |
 | `METHOD=AES-128-ECB` / `-CTR` / `SM4-*` | **A 层（厂商扩展）**：模式/长度不同 | 见 `m3u8_probe.py` 的模式提示；**别套 CBC 的 padding** |
 | `METHOD=NONE` 出现在**全部** KEY 上 | **PLAIN**：这份列表本身没加密 | 别在这层找 key，去看 B/C/E 层 |
 | 响应字段是密文（`encrypt_info`、`o`/`v`、`url`、`params`） | **D 接口层**：与媒体流无关 | `scripts/media_crypto.py` |
@@ -89,6 +95,12 @@ description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链�
 | --- | --- | --- |
 | 分片解出来是垃圾 / 全 `0x00` | 密文不是从文件首字节开始（TS 包头、PES 头未被加密），或 IV 用错 | `ts_probe.py` 看 `PES_packet_length` 与 NAL 起始码，只解 payload |
 | **解不报错但花屏** | 逐 NALU 加密只覆盖部分 NAL 类型，或 NAL 头不参与加密 | 见 `references/hls-and-ts-structure.md`「加密覆盖范围判据」 |
+| **有声音、画面花** | C 层 NALU 内容加密 | `references/frame-encryption-and-wasm-decryptors.md` §1–§3 |
+| **部分 NALU 解了、部分没解**（花屏位置不固定） | wasm 导出壳函数带环境检测，或选错近似变体 | 同上 §5（绕壳 / 逐字节 diff `func58` vs `func60`） |
+| **本来能播、改完「解密」反而不能播** | 解密写在了**解复用之后**，SPS 已被当明文解析 | 同上 §6（解密提到 `case 7` 内、`ExpGolomb` 之前） |
+| 帧加密是 `SAMPLE-AES`，按连续块解出 90% 垃圾 | 该模式**每 160 字节只加密 16 字节** | `scripts/nalu_frame_crypto.py sample-aes-range/sample-aes` |
+| key 文件是 **32 / 33 字节** | 一层 AES-CBC 包装 | 解出后取**前 16 字节**（`hls-and-ts-structure.md` §4.6） |
+| 抓到的 m3u8 **一解就是明文**、清晰度还低 | 抓的是 `hls_url`（明文专用，分辨率锁死） | 改抓 `hls_h5e_url` / `hls_enc_url`（§1.4） |
 | 只有声音没画面 / 只有画面没声音 | 音频与视频**用了不同的 KID/IV**，或音频不需要解密 | 按 PID 分流，别用同一个 IV 通吃 |
 | 卡在首帧、后面正常 | 关键帧（IDR）用了不同 IV，或 CRC16 校验被跳过导致首帧被吞 | 查 `dcm` 的 `a` 标志与尾部 2 字节 CRC |
 | 换了分辨率/清晰度就解不开 | 不同码率对应不同 `EXT-X-KEY` 或不同 CEK | 分别取，不要跨码率复用 key |
@@ -120,6 +132,12 @@ description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链�
   若视频仍不可播，加密在 B/C/E 层。
 - **不要一上来读 wasm 算法**。F 层先用 `importObject` 代理把 JS 侧取值全捕获，很多时候直接调用比读算法快一个数量级（`references/whitebox-and-wasm-crypto.md`）。
 - **不要对 TS 全文件做 AES-CBC**。TS 的 188 字节包头、PES 头、NAL 头通常**不加密**；从文件首字节开始解会得到「能解出字节但完全没法播」的结果，而且**不报错**。
+- **不要把 `SAMPLE-AES` 当连续块解**。它是「每 160 字节只动 16 字节、每 NALU 重置 IV、末块留明文」，
+  连续 CBC 解出来 90% 是垃圾，表现仍是「能跑、花屏」；判据与工具见 `references/frame-encryption-and-wasm-decryptors.md` §2。
+- **不要把 `nal_escape` / `nal_unescape` 当成幂等操作**。对已编码数据再 escape 会持续膨胀；
+  正确顺序是「unescape → 解密 → escape」，每步一次，且站点用严格还是宽松实现要实测（§3）。
+- **不要用「页面能播」推断「SPS 没被加密」**。写文件时先落一份明文 SPS/PPS 很常见，
+  流里会有**两份 SPS**，播放器用第一份照样播（§1）。
 - **不要把「解出来是合法 UTF-8 / JSON」当成功**。D 层的密文解出 JSON 只说明接口层对了，媒体流可能还是加过密的。
 - **不要在只有一组明文密文对时反推白盒 key 就宣称完成**。白盒 AES 的 key 是写死的，**必须换一个随机输入再对拍一次**（`references/whitebox-and-wasm-crypto.md` 的差分法自带这条断言）。
 - **不要跳过 CRC16 / HMAC 校验直接解**。这两处校验是**唯一能在本地区分「key 对但轮次错」和「key 错」的信号**；跳过会把错误往下一层推。
@@ -138,6 +156,13 @@ python $S/ts_probe.py --selftest
 python $S/license_parse.py --selftest
 python $S/m3u8_probe.py --selftest
 python $S/key_wrapper.py --selftest
+python $S/nalu_frame_crypto.py --selftest
+
+# 0.6) ★ C 层帧加密三件套（EBSP / SAMPLE-AES 粒度 / key 派生与内联）
+python $S/nalu_frame_crypto.py ebsp-unescape payload.bin -o payload.clear.bin --loose
+python $S/nalu_frame_crypto.py sample-aes-range --len 24411 --nalu-type 5 --pretty
+python $S/nalu_frame_crypto.py split-derive --data "AAAABBBBCCCCDDDDeeeeffffgggghhhh:9f8e" --pretty
+python $S/nalu_frame_crypto.py inline-key --key-hex <32位hex> --iv-hex <32位hex>
 
 # 0.5) ★ W 包装层：先跑守卫，再解 key（三条都可直接跑）
 python $S/key_wrapper.py alpha-check --table "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-=+" --enforce

@@ -2,7 +2,7 @@ const { clone } = require("../shared");
 const { runPatternPass } = require("./shared-pattern-pass");
 const { createSandbox, evaluateExpression, evaluateNodes, generateCode, traverse, t } = require("./pattern-utils");
 
-function geetest4GuardedPass(ast) {
+function geetestGuardedPass(ast) {
   let changed = false;
   const body = ast.program.body;
 
@@ -132,4 +132,4 @@ function geetest4GuardedPass(ast) {
   return { ast, changed };
 }
 
-runPatternPass(geetest4GuardedPass);
+runPatternPass(geetestGuardedPass);

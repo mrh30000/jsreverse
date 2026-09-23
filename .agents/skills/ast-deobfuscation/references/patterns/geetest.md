@@ -3,6 +3,12 @@
 当样本属于极验（v3 的 `fullpage.*.js` / `slide.*.js` / `click.*.js`，或 v4 的 `gcaptcha4.js`）
 时，使用这份规则。这类样本属于 **guarded-switch VM + 别名族混淆**的混合体。
 
+> **命名说明（B21）**：本文件原名 `geetest4.md`，但内容**同时承载 v3 与 v4**
+> （v3 的顺序恒真状态机也在本文件 §「v3 顺序恒真状态机」），文件名与内容不符已挂账两轮。
+> 现统一改为**版本无关的家族名 `geetest`**，路由 id 同步为 `geetest`；
+> v3 专用的可执行件仍叫 `scripts/patterns/geetest3-state-machine-pass.js`（那份确实是 v3 专属，名字正确）。
+> `pipeline-config.js` 的 `hintTokens` **保留** `geetest4` 作为检索词——用户 hint 里写 geetest4 时要仍能命中本 pattern。
+
 ## 识别信号
 
 - 变量名是 `$_CEGDT` / `$_CJDe` / `$_FFW` 这类 **`$_` 前缀 + 5~6 位随机大小写字母**族；
@@ -25,7 +31,7 @@
 ## 处理顺序（顺序反了会静默清空函数体）
 
 1. **先做别名归一**，再做字符串表还原，最后才碰控制流。
-   本技能的 `scripts/patterns/geetest4-guarded-pass.js` 实现了这一组：把
+   本技能的 `scripts/patterns/geetest-guarded-pass.js` 实现了这一组：把
    `别名(数字常量)` 就地求值成字面量，然后删掉那条声明 + 紧跟的 `shift()`。
 
    > ⚠️ **该 pass 在 2026-09-20 修过一个静默语义缺陷**：旧版会无条件删除声明之后的
@@ -79,7 +85,7 @@ function r(e, t) {
 就刻意让 `[0][19]` 与 `[12][19]` 取同值、`[12][17]` 与 `[0][17]` 取同值；
 **该表的真实取值属于站点数据，本技能不声称它一定重复，只要求实现"按值比较"这个前提成立**。
 更关键的是：作者完全可以把 `case` 打乱书写，此时"按源码顺序展开"会**静默错序**
-（产物能跑、结果错）。这正是 `geetest4-guarded-pass.js` 的 `ForStatement` 分支的隐含假设，别默认它成立。
+（产物能跑、结果错）。这正是 `geetest-guarded-pass.js` 的 `ForStatement` 分支的隐含假设，别默认它成立。
 
 > **两种声明位置都要认**（只看 `node.init` 会整段漏掉形态 ②）：
 > ① 写在 for-init 里 `for (var S = T.$_DD()[0][0]; S !== …;)`；
@@ -90,7 +96,7 @@ function r(e, t) {
 **执行顺序**（顺序反了会把真实业务语句当垃圾删掉）：
 
 ```text
-① 别名归一 + 编码归一（geetest4-guarded-pass.js 的 VariableDeclaration 分支）
+① 别名归一 + 编码归一（geetest-guarded-pass.js 的 VariableDeclaration 分支）
 ② 状态机展平：geetest3-state-machine-pass.js
    —— 先用 --table 给状态值表，或让脚本从顶层前缀 eval 出来
 ③ 再走通用平坦化器处理剩下的 loop/switch 热点
@@ -130,7 +136,7 @@ node scripts/patterns/geetest3-state-machine-pass.js in.js --check
   另有 `artifacts/skill-evolution/tools/b20-verify-pass-edges.py` 的 **19 项边界阳性验证**
   （乱序 case、缺表项不写盘、不可达 case 的两条路径、普通循环不误伤、二次运行幂等、产物过 `node --check`）。
 
-> 与 `geetest4-guarded-pass.js` 的分工：那份 pass 的 `ForStatement` 分支是
+> 与 `geetest-guarded-pass.js` 的分工：那份 pass 的 `ForStatement` 分支是
 > **「按源码顺序展平 + 要求 `init === null`」的快速路径**；本脚本只做**按键值链推导 + 顺序断言**，
 > 两者结论不一致时**以本脚本为准**。同名函数体的 3-declarator 别名族两份 pass 都能处理，先跑哪份都行。
 

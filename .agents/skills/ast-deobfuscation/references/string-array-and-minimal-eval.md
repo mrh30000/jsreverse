@@ -55,7 +55,7 @@ $_CEGCS.shift();
 2. 把该别名族下所有 `name(数字字面量)` 调用就地求值成字符串字面量；
 3. **整组删掉**这条 3 declarator 声明 + 紧跟的 `shift()` 表达式语句。
 
-现成实现见 `../scripts/patterns/geetest4-guarded-pass.js` 的 `VariableDeclaration` 分支 ——
+现成实现见 `../scripts/patterns/geetest-guarded-pass.js` 的 `VariableDeclaration` 分支 ——
 它同时做了「别名归一 + 常量调用还原 + 整组清除」三件事，可作为写其它站点适配器的模板。
 
 > ⚠️ 这里有个**必须避开的坑**：如果你自己用 AST 批量删「单声明且 init 是成员表达式」的语句，

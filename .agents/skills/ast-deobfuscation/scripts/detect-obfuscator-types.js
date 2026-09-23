@@ -126,7 +126,7 @@ function detectObfuscationTypes(code) {
   // 3. 商业站点与防护产品
   if (/reese84/i.test(code)) types.add('reese84');
   if (/dingxiang/i.test(code)) types.add('dingxiang');
-  if (/geetest/i.test(code)) types.add('geetest4');
+  if (/geetest/i.test(code)) types.add('geetest');
   // 同花顺载荷含 `10jqka` 特征串；单独用 `|` 分裂字符会误报，故不纳入判据。
   if (/10jqka/i.test(code)) types.add('tonghuashun');
   if (/yidun/i.test(code)) types.add('yidun');

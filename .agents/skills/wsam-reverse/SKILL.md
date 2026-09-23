@@ -330,6 +330,8 @@ browsercli jobs cancel <job-id>
   入参是 PES/NALU、旁边有 `EXT-X-KEY` 或 `GetLicense`），先切到 `../stream-drm-reverse/SKILL.md` ——
   那里有 F 层的四条路线选择（`importObject` 代理直接调用 / wasm2js + DFA / VMP 反汇编成 IR / AI 补环境重放），
   比从本技能一路读内存语义更省时间。
-- 完整六阶段工作流（Observe / Capture / Rebuild / Patch / PureExtraction / Port）：`skills/browsercli-playbook/SKILL.md` + `docs/reference/reverse-workflow.md`
-- 工具参数与 profile 门控：`skills/browsercli-playbook/references/tool-catalog.md` / `profile-tool-gating.md`
-- 失败回退决策树：`skills/browsercli-playbook/references/fallbacks.md`
+- 完整六阶段工作流（Observe / Capture / Rebuild / Patch / PureExtraction / Port）：项目根 `AGENTS.md`
+- browsercli 命令契约与端到端最小流程：`../web-reverse-env/references/08-browsercli.md`
+- 工具参数与 profile 门控：`../ast-deobfuscation/references/browsercli-tools.md`；
+  门控现状用 `browsercli list-tools --json` 当场确认
+- 失败回退决策树：见本文件上面的「失败回退」表

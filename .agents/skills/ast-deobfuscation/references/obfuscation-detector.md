@@ -22,7 +22,7 @@
    - `vm-protection`：包含字节码数组、程序计数器（pc）、栈操作（push/pop）及虚拟机分发解释循环。
    - `webpack`：包含 `__webpack_require__` 或 `webpackJsonp` 打包结构。
 3. **站点/商业防护产品**：
-   - `reese84`, `dingxiang`, `geetest4`, `tonghuashun`, `yidun`, `xiaohongshu`, `zhipin`, `ob-variant`。
+   - `reese84`, `dingxiang`, `geetest`, `tonghuashun`, `yidun`, `xiaohongshu`, `zhipin`, `ob-variant`。
 
 ## 脚本入口
 

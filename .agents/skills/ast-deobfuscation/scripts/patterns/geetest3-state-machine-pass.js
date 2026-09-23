@@ -5,7 +5,7 @@
  * geetest3-state-machine-pass.js
  * 极验 v3（`slide.*.js` / `fullpage.*.js` / `click.*.js` / `gct.js`）「顺序恒真状态机」还原 + 顺序断言。
  *
- * 形态（两份独立来源互证，见 references/patterns/geetest4.md §「v3 顺序恒真状态机」）：
+ * 形态（两份独立来源互证，见 references/patterns/geetest.md §「v3 顺序恒真状态机」）：
  *
  *   function o() {
  *     var S = OBJ.$_DD()[6][16];                    // ← init 里取一个状态值
@@ -25,7 +25,7 @@
  *
  * 关键点：状态值来自 **对象方法调用 + 二维下标**（`OBJ.$_DD()[i][j]`），
  * 同一个数值会在多个下标上重复出现 ⇒ 判断"下一个执行哪个 case"必须**按值比较**，
- * 不能按下标文本比较。`geetest4-guarded-pass.js` 的 `ForStatement` 分支按**源码顺序**展平
+ * 不能按下标文本比较。`geetest-guarded-pass.js` 的 `ForStatement` 分支按**源码顺序**展平
  * （要求 `init === null`），对这类样本是"恰好对"，一旦作者打乱 case 书写顺序就会静默错序。
  * 本脚本按键值链推导真实执行序，并断言「源码顺序 == 推导顺序」；
  * 两者不一致时以本脚本的顺序为准，并在报告里明确写出。

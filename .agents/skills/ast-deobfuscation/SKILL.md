@@ -40,7 +40,8 @@ description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反�
 - `scripts/decode-obfuscator-pass.js`
   安全移植 decodeObfuscator 的字面量、常量、循环块和对象预处理；不执行输入源码，也不启用基于文本特征的删代码逻辑。
 - `scripts/strip-invisible-unicode.js`
-  零宽不可见字符（Zero-width Unicode）隐写解码、清理以及 `String.fromCharCode` / `atob` 常量表达式折叠。
+  零宽不可见字符（Zero-width Unicode）隐写解码、清理，**双向控制字符（Bidi Control，`U+202E` 一族）检测与清洗**，
+  以及 `String.fromCharCode` / `atob` 常量表达式折叠。支持 `--selftest`（19 项）。
 - `scripts/detect-obfuscator-types.js`
   综合混淆特征探测器，识别 JavaScript-Obfuscator、JSFuck、Packer、AAEncode、控制流平坦化、VM 保护及站点防护类型。
 - `scripts/prune-opaque-predicates.js`
@@ -102,6 +103,9 @@ description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反�
 - 需要理解 decodeObfuscator 兼容能力和 `eval` 安全边界时，读 `references/decode-obfuscator.md`。
 - 深入 BabelPack AST 变换与动态求值时，读 `references/babelpack-enhancer.md`。
 - 零宽字符与特殊编码清洗时，读 `references/invisible-unicode.md`。
+- **编辑器里「括号明明没配对、代码却不报错」、或同一段代码换编辑器就正常** ⇒ 先怀疑**双向控制字符**
+  （`U+202A–202E` / `U+2066–2069`）；这类混淆**不改语义、只改显示**，照着「看起来的样子」写 pass
+  会静默改坏程序。处置：**先清洗再格式化再做静态分析**，判据与码位表见 `references/invisible-unicode.md`。
 - 混淆家族与加固手段全面特征检测时，读 `references/obfuscation-detector.md`。
 - 处理数学、代数恒等式与死分支时，读 `references/opaque-predicates.md`。
 - 使用安全隔离沙箱求值前置环境时，读 `references/sandbox-evaluator.md`。
@@ -146,7 +150,7 @@ description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反�
   - `references/patterns/sojson.md`（Sojson v4/v5/v6 架构特征、大数组提取、定时器 debugger 与自毁防篡改代码清理）
   - `references/patterns/reese84.md`
   - `references/patterns/dingxiang.md`
-  - `references/patterns/geetest4.md`（含「别名归一 → 字符串表 → 控制流」的**顺序硬约束**、
+  - `references/patterns/geetest.md`（含「别名归一 → 字符串表 → 控制流」的**顺序硬约束**、
     可选的 `deobfuscate.io → UglifyJS → DevTools Override` 外部工具链及其代价与处置；
     **B20 新增 v3 顺序恒真状态机**：`for (; S !== <下标表达式>;) switch(S){case <下标表达式>: …; S = <下标表达式>; break;}`
     —— 状态值由 `$_DD()` / `$_DN()` 这类表函数给出且**同一数值会落在多个下标上**，
@@ -155,7 +159,7 @@ description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反�
     可执行件 `scripts/patterns/geetest3-state-machine-pass.js`（`--table` 给状态值表 / `--check` 顺序断言 /
     `--drop-unreachable` / `--selftest` 32 项；**退出码 3 = 状态表解析不全且不产出文件**；
     **状态变量逃逸出循环时会补终态赋值，无法保持语义时直接跳过并报 `state-var-escapes-loop`**），
-    与 `geetest4-guarded-pass.js` 的分工见该文件）
+    与 `geetest-guarded-pass.js` 的分工见该文件）
   - `references/patterns/tonghuashun.md`
   - `references/patterns/yidun.md`
   - `references/patterns/xiaohongshu.md`

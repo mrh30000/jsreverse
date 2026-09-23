@@ -2871,3 +2871,124 @@ python artifacts/skill-evolution/tools/append-b20-ledger.py
      `websocket-reverse` 的文档/命令一致性（B19 判 worse 后未动）。
 - 候选新技能 `captcha-flow-orchestration` —— B5–B20 **十四次确认不新建**。
 - 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
+
+## 三·S、批次 B21 · 2026-09-23（CSDN 同题聚簇**工证伪收口** + ts 帧加密簇蒸馏）
+
+取材口径：**先执行 B20 挂账的「工证伪」，再按「同一主题 ≥2 篇」聚簇蒸馏**。
+① 「CSDN Cloudflare 同题」自 B17 起连续五轮列为候选、五轮跳过；B20 明确「若 B21 再跳，应直接工证伪收口」
+⇒ 本批用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化，**推翻了历轮两条前提**：
+「22/24 截断」未复现（实测 54%）、「语料同质化」不成立（两两 Jaccard 最大 **0.024**，不是同文）；
+唯一站得住的判据是「**96% 无代码块**」。**处分单位因此降回单篇**，25 篇里 24 篇 `skip`、
+1 篇例外单独处置（仍不落地，只摘走 2 条判据）。
+② 主簇取 **ts 帧加密 / PES-NALU / m3u8 key（10 篇）**，落 `stream-drm-reverse`；
+`52pojie-1671722` 的**双向控制字符**与三段式 AST 还原落 `ast-deobfuscation`。
+
+| 366 | `52pojie-1875225-ts帧加密案例(一).md` | `de73a938f3166d256bad71cb1f4bcae2` | 2026-09-23 | stream-drm-reverse | evolve | 「ts 帧加密案例（一）」——本批 **C 层形态学的第一源**：ts 加密四分（整体 / 文件头 / 帧 / 混合）、**188 字节 `0x47` 判据**；帧加密再分 **PES 整体 / NALU 头 / NALU 内容**三档，各有可辨认的「残缺形态」（PES 整体⇒只剩 PES 头；NALU 头⇒缺 sps/sei、pps 长度离谱、关键帧不见；NALU 内容⇒有声音花屏）；**wasm2c + 手写 `imp.c`** 路线全流程（`_emscripten_asm_const_ii` 按 `i1` 常量返回字符串、`DYNAMICTOP_PTR` 手工 memcpy 4 字节、`wasm_rt_allocate_funcref_table`）；导出壳解密失败 → IDA 认出 **TEA** → 改调**未导出的 `func60`**且第 4 参是**自增计数器**；NAL 切分的 off-by-one（下一个起始码是 `00 00 00 01` 时 end−1）；建议**提码流合 mp4 而非重封 ts** |
+| 367 | `52pojie-1882587-ts帧加密案例(二).md` | `f8955567d742cde28a9ffc409803544c` | 2026-09-23 | stream-drm-reverse | evolve | 「ts 帧加密案例（二）」——**SAMPLE-AES 粒度的唯一来源**：只加密 `nalu_type` 1 与 5，`encrypted_size = 16*((len-1)/16)` 且 **`len%16==0` 时再减 16**（末块留明文），**每 160 字节只加密 16 字节**，**IV 每个 NALU 重置**；**EBSP 替换表**（`000000→00000300` 等）；`hls.js` 解密点（`loadKeyHTTP` / `parsePES` / `parseAVCPES` / `getAvcEncryptedData` / `SampleAesDecrypter`）与**顺序陷阱**「解复用先于解密 ⇒ 改 SampleAesDecrypter 反而更糟」；只加密 1 / 5 / 7 的观感差异与「先写明文 sps/pps ⇒ 只加密 SPS 也能播」；**SDT 侧信道**（`free_CA_mode` + Service descriptor 自定义字符串可藏 IV/算法）；bento4 `mp4hls` 的 `Options.encryption_mode` / `WritePES` / 188 组装；调试基建（`Ctrl+F5` 强刷、清缓存重启） |
+| 368 | `52pojie-1957747-WEB前端逆向TS PES NALU解密.md` | `f76a590eb13271f13b3857edb7fd7af4` | 2026-09-23 | stream-drm-reverse | evolve | 「WEB 前端逆向 TS PES NALU 解密」——**第二源，且给出更轻的路线**：`wasm2wat` → 导出表加一行 `(export "func60_TEA" (func 60))` → `wat2wasm` → 替换 js 内嵌 base64（`wasm-objdump -j Export -x` 校验），**不必碰 C**；**接口层四 URL 语义**（`hls_url` 明文但分辨率锁死 / `hls_enc_url` / `hls_h5e_url` / `hls_enc2_url`）；**导出壳 `func54_vodplay` 带环境检测** ⇒ 只解一部分 NALU ⇒ 「部分画面仍花屏」；**`func58_TEA` 与 `func60_TEA` 不等价**（每个 PES 有 8 字节差，用错只是「底部一条细花」）；「对候选函数全部设断、看环境正常/异常两次命中差」是选对入口的唯一可靠办法；最小 TS/PES/NALU 解析（`PUSI` 累积一个 PES、AFC 三分支、`FindNalUnitStart` 源自 H264.bt）与 **`Scatter_PES` 打散回填**路线；工具链（TSDuck `tsp -P pes ... --multiple-files`、010 Editor TS.bt/H264.bt、Elecard）；Node 加载 Emscripten 产物的 `onRuntimeInitialized` 套路；油猴对 blob+`importScripts` 的 worker 不生效 ⇒ 改用 Overrides |
+| 369 | `52pojie-1772146-某猫视频加密响应从app到web端的分析.md` | `3ef47d4348b6328402face9ba93d9af0` | 2026-09-23 | stream-drm-reverse | evolve | 「某猫视频加密响应从 app 到 web 端」——**跨端密钥复用**：App 侧死磕不出解入口时，去**同站 Web 端**扣（本题 Web 端把 AES-**ECB** 明文 key 直接摆在代码里），拿到即解 App 响应；反面教训：**盲目 F11 会跑进「图片解密」处**，回退到断点用 F9 单步才找到真正的响应解密点（响应早在更早的拦截层就解过了） |
+| 370 | `52pojie-1585958-破解某网课的m3u8文件的key加密.md` | `9bba2d979afc93fbc9a59d76df130761` | 2026-09-23 | stream-drm-reverse | evolve | 「破解某网课的 m3u8 文件的 key 加密」——**厂商双层派生的第一源（某利威 / polyv 系）**：第 1 层解配置：`key = MD5(vid)[:16]`、`iv = MD5(vid)[16:]`（同一串 MD5 前 16/后 16），解出后**再 base64 解码**才是 JSON，取 `seed_const`；第 2 层解 key 文件：**32 字节 ⇒ 不是 16 ⇒ 必有包装**，`key = MD5(seed_const)[:16]` + **固定 base64 IV**（`AQIDBQcLDRETFx0HBQMCAQ==`），解出**取前 16 字节**；`vid` 取视频链接后的参数；key URI 直连 403 ⇒ 链接另有 token 加固 |
+| 371 | `52pojie-1988537-某网课平台m3u8 key分析以及脚本下载.md` | `b9231f03fee2894b494e161a3e76f137` | 2026-09-23 | stream-drm-reverse | evolve | 「某网课平台 m3u8 key 分析以及脚本下载」——**「名字像」的函数往往是壳**：断 `onkeyload` 拿不到，改断 `loadsuccess` 立刻拿到 16 字节明文 key；**`URI="base64:<b64>"` 内联 key** 的下载器约定（key 转 base64 直接写进 m3u8，省掉落地 key 文件）；**wasm 堆定址免扣**（从 `decoderModule.HEAPU8.buffer` 固定偏移取 16 字节，代价是偏移随版本变）；油猴 XHR hook + 本地 Flask 回写 m3u8 的「浏览器取证 → 本地回写」闭环；key 文件 33 字节（正常 16） |
+| 372 | `52pojie-1915933-【前端甜点】某视频网站的m4s视频 音频下载方案（20240420）.md` | `a429d4b280456884a6eee700161ab288` | 2026-09-23 | stream-drm-reverse | evolve | 「某视频网站的 m4s 视频/音频下载方案」——**浏览器取证 → 本地落盘的通用小道**：Chrome 升级后 `createObjectURL(blob)` + `a.download` 会把域名拼坏（`https://www.example.comhttps://www.example.com/...`），改走`FileReader.readAsDataURL(blob)` 拿 base64 → 本地 `b64decode` 落盘；这属于**工具链退化**类坑：功能没了不代表路没了，换载体（base64）即可 |
+| 373 | `52pojie-1671722-某影视站加密js的还原及自动化获取真实视频地址.md` | `778e8cef7c680daee267562388c469a6` | 2026-09-23 | ast-deobfuscation | evolve | 「某影视站加密 js 的还原及自动化获取真实视频地址」——**双向控制字符（Bidi）伪装**的唯一来源：「左括号高亮出来还是左括号、函数体看着没闭合、却**不报错**」= 编辑器显示被 `U+202E` 一族反转，**不改语义、只改显示**（照「看起来的样子」写 pass 会静默改坏程序）；配合「**WS 承载加密数据**（先 WS 一次再请求 m3u8）」：`decryptPackData` 收、AES-CBC 发，`hex.parse("05B1") ⇒ [0x05,0xb1]`、密文 hex 大写；`sign = HMAC-SHA256(url, key)`，且 **HMAC key 与 AES key/IV 明显同源**（`55ca5c4` 前缀一致、`d11424dcecfe16c0` 整段复现）⇒ 同站多密钥常由同一素材拼接；三段式 AST 还原（扣真函数求值 → `obj["prop"]` 取对象字面量 → `obj["Fn"](args)` 内联函数体）与**暗桩处置**（`getCookie`/`setCookie` 布尔短路 `return true`、死循环暗桩把调用注释掉） |
+| 374 | `csdn-159429874-深入理解Cloudflare Turnstile：工作原理分析与Python自动化解决方案.md` | `e58e2f53a3ce7c8b4dcc80358cd2aabc` | 2026-09-23 | web-js-env-patcher | evolve | **工证伪的例外**：25 篇里**唯一**有代码块的（6 个 / 340 行），但 6 个块全是**打码平台 SDK（`passxapi`）与 Playwright 骨架**，无自实现算法且代码被采集器换行污染 ⇒ 仍不落地；仅摘走 2 条站点级判据（`siteverify` 端点、token ≈300s 且一次性）进 `web-js-env-patcher/references/edge-waf-cookie-challenge.md` §2.3。 |
+| 375 | `csdn-100394056-JS逆向补环境实战：从原理到破解某验验证码.md` | `037222e6b731698e5ac83c48f6a4a6f8` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：属同题聚簇（某验验证码 + 补环境的综述），无代码块、无可复用生成式；补环境通用方法已在 `web-js-env-patcher` 成体系，本篇为 0 增量。**工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 376 | `csdn-101367856-网络爬虫-cloudflare五秒等待验证逆向破解.md` | `4737ebeb5064ec547b1b499df18e2ab7` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 377 | `csdn-147193430-Cloudflare五秒盾补环境分析.md` | `c18efd9b523ad28bbf8f9006d35238eb` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 378 | `csdn-149370076-JS逆向实战：免费版CloudFlare五秒盾的攻防解析.md` | `599b41783df9937131ae6acafd03af15` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 379 | `csdn-151996635-Cloudflare Turnstile企业级防护：5秒盾bypass与TLS指纹伪造技术解析.md` | `a91543cd835a5b6877565b80c2a94ce0` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 380 | `csdn-152127111-Cloudflare防护技术深度解析与Turnstile验证实战指南.md` | `3ef215c2ec4dbda8c1ceadedc2b908bb` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 381 | `csdn-152498871-Cloudflare 5秒盾逆向实战：13次请求背后的Python补环境框架搭建指南.md` | `2779ad220a56ed1ef9df622c76a3122f` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 382 | `csdn-153381316-Cloudflare 5秒盾全流程解析与Python补环境实战.md` | `518680503003e4cb41ea7f8151ca4327` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 383 | `csdn-158898877-Cloudflare 5秒盾逆向实战：从503到cf_clearance的全流程拆解（附避坑指南）.md` | `b57c1f6327e041653795b43cd7f40257` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 384 | `csdn-159297574-Cloudflare 5秒盾破解实战：Python补环境框架下的13次请求全解析.md` | `9bef34531aa942e12fde73464ca97a39` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 385 | `csdn-159629987-ChatGPT背后：Cloudflare Turnstile程序解密与机器人检测技术揭秘.md` | `0bbd17e957b2e8289a592f17b47c6d7e` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 386 | `csdn-159740614-JS逆向实战：免费版CloudFlare五秒盾核心逻辑剖析与自动化绕过.md` | `db18fa866b8bfcfd739d24ca413c2486` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 387 | `csdn-160099121-Cloudflare 5秒盾逆向实战：从503到cf_clearance的全流程解析.md` | `98f409e4b518bb161c9615b2621f69b7` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 388 | `csdn-161274429-Cloudflare五秒盾JS逆向实战：cf_clearance生成原理与工程化落地.md` | `74b9e509d2040d36435c3828a298f76a` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 389 | `csdn-161296793-Cloudflare最严验证的合规交互架构：从TLS指纹到Turnstile v3全链路对齐.md` | `a031699f9273f8b34596a5ddbd3831bf` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 390 | `csdn-161296797-Cloudflare Turnstile合规采集：指纹对齐、行为拟真与网络层融入.md` | `21acd803b2cffa2b52d0787cac584681` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 391 | `csdn-161406523-Cloudflare 5秒盾逆向实战：13次请求拆解与Playwright补环境框架.md` | `1d30cbe3dcb194e8afb56650478f47c9` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 392 | `csdn-163326626-Python补环境框架实战：13次请求深度解析Cloudflare 5秒盾绕过.md` | `4e45d7eac292060858e5db5279e1961b` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 393 | `csdn-163402696-CloudFlare JS加密逆向：从原理到实战的爬虫挑战应对指南.md` | `1355df02f967801c2ae14b1f38c1e369` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 394 | `csdn-94964551-Cloudflare 5秒盾逆向实战：从初始化到cf_clearance获取全流程拆解.md` | `20a18c452e023a9796f633d4c62e708a` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 395 | `csdn-97848186-Cloudflare 5秒盾逆向实战：13次请求背后的Python补环境框架搭建指南.md` | `9c4a41bcea7a37f8753acb86b4191a43` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 396 | `csdn-98274655-仿制Cloudflare盾逆向分析：从原理到实战的Web前端安全机制拆解.md` | `2bc30b4e264868a464cf9b1ad6f8db05` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 397 | `csdn-99026780-绕过Cloudflare 5秒盾的三种思路：补环境、模拟与第三方服务选型指南.md` | `eae2efcda68ae8617407e81e992ad2dc` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+| 398 | `csdn-99171711-Cloudflare 5秒盾JS逆向实战：纯请求模拟获取cf_clearance.md` | `fc705a0b02d759647c77bccd8389d3bc` | 2026-09-23 | web-js-env-patcher | skip | **工证伪判废**：B21 用 `scripts/corpus-homogeneity-audit.py`（47 项自检）量化——本篇无任何代码块（`fences == 0`），只有综述/合规话术；25 篇同题实测两两 5-gram Jaccard 最大仅 0.024（**不是同文转载**，是「同题不同文且都不给代码」）。 |
+
+### 本批次技能变更汇总（B21）
+
+| 技能 | 变更类型 | 主要落点 |
+| --- | --- | --- |
+| `stream-drm-reverse` | evolve | 新增 `references/frame-encryption-and-wasm-decryptors.md`（C 层形态学 + SAMPLE-AES 粒度 + EBSP + wasm 两条调用路线 + hls.js 五个 hook 点 + SDT 侧信道，9 节 + 12 行排错表）；新增 `scripts/nalu_frame_crypto.py`（EBSP 严格/宽松、SAMPLE-AES 覆盖范围与加解密、`split-derive`、`inline-key`，`--selftest` **52 项**）；`references/hls-and-ts-structure.md` 新增 §1.4 四 URL 语义、§4.5/§4.6 两条派生式、§2.3 补 EBSP 指针、§6 补两条旁路、§10.1 补内联 key、§11 补 5 行；`SKILL.md` 分层表 + 失败模式表 + 反例黑名单 + 命令入口 + description |
+| `ast-deobfuscation` | evolve | `references/invisible-unicode.md` 新增「双向控制字符」整节（码位表 / 三条识别信号 / 定位命令 / 与零宽字符的顺序硬约束）；`scripts/strip-invisible-unicode.js` 新增 `detectBidiControls` / `stripBidiControls` 与 **19 项 `--selftest`**（含「注释外双向字符必须让 parse 失败」的对照组）；`SKILL.md` 补两条指针；**`references/patterns/geetest4.md` → `geetest.md`**（含 pass 脚本、路由 id、检测器类型、4 处文档指针），修掉 B20 挂账的「文件名 v4 / 内容 v3+v4」 |
+| `web-js-env-patcher` | evolve | `references/edge-waf-cookie-challenge.md` §2.3 补 **`siteverify` 服务端二次校验端点**与「token ≈300s 且一次性 ⇒ 不能预取」两条判据（唯一从 CSDN 聚簇里摘出的可用碎片） |
+| `forum-corpus-archival` | evolve | 新增 **坑 54**（「同题聚簇」≠「同文」：处分必须落单篇；整批统计只作体检；行级去重指标在「采集器压成单行」的语料上**假性满值**，必须与「平均行长度 / 代码块数」三联看）；新增 `scripts/corpus-homogeneity-audit.py`（通用化 `--glob` / `--name-filter`，`--selftest` **47 项**） |
+
+### 本批对「已登记文章」的增量补注（B21）
+
+> 幂等红线要求**不得重复编号**。以下 2 篇在 B8/B12 已按**更粗的粒度**登记过；
+> 本批精读后拿到了**可落地的细节增量**，因此只在此补注，**不新增台账行**。
+
+| 文章 | 既有登记 | 本批增量（已落 `stream-drm-reverse`） |
+| --- | --- | --- |
+| `52pojie-1617087-某浪m3u8解密简单分析.md` | #190（B8）：某浪 V3 key「一次响应里既给密文又给密钥 ⇒ 直接取用，不需逆算法」 | 既有口径**低估了它**：本批拿到**精确派生式**——`data = "<32字符>:<密文>"`、`iv = se.substring(16)`（后 16）、`key = iv + se.substring(0,16)`（后 16 + 前 16，32 字符 ASCII），且解出的 key 会被 `window.btoa()` **写回 `de.data`**；另有**旁路**（同响应里的 `blob:` 地址之一就是明文 key）。已升格为 `hls-and-ts-structure.md` §4.5「派生式四：`:` 分栏 + 前后半段互换」并配 `nalu_frame_crypto.py split-derive` |
+| `52pojie-1635800-某医学网站的加密M3U8分析.md` | #227（B12）：m3u8 三要素齐全（IV + key 地址 + key 二次加密 AES-128）的形态判据 | 本批补**定位方法论**：「用播放器 js 里的**英文注释**当锚点」——搜 `convert` / `change; transform; switch` 命中 `Handle responses for key data and convert the key data to the correct format`，紧邻几行即是解密函数与秘钥 `72Fhskjglp8qjpqx` |
+
+### 结构性收敛（B21）
+
+| 项 | 处置 |
+| --- | --- |
+| `geetest4.md` 文件名与内容不符（B20 挂账） | **已改名**为 `geetest.md`，同步 pass 脚本名 / 路由 id / 检测器类型 / 检测器文档 / layering 示例 / SKILL.md 指针；`hintTokens` **有意保留** `geetest4` 作为检索词 |
+| `websocket-reverse` 文档/命令一致性（B19 判 worse 后两轮未动） | 修复 5 处悬空指针（`dialect-matrix.md` 缺路径前缀、`docs/reference/reverse-workflow.md` 少一个 s 且文件不存在、`skills/browsercli-playbook/*` 整个技能不存在 ⇒ 改指**真实存在**的 `../web-reverse-env/references/08-browsercli.md` / `../ast-deobfuscation/references/browsercli-tools.md` / 项目根 `AGENTS.md` / 本文件「失败回退」表）；顺带消除「`ws-decode.js` 是技能自带脚本」的歧义 |
+| 同类问题在 `wsam-reverse` 也有 | 同一批修掉（3 处） |
+| **把该 bug 类变成机械不变量** | `check_skill_integrity.js` 新增规则 **2c**：`skills/<name>/...`（技能根相对）与 `docs/...`（仓库根相对）两种拼写**必须可达**，且 `<name>` 必须是真实技能目录。**故障注入阳性验证**：伪造技能目录注入 2 处悬空引用 ⇒ 逐条变红，合法引用放行；另验证「`--selftest` 失败必须被阻断」 |
+
+### 证伪与审计留痕（B21）
+
+```bash
+# 1) 工证伪脚本自检（47 项，含阴性方向 / 阈值边界 / 压缩型语料陷阱）
+python .agents/skills/forum-corpus-archival/scripts/corpus-homogeneity-audit.py --selftest
+
+# 2) CSDN 同题聚簇的量化证伪（默认口径即该簇）
+python .agents/skills/forum-corpus-archival/scripts/corpus-homogeneity-audit.py --markdown
+
+# 3) ts/drm 簇体检（同一工具的通用化用法）
+python .agents/skills/forum-corpus-archival/scripts/corpus-homogeneity-audit.py   --glob '52pojie-*.md' --name-filter 'm3u8|ts帧|PES|NALU|DRM|m4s' --markdown
+
+# 4) NALU 帧加密三件套自检（52 项）
+python .agents/skills/stream-drm-reverse/scripts/nalu_frame_crypto.py --selftest
+
+# 5) 不可见字符 / 双向控制字符清洗自检（19 项）
+node --require ./artifacts/skill-evolution/tools/node-resolve-preload.js   .agents/skills/ast-deobfuscation/scripts/strip-invisible-unicode.js --selftest
+
+# 6) 整体机械校验（0 阻断 / 0 告警）+ 双镜像一致性（0 mismatch）
+node artifacts/skill-evolution/tools/check_skill_integrity.js --root . --markdown
+python artifacts/skill-evolution/tools/b20-mirror-sync.py
+
+# 7) 引用规则 2c 的故障注入阳性验证（伪造技能目录，2 处悬空必须逐条变红）
+#    证据：artifacts/skill-evolution/b21-run-20260923/fp-positive-refs.txt
+
+# 8) 来源保真度核对（12 篇 / 0 未命中为通过）
+python artifacts/skill-evolution/tools/b21-verify-sources.py
+
+# 9) 台账幂等复跑（应打印「已登记，跳过」）
+python artifacts/skill-evolution/tools/append-b21-ledger.py
+```
+
+### 下一批（B22）取材建议（承接本节）
+
+- 待处理 **458** 篇（台账 398 条后）。
+- 优先级：
+  ① **Cloudflare / WAF 簇已收口**（本批工证伪），后续同题文一律走
+     `corpus-homogeneity-audit.py` 先量化再决定，**不再整批跳**。
+  ② **ts 帧加密簇剩余**：`52pojie-1616797`（BurpSuite 取 m3u8 真实 mp4）、
+     `52pojie-1258605`、`52pojie-1624279` 等体检为 `keep`（有代码块），按同簇补 `stream-drm-reverse`。
+  ③ **本批暴露的新薄区**：「**双源交叉验证**」在本批价值极高（案例一 vs 1957747
+     给出了 wasm2c / wasm2wat **两条路线**、且**互证了 func58/func60 不等价**）⇒
+     下一批应主动找「**同一平台 ≥2 篇**」的搭配，优先于单篇强文。
+  ④ **小程序 / WebView / Electron/asar 簇**（本批新增语料里 6 篇）仍未建档，按「避免滥建」继续评估。
+  ⑤ **JSVMP 剩余**：符号执行 / 中间代码优化，落 `ast-deobfuscation` 既有文件。
+- 候选新技能 `captcha-flow-orchestration` —— B5–B21 **十五次确认不新建**。
+- 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。

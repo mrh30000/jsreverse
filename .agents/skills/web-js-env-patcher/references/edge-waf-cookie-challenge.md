@@ -349,6 +349,12 @@ for (xL = i, be = x(); ;) {
   需要 `CDP-bug-MouseEvent-.screenX-.screenY-patcher` 一类补丁；否则「点了但过不去」，且**死循环重试会被封 IP**。
 - iframe 消息是可靠的进度信号：`init` → `requestExtraParams` → `food`(心跳 seq) → `interactiveBegin` → `interactiveEnd` → `complete`。
 - token 形态 `1.<base64url 载荷>.<22 字符站点标识>.<64 位 hex 校验>`，实测长度 837；**一次性**，与 widget/ray 绑定，重放无效。
+- **服务端二次校验**（B21 补，来源：`docs/references/csdn-159429874`）：
+  `POST https://challenges.cloudflare.com/turnstile/v0/siteverify`，body `secret`(站点私钥) + `response`(token)
+  → `{"success": bool}`。**排错意义**：`success=false` 说明 token 本身无效或已用过，此时**不必再查浏览器环境**；
+  反之 `success=true` 而业务接口仍 403，才回头查 §3.5 的 cookie/IP/TLS 绑定。
+- **token TTL ≈ 300 秒且一次性**（同上来源）⇒ **不能预取批量**，只能「取即用」；
+  与 §2.3 的挑战 120s 有效期是两套时钟，别混用（widget 挑战 120s、token 300s）。
 
 #### Drop：时间锁 PoW（**纯算，可完全离线**）
 

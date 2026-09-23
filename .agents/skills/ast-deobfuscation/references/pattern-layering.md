@@ -11,7 +11,7 @@
 
 新增一个适配器时，要一起更新这些位置：
 
-- `references/patterns/<site>.md`（`<site>` 用站点/家族短名，如 `geetest4`、`zhipin`）
+- `references/patterns/<site>.md`（`<site>` 用站点/家族短名，如 `geetest`、`zhipin`）
 - `scripts/patterns/<site>-<pass>.js`
 - `scripts/pipeline-config.js`
 - `scripts/detect-patterns.js` 对应的配置命中项

@@ -93,7 +93,7 @@ browsercli call inject_hook --persistent true
 2. 找**最少的、最规律的**那组（如心跳 / ack）→ 它们的 pattern 是稳定的
 3. 找**最大变化**的那组（payload 实际数据）→ 下钻样本
 4. 把样本 base64 拿出来，交给 `protobuf-reverse`：先 `pb_decode_raw.py --frame auto --roundtrip`
-   解出 wire 结构并证明无损，再按 `dialect-matrix.md` 认方言、抽 `.proto`
+   解出 wire 结构并证明无损，再按 `../protobuf-reverse/references/dialect-matrix.md` 认方言、抽 `.proto`
 
 **WS 上的 protobuf 有两层**（真实案例）：外层是统一帧包装（含 `payloadType`、`payloadEncoding`），
 内层才是业务 message；`payload` 字段**常是 gzip 后再塞进 `bytes`**（判据：`0x1f 0x8b` 开头）。
@@ -141,6 +141,9 @@ browsercli call analyze_websocket_messages --wsid 3
 
 WebSocket 逆向后建议沉淀：
 
+WebSocket 逆向后建议沉淀（**这些是产出到你自己任务目录的文件名，不是本技能自带的脚本**——
+本技能不含 `scripts/`，解码逻辑直接用 `../protobuf-reverse/scripts/` 下的零依赖脚本）：
+
 | 文件                         | 内容                                              |
 | ---------------------------- | ------------------------------------------------- |
 | `ws-protocol.md`             | 消息分组表 + 心跳间隔 + 认证参数来源              |
@@ -173,7 +176,9 @@ WebSocket 逆向后建议沉淀：
   **不能重连、不能 HTTP 重放**两条硬约束；厂商侧配方见
   `../web-verify-patcher/references/slider-vendor-matrix.md` §3.13）
 
-完整案例参考：`docs/reference/reverse-workflow.md` + `scripts/cases/` 中的实际站点抽象 case。
+完整案例参考：本技能 `references/cases/` 下的两份站点抽象 case
+（`case-websocket-protobuf.md` / `case-ws-carried-captcha.md`）；
+六阶段工作流（Observe / Capture / Rebuild / Patch / PureExtraction / Port）见项目根 `AGENTS.md`。
 
 ---
 
@@ -184,6 +189,8 @@ WebSocket 逆向后建议沉淀：
   `../web-verify-patcher/references/slider-vendor-matrix.md` §3.13（v5 / verify5）。
 - **WS 帧里的 protobuf / gRPC 编码**：`protobuf-reverse`（方言判据、零依赖 wire 解码、从生成 JS 抽 `.proto`、
   两级逐字节验收）
-- 完整六阶段工作流（Observe / Capture / Rebuild / Patch / PureExtraction / Port）：`skills/browsercli-playbook/SKILL.md` + `docs/reference/reverse-workflow.md`
-- 工具参数与 profile 门控：`skills/browsercli-playbook/references/tool-catalog.md` / `profile-tool-gating.md`
-- 失败回退决策树：`skills/browsercli-playbook/references/fallbacks.md`
+- **browsercli 命令契约与端到端最小流程**：`../web-reverse-env/references/08-browsercli.md`
+  （§8 网络与 WebSocket、§9 端到端最小流程）
+- **工具参数与 profile 门控**：`../ast-deobfuscation/references/browsercli-tools.md`；
+  门控现状用 `browsercli list-tools --json` 当场确认（工具集是默认 `workflow` profile 决定的）
+- **失败回退决策树**：见本文件上面的「失败回退」表

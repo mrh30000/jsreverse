@@ -20,7 +20,7 @@ const STEP_LIBRARY = {
   rename: step("rename_identifiers", "rename-identifiers.js", { timeoutMs: 120000 }),
   reese84HeavyPass: step("reese84_heavy_pass", "patterns/reese84-heavy-pass.js", { timeoutMs: 30000 }),
   dingxiangArrayPass: step("dingxiang_array_pass", "patterns/dingxiang-array-pass.js", { timeoutMs: 30000 }),
-  geetest4GuardedPass: step("geetest4_guarded_pass", "patterns/geetest4-guarded-pass.js", { timeoutMs: 30000 }),
+  geetestGuardedPass: step("geetest_guarded_pass", "patterns/geetest-guarded-pass.js", { timeoutMs: 30000 }),
   tonghuashunOrderPass: step("tonghuashun_order_pass", "patterns/tonghuashun-order-pass.js", { timeoutMs: 30000 }),
   yidunDispatcherPass: step("yidun_dispatcher_pass", "patterns/yidun-dispatcher-pass.js", { timeoutMs: 30000 }),
   xiaohongshuWrapperPass: step("xiaohongshu_wrapper_pass", "patterns/xiaohongshu-wrapper-pass.js", { timeoutMs: 30000 }),
@@ -98,9 +98,9 @@ const PATTERNS = [
     ]
   },
   {
-    id: "geetest4",
-    displayName: "geetest4",
-    reference: "references/patterns/geetest4.md",
+    id: "geetest",
+    displayName: "geetest",
+    reference: "references/patterns/geetest.md",
     hintTokens: ["\u6781\u9a8c4", "geetest4", "geetest"],
     contentRegexes: [/geetest/i],
     families: ["guarded-switch", "vm-heavy"],
@@ -113,7 +113,7 @@ const PATTERNS = [
       STEP_LIBRARY.prune,
       STEP_LIBRARY.inlineDispatchers,
       STEP_LIBRARY.flatten,
-      STEP_LIBRARY.geetest4GuardedPass,
+      STEP_LIBRARY.geetestGuardedPass,
       STEP_LIBRARY.ifToSwitch,
       STEP_LIBRARY.prune,
       STEP_LIBRARY.normalize
