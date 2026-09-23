@@ -20,9 +20,11 @@
    - `hex-encoding`：大密度 `\x..` 十六进制字符串字面量。
    - `base64-encoding`：静态内联 base64 字符串结合 `atob`/自定义解码器。
    - `vm-protection`：包含字节码数组、程序计数器（pc）、栈操作（push/pop）及虚拟机分发解释循环。
+   - `sequential-shortcircuit-chain`：**顺序表达式伪装** —— 整段逻辑写成一条短路链，
+     反复出现 `&& ... && 0 || ...`（先执行副作用、再故意变 falsy 触发下一段）。
    - `webpack`：包含 `__webpack_require__` 或 `webpackJsonp` 打包结构。
 3. **站点/商业防护产品**：
-   - `reese84`, `dingxiang`, `geetest`, `tonghuashun`, `yidun`, `xiaohongshu`, `zhipin`, `ob-variant`。
+   - `reese84`, `dingxiang`, `geetest`, `tonghuashun`, `yidun`, `xiaohongshu`, `zhipin`, `ob-variant`, `jsdun`。
 
 ## 脚本入口
 
@@ -46,6 +48,8 @@
 | `control-flow-flattening` | 单层 `while+switch` 平坦化 | `references/control-flow-and-opcode-patterns.md` |
 | `control-flow-flattening` + **switch 嵌套多层、起始 index 由调用传参** | 多入口多层 switch，**不是**单层 CFF | `references/multi-entry-switch-reduction.md`（先读，别直接 `flatten`） |
 | `vm-protection` / `jsvmp` | VM 保护 | `references/vm-protection.md` / `references/jsvmp-deobfuscation.md` |
+| `jsdun`（JS DUN PROTECT，虚拟方法表 `X.$`） | 国产 JSVMP 加固壳；**强度靠膨胀而非精巧**，13000 行级字节码 | `references/control-flow-and-opcode-patterns.md`（§虚拟方法表与顺序表达式伪装：先解析 opcode 映射，别直接啃字节码） |
+| `sequential-shortcircuit-chain` | 顺序副作用伪装成短路链 | 同上 §顺序表达式伪装（**禁止按布尔语义化简**） |
 | 站点标签（`reese84`/`dingxiang`/…） | 有专用适配 | `references/patterns/<site>.md`，只读命中的那一份 |
 
 > 优先级提醒：**先判家族、再选文档**。把 OB 变体当成单层 CFF 去 `flatten`，

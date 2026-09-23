@@ -13,6 +13,8 @@
   cf-strtable  Cloudflare 字符串表：按写死的数论恒等式枚举旋转量
   pow-drop     Cloudflare Drop 时间锁 PoW（检查点链）
   pow-bigint   Cloudflare Turnstile 的 BigInt 模幂 PoW
+  leichi       雷池（SafeLine）准入：seed 前导零比特 PoW（salt）+ AES-128-CBC 请求体
+  qrator       qrator_jsid2 准入：nonce 前导零 hex 的循环哈希计数（pow）
 
 设计约束：
   * 只做**离线可判**的部分。环境校验、isTrusted 事件、图片/canvas 外呼不在本脚本范围。
@@ -94,6 +96,15 @@ CLUES = [
         ("body", "__jsl_clearance_s", 3),
         ("body", "location.href=location.pathname+location.search", 1),
     ]),
+    # 同厂商的第二形态：状态码 512（不是 521）、cookie 不带 `_s` 后缀。
+    # 两者**不能合并成一个 family**：链路号与 cookie 名都不同，照 521 的脚本会取不到值。
+    ("jsl", "jsl-2pass-512", "purecalc", [
+        ("status", "512", 3),
+        ("cookie", "__jsluid_h", 4),
+        ("cookie", "__jsl_clearance", 3),
+        ("body", "__jsl_clearance", 2),
+        ("body", "document.cookie", 2),
+    ]),
     ("alibaba", "acw-sc-v2-old", "purecalc", [
         ("cookie", "acw_sc__v2", 5),
         ("body", "arg1", 2),
@@ -172,6 +183,25 @@ CLUES = [
         ("status", "412", 2),
         ("status", "202", 2),
     ]),
+    # 雷池：cookie 名与路径是本族最强判据（`sl-session` 第一趟 / `sl_jwt_session` 终值）
+    ("leichi", "safeline", "purecalc", [
+        ("cookie", "sl-session", 4),
+        ("cookie", "sl_jwt_session", 5),
+        ("cookie", "sl_waf_recap", 4),
+        ("body", "sdk.js", 3),
+        ("body", "/api/waf/", 3),
+        ("body", "hints", 2),
+        ("body", "once_id", 4),
+    ]),
+    # qrator：401 + qauth.js + qrator_jsr 是稳定三件套
+    ("qrator", "jsid2", "purecalc+envfit", [
+        ("status", "401", 3),
+        ("cookie", "qrator_jsr", 5),
+        ("cookie", "qrator_jsid2", 5),
+        ("body", "qauth.js", 4),
+        ("body", "qsessid", 5),
+        ("body", "nonce", 3),
+    ]),
 ]
 
 LAYER_NOTE = {
@@ -181,6 +211,8 @@ LAYER_NOTE = {
     "envfit": "环境拟合族：离线性极低，优先真实浏览器 + 环境数组逐字段对齐。",
     "envfit+pow": "环境完整性 + PoW 双门禁：PoW 部分可离线，完整性部分必须真浏览器。",
     "pow": "PoW 可离线求解（花 CPU），无需真实浏览器。",
+    "purecalc+envfit": "PoW / 编码链可离线求解（本脚本子命令）；载荷里另有 N 个环境派生字段，"
+                       "要么环境拟合、要么从浏览器取一次真实样本后逐字段对齐。",
 }
 
 
@@ -257,6 +289,14 @@ def cmd_classify(args):
 def _next_step(family):
     return {
         "jsl-2pass-521": "python scripts/waf_clearance_solver.py jsl-first --html <521页面>；再 jsl --json '<go 参数>'",
+        "jsl-2pass-512": "同样走 jsl-first → jsl（第二趟的 go({...}) 结构一致）；"
+                         "差别只在状态码 512 与 cookie 名不带 `_s`（__jsluid_h / __jsl_clearance），"
+                         "**不要照抄 521 的 cookie 名**，见 edge-waf-cookie-challenge.md §2.1.1",
+        "safeline": "python scripts/waf_clearance_solver.py leichi --seed <seed> --json '<inspect 明文>'；"
+                    "salt 与 requestBody 一次算完，见 edge-waf-cookie-challenge.md §2.8",
+        "jsid2": "python scripts/waf_clearance_solver.py qrator --param <qrator_jsr 原值> "
+                 "--expect-pow <浏览器真实值>（自动切出 nonce / qsessid 并做机械校验）；"
+                 "38 个环境字段见 edge-waf-cookie-challenge.md §2.9",
         "acw-sc-v2-old": "python scripts/waf_clearance_solver.py acw-v2-old --arg1 <40位hex>",
         "acw-sc-v2-new": "先 acw-table 标定字符串表旋转量；再从浏览器取 oO / z / T 表与未格式化源码",
         "managed-challenge-5s": "python scripts/waf_clearance_solver.py cf-strtable --table <表> --base <基址> --target <magic>；再 cf-decode --body <fo响应> --ray <rayId>",
@@ -1242,6 +1282,372 @@ def cmd_pow_bigint(args):
 
 
 # ===========================================================================
+# 10. leichi —— 雷池（SafeLine）准入：seed 前导零比特 PoW + AES-128-CBC 请求体
+# ===========================================================================
+
+# ---- AES-128（纯标准库实现，仅用于复现站点侧 CryptoJS AES-CBC 请求体）----
+# 表用标准 FIPS-197 S-box；自检里用 FIPS-197 附录 B 与 NIST SP 800-38A 的
+# **官方测试向量**当 oracle —— 表里任何一个字节写错都会被当场打红，不需要人工核对。
+AES_SBOX_HEX = (
+    "637c777bf26b6fc53001672bfed7ab76" "ca82c97dfa5947f0add4a2af9ca472c0"
+    "b7fd9326363ff7cc34a5e5f171d83115" "04c723c31896059a071280e2eb27b275"
+    "09832c1a1b6e5aa0523bd6b329e32f84" "53d100ed20fcb15b6acbbe394a4c58cf"
+    "d0efaafb434d338545f9027f503c9fa8" "51a3408f929d38f5bcb6da2110fff3d2"
+    "cd0c13ec5f974417c4a77e3d645d1973" "60814fdc222a908846eeb814de5e0bdb"
+    "e0323a0a4906245cc2d3ac629195e479" "e7c8376d8dd54ea96c56f4ea657aae08"
+    "ba78252e1ca6b4c6e8dd741f4bbd8b8a" "703eb5664803f60e613557b986c11d9e"
+    "e1f8981169d98e949b1e87e9ce5528df" "8ca1890dbfe6426841992d0fb054bb16")
+AES_SBOX = bytes.fromhex(AES_SBOX_HEX)
+_inv = bytearray(256)
+for _i, _v in enumerate(AES_SBOX):
+    _inv[_v] = _i
+AES_INV_SBOX = bytes(_inv)
+del _inv, _i, _v
+
+
+def _aes_gmul(a: int, b: int) -> int:
+    """GF(2^8) 乘法，模 x^8+x^4+x^3+x+1（0x11B）。"""
+    p = 0
+    for _ in range(8):
+        if b & 1:
+            p ^= a
+        hi = a & 0x80
+        a = (a << 1) & 0xFF
+        if hi:
+            a ^= 0x1B
+        b >>= 1
+    return p
+
+
+def _aes_expand_key(key: bytes):
+    if len(key) != 16:
+        _fail("AES-128 的 key 必须正好 16 字节，收到 %d（站点侧把 seed 用字符 '0' 右侧补齐到 16）"
+              % len(key))
+    w = [list(key[i * 4:i * 4 + 4]) for i in range(4)]
+    rcon = 1
+    for i in range(4, 44):
+        t = list(w[i - 1])
+        if i % 4 == 0:
+            t = t[1:] + t[:1]
+            t = [AES_SBOX[b] for b in t]
+            t[0] ^= rcon
+            rcon = _aes_gmul(rcon, 2)
+        w.append([w[i - 4][j] ^ t[j] for j in range(4)])
+    return w
+
+
+def _aes_shift_rows(s):
+    for r in range(1, 4):
+        row = [s[4 * c + r] for c in range(4)]
+        row = row[r:] + row[:r]
+        for c in range(4):
+            s[4 * c + r] = row[c]
+
+
+def _aes_inv_shift_rows(s):
+    for r in range(1, 4):
+        row = [s[4 * c + r] for c in range(4)]
+        row = row[-r:] + row[:-r]
+        for c in range(4):
+            s[4 * c + r] = row[c]
+
+
+def _aes_mix_columns(s):
+    for c in range(4):
+        a = s[4 * c:4 * c + 4]
+        s[4 * c + 0] = _aes_gmul(a[0], 2) ^ _aes_gmul(a[1], 3) ^ a[2] ^ a[3]
+        s[4 * c + 1] = a[0] ^ _aes_gmul(a[1], 2) ^ _aes_gmul(a[2], 3) ^ a[3]
+        s[4 * c + 2] = a[0] ^ a[1] ^ _aes_gmul(a[2], 2) ^ _aes_gmul(a[3], 3)
+        s[4 * c + 3] = _aes_gmul(a[0], 3) ^ a[1] ^ a[2] ^ _aes_gmul(a[3], 2)
+
+
+def _aes_inv_mix_columns(s):
+    for c in range(4):
+        a = s[4 * c:4 * c + 4]
+        s[4 * c + 0] = _aes_gmul(a[0], 14) ^ _aes_gmul(a[1], 11) ^ _aes_gmul(a[2], 13) ^ _aes_gmul(a[3], 9)
+        s[4 * c + 1] = _aes_gmul(a[0], 9) ^ _aes_gmul(a[1], 14) ^ _aes_gmul(a[2], 11) ^ _aes_gmul(a[3], 13)
+        s[4 * c + 2] = _aes_gmul(a[0], 13) ^ _aes_gmul(a[1], 9) ^ _aes_gmul(a[2], 14) ^ _aes_gmul(a[3], 11)
+        s[4 * c + 3] = _aes_gmul(a[0], 11) ^ _aes_gmul(a[1], 13) ^ _aes_gmul(a[2], 9) ^ _aes_gmul(a[3], 14)
+
+
+def _aes_add_round_key(s, w, rnd):
+    for c in range(4):
+        for r in range(4):
+            s[4 * c + r] ^= w[rnd * 4 + c][r]
+
+
+def aes_encrypt_block(block: bytes, w) -> bytes:
+    s = list(block)
+    _aes_add_round_key(s, w, 0)
+    for rnd in range(1, 10):
+        for i in range(16):
+            s[i] = AES_SBOX[s[i]]
+        _aes_shift_rows(s)
+        _aes_mix_columns(s)
+        _aes_add_round_key(s, w, rnd)
+    for i in range(16):
+        s[i] = AES_SBOX[s[i]]
+    _aes_shift_rows(s)
+    _aes_add_round_key(s, w, 10)
+    return bytes(s)
+
+
+def aes_decrypt_block(block: bytes, w) -> bytes:
+    s = list(block)
+    _aes_add_round_key(s, w, 10)
+    for rnd in range(9, 0, -1):
+        _aes_inv_shift_rows(s)
+        for i in range(16):
+            s[i] = AES_INV_SBOX[s[i]]
+        _aes_add_round_key(s, w, rnd)
+        _aes_inv_mix_columns(s)
+    _aes_inv_shift_rows(s)
+    for i in range(16):
+        s[i] = AES_INV_SBOX[s[i]]
+    _aes_add_round_key(s, w, 0)
+    return bytes(s)
+
+
+def aes_cbc_encrypt(key: bytes, iv: bytes, data: bytes) -> bytes:
+    if len(iv) != 16:
+        _fail("AES-CBC 的 iv 必须 16 字节（本站实测是 ASCII '1234567890123456'）")
+    w = _aes_expand_key(key)
+    pad = 16 - len(data) % 16
+    data = data + bytes([pad]) * pad                      # PKCS7
+    out, prev = b"", iv
+    for i in range(0, len(data), 16):
+        prev = aes_encrypt_block(bytes(x ^ y for x, y in zip(data[i:i + 16], prev)), w)
+        out += prev
+    return out
+
+
+def aes_cbc_decrypt(key: bytes, iv: bytes, data: bytes) -> bytes:
+    if len(data) % 16:
+        _fail("AES-CBC 密文长度必须是 16 的整数倍，收到 %d" % len(data))
+    w = _aes_expand_key(key)
+    out, prev = b"", iv
+    for i in range(0, len(data), 16):
+        blk = data[i:i + 16]
+        out += bytes(x ^ y for x, y in zip(aes_decrypt_block(blk, w), prev))
+        prev = blk
+    if not out:
+        return out
+    pad = out[-1]
+    if pad < 1 or pad > 16 or out[-pad:] != bytes([pad]) * pad:
+        _fail("解密结果的 PKCS7 填充不合法 —— key / iv / 密文至少有一项不对（不要手工截断掩盖）")
+    return out[:-pad]
+
+
+# ---- seed 前导零比特 PoW（站点侧叫 salt）----
+
+def leichi_key(seed: str, pad: str = "char") -> bytes:
+    """`seed` 右侧补位到 16 字节，作为 AES-128 的 key。
+
+    ⚠️ **站点侧只写了「将 seed 后面补 0 填充到 16 位」**（原文 L91），**没有说明是字符 `'0'`(0x30)
+    还是字节 0x00** —— 两种读法密文完全不同，所以这里做成显式开关而不是写死一种：
+      pad="char"（默认）→ 用 ASCII `'0'` 补齐（对应 `Utf8.parse(seed + '0'…)`）
+      pad="byte"        → 用 0x00 补齐（对应 `seed` 取字节后补零）
+    密文与浏览器对不上时，**先换另一个 pad 模式**再怀疑别的地方。
+    """
+    if pad not in ("char", "byte"):
+        _fail("--pad 只接受 char（ASCII '0'）或 byte（0x00）")
+    if len(seed) >= 16:
+        return seed.encode("utf-8")[:16]
+    fill = b"0" if pad == "char" else bytes(1)
+    return seed.encode("utf-8") + fill * (16 - len(seed))
+
+
+def leichi_salt(seed: str, bits: int = 16, limit: int = 10 ** 7):
+    """站点侧 salt：枚举 r，取 SHA256(seed + str(r))，数**前导零比特**直到 >= bits。
+
+    站点侧源码（已解混淆）：
+
+        for (var r = 0; r < 1e8; r++) {
+          const h = SHA256(e + "" + r).toString();
+          for (var i = 0, o = 0; o < h.length; o++) {
+            if ("0" != h[o]) { i += 4 - parseInt(h[o], 16).toString(2).length; break }
+            i += 4
+          }
+          if (!(i < t)) return r
+        }
+
+    即：每个 hex 字符 `0` 贡献 4 bit，首个非零字符按 `4 - bit_length(该位)` 补足。
+    **`i` 的单位是 bit**：`t` 是 4 的倍数时，「前导零 hex 位数 ≥ t/4」这一近似**恰好等价**；
+    `t` 不是 4 的倍数时会分叉（`t=18`：bit 口径 154281 / hex 位数口径 483624）。
+    """
+    if bits <= 0:
+        _fail("--salt-bits 必须为正（本站实测 16）")
+    for r in range(limit):
+        h = hashlib.sha256(("%s%d" % (seed, r)).encode("utf-8")).hexdigest()
+        bits_zeros = 0
+        for ch in h:
+            if ch != "0":
+                bits_zeros += 4 - len(bin(int(ch, 16))[2:])
+                break
+            bits_zeros += 4
+        if not (bits_zeros < bits):
+            return r, h
+    _fail("在 %d 次内没找到满足 %d bit 前导零的 r —— 先确认 seed 取对了（seed 每趟都会变）"
+          % (limit, bits))
+
+
+def cmd_leichi(args):
+    bits = args.salt_bits if args.salt_bits is not None else 16
+    seed = (args.seed or "").strip()
+    if args.seed_file:
+        seed = read_text_file(args.seed_file, "--seed-file").strip()
+    if not seed:
+        _fail("需要 --seed（/seed 接口的返回值原文）或 --seed-file")
+
+    result = {
+        "schema": SCHEMA,
+        "vendor": "leichi",
+        "family": "safeline",
+        "chain": [
+            "1) GET list → 响应体里带 once_id（形如 <32位hex>_<n>），同时下发 cookie sl-session",
+            "2) GET sdk.js → 其中含控制台检测（isDevToolOpened），本地替换后再跑",
+            "3) GET/POST seed?once_id=<...>&v=1.0.0&hints=<固定串> → 返回 seed（每趟都变）",
+            "4) POST inspect，body = AES-CBC(JSON) → 返回 jwt，写 cookie sl_waf_recap",
+            "5) 带 sl_waf_recap 重放 list → 下发 sl_jwt_session（终值）",
+        ],
+        "hardcoded": {"v": "1.0.0",
+                      "hints": "webdriver,webDriverValue,vendor,headless,languages,permHook,globalThis"},
+        "note": "v 与 hints 实测写死；只有 once_id 是变化的，且它来自**第一次 list 的响应体**（不是 sdk.js）。"
+                "salt 的实测值：seed='7NzPy5ID' 在 t=16 下为 20702（原文观测）；t=18/20 为 154281/483624"
+                "（同口径外推，已独立复算）。⚠️ key 的补位方式（字符 '0' vs 字节 0x00）原文未写明 ⇒ 用 --pad 切换。",
+    }
+
+    if args.seed_file:
+        result["seed_file"] = args.seed_file
+    r, h = leichi_salt(seed, bits, limit=args.limit)
+    result["seed"] = seed
+    result["salt_bits"] = bits
+    result["salt"] = r
+    result["salt_hash"] = h
+
+    key = leichi_key(seed, args.pad)
+    if len(key) < 16:
+        _fail("seed 经右侧补位后仍不足 16 字节（站点侧是 Utf8.parse 后补位），seed=%r" % seed)
+    result["aes_key_ascii"] = key.decode("utf-8", "replace")
+    result["aes_key_hex"] = key.hex()
+    result["pad_mode"] = args.pad
+    result["aes_iv"] = args.iv
+    result["padding"] = "Pkcs7"
+
+    if args.json:
+        raw = args.json
+        if os.path.exists(raw):
+            raw = read_text_file(raw, "--json")
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            _fail("--json 不是合法 JSON：%s" % exc)
+        if isinstance(payload, dict):
+            payload = dict(payload)
+            payload.setdefault("salt", r)
+        plain = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        ct = aes_cbc_encrypt(key, args.iv.encode("utf-8"), plain)
+        result["plaintext"] = plain.decode("utf-8")
+        result["ciphertext_hex"] = ct.hex()
+        result["ciphertext_len"] = len(ct)
+        if args.out:
+            with open(args.out, "wb") as fh:
+                fh.write(ct)
+            result["out"] = args.out
+    if args.decrypt:
+        blob = args.decrypt.strip()
+        try:
+            data = bytes.fromhex(blob)
+        except ValueError:
+            data = base64.b64decode(blob + "=" * (-len(blob) % 4))
+        plain = aes_cbc_decrypt(key, args.iv.encode("utf-8"), data)
+        result["decrypted"] = plain.decode("utf-8", "replace")
+    _emit(result, args)
+    return 0
+
+
+# ===========================================================================
+# 11. qrator —— qrator_jsid2 准入：循环哈希前导零计数（pow）
+# ===========================================================================
+
+def qrator_pow(nonce: str, prefix: str = "00", mode: str = "index", limit: int = 10 ** 6):
+    """`pow` = 「循环哈希到前 `len(prefix)` 位等于 prefix 时的次数」。
+
+    ⚠️ **原文没有写明每次迭代喂什么**，只说了「根据 nonce 以及次数进行循环 MD5 加密，
+    最后前两位为 '00' 的次数」。两种读法都能自洽，所以本函数两种都实现，**不猜**：
+
+      index  : 第 i 次 = md5(nonce + str(i))            ← 每次都是独立哈希（默认）
+      chain  : 第 i 次 = md5(上一次的 hash)              ← 哈希链
+
+    落地前必须**用一条浏览器真实样本把 mode 钉死**（`--expect-pow` 可做机械校验），
+    不要把某个 mode 的默认值当成结论。
+    """
+    if mode not in ("index", "chain"):
+        _fail("--mode 只接受 index 或 chain")
+    if not prefix or re.search(r"[^0-9a-fA-F]", prefix):
+        _fail("--prefix 必须是 1~N 位 hex 前缀（本站实测 '00'）")
+    prefix = prefix.lower()
+    prev = None
+    for i in range(limit):
+        if mode == "index":
+            cur = hashlib.md5(("%s%d" % (nonce, i)).encode("utf-8")).hexdigest()
+        else:
+            cur = hashlib.md5((prev if prev is not None else nonce).encode("utf-8")).hexdigest()
+        prev = cur
+        if cur[:len(prefix)] == prefix:
+            return i, cur
+    _fail("在 %d 次内没出现 %d 位前导 %s —— 先确认 nonce 取对了（nonce = param 按 '-' 切的第一段）"
+          % (limit, len(prefix), prefix))
+
+
+def cmd_qrator(args):
+    nonce = (args.nonce or "").strip()
+    param = (args.param or "").strip()
+    if not nonce and param:
+        parts = param.split("-")
+        if len(parts) < 2:
+            _fail("--param 里没有 '-' 分隔（原文：param = 401 那趟的 cookie qrator_jsr，"
+                  "nonce 取第 1 段、qsessid 取第 2 段）")
+        nonce = parts[0]
+        args.qsessid = args.qsessid or parts[1]
+    if not nonce:
+        _fail("需要 --nonce，或用 --param <qrator_jsr 值> 自动切段")
+    mode = args.mode or "index"
+    idx, digest = qrator_pow(nonce, args.prefix, mode, limit=args.limit)
+    result = {
+        "schema": SCHEMA, "vendor": "qrator", "family": "jsid2",
+        "nonce": nonce, "qsessid": args.qsessid,
+        "prefix": args.prefix, "mode": mode,
+        "pow": idx, "hit_hash": digest,
+        "note": "pow = 满足前 %d 位为 %s 的**次数**；mode 的语义原文未写明，"
+                "本工具两读法都实现，落地前用 --expect-pow 对一条浏览器样本钉死。"
+                "另：param 与 401 那趟下发的 cookie qrator_jsr 有关；验证接口是 POST validate，"
+                "载荷含 40 个字段（version / vx 固定，其余 38 个由 qauth.js 生成，多为 MD5 + base64）。"
+                % (len(args.prefix), args.prefix),
+        "next_step": "POST validate：json 表单 40 字段（38 个环境派生）+ param + nonce + qsessid + pow；"
+                     "同一结果实测只能复用约 5 次。",
+    }
+    if args.expect_pow is not None:
+        ok = idx == args.expect_pow
+        # 不仅要「等于」，还要验证该值确实满足谓词（防止两边同时错）
+        if mode == "index":
+            verified = hashlib.md5(("%s%d" % (nonce, args.expect_pow)).encode("utf-8")).hexdigest()[:len(args.prefix)] == args.prefix
+        else:
+            try:
+                verified = qrator_pow(nonce, args.prefix, mode, limit=args.expect_pow + 1)[0] == args.expect_pow
+            except SolveError:
+                verified = False
+        result["expect_pow"] = args.expect_pow
+        result["expect_match"] = ok
+        result["expect_predicate_holds"] = verified
+        if not (ok and verified):
+            _fail("--expect-pow=%d 与 mode=%s 对不上（谓词成立=%s）⇒ 要么 mode 选错、要么 nonce 取错。"
+                  "不要为了让它通过而改 nonce。" % (args.expect_pow, mode, verified))
+    _emit(result, args)
+    return 0
+
+
+# ===========================================================================
 # 输出
 # ===========================================================================
 
@@ -1753,6 +2159,203 @@ def _selftest_cli_errors():
     return n
 
 
+def _lead_zero_bits_bigint(hex_digest: str) -> int:
+    """**独立实现**：把整个十六进制摘要当大整数，前导零比特 = 4*len - bit_length。
+
+    与 `leichi_salt` 里「逐字符累加」的写法完全不同 ⇒ 用它做的断言不是同义反复
+    （B24 独立评审指出：把同一表达式内联重抄的「最小性」循环只能防「提前返回」，
+    防不了「口径抄错」）。
+    """
+    total = 4 * len(hex_digest)
+    return total - int(hex_digest, 16).bit_length()
+
+
+def _selftest_leichi():
+    """雷池：salt 的真实 oracle + AES 的官方向量 + 反例。"""
+    n = 0
+    # ① 真实 oracle：文章里 seed='7NzPy5ID'、t=16 ⇒ salt=20702（独立复算得到同一值）
+    r, h = leichi_salt("7NzPy5ID", 16)
+    if r != 20702:
+        raise AssertionError("seed='7NzPy5ID' 的 salt 应为 20702，实际 %r" % r)
+    if h != hashlib.sha256(("%s%d" % ("7NzPy5ID", 20702)).encode()).hexdigest():
+        raise AssertionError("salt 的哈希不自洽（不是 SHA256(seed + str(r))）")
+    # 返回的哈希必须**真的**满足阈值（用独立实现核对，而不是重抄同一段计数逻辑）
+    if _lead_zero_bits_bigint(h) < 16:
+        raise AssertionError("返回的哈希只有 %d 个前导零比特，未达阈值 16"
+                             % _lead_zero_bits_bigint(h))
+    n += 3
+    # ② 最小性：salt 之前**每一个** r 都不满足阈值（防止「提前返回」这类静默错）
+    for probe in range(0, r):
+        hh = hashlib.sha256(("%s%d" % ("7NzPy5ID", probe)).encode()).hexdigest()
+        z = 0
+        for ch in hh:
+            if ch != "0":
+                z += 4 - len(bin(int(ch, 16))[2:])
+                break
+            z += 4
+        if z >= 16:
+            raise AssertionError("r=%d 也满足 16 bit 前导零，说明取的不是最小值" % probe)
+    n += 1
+    # ③ 阈值语义：t=20 的外推值 483624，且返回的哈希必须真的 ≥20 bit（独立实现核对）
+    s20, h20 = leichi_salt("7NzPy5ID", 20)
+    if s20 != 483624:
+        raise AssertionError("t=20 的 salt 应为 483624，实际 %r" % s20)
+    if _lead_zero_bits_bigint(h20) < 20:
+        raise AssertionError("t=20 返回的哈希只有 %d 个前导零比特（独立实现核对）"
+                             % _lead_zero_bits_bigint(h20))
+    if s20 == r:
+        raise AssertionError("t=20 与 t=16 得到同一个 r，说明阈值没起作用")
+    n += 3
+    # ③b **单位判据（唯一能把「bit 口径」与「hex 位数口径」区分开的地方）**：
+    #   t 是 4 的倍数时两种口径**等价**（t=16 实测都是 20702、t=20 都是 483624）；
+    #   只有 t ∉ 4Z 时才分叉 —— t=18 时 bit 口径给 154281（该哈希只有 **4** 个前导零 hex 字符，
+    #   但第 5 位是 '2'（bitlen=2）⇒ 4*4+2=18 达标），而按「hex 位数 ≥ 5」实现会给出 483624。
+    #   ⇒ 这条断言就是「实现必须按 bit 而不是按 hex 位数」的机械证据。
+    s18, h18 = leichi_salt("7NzPy5ID", 18)
+    if s18 != 154281:
+        raise AssertionError("t=18 的 salt 应为 154281（bit 口径），实际 %r ⇒ 很可能按「hex 位数」实现了" % s18)
+    if len(h18) - len(h18.lstrip("0")) != 4:
+        raise AssertionError("t=18 命中的哈希前导零 hex 字符应为 4 个，实际 %d"
+                             % (len(h18) - len(h18.lstrip("0"))))
+    if _lead_zero_bits_bigint(h18) < 18:
+        raise AssertionError("t=18 返回的哈希只有 %d 个前导零比特（独立实现核对）"
+                             % _lead_zero_bits_bigint(h18))
+    if s18 == leichi_salt("7NzPy5ID", 20)[0]:
+        raise AssertionError("t=18 与 t=20 得到同一个 r ⇒ 阈值粒度退化成了 hex 位数")
+    n += 4
+    # ④ AES-128 官方向量一：FIPS-197 附录 B
+    w = _aes_expand_key(bytes.fromhex("000102030405060708090a0b0c0d0e0f"))
+    got = aes_encrypt_block(bytes.fromhex("00112233445566778899aabbccddeeff"), w)
+    if got.hex() != "69c4e0d86a7b0430d8cdb78070b4c55a":
+        raise AssertionError("FIPS-197 单分组向量不符：%s" % got.hex())
+    n += 1
+    # ⑤ AES-128-CBC 官方向量二：NIST SP 800-38A F.2.1（CBC 前缀稳定，取前 64 字节比对）
+    key = bytes.fromhex("2b7e151628aed2a6abf7158809cf4f3c")
+    iv = bytes.fromhex("000102030405060708090a0b0c0d0e0f")
+    pt = bytes.fromhex("6bc1bee22e409f96e93d7e117393172a"
+                       "ae2d8a571e03ac9c9eb76fac45af8e51"
+                       "30c81c46a35ce411e5fbc1191a0a52ef"
+                       "f69f2445df4f9b17ad2b417be66c3710")
+    want = ("7649abac8119b246cee98e9b12e9197d"
+            "5086cb9b507219ee95db113a917678b2"
+            "73bed6b8e3c1743b7116e69e22229516"
+            "3ff1caa1681fac09120eca307586e1a7")
+    if aes_cbc_encrypt(key, iv, pt)[:64].hex() != want:
+        raise AssertionError("NIST SP 800-38A CBC 向量不符")
+    n += 1
+    # ⑥ PKCS7 往返（含长度 0 / 1 / 15 / 16 / 17 的边界）
+    for msg in (b"", b"A", b"x" * 15, b"y" * 16, b"z" * 17):
+        if aes_cbc_decrypt(key, iv, aes_cbc_encrypt(key, iv, msg)) != msg:
+            raise AssertionError("AES-CBC 往返失败，长度 %d" % len(msg))
+    n += 1
+    # ⑦ 反例：key 长度不对 / 解密用错 key（必须报错，不许静默返回垃圾）
+    with contextlib.redirect_stderr(io.StringIO()):
+        try:
+            _aes_expand_key(b"short")
+        except SolveError:
+            n += 1
+        else:
+            raise AssertionError("15 字节 key 必须被拒绝")
+    ct = aes_cbc_encrypt(key, iv, "hello qrator".encode())
+    with contextlib.redirect_stderr(io.StringIO()):
+        try:
+            aes_cbc_decrypt(b"0" * 16, iv, ct)
+        except SolveError:
+            n += 1
+        else:
+            raise AssertionError("错 key 解密必须因 PKCS7 不合法而失败")
+    # ⑦b key 补位方式（原文只写「补 0」，两种读法密文不同 ⇒ 必须显式可选、且默认要写清楚）
+    kc, kb = leichi_key("abc", "char"), leichi_key("abc", "byte")
+    if len(kc) != 16 or len(kb) != 16:
+        raise AssertionError("补位后必须正好 16 字节")
+    if kc == kb:
+        raise AssertionError("--pad char 与 byte 必须给出不同的 key（否则开关是装饰）")
+    if kc[:3] != b"abc" or kc[3:].strip(b"0"):
+        raise AssertionError("pad=char 应为「seed + ASCII '0' 补齐」")
+    if kb[:3] != b"abc" or kb[3:] != bytes(13):
+        raise AssertionError("pad=byte 应为「seed + 0x00 补齐」")
+    if aes_cbc_encrypt(kc, iv, b"x") == aes_cbc_encrypt(kb, iv, b"x"):
+        raise AssertionError("两种补位方式的密文不该相同")
+    n += 5
+    # ⑧ 走真实 CLI 路径：成功两次（含 --pad byte）、误用四次
+    out = _capture_main(["leichi", "--seed", "7NzPy5ID", "--salt-bits", "16"])
+    if '"salt": 20702' not in out:
+        raise AssertionError("CLI 输出的 salt 不是 20702：%s" % out[:200])
+    if '"pad_mode": "char"' not in out:
+        raise AssertionError("默认 pad 模式应为 char，实际输出：%s" % out[:200])
+    out_b = _capture_main(["leichi", "--seed", "abc", "--pad", "byte"])
+    if '"pad_mode": "byte"' not in out_b:
+        raise AssertionError("--pad byte 未生效：%s" % out_b[:200])
+    n += 3
+    # 误用分两类退出码：**业务/求解失败 = 3**、**argparse 级别（choices / 类型）= 2**。
+    # 口径写死在这里，避免下次有人把 argparse 的 2 也当成 3（或反之）。
+    for argv, want in ((["leichi"], (3,)),                                    # 没给 seed
+                       (["leichi", "--seed", "abc", "--salt-bits", "0"], (3,)),
+                       (["leichi", "--seed", "abc", "--salt-bits", "-1"], (3,)),
+                       (["leichi", "--seed", "abc", "--json", "{bad json"], (3,)),
+                       (["leichi", "--seed", "abc", "--pad", "nope"], (2,))):  # argparse choices
+        rc, _ = _quiet_main(argv)
+        if rc not in want:
+            raise AssertionError("`%s` 退出码应为 %r，实际 %r" % (" ".join(argv), want, rc))
+        n += 1
+    return n
+
+
+def _selftest_qrator():
+    """qrator：pow 的最小性 + 两种 mode 的独立重放 + 反例。"""
+    n = 0
+    nonce = "d41d8cd98f00b204e9800998"
+    idx, digest = qrator_pow(nonce, "00", "index")
+    # ① **独立实现**的候选枚举：把「前 idx+1 个候选里所有满足 `00` 前缀的 i」全列出来，
+    #    正确实现必须恰好得到 `[idx]` —— 同时证明「前缀成立」与「最小性」。
+    #    ⚠️ 这里刻意不再写 `if digest[:2] != "00"`：`qrator_pow` **只在命中分支 return**，
+    #    那条断言永不可能触发（B24 独立评审指出它是死代码）。
+    cands = [i for i in range(idx + 1)
+             if hashlib.md5(("%s%d" % (nonce, i)).encode()).hexdigest()[:2] == "00"]
+    if cands != [idx]:
+        raise AssertionError("前 %d 个候选里应只有 i=%d 命中，实际命中 %r"
+                             % (idx + 1, idx, cands))
+    if digest != hashlib.md5(("%s%d" % (nonce, idx)).encode()).hexdigest():
+        raise AssertionError("返回的摘要与 md5(nonce + str(idx)) 不一致")
+    n += 2
+    # ② chain 模式：用**另一种写法**独立重放整条哈希链，核对结果
+    prev = nonce
+    chain_hit = None
+    for i in range(10 ** 6):
+        prev = hashlib.md5(prev.encode()).hexdigest()
+        if prev[:2] == "00":
+            chain_hit = i
+            break
+    got_idx, got_hash = qrator_pow(nonce, "00", "chain")
+    if got_idx != chain_hit or got_hash != prev:
+        raise AssertionError("chain 模式与独立重放不一致：%r vs %r" % (got_idx, chain_hit))
+    n += 1
+    # ③ 反例：--expect-pow 给了错值必须失败（且不能为了通过而改 nonce）
+    rc_bad, out_bad = _quiet_main(["qrator", "--nonce", nonce, "--expect-pow", str(idx + 1)])
+    if rc_bad != 3:
+        raise AssertionError("故意给错的 --expect-pow 应返回 3，实际 %r" % rc_bad)
+    n += 1
+    rc_ok, _ = _quiet_main(["qrator", "--nonce", nonce, "--expect-pow", str(idx)])
+    if rc_ok != 0:
+        raise AssertionError("正确 --expect-pow 应返回 0，实际 %r" % rc_ok)
+    n += 1
+    # ④ param 切段：nonce 取第 1 段、qsessid 取第 2 段
+    out = _capture_main(["qrator", "--param", "AAA-BBB-CCC", "--expect-pow",
+                         str(qrator_pow("AAA", "00", "index")[0])])
+    if '"qsessid": "BBB"' not in out:
+        raise AssertionError("param 切段不对：%s" % out[:200])
+    n += 1
+    # ⑤ 反例：非法 prefix / 无法切段的 param / mode 拼错
+    for argv in (["qrator", "--nonce", "a", "--prefix", "0g"],
+                 ["qrator", "--param", "noseparator"],
+                 ["qrator", "--nonce", "a", "--mode", "nope"]):
+        rc, _ = _quiet_main(argv)
+        if rc not in (2, 3):
+            raise AssertionError("`%s` 应被拒绝（2/3），实际 %r" % (" ".join(argv), rc))
+        n += 1
+    return n
+
+
 def run_selftest(which="all"):
     groups = {
         "jsl": ("jsl 加速乐第二趟补位", _selftest_jsl),
@@ -1761,6 +2364,8 @@ def run_selftest(which="all"):
         "cf-decode": ("cf-decode rayId-XOR", _selftest_cf_decode),
         "cf-strtable": ("cf-strtable 字符串表旋转", _selftest_cf_strtable),
         "pow": ("pow-drop + pow-bigint", _selftest_pow),
+        "leichi": ("leichi 雷池 salt PoW + AES-CBC", _selftest_leichi),
+        "qrator": ("qrator 循环哈希 pow", _selftest_qrator),
         "cli": ("CLI 误用与退出码", _selftest_cli_errors),
     }
     selected = groups if which == "all" else {which: groups[which]}
@@ -1874,6 +2479,33 @@ def build_parser():
     c.add_argument("--verify-with-python", action="store_true", default=True)
     c.set_defaults(func=cmd_pow_bigint)
 
+    c = sub.add_parser("leichi", parents=[common],
+                       help="雷池（SafeLine）准入：seed 前导零比特 PoW + AES-128-CBC 请求体")
+    c.add_argument("--seed", help="/seed 接口返回的 seed 原文（每趟都会变）")
+    c.add_argument("--seed-file", help="seed 所在文件（响应体落盘后直接喂）")
+    c.add_argument("--salt-bits", type=int, default=16, help="前导零**比特**阈值 t（实测 16）")
+    c.add_argument("--limit", type=int, default=10 ** 7, help="枚举上限（默认 1e7）")
+    c.add_argument("--json", help="inspect 的明文 JSON（字符串或文件路径）；会自动补 salt")
+    c.add_argument("--iv", default="1234567890123456", help="实测固定 IV")
+    c.add_argument("--pad", choices=["char", "byte"], default="char",
+                   help="seed 补齐到 16 字节的方式：char=ASCII '0'（默认）/ byte=0x00；"
+                        "原文只写「补 0」，两种读法密文不同 ⇒ 对不上先换它")
+    c.add_argument("--decrypt", help="要解密的密文（hex 或 base64），用来核对浏览器抓到的 body")
+    c.add_argument("--out", help="把加密后的 body 写成二进制文件")
+    c.set_defaults(func=cmd_leichi)
+
+    c = sub.add_parser("qrator", parents=[common],
+                       help="qrator_jsid2 准入：循环哈希前导零计数（pow）")
+    c.add_argument("--nonce", help="param 按 '-' 切分的第 1 段")
+    c.add_argument("--param", help="qrator_jsr cookie 原值（给了就自动切 nonce / qsessid）")
+    c.add_argument("--qsessid", help="param 按 '-' 切分的第 2 段")
+    c.add_argument("--prefix", default="00", help="前导 hex 前缀（实测 '00'）")
+    c.add_argument("--mode", choices=["index", "chain"], default="index",
+                   help="迭代语义：index=md5(nonce+i) / chain=md5(上一次hash)；原文未写明，需现场钉死")
+    c.add_argument("--limit", type=int, default=10 ** 6)
+    c.add_argument("--expect-pow", type=int, help="浏览器真实样本里的 pow；给了就做机械校验，不符即失败")
+    c.set_defaults(func=cmd_qrator)
+
     return p
 
 
@@ -1889,7 +2521,8 @@ def main(argv=None):
                 break
         which = cmd or "all"
         if which != "all" and which not in ("jsl", "jsl-first", "acw-table", "acw", "cf-decode",
-                                            "cf-strtable", "pow", "pow-drop", "pow-bigint", "cli"):
+                                            "cf-strtable", "pow", "pow-drop", "pow-bigint", "cli",
+                                            "leichi", "qrator"):
             which = "all"
         elif which == "acw-table":
             which = "acw"

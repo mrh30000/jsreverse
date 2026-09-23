@@ -48,6 +48,24 @@ function detectJSFuck(code) {
   return trimmed.length > 10 && /^[\[\]()!+\s]+$/.test(trimmed);
 }
 
+function detectSequentialShortCircuitChain(code) {
+  // 顺序表达式伪装：把顺序副作用串成一条短路链，典型片段是 `&& (T = 0) && 0 || (V = p(...))`。
+  // 单次出现可能只是普通的默认值写法（`a && b || c`），故**要求累计出现次数**达到阈值，
+  // 且必须同时出现 `&& 0` 这个「故意变 falsy」的标记。
+  const hits = code.match(/&&[^;{}\n]{0,60}&&\s*0\s*\)?\s*\|\|/g);
+  return Array.isArray(hits) && hits.length >= 3;
+}
+
+function detectJsDun(code) {
+  // JS 盾（JS DUN PROTECT）：模板串 + 虚拟方法表的双层 call 跳板结构。
+  // 变量名每个构建都不一样，所以结构判据只取「call/apply 的属性名是 `<某函数>.$`」这一条。
+  return (
+    /JS\s*DUN\s*PROTECT/i.test(code) ||
+    /\.call\[\s*[A-Za-z_$][\w$]*\.\$\s*\]/.test(code) ||
+    /\.apply\[\s*[A-Za-z_$][\w$]*\.\$\s*\]/.test(code)
+  );
+}
+
 function detectObfuscationTypes(code) {
   const types = new Set();
 
@@ -57,6 +75,8 @@ function detectObfuscationTypes(code) {
   if (detectURLEncode(code)) types.add('urlencoded');
   if (detectJSFuck(code)) types.add('jsfuck');
   if (detectInvisibleUnicode(code)) types.add('invisible-unicode');
+  if (detectSequentialShortCircuitChain(code))
+    types.add('sequential-shortcircuit-chain');
 
   // 2. JavaScript-Obfuscator 家族特征
   if (code.includes('_0x')) {
@@ -136,6 +156,8 @@ function detectObfuscationTypes(code) {
   if (/__zp_stoken__|security-check\.html/i.test(code) || /zhipin\.com/i.test(code)) {
     types.add('zhipin');
   }
+  // JS 盾（JS DUN PROTECT）：国产 JSVMP 加固壳，虚拟方法表 `X.$` + 双层 call 跳板
+  if (detectJsDun(code)) types.add('jsdun');
 
   // 未匹配到具体特征
   if (types.size === 0) {
@@ -144,7 +166,6 @@ function detectObfuscationTypes(code) {
 
   return Array.from(types);
 }
-
 if (require.main === module) {
   const [, , inputPath, outputPath] = process.argv;
   if (!inputPath) {

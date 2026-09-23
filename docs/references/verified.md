@@ -3226,3 +3226,113 @@ python artifacts/skill-evolution/tools/append-b23-ledger.py
 - 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
   **注**：B1-17 / B13-216 的「不建小程序技能」结论在 B22 已被**推翻并取代**（改判为「无最近邻模块 + 规模最大 ⇒ 建」），旧结论只保留可追溯性。
 
+---
+
+## 批次 B24 · 2026-09-23（第二十四次执行）
+
+取材口径：待处理队列 **429 篇**中取**一个自洽的能力簇 —— 边缘风控 / 站前挑战厂商带 10 篇**（加速乐 jsl 双变体 ×2、雷池 SafeLine、qrator、Cloudflare `jsd/oneshot`、Akamai VM2 特征、瑞数 5 代补环境实战 ×2、JS 盾 JSVMP、知乎 `x-zse-96` 补环境踩坑）。选它的理由有两条：① B23 记忆里「桌面客户端下一步」（Tauri / node:sea / NE 打包 / 原生模块）**在本队列里一篇都没有**（已按关键词扫过 429 篇，0 命中）⇒ 不能为了「按计划走」而硬凑；② `web-js-env-patcher` 的 `edge-waf-cookie-challenge.md` 自 B1 起从未做过**厂商扩容**（只有 B1 的 Akamai、B4 的瑞数），而本轮**两家新厂商各自带完整的纯算交付**（雷池的 PoW+AES、qrator 的 PoW），可同时检验一条此前没验证过的维护规则：**有成熟技能时只 evolve，但新增厂商必须同步「闭集判据器」的三处**。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 479 | `52pojie-2065287-某平台登录：加速乐.md` | `f20247bb68e849633558900bd8f3b332` | 2026-09-23 | web-js-env-patcher | evolve | **加速乐第三篇（与前两篇互证）**，最值钱的是三条**操作级判据**：① **`HttpOnly` 反过来就能分类 cookie** —— `HttpOnly=true` 的只有响应头 `Set-Cookie` 有值（服务端下发，如 `__jsluid_s`），`HttpOnly=false` 的响应头该字段**为空**，值只能由本地 JS 算出（即 clearance）⇒ **抓新站第一件事就是把 cookie 分成这两类**；② 对 `document.cookie` 做 hook 时实测两个反直觉现象 —— **第一趟响应里的赋值根本没触发 hook**、**放开断点会让第二趟重复请求**（关掉油猴脚本才正常）⇒ hook 不能作为本族唯一取证手段，改用「本地替换 + 本地/浏览器结果逐字段对比」；③ 第二趟 JS 的**混淆数组与变量名随请求变化**、`ha` 按趟随机（md5/sha1/sha256）⇒ 必须每次现抽 `go({...})` 并按 `ha` 分派，把不同 `ha` 的样本各留一份做 oracle。 |
+| 480 | `52pojie-1983279-【JS逆向】某某经营网jsl逆向分析.md` | `e312cad072ac04f1ef4c1d1df763b006` | 2026-09-23 | web-js-env-patcher | evolve | **jsl 的第二个命名 / 状态码变体**：首访 **512**（不是 521）、第一趟 cookie 是 **`__jsluid_h`**、clearance 叫 **`__jsl_clearance`（不带 `_s`）**；三次请求里**前两次都是 512**、第三次 200。两条可直接复用的判据：① 中间态与终值有**形态差**（中间趟 clearance 的中间段是 `-1`，终值段变 `0`）⇒ 「算出来但中间段还是 -1」说明只走到中间态；② **生成点与使用点不在同一趟**（第二趟请求携带的值是在**第一趟响应**的内联脚本里生成的）⇒ 只在第二趟请求处 hook 只能拿到「被使用的值」，跟不到生成链。还原侧：AST 还原后**只剩约 240 行**、全文件 `document["cookie"]` **只有一处写入** ⇒ 从唯一 writer（`_0x5bef39[0]`）倒推，别从入口正着读。 |
+| 481 | `52pojie-1930242-雷池WAF逆向思路.md` | `1788bf5e94ad1c2179f1360a35694fb9` | 2026-09-23 | web-js-env-patcher | evolve | **新厂商：雷池（SafeLine，长亭），首访不拦（200）⇒ 只看状态码发现不了，只能从页面里的 `/api/waf/sdk.js` 判。** 五趟链路 （`list` 拿 `once_id` + `sl-session` → 取 `sdk.js` → `seed`（`once_id` + 固定 `v`/`hints`）→ `inspect`（AES-CBC body）拿 jwt 写 `sl_waf_recap` → 重放 `list` 拿 `sl_jwt_session`）。四条参数级事实：① 控制台检测 `isDevToolOpened()` 的 `d`/`g` 初值 false、由事件监听器置真 ⇒ **本地替换 + 注释掉那一行赋值**即过；② `inspect` body = **AES-CBC**，`key = Utf8.parse(seed 右侧补 '0' 到 16 位)`、`iv` 固定 `1234567890123456`、`padding = Pkcs7`、**明文只有 `salt` 变**；③ **`salt` = 前导零比特 PoW**：枚举 r 取 `SHA256(seed + str(r))`，每遇 hex `0` 记 4 bit、首个非零字符按 `4 - bit_length(该位)` 补，达到阈值即返回 ⇒ **必须按 bit 实现**；常见近似「前导零 hex 位数 ≥ t/4」在 `t` 是 4 的倍数时**等价**、在 `t ∉ 4Z` 时**分叉**（实测 `seed=7NzPy5ID`：`t=16` 两口径都是 20702、`t=20` 都是 483624，但 **`t=18` 时 bit 口径是 154281、hex 位数口径是 483624**）；两种口径给出的都是**合法十进制数字**，是本族最典型的静默失败；④ **oracle**：`t=16 → 20702`（**原文唯一观测值**）+ `t=18 → 154281`、`t=20 → 483624`（**同口径外推**，均已独立复算）；⑤ **key 的补位方式是未明项**：原文只写「将 seed 后面补 0 填充到 16 位」，字符 `0`(0x30) 与字节 `0x00` 两种读法密文完全不同 ⇒ 本轮做成 `--pad char\|byte` 显式开关（默认 char），并在文档写明「密文对不上先换它」。外加性能事实：过了之后纯 Python 协程 20 并发不到 6 秒 ⇒ 本族是**准入**不是验证码。 |
+| 482 | `52pojie-2049540-风控逆向之qrator.md` | `e12f75f360aafd3b834a23fe8bcf7696` | 2026-09-23 | web-js-env-patcher | evolve | **新厂商：qrator（`qrator_jsid2`）**。判据三件套 = 首访 **401** + 外链 **`qauth.js`** + cookie **`qrator_jsr`**；终值是 `qrator_jsid2`。参数对应关系明确：`param` 与 401 那趟下发的 `qrator_jsr` 有关，**`nonce` = param 按 `-` 切分的第 1 段、`qsessid` = 第 2 段**；**`pow` = 循环哈希到前两位为 `00` 的次数** —— ⚠️ 原文**没有写明每次迭代喂什么**（`md5(nonce+i)` 与哈希链两读法都自洽）⇒ 本轮口径是**两种都实现、用一条真实样本把语义钉死**，不许把默认值当结论。载荷：`POST validate`，40 个 json 字段里 `version`/`vx` 固定、**其余 38 个由 `qauth.js` 生成**（多为 MD5 + base64，基本都在读浏览器环境）；定位用**十六进制字符集数组**反查比逐行读混淆快；同一结果**只能复用约 5 次** ⇒ 不能「算一次跑一批」。 |
+| 483 | `52pojie-2089394-某18+论坛CF盾验证扣代码.md` | `816ad5d3d3ed79c931c289dd31baba1a` | 2026-09-23 | web-js-env-patcher | evolve | **Cloudflare 的 `jsd/oneshot` 变体**（与既有 managed 形态区分）：路径是 `challenge-platform/h/b/**jsd**/oneshot/...`、**首访可能是 200**（不是 403）、参数对象换成 `window.__CF$cv$params{r,m}`、另有 `safeid`；五步链的第 5 步「进主页那次才把 `safeid` 写入 cookie」可当进度判据。最可迁移的一条是**加密调用点的通用形态**：`send( enc( JSON.stringify(d) ) )`（样本写作 `Q[gP(d2.X)](TX[gP(d2.y)](JSON[gP(d2.h)](d)))`），`d` 即环境检测对象 ⇒ 三条定位路线按效率排序为「xhr 断点（URL 带 challenge-platform）→ 调用栈回溯 → **hook `JSON.stringify` 从结果倒推**」。另有四个实操要点：`main.js` **每次请求都不同**（不本地替换 ⇒ **断点刷新后漂移**）、补环境最小集、**TLS 层要单独过**（requests 403 `Just a moment` 而 devtools 里什么都看不到 ⇒ `curl_cffi impersonate="chrome136"` 才过）、以及**请求侧与浏览器执行的 Turnstile 版本不同**（2025.9.1 vs 2024.11.0）⇒ 先确认「你算的是哪一份 JS」。 |
+| 484 | `52pojie-1832611-关于akamai中VM2的检测特征.md` | `52a0f5fa76e58dc19b5e616be160dbfa` | 2026-09-23 | web-js-env-patcher | evolve | **机制级的排错结论（本轮最有迁移价值的一条）**：扣下来的 `sensor.js` 在本地补好环境还是不对，原因是**运行载体改写了代码文本** —— VM2 的 `transformer.js` 把 `INTERNAL_STATE_NAME`（`VM2_INTERNAL_STATE_DO_NOT_USE_OR_PROGRAM_WILL_FAIL`）**追加到每一个 `catch` 之后**（该样本 70 处）⇒ 目标 JS 的 `toString` 检测（对整个自执行函数）必然失败，进而**走进另一套分支**。判据链：异常栈落在 VM 内部 → 同一个表达式在浏览器与本地**返回值不同** → 正确值 `211627`、本地 `216917`、两串逐字符 diff **64 处**、本地多出一截。处置：改 VM2 源码，遇到控制节点不注入该标识符（注释掉那处调用）⇒ 长度与返回值同时归位。三条应用：反爬侧可主动检测该字符串「返回看似正确但差一个字符」的结果；把环境框架打包到 Linux 跑会在 `catch` 抛「VM2 变量语法错误」；**`toString` 检测没过的排查项要从两项（自写实现 / 是否被格式化）扩到三项（+ VM2 注入）**。 |
+| 485 | `52pojie-1981831-佬儿，瑞数5补环境，麻了呀.md` | `bd176abf785506f223783b265e612fc1` | 2026-09-23 | web-js-env-patcher | evolve | **瑞数 5 代补环境求助帖（一）**：无算法增量，价值在**把「5 代补环境失败长什么样」固定下来**。可取的三点：① 该构建的代码形态 —— 多层嵌套 `if/else` + `_$` 变量族（`_$ri` 指令指针 71 次 / `_$0c` / `_$P4` 常量表 83 次 / `_$K_` 栈 55 次 / `_$TL(...)` 调度 10 次 / `_$Cz`），**尾部没有元数据数组**（与第二篇不同），且变量名每次刷新都变；② 起手式 `delete __dirname` / `delete __filename` —— 这两个变量在 CJS 包装函数里天然存在，`typeof` 一测即暴露；③ 该篇的 stub 集（`window.top` / `self`、`addEventListener`、`XMLHttpRequest`、`ActiveXObject`、`HTMLFontElement`、`setInterval`、裸 `localStorage`）说明**问题不在缺哪一项，而在「缺了之后靠肉眼猜」** ⇒ 正确姿势是先代理 / trace 记访问序列再补。判据（`console.log(get_cookie().length)`）**方向对但不充分**：长度过了必须立刻换成端到端对拍。 |
+| 486 | `52pojie-1985027-瑞数5补环境.md` | `01ccddf85a8b6950dbee0eb305416f5d` | 2026-09-23 | web-js-env-patcher | evolve | **同作者的瑞数 5 代求助帖（二，体量更大）**：与第一篇**同一失败模式**（改一点试一点、长期不收敛），两篇合起来构成「**缺少访问序列取证**」的双样本证据。该篇独有且可复用的两点：① **尾部元数据数组** —— `)([], [[1, 2, 10, …], [19, 50, 42, …], [23, 38, 52, …], [28, 33, 22, …]])`（空数组 + 若干纯数字数组 = 跳转表 / 操作数表 / 常量索引），**随代际与站点变化**，可把「数组个数与长度」当作**同一代不同构建**的比对指纹；② **编码风格与第一篇不同** —— 该篇分支条件是**朴素等式**（`_$a1 === 0` / `=== 1` / `=== 2`，`if` 共 416 个），变量族是 `_$_obj`（29 次，作者自写的代理包装，**发帖时实现已删**）/ `_$dq` / `_$bJ` / `_$a1`，而第一篇是**算术恒等式**（`104+_$0c===113`、`_$0c-48===-40`、`-2===-12+_$0c`，`if` 共 724 个）⇒ **不能用变量名前缀或分支风格判代际**（与既有两条已证伪判据同型的坑）。stub 集比第一篇多出 `DOMParser` / `indexedDB` / `MutationObserver` / `Request` / `sessionStorage` / `chrome` / `open` / `name`。本轮据此在 `ruishu-botgate.md` 新增 §4.3.1（含两张**逐项回源**对照表）与两条排错项。 |
+| 487 | `52pojie-2114241-JS 盾（JS DUN PROTECT）分析日记.md` | `f2091a23c6468087db9cc4640d85c994` | 2026-09-23 | ast-deobfuscation | evolve | **国产 JSVMP 加固壳的结构特征（本轮唯一进 `ast-deobfuscation` 的素材）**。三条可迁移结论：① **顺序表达式伪装**：整个函数体是一条 `return`，用短路串起顺序副作用，典型衔接片段 `]))) \|\| 1) && (T = 0) && 0 \|\| (V = p(Q, ...))` ≡「执行 A → 执行 B → 触发下一段」⇒ **严禁按布尔语义化简**（把 `X && 0 \|\| Y` 折叠成 `Y` 会丢掉 VM 的执行本身）；② **虚拟方法表 `X.$`**：先把真实函数引用挂到**字符串属性**下（`X.call["1.1"] = X.call`，`Object.keys` 遍历不到），再用 `X.$[1][X.$[0]](f, this, ...a)` 这层**双层 call 跳板**（＝`f.call(this, ...a)`）让 AST 完全失去调用目标，最后把原生方法编号成 opcode 收敛到**唯一入口** `X.$[8]`（`2`=apply/`3`=push/`4`=pop/`5`=concat/`6`=slice/`7`=多值 push）⇒ **还原顺序应当是「先解析 opcode 映射 → 把 `X.$[8](k,…)` 改写成直接调用 → 最后才碰字节码」**；③ 两轮 VM（第一轮解码并执行字节码、第二轮产出**真正要跑的目标代码**）＋ **格式化检测**（格式化后拒绝执行）⇒ 自动化处理要么不格式化直接补环境跑，要么自写反混淆器。规模事实：单文件 **13000+ 行 → 格式化后 24000 行**，原文结论是「强度靠膨胀而非精巧，没有业务需求不值得追」——本轮**只取结构判据与还原顺序，不背书深追**。 |
+| 488 | `52pojie-1495847-某社区网站的 Header 加密参数分析补环境踩坑分析笔记.md` | `683d98ee7d1fa5d73d0176fd531fd812` | 2026-09-23 | web-js-env-patcher | evolve | **「单文件 IIFE 扣下来就能跑、缺的只有宿主最小件」这一形态的样板**（目标是知乎 `x-zse-96`）：签名链 = `"2.0_" + enc(encodeURIComponent(md5(拼接串)))`，拼接串按固定顺序由 **URL + Body + 固定版本值 + cookie 取值（`d_c0`）+ 一个正式环境为 null 的可选位**组成 ⇒ 还原时**必须先把这个 `null` 位钉死**（占位还是跳过会直接改变哈希）。补环境三件按序：`window`（`var window = {}` 或 `globalThis.window = globalThis`）→ 末尾 `exports` 改 `window.exports` → **`atob` 自实现**；并强调 **`atob` 的语义是「每字符一字节的 Latin-1 串」而不是 UTF-8 解码**，自实现要连 `_utf8_encode`/`_utf8_decode` 一起搬，否则含中文或二进制时**字节数对不上**。定位法：特殊参数名全局检索一次命中赋值点、在命中结果里再检索一次即落到生成函数。 |
+
+### 本批次技能变更汇总（B24）
+
+| 技能 | 变更类型 | 主要落点 |
+| --- | --- | --- |
+| `web-js-env-patcher` | evolve | `references/edge-waf-cookie-challenge.md`：判层表 **+3 行**（jsl 512 变体 / 雷池 / qrator）、CF 行补 `jsd/oneshot` 形态；**新增 §2.1.1**（jsl 512 命名与状态码变体：`HttpOnly` 分类法、中间态 `-1` 判据、生成点与使用点跨趟、AST 240 行与唯一 writer 倒推、hook 失效两个现象）、**新增 §2.3.1**（Cloudflare `jsd/oneshot`：五步链、`send(enc(JSON.stringify(d)))` 通用形态与三条定位路线、本地替换防断点漂移、TLS 层与版本并存）、**新增 §2.4.1**（Akamai 侧 VM2 注入机制：判据链与处置）、**新增 §2.8 雷池**、**新增 §2.9 qrator**、**新增 §3.6「取证工具本身会被检测」**（三样本证据 + 三条固定手法）、§3.1 趟数表 +2 行、§4 一致性矩阵 +1 维（取证手段）、§5 排错清单 **+5 条**（#15–#19）、§6 边界表更新。`references/ruishu-botgate.md`：**新增 §4.3.1「5 代补环境实战：两份公开求助帖的共同失败模式」**（代码形态判据 / 尾部元数据数组 / 起手式 / stub 集特征 / 核心教训）+ 排错清单 **+2 条**（长度对了但值不对、改一点补一点长期不收敛）。`references/node-leakage-and-silent-failure.md`：静默失败清单 **+第 14 项**（运行载体注入物）、运行上下文隔离 **+1 条实战起手式**、**新增整节「VM2 注入：`toString` 长度对不上的机制级成因」**。`references/case-patterns.md`：**新增「单文件 IIFE 型」**（三件套补法 / `atob` 的 Latin-1 语义 / 版本化签名的拼接口径与那个 `null` 位）。`scripts/classify_edge_challenge.js`：`FAMILIES` **+3 族**（`jsl-2pass-512` / `safeline` / `jsid2`）、managed-challenge **+3 判据**（`jsd/oneshot` 路径、`__CF$cv$params`、`safeid`）、新增 `LAYER_NOTE` 与 `NEXT_SKILL` 的 `purecalc+envfit` 落层、自检用例 **+4**（三族各一 + `jsd/oneshot` 首访 200 一例）⇒ **32 → 39 项**。⚠️ **本轮踩到并撤掉的一个自伤**：我原以为自检只查 `NEXT_SKILL`，于是又补了一条 `LAYER_NOTE` 断言；**故障注入当场判它恒绿**（既有检查排在前面，新断言永远不可达）⇒ 已删除重复行，只保留注释。**闭集一致性断言（`FAMILIES` × `NEXT_SKILL` × `LAYER_NOTE`）在 B24 之前就已存在**，本轮的贡献是把它写进文档导语、并做了一次阳性验证。 |
+| `web-reverse-algorithm` | evolve | `scripts/waf_clearance_solver.py`：**新增 `leichi` 子命令**（前导零**比特** PoW 的 `salt` + **纯标准库 AES-128-CBC**（含解密）请求体构造）与 **`qrator` 子命令**（两种迭代语义 + `--expect-pow` 机械校验）；`classify` 判据表 **+3 族**（`jsl-2pass-512` / `safeline` / `jsid2`）、`LAYER_NOTE` +1 种落层（`purecalc+envfit`）、`_next_step` +3 条；自检 **119 项**（本轮新增 `leichi` **29 项** + `qrator` **9 项**）。**新自检的 oracle 全是「外部可独立复算」的**：雷池 `salt` 的 `t=16 → 20702` 是**原文唯一观测值**、`t=18 → 154281` / `t=20 → 483624` 是**同口径外推**（`t=18` 同时充当「bit 口径 vs hex 位数口径」的单位判据）+ 独立实现核对（大整数 `bit_length`）；另断言 key 补位方式（`--pad char\|byte` 必须给出不同 key 与不同密文）；AES 用 **FIPS-197 附录 B** 与 **NIST SP 800-38A F.2.1 CBC** 官方向量（CBC 前缀稳定 ⇒ 取前 64 字节比对）；qrator 用**独立实现的候选枚举**（一遍列出所有命中，必须恰好 `[idx]`）+ **另一种写法独立重放哈希链**；反例覆盖「15 字节 key 必须拒绝」「错 key 解密必须因 PKCS7 不合法失败」「非法 prefix / 无法切段的 param / `--expect-pow` 给错值 / `--pad nope`」。`references/10-waf-clearance-cookie.md`：子命令表 +2 行；**新增 §1.4**（512/`__jsluid_h` 变体对照表）、**新增 §4 雷池**（PoW 口径与三组 oracle、AES 参数表与 `--pad` 未明项、官方向量自检口径）、**新增 §5 qrator**（两读法与「现场钉死」口径）；原 §4/§5 顺移为 **§6/§7**（已 grep 确认无外部锚点引用）。 |
+| `ast-deobfuscation` | evolve | `references/control-flow-and-opcode-patterns.md`：**新增两节** —— 「顺序表达式伪装（`&& 0 \|\|` 链）」（含读法、两轮 VM 的衔接片段语义表、拆解顺序）与 「虚拟方法表（`X.$`）：数组索引 + 双层 call 跳板」（三层设计表、识别信号、三步还原顺序、两轮 VM 顶层结构、格式化检测告警）；误改写黑名单 **+2 行**（禁止把短路链按布尔语义化简、禁止把 `X.$[...]` 当普通数组就地替换成员）。`references/obfuscation-detector.md`：技术手段 +1（`sequential-shortcircuit-chain`）、产品标签 +1（`jsdun`）、分流表 **+2 行**。`scripts/detect-obfuscator-types.js`：**新增 2 个检测函数**（`detectSequentialShortCircuitChain`、`detectJsDun`）并注册；阳性 / 阴性夹具实跑验证（阳性命中 2 标签，阴性仍为 `unknown`）。 |
+
+### 结构性收敛（B24）
+
+| 项 | 处置 |
+| --- | --- |
+| **新厂商进入「闭集判据器」必须多处同改** | 定族器的闭环一共 **6 处**：Node `FAMILIES` / Node `NEXT_SKILL` / Node `LAYER_NOTE` /Python `CLUES` / Python `LAYER_NOTE` / Python `_next_step`。本轮把它们一次补齐，并把这条清单写进 `edge-waf-cookie-challenge.md` §2 的导语。**同时撤掉了一处自伤**：闭集一致性断言（`LAYER_NOTE` × `NEXT_SKILL`）在 B24 之前就已存在，我原以为只查了 `NEXT_SKILL`、又补了一条断言 —— 故障注入（注入 4）当场判定它是**不可达的恒绿断言**（老检查先命中）⇒ 已删除重复行。**教训**：加断言前先确认「这条路径是否已经有人守着」，否则新增的只是噪声（本轮正好被注入实验兜住）。 |
+| **「厂商逐族」编号扩容** | 10-waf 求解文档原 §4/§5 顺移为 §6/§7，新厂商固定占 §4/§5。**前置检查**：先 grep 全仓确认这两节没有锚点级引用（只有文件级引用）⇒ 属于零风险重编号，且顺手把 §4.1 里一句含混的「不要跳过 1、2」改成「第 1、2 步」。 |
+| **两份求助帖的处置：不建新文件** | 瑞数 5 代的两篇求助帖体量很大（391KB / 284KB）但**只有代码没有结论** ⇒按「避免滥建冗余技能」的口径，其可复用部分（尾部元数据数组形态、`delete __dirname` 起手式、「缺的是定位手段而不是某一项」这一失败模式）全部并入既有 `ruishu-botgate.md`，**新增一节 + 两条排错**，不新增 references 文件。 |
+| **「把推断写成结论」是本轮最大的缺陷类** | 独立评审一次抓出 **5 处**：jsl 512「两篇样本一致」（实为一篇）、雷池「首访 200 / 不拦」（原文无状态码）、Turnstile 版本号（原文未指明组件、且该变体根本不是 Turnstile）、512 变体的 `go({...})` 结构（原文从未打印）、`chars` 长度 23/24（4 组真实 oracle 实测全为 22）。⇒ 全部改成「实测 N 组 / 同口径外推 / 按同族推断 / 原文未写明」的显式标注，并**在保真度脚本里为这些措辞加上断言**（否则下次改写又会把它们抹平）。**口径**：文档里每个数字要么能指到原文，要么必须自称推断。 |
+| **「恒绿断言」与「死断言」** | 独立评审指出 `_selftest_qrator` 里 `if digest[:2] != '00'` 永不触发（`qrator_pow` 只在命中分支 return）⇒ 改成**独立实现的候选枚举**（一遍列出所有命中、必须恰好 `[idx]`）；同时把 `leichi` 的「最小性」断言从「重抄同一表达式」升级为**大整数 `bit_length` 独立实现**核对。 |
+| **未明字段一律不臆造（延续 B23 口径）** | qrator `pow` 的迭代语义、阿里系 `TrackList.si` 式未明字段：一律**实现两种候选 + 提供机械校验入口**，文档写明「原文未写明」，**不写公式、不写默认值当结论**。 |
+
+### 证伪与审计留痕（B24）
+
+```bash
+# 1) 新增子命令自检（leichi 29 项 + qrator 9 项；脚本总自检 119 项）
+python .agents/skills/web-reverse-algorithm/scripts/waf_clearance_solver.py --selftest
+
+# 2) 定族器自检（32 → 39 项；含新增族与闭集一致性断言）
+node .agents/skills/web-js-env-patcher/scripts/classify_edge_challenge.js --selftest
+
+# 3) 混淆检测器阳性 / 阴性夹具
+node .agents/skills/ast-deobfuscation/scripts/detect-obfuscator-types.js artifacts/skill-evolution/b24-run-20260923-2000/fixtures/jsdun-pos.js
+node .agents/skills/ast-deobfuscation/scripts/detect-obfuscator-types.js artifacts/skill-evolution/b24-run-20260923-2000/fixtures/normal-neg.js
+
+# 4) 故障注入阳性验证（5/5 变红）
+python artifacts/skill-evolution/tools/b24-fault-injection.py
+
+# 5) 来源保真度（10 篇源文件逐条断言）
+python artifacts/skill-evolution/tools/b24-verify-sources.py
+
+# 6) 机械校验 + 双镜像
+node artifacts/skill-evolution/tools/check_skill_integrity.js --root . --markdown
+python artifacts/skill-evolution/tools/b20-mirror-sync.py
+
+# 7) 台账幂等复跑（应打印「已登记，跳过」）
+python artifacts/skill-evolution/tools/append-b24-ledger.py
+```
+
+**故障注入明细（基线绿 → 注入后红）**：
+
+| 注入点 | 结果 |
+| --- | --- |
+| `leichi_salt`：把「前导零**比特**」改成「前导零 hex 位数」 | 自检转红，命中 `t=18 的 salt 应为 154281，实际 20702` ✓（**这条注入反过来纠正了一处文档错误**：我最初写的是「两口径在 t=16 下差一个数量级」，实测 **t=16 两者等价**（都是 20702）、只有 **t ∉ 4Z** 时才分叉（t=18：154281 vs 483624）⇒ 三处文档已按实测改写，并把 t=18 做成正式自检断言）|
+| `qrator_pow`：返回**第二个**命中下标（不再最小） | 自检转红，命中「前 N 个候选里应只有 i=… 命中」✓ |
+| `AES_SBOX`：改坏 1 个字节 | 自检转红，命中 FIPS-197 单分组向量 ✓ |
+| 定族器：把 `safeline` 的落层换成闭集外的值 | 自检转红（`族 safeline 的 layer=… 没有说明`）✓；该断言**先于**我新加的那条命中 ⇒ 暴露新断言不可达 |
+| 检测器：给「无命中」兜一个假数组（阈值失效） | **阴性夹具被误报**（基线 `unknown`，注入后出现 `sequential-shortcircuit-chain`）✓ |
+
+**清点**：台账 **478 → 488**（本批登记 **10** 条，编号 **#479–#488**）；待处理 **429 → 419**；新建技能 **0**、演化技能 **3**。
+
+### 独立评审（B24）
+
+**方式**：1 名**独立盲评审员**（只看产物与源文件，不给作者自评、不允许改文件），四个维度：事实保真度 / 可执行性 / 自检有效性 / 一致性。它自己实跑了两个 `--selftest`、`leichi` 与 `qrator` 的真实调用、以及三条 `node -e` 反例实验。**结论：needs-fix**，共 12 条，全部在本轮内修完：
+
+| # | 严重度 | 缺陷 | 处置 |
+| --- | --- | --- | --- |
+| 1 | 高 | jsl §2.1.1 写成「两篇样本一致」，实为一篇；另一篇恰是 521/`_s` 形态 | 改为「**目前只有一篇样本**」并把「`HttpOnly` 分类法」「hook 失效」两条**通用**判据上移 §2.1 |
+| 2 | 中 | 把「脚本版本号不同」写成「Turnstile 版本不同」（原文未指明组件，该变体是 `jsd/oneshot`） | 改为「请求侧与浏览器侧看到的**脚本版本号**不同；原文未说明是哪个组件」 |
+| 3 | 中 | 雷池「首访 200 / 不拦」当事实写（原文无状态码） | 改为「正常页面（**原文未给状态码**，200 为推断）」；判层表与排错 #15 同步 |
+| 4 | 中 | `_selftest_qrator` 的前缀断言是**死代码**；`leichi` 的最小性循环等于重抄同一表达式 | 换成独立实现的候选枚举 + 大整数 `bit_length` 核对（见「结构性收敛」） |
+| 5 | 中 | 「真实 oracle 三组」只有 1 组是实测 | 全部改为「实测 1 组 + 同口径外推 2 组」并标出哪一组是原文观测 |
+| 6 | 中 | AES key「用字符 `'0'` 补齐」是未标明的推断，且不可切换 | 新增 `--pad char\|byte`（默认 char）+ 文档写明两种读法密文不同、对不上先换它 + 自检断言两者必须不同 |
+| 7 | 低 | `qrator` 的推荐命令三处不一致，且缺 `--expect-pow`（不触发机械校验） | 三处统一为 `--param … --expect-pow …`（`_next_step` 与文档同步） |
+| 8 | 低 | `control-flow-and-opcode-patterns.md` 新节末的「同 §代码文本参与计算」是**死引用**（本文件无此节） | 换成跨技能显式路径（`edge-waf…§3.2` 与 `10-waf…§6.2`） |
+| 9 | 低 | 两处技术陈述不成立：「`Object.keys` 遍历不到」（实测可枚举）、「模板字符串」（原文是普通字符串字面量） | 改为「挡住的是**静态分析不会去猜这个 key**」与「字符串字面量」 |
+| 10 | 低 | `A && B && 0 \|\| C` 的「顺序执行」口诀在 A 为 falsy 时不成立 | 补前提「A、B 均为真值」，并点明它只是读法、不是可化简的等价式 |
+| 11 | 低 | 判据写死「`-1` 后跟 3 字符」（同类样本是 4 字符）；512 变体「算法完全复用」未标推断 | 改为「2~4 字符」；512 变体加「按同族推断、`jsl` 无命中即不成立」 |
+| 12 | 低（历史遗留） | 10-waf §1.3 写「chars 23 或 24 ⇒ 529/576」，而脚本 4 组真实 oracle 实测全为 22 | 顺手改成「22 ~ 24（oracle 实测 22 ⇒ 484；文章样本 23 ⇒ 529）」并注明无 24 样本 |
+
+**评审留下、本轮未改（记入下一批）**：无阻断级遗留；12 条全部处置。
+
+### 下一批（B25）取材建议（承接本节）
+
+- 待处理 **419** 篇（台账 488 条后）。
+- 优先级：
+  ① **站前挑战厂商带可继续扩容**：本轮把厂商扩容的**操作清单**（6 处同改 + 闭集自检）写进了文档，下一批若再遇到 unclassified 的准入挑战，按同一清单补；**注意优先取「带完整纯算交付」的**（本次两家新厂商之所以值钱，正是因为各自给了可独立复算的 oracle）。
+  ② **验证码图像识别系的坐标侧**（真拼图 / 双缺口 / 旋转点选）仍有剩余，一律走 `web-verify-patcher` 的 evolve；
+  ③ **无感/行为验证**剩余（更多厂商的「多请求链 + 签名头」形态）继续并入 `references/behavior-verify-and-sign-headers.md`，**不要为每家建新文件**；
+  ④ **环境检测点**继续并入 `web-js-env-patcher` 的矩阵节（注意：新检测点必须映射到既有触发类别，枚举是闭集）；
+  ⑤ **桌面客户端薄区仍无取材**（Tauri / node:sea / 原生模块）—— 若下一批仍为 0 命中，应**改判为「本语料池不含该主题」并停止把这三项列为候选**，不要第六次重复列为优先项。
+- 候选新技能 `captcha-flow-orchestration` —— B5–B24 **十八次确认不新建**（证据池仍未跨越「单站一流程」到「可复用编排协议」的门槛）。
+- 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
+  **注**：B1-17 / B13-216 的「不建小程序技能」结论在 B22 已被**推翻并取代**（改判为「无最近邻模块 + 规模最大 ⇒ 建」），旧结论只保留可追溯性。

@@ -26,6 +26,8 @@ python scripts/waf_clearance_solver.py classify --html page.html --status 521
 | `cf-strtable` | Cloudflare 字符串表按恒等式枚举旋转量 |
 | `pow-drop` | Cloudflare Drop 时间锁 PoW（检查点链） |
 | `pow-bigint` | Cloudflare Turnstile 的 BigInt 模幂 PoW |
+| `leichi` | 雷池（SafeLine）：`seed` 前导零**比特** PoW（`salt`）+ AES-128-CBC 请求体 |
+| `qrator` | qrator：`nonce` 前导零 hex 的循环哈希计数（`pow`） |
 
 ---
 
@@ -98,7 +100,7 @@ python scripts/waf_clearance_solver.py jsl-first --expr "<右侧表达式>"
 |---|---|---|
 | 形态 | `<unix_ts>.<ms>\|<flag>\|<urlenc-base64>` | 同左 |
 | `flag` | 实测 **`-1`** | 实测 **`0`** |
-| 第三段 | 20 字节 base64（`%` 编码） | 3 字符（或 20 字节 base64，因站而异） |
+| 第三段 | 20 字节 base64（`%` 编码） | **2~4 字符**（不定长；或 20 字节 base64，因站而异） |
 
 同一次会话内两趟的 `<unix_ts>` 相同、毫秒不同（实测 `.059` → `.167`，间隔约 100ms）。
 `jsl-first` 会把这三段拆出来输出，便于和第二次请求的 `bts[0]` 对拍。
@@ -108,7 +110,7 @@ python scripts/waf_clearance_solver.py jsl-first --expr "<右侧表达式>"
 ```js
 go({
   "bts": ["<ts>|<n>|<3字符>", "<URL编码的 base64>"],
-  "chars": "<23 或 24 个字符>",
+  "chars": "<22 ~ 24 个字符>",
   "ct": "<十六进制哈希>",
   "ha": "md5|sha1|sha224|sha256|sha384|sha512|sha3",
   "is": true, "tn": "__jsl_clearance_s", "vt": "3600", "wt": "1500"
@@ -122,7 +124,7 @@ for i in 0..len(chars)-1:
     if HASH_ha(cand) == ct:  →  cand 即 __jsl_clearance_s
 ```
 
-枚举量 `len(chars)²` = 529 / 576。**四个坑**：
+枚举量 `len(chars)²`：**本脚本自带 4 组真实 oracle 实测全为 22 ⇒ 484**；文章样本出现过 23 ⇒ 529。（**没有观测到 24 字符的样本**，别按 576 预算。）**四个坑**：
 
 1. **`bts[1]` 保持 URL 编码原样**。`rLB%2FdFGil%2FWSDtvv5CSWRc%3D` 里的 `%2F` / `%3D` 是哈希输入的一部分；
    `unquote` 之后**枚举全表也不会命中**（自检里有这条反例断言）。
@@ -132,6 +134,23 @@ for i in 0..len(chars)-1:
 4. **`wt` 只是延时字段**（`delay = wt > elapsed ? wt - elapsed : 500`），纯请求路线直接写 cookie。
 
 **oracle**：本批 4 组真实 `go({...})` 参数（`md5` / `sha1`×2 / `sha256`）全部命中，见 `--selftest`。
+
+### 1.4 512 / `__jsluid_h` 命名变体：算法同、cookie 名不同
+
+| 项 | 521 形态 | **512 变体** |
+|---|---|---|
+| 首访状态码 | 521 | **512**（前两趟都是） |
+| 第一趟会话 cookie | `__jsluid_s` | **`__jsluid_h`** |
+| clearance cookie 名 | `__jsl_clearance_s` | **`__jsl_clearance`**（**不带 `_s`**） |
+| 第二趟参数对象 | `go({bts, chars, ct, ha, is, tn, vt, wt})` | **同结构**（`tn` 字段会写成实际的 cookie 名） |
+
+- **算法按同族推断可复用**（`jsl-first` → `jsl`），但**不能照抄 521 的 cookie 名**：取错名字的表现是
+  「值算出来了、请求也发了，页面还是挑战页」。
+  ⚠️ **该变体的 `go({...})` 对象原文从未打印**（只写了「JS 脚本是动态的、每次 hash 算法可能都不一样」）⇒
+  上表的「同结构」是**推断**：`jsl` 无命中即说明推断不成立，别硬套。
+- 变体判定见 `../../web-js-env-patcher/scripts/classify_edge_challenge.js`（族名 `jsl-2pass-512`）与
+  `edge-waf-cookie-challenge.md` §2.1.1。
+- **三趟必须同一 session**；第二趟 JS 的混淆数组与变量名**每次刷新都变**，`go({...})` 对象必须**每次现抽**。
 
 ---
 
@@ -353,18 +372,116 @@ solution = base64(concat(checkpoints))
 
 ---
 
-## 4. 定位手法（跨族通用）
+## 4. 雷池（SafeLine）：前导零比特 PoW + AES-128-CBC
 
-### 4.1 常量表 / 置换表的还原优先级
+**可离线的部分**：`salt`（PoW）与 `inspect` 的请求体（AES-CBC）。**必须外呼一次**的是 `/seed`
+（每趟都变），`once_id` 来自第一次 `list` 的响应体。链路见
+`../../web-js-env-patcher/references/edge-waf-cookie-challenge.md` §2.8。
+
+### 4.1 `salt`：前导零**比特** PoW
+
+站点侧（已解混淆）：
+
+```js
+let a = function (e, t = 20) {
+  const n = te;
+  for (var r = 0; r < 1e8; r++) {
+    const a = SHA256(e + "" + r)["toString"]();
+    for (var i = 0, o = 0; o < a.length; o++) {
+      if ("0" != a[o]) { i += 4 - parseInt(a[o], 16)["toString"](2)["length"]; break }
+      i += 4
+    }
+    if (!(i < t)) return r
+  }
+  return 0
+}(seed, 16);
+```
+
+计数口径：**每遇 hex 字符 `0` 记 4 bit；遇首个非零字符按 `4 - bit_length(该位)` 补足**。
+
+> ⚠️ **必须按 bit 实现**。一个常见近似是「前导零 hex 位数 ≥ t/4」—— 它在 `t` 是 4 的倍数时**恰好等价**，
+> 在 `t ∉ 4Z` 时**分叉**。实测（`seed=7NzPy5ID`）：
+>
+> | `t` | bit 口径 | 「前导零 hex 位数」口径 | 是否等价 |
+> |---|---|---|---|
+> | 16 | **20702** | 20702 | 等价 |
+> | **18** | **154281** | 483624 | **分叉** |
+> | 20 | **483624** | 483624 | 等价 |
+>
+> 两种口径给出的都是**合法的十进制数字**，不会被任何解析器拒绝 —— 属于本族最典型的静默失败。
+
+**oracle（实测 1 组 + 同口径外推 2 组，均已独立复算）**：
+
+| seed | t | salt |
+|---|---|---|
+| `7NzPy5ID` | 16 | **20702** ← **原文观测到的唯一一组** |
+| `7NzPy5ID` | **18** | **154281**（外推；该哈希只有 **4** 个前导零 hex 字符：第 5 位是 `2`、bitlen=2 ⇒ `4×4+2=18`） |
+| `7NzPy5ID` | 20 | **483624**（外推） |
+
+自检除此之外还断言**最小性**（`r < salt` 的每一个 r 都不满足阈值，防「提前返回」类静默错）
+与**单位判据**（`t=18` 必须给 `154281` 而不是 `483624` —— 这是唯一能把两种口径区分开的断言）。
+
+### 4.2 请求体：AES-128-CBC（参数级事实）
+
+| 项 | 值 | 说明 |
+|---|---|---|
+| key | `seed` 右侧补位到 16 字节；**补什么原文只写了「补 0」** | ⚠️ `'0'`(0x30) 与 `0x00` 两种读法都成立且**密文完全不同** ⇒ 用 `--pad char\|byte` 切换（默认 `char`）；密文对不上**先换它** |
+| iv | ASCII `1234567890123456` | **固定值** |
+| padding | **Pkcs7** | CryptoJS 默认（`n.pad.Pkcs7`） |
+| 明文 | 环境对象 JSON | **只有 `salt` 变化**，其余字段写死即可 |
+| 密文出口 | `n.ciphertext.toString()` | 调用点形如 `q[n(467)](JSON.stringify(e), i, {iv: o, padding: Q})` |
+
+```bash
+# salt + body 一次算完（--json 里没有 salt 会自动补上）
+python scripts/waf_clearance_solver.py leichi --seed 7NzPy5ID --json '{"foo":"bar"}'
+# 核对浏览器抓到的密文（hex 或 base64）；对不上先试另一种补位方式
+python scripts/waf_clearance_solver.py leichi --seed 7NzPy5ID --decrypt <密文>
+python scripts/waf_clearance_solver.py leichi --seed 7NzPy5ID --pad byte --json '<明文>' 
+```
+
+**AES 实现的自检 oracle 是官方向量**（不需要人工核对 S-box）：
+FIPS-197 附录 B 的单分组向量，以及 NIST SP 800-38A F.2.1 的 CBC 向量
+（CBC 前缀稳定 ⇒ 取密文前 64 字节比对即可，PKCS7 追加的第 5 组不影响前 4 组）。
+另含两类反例：**key 长度不是 16 必须拒绝**、**用错 key 解密必须因 PKCS7 不合法而失败**
+（不允许「手工截掉尾部」把错误掩盖过去）。
+
+---
+
+## 5. qrator：循环哈希前导零计数（`pow`）
+
+- `param` 来自 401 那趟下发的 cookie **`qrator_jsr`**；
+  **`nonce` = `param` 按 `-` 切分的第 1 段，`qsessid` = 第 2 段**。
+- `pow` = 「循环哈希到**前两位为 `00`** 的次数」。
+
+> ⚠️ **两种读法都自洽，原文未写明**：`md5(nonce + str(i))`（每次独立）与 `md5(上一次的 hash)`（哈希链）。
+> 工具**两种都实现**（`--mode index|chain`），并用 `--expect-pow <浏览器真实值>` 做机械校验。
+> **不要把默认 mode 当结论**——先拿一条真实样本钉死它。
+
+```bash
+python scripts/waf_clearance_solver.py qrator --param <qrator_jsr 原值> --expect-pow <真实值>
+```
+
+自检断言的是**性质**而不是自算自比：返回值的哈希满足前缀条件、且**更早的每个 i 都不满足**
+（最小性），chain 模式再用**另一种写法独立重放**整条链核对；另含
+「`--expect-pow` 给错值必须失败」「非法 prefix / 无法切段的 `param` 必须被拒」两类反例。
+
+**不属于本文件的部分**：`validate` 载荷里 40 个字段中除 `version` / `vx`（固定）外的 **38 个是环境派生**
+（MD5 + base64），属环境拟合侧；同一份结果实测只能复用约 5 次。
+
+---
+
+## 6. 定位手法（跨族通用）
+
+### 6.1 常量表 / 置换表的还原优先级
 
 1. **先找自校验条件**（数论恒等式 / magic 值 / 校验和）→ 枚举出旋转量或基址。
 2. **再用「已知索引 → 明文」反查**标定表（浏览器 Console 抓几组对照即可）。
 3. **最后才读算法**（RC4 / XOR / 洗牌）。
 
-**不要跳过 1、2 直接读 RC4**：本批 13 组 oracle 证明旋转量差 1 位就 0/13 全错，
+**不要跳过第 1、2 步直接读 RC4**：本批 13 组 oracle 证明旋转量差 1 位就 0/13 全错，
 而**错的结果仍然是一串可打印字符**，不会报错 —— 这是本族最容易静默失败的地方。
 
-### 4.2 代码文本参与计算 ⇒ 任何重写都可能失败
+### 6.2 代码文本参与计算 ⇒ 任何重写都可能失败
 
 | 族 | 机制 |
 |---|---|
@@ -375,7 +492,7 @@ solution = base64(concat(checkpoints))
 
 ⇒ 挑战页 JS 一律按**原始字节**保存与使用（本仓约定存 `.orig`）；不要格式化、不要过 linter/autofix、不要转码行尾。
 
-### 4.3 何时不要做纯算
+### 6.3 何时不要做纯算
 
 - 环境校验点**数量与顺序随机**（Cloudflare 十几个到二十几个；Akamai 环境段号数组）⇒ 纯算路线不成立。
 - 需要 `isTrusted` 事件（鼠标 / 触摸 / 键盘）⇒ 纯算路线不成立。
@@ -385,7 +502,7 @@ solution = base64(concat(checkpoints))
 
 ---
 
-## 5. 与相邻技能的边界
+## 7. 与相邻技能的边界
 
 | 场景 | 归属 |
 |---|---|

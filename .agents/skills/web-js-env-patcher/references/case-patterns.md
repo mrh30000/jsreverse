@@ -64,6 +64,23 @@
 - **Cookie 通常是自举 / 多趟生成**：本地只跑一趟会得到偏短的结果，见 `multi-pass-cookie-generation.md`。
 - 用 `node scripts/extract_challenge_bundle.js` 抽三件套，用 `node scripts/ruishu_keynames.js` 做变量名重算与校验。
 
+## 单文件 IIFE 型（扣下来就能跑，缺的只有宿主最小件）
+
+信号：定位后把**一整个 `function`** 复制到本地执行就能得到正确结果（全部逻辑在一个 IIFE / 单函数里），
+报错只集中在三处宿主件上。
+
+重点：
+
+- **按这个顺序补三个最小件**：① `window`（`var window = {}` 或 `globalThis.window = globalThis`）；
+  ② 文件末尾的 `exports` → `window.exports`；③ `atob` / `btoa`。
+- **`atob` 别假设存在**：老环境与部分沙箱里没有（Node 18+ 才有全局 `atob`）。自己实现时要注意
+  `atob` 的语义是「每字符一个字节的 Latin-1 串」，**不是 UTF-8 解码** ⇒ 要连 `_utf8_encode` / `_utf8_decode`
+  一起搬，否则含中文或二进制时**字节数对不上**（同 `edge-waf-cookie-challenge.md` §3.2「文本参与计算」）。
+- 该形态常见于「请求头里的**版本化签名**」：形如 `x-<名字> = "<版本号>_" + enc(encodeURIComponent(hash(拼接串)))`，
+  拼接串按固定顺序由 **URL + Body + 固定值 + Cookie 取值（+ 一个可能是 null 的可选位）** 组成。
+  ⇒ 还原时**先把拼接口径逐字段钉死**（尤其那个 `null` 位：它仍然占一个位置还是被跳过，会直接改变哈希）。
+- 参数名越特殊越省事：全局搜一次就能命中赋值点，在命中结果里**再搜一次**通常就落到生成函数。
+
 ## 环境自检清单型（已知体检项逐条对齐）
 
 信号：目标 JS 大量读取 `navigator.*` / `window.*` 的细粒度字段，缺失时不报错只在分支里静默走错。

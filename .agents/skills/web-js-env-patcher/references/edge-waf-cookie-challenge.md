@@ -48,9 +48,10 @@
 | 厂商 / 族 | 典型首访码 | 响应体形态 | 关键 Set-Cookie / 请求头 | 落层 |
 |---|---|---|---|---|
 | 加速乐（jsl） | **521** | 一段 `document.cookie=('_')+('_')+('j')+...` 表达式拼接 | `__jsluid_s`（第一趟）→ `__jsl_clearance_s`（第二趟） | 纯算（两趟都能离线解） |
+| 加速乐（jsl）**512 变体** | **512** | 同上（第二趟是 OB 混淆 JS） | **`__jsluid_h`**（第一趟）→ **`__jsl_clearance`**（第二趟，**不带 `_s`**） | 纯算（同族算法，但 cookie 名不同） |
 | 阿里 acw_sc__v2（旧版） | 200 但内容异常 | 内联 `<textarea>` 藏 `arg1` + OB 混淆 JS | `acw_sc__v2` | 纯算（`unsbox` + `hexXor`） |
 | 阿里 acw_sc__v2（新版） | 200 但内容异常 | 内联 JS + `PxjRjE` 主函数 + 无限 debugger | `acw_sc__v2` | 纯算（LCG + 洗牌），需**原始未格式化** JS |
-| Cloudflare 5s 盾 / managed | 403 / 503（也有 200 + JS 跳转的形态） | `Just a moment...` + `/cdn-cgi/challenge-platform/` | `__cf_bm` → `cf_clearance` | 混合：响应体可离线解，环境校验必须真浏览器 |
+| Cloudflare 5s 盾 / managed | 403 / 503（也有 200 + JS 跳转的形态；**`jsd/oneshot` 变体多为 200**） | `Just a moment...` + `/cdn-cgi/challenge-platform/`（`h/g/` 与 `h/b/jsd/oneshot/` 两种入口） | `__cf_bm` → `cf_clearance`；jsd 变体另有 `safeid` | 混合：响应体可离线解，环境校验必须真浏览器 |
 | Cloudflare Turnstile | 200 | 独立 iframe `challenges.cloudflare.com/turnstile/...` + 隐藏 `input[name=cf-turnstile-response]` | `cf_clearance` | 混合（同上） |
 | Cloudflare Drop | — | `/cdn-cgi/…` 之外的 `api.cloudflare.com/client/v4/provisioning/previews/*` | 无 clearance cookie，靠 PoW | 纯算（时间锁 PoW，可离线） |
 | Akamai Bot Manager | 200 | `sensor.js`（约 512KB，高度混淆） | `_abck`、`bm_sz`、`ak_bmsc`、`bm_sv` | 环境拟合（环境数组 + 行为） |
@@ -62,6 +63,8 @@
 | AWS WAF | 405 / 403 | `challenge.js` / `captcha.js` | `aws-waf-token` | PoW（可离线）+ 可选 `grid` |
 | Fastly Bot Management | 403 | 轻量 JS PoW | `fs_ch_st`、`fs_ch_cp` | PoW |
 | Anubis（开源反 AI 爬虫） | 200 / 403 | 反向代理页 + JS PoW | 无标准 cookie 名 | PoW |
+| 雷池（SafeLine，长亭） | 正常页面（**不拦首访**，只是页面里塞 `sdk.js`；原文未给状态码，200 为推断） | `/api/waf/sdk.js` + 首页内联配置 | `sl-session`（第一趟）→ `sl_waf_recap`（JWT）→ `sl_jwt_session`（终值） | 纯算（PoW + AES-CBC 都能离线）+ 一次 `/seed` 外呼 |
+| qrator | **401** | 外链 `qauth.js` | `qrator_jsr`（第一趟）→ `qrator_jsid2`（终值） | PoW / MD5+base64 可离线；40 字段里 **38 个是环境派生** |
 
 **快速工具**（命令里的路径按**本文件所在目录**为基准：`.claude/skills/web-js-env-patcher/references/`；
 `scripts/...` 指本技能根，`../../<别的技能>/...` 指同级技能）：
@@ -76,6 +79,11 @@ node scripts/classify_edge_challenge.js --headers resp_headers.txt --markdown
 python ../../web-reverse-algorithm/scripts/waf_clearance_solver.py jsl --json '{"bts":[...],"chars":"...","ct":"...","ha":"sha1"}'
 python ../../web-reverse-algorithm/scripts/waf_clearance_solver.py acw-v2-old --arg1 <40位hex>
 python ../../web-reverse-algorithm/scripts/waf_clearance_solver.py cf-decode --body fo_stage2.txt --ray <16位hex>
+
+# ③ 雷池（B24）：seed 前导零比特 PoW + AES-128-CBC 请求体
+python ../../web-reverse-algorithm/scripts/waf_clearance_solver.py leichi --seed <seed> --json '<inspect 明文>'
+# qrator（B24）：param 按 '-' 切段后算循环哈希计数
+python ../../web-reverse-algorithm/scripts/waf_clearance_solver.py qrator --param <qrator_jsr 原值>
 ```
 
 > 求解器也有 `classify` 子命令（判据与上面的 Node 版同源，纯 Python、零依赖）。
@@ -90,7 +98,12 @@ python ../../web-reverse-algorithm/scripts/waf_clearance_solver.py cf-decode --b
 
 ---
 
-## 2. 六族逐族
+## 2. 厂商逐族
+
+> 2.1–2.6 是六大边缘厂商；2.7 是**站点自研风控**（同样走「独立 signal 请求 + 服务端校验」）；
+> 2.8 / 2.9 是 B24 新增的两家（雷池 SafeLine、qrator）。新增厂商一律**追加小节并同步判层表与分类器**
+> （`scripts/classify_edge_challenge.js` 的 `FAMILIES` 是**闭集**，加族必须同时补 `NEXT_SKILL` 与 `LAYER_NOTE`，
+> 否则自检会以「layer 没有下一步技能」形式打红 —— 这是有意设计的防漏机制）。
 
 ### 2.1 加速乐（jsl）：两趟 521
 
@@ -138,6 +151,49 @@ for i in 0..len(chars)-1:
 **可离线求解**：两趟都是。见 `waf_clearance_solver.py jsl` / `jsl-first`（自带 4 组真实样本 oracle）。
 
 **`__jsluid_s` 不是准入凭证**，只是会话标识；不要把它当成「已经过了」。
+
+**两条跨形态通用的判据**（B24 来源：`docs/references/52pojie-2065287`，该站用的是 521 / `_s` 形态）：
+
+1. **`HttpOnly` 反过来就能判「服务端下发」还是「JS 生成」**：`HttpOnly=true` 的只有响应头 `Set-Cookie` 有值
+   （服务端下发，如 `__jsluid_s`）；`HttpOnly=false` 的响应头该字段**为空**，值只能由本地 JS 算出（即 clearance）。
+   ⇒ **抓新站第一件事就是把 cookie 分成这两类**，再决定哪一类要算。
+2. **不要用 `document.cookie` hook 作为唯一取证手段**：该站实测两个反直觉现象 ——
+   ① 第一趟响应里的 `document.cookie` 赋值**根本没触发 hook**；② 放开断点会让**第二趟重复请求**（关掉油猴脚本才正常）。
+   ⇒ 改用「本地替换挑战脚本 + 本地结果与浏览器结果逐字段对比」定位（同 §3.6）。
+
+#### 2.1.1 命名 / 状态码变体：`__jsluid_h` + 512
+
+同厂第二形态。⚠️ **目前只有一篇样本**（`docs/references/52pojie-1983279`），
+**不要把它当成「两篇独立样本一致」**——同批另一篇（2065287）用的仍是 **521 / `__jsluid_s` / `__jsl_clearance_s`**。
+
+| 趟 | 请求 | 响应 | 关键观察 |
+|---|---|---|---|
+| 1 | 无 cookie | **512** + `Set-Cookie: __jsluid_h=...` + 内联 `document.cookie=...` | 内联表达式算出**中间态** `__jsl_clearance` |
+| 2 | 带上趟两个 cookie | **512** + OB 混淆 JS | 算出第二趟 `__jsl_clearance`（覆盖同名） |
+| 3 | 带更新后的 cookie | **200** | 完成 |
+
+**两条可直接复用的判据**（比读代码快）：
+
+1. **中间态与终态的形态差异**：中间趟的 clearance 形如 `<ts>|-1|<不定长 base64 片段>`，最终趟中间段变 **`0`**
+   ⇒ 「算出来的值中间段还是 `-1`」说明**还在中间态**，不要拿它当终值（口径以现场抓包为准）。
+   （片段长度实测 **2~4 字符**不等：521 样本是 `yoME`（4）、`xcX`（3）。）
+2. **生成点与使用点不在同一趟**：第二趟请求**携带**的 clearance 是在**第一趟响应**的内联脚本里生成的。
+   只在第二趟请求处 hook，只能拿到「被使用的值」，跟不到生成链 ⇒ 要回到上一趟响应的内联脚本下
+   `script` 断点。
+
+**定位与还原**：
+
+- 该族第二趟 JS 是标准 OB 混淆；AST 还原后**只剩约 240 行**，可以直接静态读。
+- 全文件搜 `document["cookie"]` **只有一处写入** ⇒ 从**唯一的 writer** 倒推：
+  `_0x5bef39[0]` 即最终值，`_0x23b046` 就是传给 `go({...})` 的对象（结构同 §2.1 的 521 形态）。
+- ⚠️ **混淆数组与变量名会随请求变化**：必须每次现抽「大数组 + 自执行重排 + 解码函数」三件套，
+  **不能把上一次还原好的代码固化复用**。
+- ⚠️ **`ha` 是按趟随机的**：同一站多刷几次能碰到 `md5` / `sha1` / `sha256`（两篇来源都提到）。处置：正则抽出
+  `go({...})` 对象后**按 `ha` 分派**到对应的哈希实现（而不是写死一种），并把不同 `ha` 的样本各留一份做 oracle。
+- ⚠️ **该变体的 `go({...})` 结构是「按同族推断」**：512 样本那篇**从未打印**过这个对象，
+  只说「JS 脚本是动态的、每次用的 hash 算法可能都不一样」。⇒ 先按 §2.1 的结构去解，
+  **`jsl` 子命令无命中就说明推断不成立**（这就是可证伪点），别硬套。
+- 请求侧：**必须 session 保持**（三趟同一会话），且每次刷新都要重新抽动态对象。
 
 ### 2.2 阿里 acw_sc__v2：旧版 / 新版
 
@@ -369,6 +425,46 @@ for (xL = i, be = x(); ;) {
 **可离线求解**：响应体解密、字符串表旋转、BigInt 模幂 PoW、Drop 时间锁 PoW、遥测格式。
 **必须真浏览器**：环境校验（顺序随机 + 十几个到二十几个检测点）、`isTrusted` 事件、图片/canvas 请求。
 
+#### 2.3.1 `jsd/oneshot` 变体（首访可能是 200，参数对象不同）
+
+同一套引擎的另一入口形态。**判据**（B24 样本）：
+
+- 路径是 `/cdn-cgi/challenge-platform/h/b/**jsd**/oneshot/<...>`（对比 managed 的 `h/g/...`）。
+- **首访可能是 200**（那个站的响应不是 403）⇒ 只看状态码会判成「正常页面」。
+- 参数对象换成 `window.__CF$cv$params`（含 `r` / `m`），另有首次下发的 `safeid`。
+
+**五步链**：
+
+| 步 | 动作 | 关键产出 |
+|---|---|---|
+| 1 | 首访 | 两个 `Set-Cookie`；页面里有 `safeid` 与 `window.__CF$cv$params{r,m}` |
+| 2 | 同响应内 JS 插 `<script src=main.js>` | — |
+| 3 | `main.js` **302** 到另一地址 | 真实脚本地址 |
+| 4 | 执行后请求 `jsd/oneshot/...` | 提交**加密**数据并写 clearance cookie |
+| 5 | 进主页那次 | 把 `safeid` 写入 cookie（**全程唯一一次 JS 写 cookie** ⇒ 可当「走到第 5 步」的判据） |
+
+**加密调用点的通用识别法**（跨站点可迁移）：在主文档里 `xhr.send` 的参数上断下来，
+形态几乎总是 `Q[gP(d2.X)](TX[gP(d2.y)](JSON[gP(d2.h)](d)))`
+＝ `send( enc( JSON.stringify(d) ) )`，其中 `d` 就是**环境检测对象**。
+三条定位路线按效率排序：① xhr 断点（URL 里带 `challenge-platform`）；
+② 调用栈回溯；③ **hook `JSON.stringify` 从结果倒推**（最省事，且不依赖混淆后的变量名）。
+
+**四个实操要点**：
+
+1. **`d`（环境对象）的字段变化范围可控** ⇒ 要么写个生成函数随机增删字段，要么**直接留用抓到的这一份**；不追求每次全新。
+2. **`main.js` 每次都不同** ⇒ 必须开「本地替换（Local Overrides）」，否则**你打的断点刷新后就漂到别处**——
+   「断点突然停在无关位置」本身就是这个变体的信号。
+3. **补环境最小集**（本变体实测）：`window = globalThis` → 补上 `window.__CF$cv$params`（`r`/`t` 来自第一次响应，
+   **注意同名不同源**：作用域里能看到的 `r`/`t` 与 `api` 里那个 `false` 不是一回事）→ `XMLHttpRequest`
+   （`npm i xmlhttprequest` 挂上去，或直接删掉发送段只留加密函数）→ `document = {}`。
+4. **TLS 层要单独过**：`requests` 直接 403 `Just a moment`，而 devtools 里看不到任何挑战 ⇒
+   说明卡在 TLS/JA3。本样本用 `curl_cffi impersonate="chrome136"` 通过（`request-go` 同类库亦可）。
+   另一条线索是**请求侧与浏览器侧看到的脚本版本号不同**（`2025.9.1` vs `2024.11.0`；
+   ⚠️ 原文只说「我发现了两个版本」，**没有说明是哪个组件的版本号**，也没有提 Turnstile ——
+   本变体走的是 `jsd/oneshot`，不是 Turnstile iframe）。⇒ 先确认「你算的是哪一份 JS」，再谈参数对不对。
+
+⚠️ **不要把 `main.js` 固化**：固化后加密串会变，能否通过**未经证实**（与 §3.2「文本参与计算」同源）。
+
 ### 2.4 Akamai Bot Manager（`_abck` / `bm_sz`）
 
 **有效性判据**：`_abck` 里的 `~-1~` 变成 `~0~` 才算有效。**「能登录」≠「过了」**；`*_bm=Unknown Bot` 表示已被标记。
@@ -456,6 +552,36 @@ for (xL = i, be = x(); ;) {
 **TLS 侧**：`curl_cffi` 的 `impersonate` 必须与 JS 环境里的 UA / `appVersion` **一致**（实测 `chrome101` 对 `Chrome/101`），否则 TLS 指纹与 UA 自相矛盾。
 
 **必须真浏览器**：环境数组的完整性与行为生物特征（鼠标轨迹、键盘节奏、触摸流、服务端动态挑战）。指纹只是入场券。
+
+#### 2.4.1 扣到 Node 里跑：`toString` 长度对不上先怀疑 **VM2**
+
+本族最常见的「本地跑得通、结果就是不对」的**机制级成因**（B24 样本，`sensor.js`）：
+
+| 现象 | 说明 |
+|---|---|
+| 异常栈落在 VM 内部某个 `xv[TV.Tx(...)]` | 说明走进了**另一套分支**（被检测后换了逻辑，不是单纯的报错） |
+| 浏览器与 Node 里**同一个表达式的返回值不同** | 该返回值就是「检测是否通过」的判据 |
+| 正确值 `211627`，本地得 `216917` | 差值本身没意义，**长度与内容 diff 才是线索** |
+| 两串逐字符 diff **64 处不同** / 本地多出一截 | 多出来的字符即 VM2 注入物 |
+
+三级检测链（按顺序看，不要跳）：① 检测 node 环境 → ② **对整个自执行函数做 `toString()` 检测** →
+③ 检测**指定字符串出现的位置**。
+
+**根因**：本地用 **VM2** 跑扣下来的 JS 时，VM2 的 `transformer.js` 会把
+`INTERNAL_STATE_NAME`（`VM2_INTERNAL_STATE_DO_NOT_USE_OR_PROGRAM_WILL_FAIL`）**追加到每一个 `catch` 之后**
+（本样本 **70 处**）⇒ `fn.toString()` 里凭空多出 70 段字符串，长度与内容都对不上。
+
+**处置**：改 VM2 源码，让它在遇到控制节点（`try/catch`、`switch/catch` 等）时**不注入**该标识符
+（本样本就是注释掉那处调用）。改完长度对齐、返回值回到 `211627`。
+
+**三条可迁移结论**：
+
+1. 反爬一侧可以直接针对该字符串做检测，命中就走另一套逻辑、返回「看起来对但差一个字符」的结果
+   ——比直接拦更难查（**排错时不要只盯着算法**）。
+2. 爬虫一侧把环境框架打包到 Linux 跑时，该标识符在沙箱里不存在，很容易在 `catch` 处抛
+   「VM2 变量语法错误」⇒ 属于**必须提前摘掉**的环境噪声。
+3. **`toString` 检测没过时的排查顺序**要补齐三项：自写 `toString` 是否写对 → 是否被**格式化**过 →
+   **是否被 VM2 注入过**。前两项见 §3.2，第三项见 `references/node-leakage-and-silent-failure.md`。
 
 ### 2.5 F5 Shape / Reese84
 
@@ -561,9 +687,72 @@ POST /ap/signin  → 提交 password + metadata1   → 拿到认证 cookies
 **判层补充**：如果 Set-Cookie 里没有上表任何厂商特征，但抓包能看到「登录/提交前后浏览器多发了一个
 指向厂商域名的 POST（body 是高熵 blob）」，就按本节处理——**先定位那个 signal 请求，再决定路线**。
 
+### 2.8 雷池（SafeLine，长亭）：五趟 + 前导零比特 PoW
+
+**形态**：首访返回**正常页面**（⚠️ **原文未给状态码**，只描述「抓包看到卡在 `sdk.js`」；
+200 是**推断**），页面上塞了 `/api/waf/sdk.js` ⇒ **只看状态码发现不了**。
+
+| 趟 | 请求 | 产出 / 要点 |
+|---|---|---|
+| 1 | `GET list` | 响应体里带 **`once_id`**（形如 `<32位hex>_<n>`）；同时下发 cookie `sl-session` |
+| 2 | `GET sdk.js` | 内含**控制台检测**（`isDevToolOpened`） |
+| 3 | 请求 `seed` | 参数 `once_id` + `v=1.0.0` + `hints=<固定串>` ⇒ 返回 **`seed`** |
+| 4 | `POST inspect` | body = **AES-CBC(JSON)** ⇒ 返回 `jwt`，写入 cookie `sl_waf_recap` |
+| 5 | 再请求 `list` | 下发 **`sl_jwt_session`**（终值） |
+
+**参数级事实**（可直接省掉一轮逆向）：
+
+- `v` 与 `hints`（`webdriver,webDriverValue,vendor,headless,languages,permHook,globalThis`）实测**写死**；
+  只有 `once_id` 变化，而它来自 **第一次 `list` 的响应体**（不是 `sdk.js`）。
+- **控制台检测**：`sdk.js` 里 `isDevToolOpened()` 返回 `{opened: d, opening: g}`，两者初值 `false`；
+  随后 `u[l(376)]((e)=>{ ... })` 注册监听器把 `d` 置真。**本地替换 `sdk.js`、把赋值那一行注释掉**即可过
+  （不是删整个监听器）。
+- **`inspect` 的 body**：调用点形如 `q[n(467)](JSON[n(481)](e), i, {iv: o, padding: Q})`，`e` 就是环境对象：
+  - `key = Utf8.parse(seed)`，**`seed` 右侧用字符 `'0'` 补齐到 16 位**；
+  - `iv = Utf8.parse('1234567890123456')`（**固定值**）；
+  - `padding = n.pad.Pkcs7`（CryptoJS 默认）；**原生 AES，无魔改**。
+  - 明文 JSON 里**只有 `salt` 会变**，其余字段写死即可。
+- **`salt` = 前导零比特 PoW**（这一条最容易实现错）：枚举 `r`，取 `H = SHA256(seed + str(r))`，
+  数 `H` 的**前导零比特**，达到阈值 `t` 就返回该 `r`。站点代码的计数口径是：
+  每遇一个 hex 字符 `0` 记 4 bit，遇首个非零字符则记 `4 - bit_length(该位)`，然后 `if (!(i < t)) return r`。
+  ⚠️ **必须按 bit 实现，不能按「前导零 hex 位数」近似**。两者的分叉点已实测（`seed=7NzPy5ID`）：
+
+  | `t` | bit 口径 | 「前导零 hex 位数」口径 | 是否等价 |
+  |---|---|---|---|
+  | 16 | **20702** | 20702 | 等价（`t` 是 4 的倍数） |
+  | **18** | **154281**（哈希只有 4 个前导零 hex 字符，第 5 位是 `2` ⇒ `4×4+2=18` 才达标） | 483624（要求 5 个前导零 hex 字符） | **分叉** |
+  | 20 | **483624** | 483624 | 等价 |
+
+  ⇒ 只要站点的 `t` 不是 4 的倍数（`17` / `18` 这类），按 hex 位数实现就会给出一个**看起来完全合法**的错值。
+  **真实 oracle 三组**：`t=16 → 20702`、`t=18 → 154281`、`t=20 → 483624`（均已独立复算核对）。
+- **性能特征**：过了之后纯 Python 协程 20 并发不到 6 秒 ⇒ 本族是**准入**，不是验证码，落地可以并发。
+
+工具：`waf_clearance_solver.py leichi --seed <seed> --json '<inspect 明文>'`（salt + AES-128-CBC 一次算完；
+AES 用 FIPS-197 与 NIST SP 800-38A 的**官方向量**做自检，不需要人工核对 S-box）。
+
+### 2.9 qrator：401 + `qauth.js` + `validate`
+
+**形态**：首访 **401** ⇒ 出现外链 `qauth.js` ⇒ 最后 `POST validate` 校验。
+
+- **`param`** 与 401 那趟下发的 cookie **`qrator_jsr`** 有关；
+  **`nonce` = `param` 按 `-` 切分的第 1 段，`qsessid` = 第 2 段**（这两条是原文明确给出的对应关系）。
+- **`pow`** = 「循环哈希到**前两位为 `00`** 的次数」。⚠️ **原文没有写明每次迭代喂什么**：
+  `md5(nonce + str(i))`（每次独立）与 `md5(上一次的 hash)`（哈希链）两种读法都能自洽。
+  ⇒ 求解器**两种都实现**（`--mode index|chain`），**落地前必须用一条浏览器真实样本把 `mode` 钉死**
+  （`qrator --expect-pow <真实值>` 会做机械校验，不符即失败）；**不要把默认值当结论**。
+- **载荷**：`POST validate`，除 `param` / `nonce` / `qsessid` / `pow` 外还有 **40 个 json 表单字段**，
+  其中 `version` / `vx` **固定**，**其余 38 个由 `qauth.js` 生成**（多为 MD5 + base64），且**基本都在读浏览器环境**。
+- **定位手法**：这 38 个字段的值都是十六进制字符集 ⇒ 直接拿
+  `["a","b","c","d","e","f","0","1","2","3","4","5","6","7","8","9"]` 这类**字符集数组**去搜源码再下断点，
+  比逐行读混淆快得多（同 §2.4 的「用字面量反查分支」）。
+- **复用上限**：同一份结果实测**只能复用约 5 次** ⇒ 不能「算一次跑一批」，要按批刷新。
+
+工具：`waf_clearance_solver.py qrator --param <qrator_jsr 原值> --expect-pow <浏览器真实值>`
+（**自动切段 + pow + 机械校验**；⚠️ 不加 `--expect-pow` 时**不会**做校验，只输出候选值 —— 三处推荐口径已统一成这一条）。
+
 ---
 
-## 3. 跨族共性机制（五条硬结论）
+## 3. 跨族共性机制（六条硬结论）
 
 ### 3.1 多趟自举是常态
 
@@ -576,6 +765,8 @@ POST /ap/signin  → 提交 password + metadata1   → 拿到认证 cookies
 | Akamai | 3 次触发（自执行 + 500ms + 1000ms） | 简单档第 1 次就够 |
 | 阿里 acw | 1~2 次 POST | 新版先拿 `arg1` 再算 |
 | Reese84 | 1 GET + 1~2 POST | 删 token 会重走动态链接 |
+| 雷池 | 4 步 + 1 次终值请求 | `once_id` → `seed` → AES 的 `inspect` → 重放 `list` 拿终值 cookie |
+| qrator | 401 一趟 + `validate` 一次 | PoW 与 38 个环境字段同一次提交 |
 
 **通用判据**：同一份 JS 连跑两次结果不同、本地 cookie 明显短于浏览器、响应里出现「先拿种子再算」的两段结构
 ⇒ 按多趟处理，判据与趟数上限见 `references/multi-pass-cookie-generation.md`。
@@ -616,6 +807,24 @@ POST /ap/signin  → 提交 password + metadata1   → 拿到认证 cookies
 - Akamai：`curl_cffi impersonate` 必须与 JS 环境 UA 一致。
 - 通用：**「破解时用什么，再次使用就必须用完全一样的 IP / TLS 指纹 / UA」**。
 
+### 3.6 取证工具本身会被检测（hook / 断点都是信号）
+
+三个独立样本同时指向这一条：
+
+| 样本 | 现象 | 处置 |
+|---|---|---|
+| 加速乐（§2.1.1） | `document.cookie` hook 对**第一趟**的赋值**不触发**；放开断点时**第二趟重复请求**，关掉油猴脚本才恢复正常 | hook 只当辅助信号；改用「本地替换 + 本地/浏览器结果对比」定位 |
+| Cloudflare `jsd`（§2.3.1） | `main.js` 每次请求都不同 ⇒ 断点刷新后**漂移**到别的代码上 | 本地替换（Local Overrides）+ 挑战脚本按原始字节保存（§3.2） |
+| Akamai（§2.4.1） | 扣下来的 JS 在 Node 里被 `toString` 检测到，**走进了另一套分支**（看起来能跑，但返回值不同） | 先把运行环境对齐（含 **VM2 注入**），再谈算法 |
+
+**通用口径**：**「现象在浏览器里消失」或「行为与预期不一致」时，优先怀疑取证手段本身**。
+
+固定手法三条：
+
+1. 首轮基线必须在 **无 hook、无断点、无本地替换** 的条件下抓取（原始字节 + 网络原始响应）。
+2. 每次改动都做「本地值 vs 浏览器值」逐字段 diff（`references/fixture-validation.md`），不要只看「能不能跑」。
+3. **hook 没触发 ≠ 没有生成**：可能只是没走到你以为的那条分支 —— 这正是 §2.4.1 里「返回值不同」的成因。
+
 ---
 
 ## 4. 一致性绑定矩阵
@@ -635,6 +844,7 @@ POST /ap/signin  → 提交 password + metadata1   → 拿到认证 cookies
 | Cookie jar | 同 Session，包含挑战过程中下发的**全部** cookie | `references/session-request-chain.md` |
 | 时间 | 挑战有 TTL（Cloudflare 120s；Akamai/CF cookie 有寿命） | 不要长时间停在断点 |
 | 代码文本 | 挑战页 JS 原始字节 | §3.2 |
+| 取证手段 | 基线**不带** hook / 断点 / 本地替换 | §3.6 |
 
 ---
 
@@ -658,6 +868,11 @@ POST /ap/signin  → 提交 password + metadata1   → 拿到认证 cookies
 | 12 | 补环境跑通了但提交还是失败 | 分清「参数生成成功」与「准入通过」；本族多数厂商还要行为/时序 |
 | 13 | 同一个站过了 WAF 还是 403 | 可能**叠了两家**（边缘 WAF + 站点自研风控 SDK），分别识别 |
 | 14 | 本地值与浏览器值差一点点 | 按 `references/fixture-validation.md` 做逐字段 diff，不要只看「能不能跑」 |
+| 15 | 首访看着正常、但业务请求全被挡 | 该族可能**不拦首访**（雷池就是把 `sdk.js` 塞进正常页；原文未给状态码）⇒ 看**页面里的脚本清单 + Set-Cookie**，别只看状态码（§2.8） |
+| 16 | 算出的 clearance「像对，但中间段是 `-1`」 | §2.1.1：还在**中间态**；需要走完下一趟覆盖同名 cookie 才是终值 |
+| 17 | `toString` 检测不过（长度/内容对不上，返回值差一个数） | §2.4.1：先查 **VM2 注入**（`VM2_INTERNAL_STATE_...`），再查自写 `toString` 与是否被格式化 |
+| 18 | 加了 hook / 断点之后流程变得不正常（重复请求、分支变了） | §3.6：**取证手段本身是信号**；退回原始字节基线，改用本地替换 |
+| 19 | 请求侧 403 `Just a moment`，但 devtools 里看不到任何挑战 | §2.3.1：卡在 **TLS/JA3 层**（换 `curl_cffi impersonate`），不是 JS 层；先确认「你算的是哪一份 JS」 |
 
 ---
 
@@ -669,7 +884,7 @@ POST /ap/signin  → 提交 password + metadata1   → 拿到认证 cookies
 | 有图 / 有交互 / 需要人工成功样本基线的验证码 | `../../web-verify-patcher/SKILL.md` |
 | 要把挑战页 JS 搬进 Node 里跑（env / runner / Trace / native-like） | 本技能 `SKILL.md` + `references/env-debug-loop.md` + `references/ruishu-*` |
 | 挑战页 JS 的混淆家族识别与 AST 还原 | `../../ast-deobfuscation/SKILL.md` |
-| 纯算求解与响应解密（jsl / acw_sc__v2 / CF 响应体 / CF 字符串表） | `../../web-reverse-algorithm/references/10-waf-clearance-cookie.md` |
+| 纯算求解与响应解密（jsl / acw_sc__v2 / CF 响应体 / CF 字符串表 / 雷池 PoW+AES / qrator PoW） | `../../web-reverse-algorithm/references/10-waf-clearance-cookie.md` |
 | 业务参数签名（与准入无关） | `../../web-reverse-algorithm/SKILL.md` |
 
 **判定口诀**：**「要不要先拿到一个 cookie 才能进站」** —— 要，就是本文件；不要，就不是。

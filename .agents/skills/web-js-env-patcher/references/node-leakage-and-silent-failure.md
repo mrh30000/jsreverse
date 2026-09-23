@@ -52,6 +52,10 @@ Crypto, CryptoKey, SubtleCrypto, WebAssembly, queueMicrotask
 - 如果最终 runner 无法使用隔离 global，启动后第一步先 `Reflect.deleteProperty(globalThis, "navigator")` 等方式移除宿主 Web API，再用 `Object.defineProperty` 安装浏览器式对象。
 - 对 `URL`、`URLSearchParams`、`TextEncoder`、`TextDecoder`、`crypto`、`WebAssembly`、Streams、Events 等“浏览器也有但 Node 也提供”的对象，先判断目标是否会检测原型、描述符、异常或输出；若会检测，使用浏览器采样值或补环境实现，不要直接透传宿主构造器。
 - 目标 JS 需要的环境对象要通过 `env.js` 明确安装，不要把 Node 全局对象透传。
+- **实战起手式**：多份公开的补环境脚本（含瑞数 5 代的两份求助帖样本）第一行就是
+  `delete __dirname` / `delete __filename` —— 这不是「习惯写法」，而是因为这两个变量在
+  Node 的 CommonJS 包装函数里**天然存在**，`typeof` 一测即暴露。凡是「在 CJS 里 `require` 一个
+  JS 文件再执行」的 runner，都要先把它们删掉（或用 `vm` 上下文把包装参数留空）。
 - 最终交付前运行 `scripts/check_node_leakage.js`，并在 notes 中记录阻断结论。
 
 ### 快速自检表达式
@@ -124,6 +128,35 @@ typeof process === "undefined" || !process.versions || !process.versions.undici
     处置：把这类字段**作为输入回传**（从上一次响应读出来、传给下一次），
     不要指望模块自己记住——跨进程/跨批次（例如 Python 每次起一个新的 node）状态必然丢。
     同进程内重复调用时状态**会被保持**（加载器有模块缓存），所以这个坑只在"批量"时暴露。
+14. **运行载体注入物**：如果你的 runner 用 **VM2** 之类的沙箱执行目标 JS，沙箱本身会**改写代码文本**。
+    最常见的表现是 `fn.toString()` 的长度/内容对不上（判据见下一节）。
+
+## VM2 注入：`toString` 长度对不上的机制级成因
+
+**症状**（实测样本：Akamai `sensor.js` 扣到 Node 里跑）：
+
+- 异常栈落在 VM 内部；同一个表达式在浏览器与 Node 里**返回值不同**（说明走进了另一套分支，不是单纯报错）。
+- 正确值 `211627`，本地得 `216917`；两串逐字符 diff **64 处不同**，本地**多出一截**。
+
+**根因**：VM2 的 `transformer.js` 把 `INTERNAL_STATE_NAME`
+（`VM2_INTERNAL_STATE_DO_NOT_USE_OR_PROGRAM_WILL_FAIL`）**追加到每一个 `catch` 之后**
+（该样本 **70 处**）⇒ 任何 `Function.prototype.toString` 检测都会看到多出来的 70 段字符串。
+
+**为什么现在更容易踩**：
+
+- 该族的目标 JS **本来就在做 `toString` 检测**（Akamai 检测整个自执行函数的源码文本）；
+- 而 `toString` 检测还有另外两个经典成因——**自写 `toString` 写错/没被调用**、**代码被格式化**（多出 `\r\n` 与空格）。
+  ⇒ **三者要按顺序排**：VM2 注入 → 格式化 → 自写实现。只查前两项会一直找不到原因。
+
+**处置**：改 VM2 源码，让它在遇到控制节点（`try/catch` / `switch/catch`）时**不注入**该标识符
+（样本做法：直接注释掉那处调用）。改完长度与返回值都对齐。
+
+**两条附带结论**：
+
+- 把环境框架打包到 Linux 跑时，该标识符在沙箱里不存在，很容易在 `catch` 处抛
+  「VM2 变量语法错误」⇒ 属于**必须提前摘掉**的环境噪声。
+- 反爬一侧可以**主动检测该字符串**，命中就走另一套逻辑、返回「看起来对但差一个字符」的结果
+  ⇒ 排错时不要只盯着算法（与 `edge-waf-cookie-challenge.md` §2.4.1 / §3.6 同源）。
 
 ## 打包产物抠出来的代码：交接约定
 

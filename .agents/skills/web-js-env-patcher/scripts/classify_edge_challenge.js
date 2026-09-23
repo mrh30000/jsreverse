@@ -41,6 +41,22 @@ const FAMILIES = [
     next: 'python ../../web-reverse-algorithm/scripts/waf_clearance_solver.py jsl-first --html <521页面>（第一趟）→ jsl --json <go 参数>（第二趟）',
   },
   {
+    // 同厂商第二形态：首访 **512**、cookie 名**不带 `_s` 后缀**。
+    // 必须单独成族：照 521 的 cookie 名取值会一直拿不到 clearance，且表现为「算得对但页面还是挑战页」。
+    vendor: 'jsl', family: 'jsl-2pass-512', layer: 'purecalc',
+    label: '加速乐（jsl）两趟 512（`__jsluid_h` 命名变体）',
+    clues: [
+      ['status', '512', 3, '首访 512（不是 521）'],
+      ['cookie', '__jsluid_h', 4, '第一趟会话标识（后缀 _h）'],
+      ['cookie', '__jsl_clearance', 3, 'clearance cookie 名（不带 _s）'],
+      ['body', '__jsl_clearance', 2, '响应体出现 clearance 名'],
+      ['body', 'document.cookie', 2, '内联 cookie 赋值'],
+    ],
+    next: '**按同族推断**两趟链路与 521 一致（jsl-first → jsl；该变体的 go({...}) 原文未打印，'
+      + 'jsl 无命中即说明推断不成立），但 **cookie 名必须换成 __jsluid_h / __jsl_clearance**；'
+      + '见 references/edge-waf-cookie-challenge.md §2.1.1',
+  },
+  {
     vendor: 'alibaba', family: 'acw-sc-v2-old', layer: 'purecalc',
     label: '阿里 acw_sc__v2 旧版（unsbox + hexXor）',
     clues: [
@@ -73,8 +89,14 @@ const FAMILIES = [
       ['cookie', '__cf_bm', 3, 'Bot Management cookie'],
       ['body', 'Just a moment', 4, '经典等待页文案'],
       ['body', '[[3,24],[4,32]]', 2, 'WASM 兼容探测'],
+      // `jsd/oneshot` 是同一引擎的**非 managed** 形态：首访可能是 200（不是 403/503），
+      // 参数对象换成 window.__CF$cv$params，且首次下发 safeid。不要因为「不是 403」就判不出。
+      ['body', 'challenge-platform/h/b/jsd/oneshot', 4, 'jsd/oneshot 变体路径'],
+      ['body', '__CF$cv$params', 4, 'jsd 变体的参数对象（r / m）'],
+      ['body', 'safeid', 2, 'jsd 形态首次下发的 safeid'],
     ],
-    next: 'cf-strtable（字符串表）→ cf-decode --body <fo响应> --ray <rayId>；环境校验必须真浏览器',
+    next: 'cf-strtable（字符串表）→ cf-decode --body <fo响应> --ray <rayId>；环境校验必须真浏览器；' +
+      'jsd/oneshot 变体见 references/edge-waf-cookie-challenge.md §2.3.1',
   },
   {
     vendor: 'cloudflare', family: 'turnstile', layer: 'mixed',
@@ -201,6 +223,34 @@ const FAMILIES = [
     ],
     next: '切 web-js-env-patcher 的 ruishu-botgate.md（分代判据 + 三件套抽取）',
   },
+  {
+    vendor: 'leichi', family: 'safeline', layer: 'purecalc',
+    label: '雷池（SafeLine）WAF 五趟准入',
+    clues: [
+      ['cookie', 'sl-session', 4, '第一趟会话 cookie'],
+      ['cookie', 'sl_jwt_session', 5, '终值准入 cookie'],
+      ['cookie', 'sl_waf_recap', 4, 'jwt 承载 cookie'],
+      ['body', 'sdk.js', 3, '第一趟下发的 SDK（含控制台检测）'],
+      ['body', 'once_id', 4, '从第一次 list 响应体里取的随机 id'],
+      ['body', 'hints', 2, 'seed 请求的固定参数'],
+    ],
+    next: 'python ../../web-reverse-algorithm/scripts/waf_clearance_solver.py leichi --seed <seed> --json <inspect 明文>；' +
+      '链路与 salt 语义见 references/edge-waf-cookie-challenge.md §2.8',
+  },
+  {
+    vendor: 'qrator', family: 'jsid2', layer: 'purecalc+envfit',
+    label: 'qrator（qrator_jsid2）401 准入',
+    clues: [
+      ['status', '401', 3, '首访 401'],
+      ['cookie', 'qrator_jsr', 5, '第一趟 cookie（param 的来源）'],
+      ['cookie', 'qrator_jsid2', 5, '终值准入 cookie'],
+      ['body', 'qauth.js', 4, '承载加密参数的外链 JS'],
+      ['body', 'qsessid', 5, 'param 按 - 切分的第 2 段'],
+      ['body', 'nonce', 3, 'param 按 - 切分的第 1 段'],
+    ],
+    next: 'python ../../web-reverse-algorithm/scripts/waf_clearance_solver.py qrator --param <qrator_jsr>；' +
+      '38 个环境派生字段见 references/edge-waf-cookie-challenge.md §2.9',
+  },
 ];
 
 const LAYER_NOTE = {
@@ -209,6 +259,9 @@ const LAYER_NOTE = {
     '骨架可离线，但要先一次性从浏览器取 3 个值（源码偏移 oO、偏移 z、奇偶表 T）与未格式化源码。',
   mixed: '响应体可离线解（cf-decode / cf-strtable）；环境校验必须真浏览器（校验点顺序随机）。',
   envfit: '环境拟合族：离线性极低，优先真实浏览器取证 + 环境数组逐字段对齐。',
+  'purecalc+envfit':
+    'PoW / 编码链可离线求解（走 web-reverse-algorithm 求解器子命令）；载荷里另有 N 个环境派生字段，' +
+    '要么环境拟合、要么从浏览器取一次真实样本后逐字段对齐。',
   'envfit+pow': '环境完整性 + PoW 双门禁：PoW 可离线，完整性部分必须真浏览器。',
   pow: 'PoW 可离线求解（花 CPU），无需真实浏览器。',
 };
@@ -219,6 +272,7 @@ const NEXT_SKILL = {
   mixed: 'web-reverse-algorithm（响应体）+ 真实浏览器（环境）',
   envfit: 'web-js-env-patcher',
   'envfit+pow': 'web-js-env-patcher + web-reverse-algorithm（PoW 段）',
+  'purecalc+envfit': 'web-reverse-algorithm（PoW / 编码链）+ web-js-env-patcher（环境字段）',
   pow: 'web-reverse-algorithm',
 };
 
@@ -429,6 +483,30 @@ function selftest() {
       input: { status: '412', cookieText: '', body: 'window.$_ts={} meta.content <script>x.y.js</script>' },
       expectFamily: 'botgate',
     },
+    {
+      name: 'jsl 两趟 512（__jsluid_h 变体）',
+      input: { status: '512', cookieText: '__jsluid_h=abc; __jsl_clearance=1760151418.93|0|yoM',
+        body: 'document.cookie=...; __jsl_clearance' },
+      expectFamily: 'jsl-2pass-512',
+    },
+    {
+      name: 'Cloudflare jsd/oneshot（首访 200）',
+      input: { status: '200', cookieText: 'safeid=abc',
+        body: '<script src="/cdn-cgi/challenge-platform/h/b/jsd/oneshot/abcd/1234"></script>window.__CF$cv$params={r:"a",m:"b"}' },
+      expectFamily: 'managed-challenge-5s',
+    },
+    {
+      name: '雷池 SafeLine',
+      input: { status: '200', cookieText: 'sl-session=abc; sl_waf_recap=eyJ; sl_jwt_session=zzz',
+        body: '<script src="/api/waf/sdk.js"></script> once_id hints' },
+      expectFamily: 'safeline',
+    },
+    {
+      name: 'qrator jsid2',
+      input: { status: '401', cookieText: 'qrator_jsr=AAA-BBB',
+        body: '<script src="/qauth.js"></script> nonce qsessid' },
+      expectFamily: 'jsid2',
+    },
   ];
 
   let n = 0;
@@ -468,6 +546,8 @@ function selftest() {
   // 反例 5：--verify 用的候选族名必须都存在（防止引用漂移）
   const names = new Set(FAMILIES.map(f => f.family));
   for (const f of FAMILIES) {
+    // 新增族时最容易漏的就是这两处：只补其中一个会让「落层」在输出里显示成 undefined，
+    // 而 classify 结果看起来仍然正常 ⇒ 这里对 FAMILIES × NEXT_SKILL × LAYER_NOTE 做闭集一致性检查。
     if (!LAYER_NOTE[f.layer]) throw new Error(`族 ${f.family} 的 layer=${f.layer} 没有说明`);
     if (!NEXT_SKILL[f.layer]) throw new Error(`layer=${f.layer} 没有下一步技能`);
     if (!f.next) throw new Error(`族 ${f.family} 缺 next`);
