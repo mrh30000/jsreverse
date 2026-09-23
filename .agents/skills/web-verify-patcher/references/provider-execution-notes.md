@@ -2,6 +2,11 @@
 
 本文件用于第二阶段的授权验证流程。厂商识别只决定注意点，不代表可以自动通过。
 
+> **唯一权威源声明**：厂商判据与协议形态以 `slider-vendor-matrix.md`（滑块族 17 家）、
+> `geetest-protocol-matrix.md`（极验全家）、`tencent-tcaptcha-protocol.md`（腾讯防水墙老形态）为准。
+> **本文件只写"该家最容易踩的一条"与指针，不复述字段表与公式**（避免两处漂移）。
+> 定厂先用 `python scripts/slider_vendor_identify.py --fingerprint <file|-> --markdown`。
+
 ## 国内行为验证码
 
 ### 极验
@@ -97,7 +102,28 @@ v4 的 PoW / 动态防篡改块 / `td`+`td_sign`、九宫格、以及 16 条实�
 - 顶象：题型多，命中厂商后不要固定判滑块。详见下方「顶象」小节。
 - 百度：数字、文字、滑块、轨迹绘制都可能出现；旋转验证码见上方「百度旋转验证码」。
 - 京东云：保留 `Jcap.create`、`appId`、`sceneId` 等配置。
-- 云片：区分网页行为验证和短信/语音验证码服务。
+- 云片：区分网页行为验证和短信/语音验证码服务。滑块细节见 `slider-vendor-matrix.md` §3.4。
+
+### 其余滑块厂商（B19 新增，只给"最容易踩的一条"）
+
+| 厂商 | 最容易踩的一条 | 详细在哪 |
+| --- | --- | --- |
+| 腾讯云 turing / qcloud | `pow_answer` 随机值也能被接口"接受"，但**提交必挂**；`sprite_url` 含拖动条，必须先裁；**旧形态有 `vData`** ⇒ 走 `tencent-tcaptcha-protocol.md` 而不是本节 | `slider-vendor-matrix.md` §3.1 |
+| 360 天御 / 360CaptchaSDK | `sign` 用**请求体字段顺序**直接拼 `k+v`，按字典序重排必失败 | 同上 §3.2 |
+| 螺丝帽 Luosimao | 加密函数叫 `SHA3` 其实是 **AES**；`dots` 倒序且每点 x/y 互换；`frame` 校验 `Host` | 同上 §3.5 |
+| 安居客 | 输出 base64 后**必须**再 `encodeURIComponent`（`quote_plus`）；两种 JS 写法等价，别在 `toString()` vs `ciphertext` 上纠结 | 同上 §3.6 |
+| 房天下 | 先看状态码 `100/101/102`：`101` 是参数错、`102` 才是识别错 | 同上 §3.7 |
+| 51.com | 布局像极验（`gt_cut_fullbg_slice`）但**不是极验** | 同上 §3.8 |
+| 乐某（LOFTER） | key/iv 每次请求新生成且**同时用于加解密**，跨轮复用会静默解出乱码 | 同上 §3.9 |
+| 当当 | `requestId` 是**接口返回值**不是本地生成，别在 JS 里翻 | 同上 §3.10 |
+| 同花顺 | 三段链任一环错，现象是 `dsk/ssv` 全空，容易误判成"接口挂了" | 同上 §3.11 |
+| 东方财富 | 加密是 **XXTEA** 不是 AES/DES；给 canvas 打断点断不住，要搜 `DecodeImg` | 同上 §3.12 |
+| v5（verify5） | 走 WS；`requestId` 时间戳若是过去时间，结果必 `false` | 同上 §3.13 |
+| 雷池 WAF（SafeLine） | 43 个检测点累计 ≥100 分即判"被检测"；无图，属 `waf-challenge` | 同上 §3.14 |
+| 阿里 227（AWSC） | **降层后的 AST 产物不能替换浏览器原代码**，只能用于阅读 | 同上 §3.15 |
+| 快手 | 轨迹点会被变异，但**不变异也能过**（实测 93.8%–99.5%）⇒ 先跑基线 | 同上 §3.16 |
+| 异型拼接滑块 | 纯相似度算法准确率仅 ≈70%，批量任务必须报失败率 | 同上 §3.17 |
+
 
 ### 数美 / 树美（`shumei-captcha`）
 
@@ -114,6 +140,12 @@ v4 的 PoW / 动态防篡改块 / `td`+`td_sign`、九宫格、以及 16 条实�
 - **格式化检测**：本地替换 / 格式化 `captcha-sdk.min.js` 后提交必失败，
   检测点在路径加密函数内部，删掉或重新压缩回去 —— 见 `motion-and-coordinate.md`
   的「格式化 / 改写 JS 后提交必失败」。
+- **B19 补充（`isJsFormat`）**：检测函数名实测就叫 `isJsFormat`；判定为"已被格式化"时，
+  代码把加密 key 换成「时间戳 + 域名」⇒ 请求参数看起来完全正常但必失败。
+  **处置：只做单行压缩缓存替换，绝不美化**。另：`captchaUuid` 的随机字符表为
+  `ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678`（**相对完整 base62 少了 `I/L/O/U/V` 等易混字符**——对来源字符表的观察），
+  生成规则 = `yyyyMMddHHmmss + 18 位随机`；该站源图 600×300、渲染 300×150 ⇒ 距离 **÷2**。
+  细节见 `slider-vendor-matrix.md` §3.3。
 - 距离识别用 ddddocr `slide_match` 或平台；滑动时间取轨迹最后一组时间 +50 即可。
 
 ### 同盾（`tongdun-risk`）

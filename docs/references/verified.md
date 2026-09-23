@@ -2408,3 +2408,230 @@ python artifacts/skill-evolution/tools/append-b18-ledger.py
   ④ **JSVMP 剩余**：符号执行 / 中间代码优化，落 `ast-deobfuscation` 既有文件。
 - 候选新技能 `captcha-flow-orchestration` —— B5–B18 **十二次确认不新建**。
 - 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
+
+## 三·Q、批次 B19 · 2026-09-23（非极验滑块厂商协议形态：`web-verify-patcher` 17 族厂商对照 + 判据器）
+
+**取材口径**：单一能力族「**非极验滑块厂商的协议形态**」一次做全 —— 21 篇覆盖 **17 个指纹族**
+（腾讯云 turing / 360 天御 / 数美 / 云片 / 螺丝帽 / 安居客 / 房天下 / 51.com / 乐某 / 当当 / 同花顺 /
+东方财富 / v5(WS) / 雷池 / 阿里 227 / 快手 / 异型拼接），其中 **4 家拿到双源互证**。
+
+**选它的理由（承接 B16 遗留④与 B18 优先级①）**：
+B18 把「验证码图像识别系（~84 篇）」列为待处理最大簇，其中「**非极验厂商的滑块协议侧**」在技能库里只有零散碎片
+（`provider-execution-notes.md` 里数美/云片各几行、`tencent-tcaptcha-protocol.md` 只覆盖 `cap_union_*` 老形态）。
+本批按「同一厂商全代际/全题型」原则取材后进一步发现：**同一产品被两篇互不引用的文章描述时，
+公式与结构可以逐字互证**（360 天御、云片、安居客、腾讯云 turing 四家）—— 这才是本批能写死常量、
+并把「极验的两接口模型不能套到别家」从猜想变成结论的原因。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取知识点 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 332 | `52pojie-2052187-某x滑块补环境分析.md` | `40ebc4d313dbfde5c197b6c03a902676` | 2026-09-23 | web-verify-patcher | evolve | 腾讯云 turing 第 1 来源（双源之一）：`cap_union_prehandle` 字段全表（`sess` / `pow_cfg` / `tdc_path` / `sprite_url` 含拖动条）、提交七参数（`collect` / `tlg`=`collect.length` / `eks` / `ans` / `pow_answer` / `pow_calc_time`）、`ans` 的 `DynAnswerType_POS` JSON 形状、jsvmp 补环境四条（Proxy 吐环境 / `[object Window]` / `safeFunction` 保 native / 原型链真补） |
+| 333 | `52pojie-2126956-qcloud滑块验证.md` | `bdb35fc8866d04b125b045a215c07ad8` | 2026-09-23 | web-verify-patcher | evolve | 腾讯云 turing 第 2 来源（双源之一）：prehandle → tdc.js → collect → 本地 PoW → `cap_union_new_verify` → `ticket`+`randstr` 全链；**`pow_answer` 随机值能被接口"接受"但提交必挂**；quickjs 轻量补环境的可维护性取舍（版本升级要重做） |
+| 334 | `52pojie-2054148-360滑块验证码逆向.md` | `3a3596fffdc3df56a647f5fce3fa44e0` | 2026-09-23 | web-verify-patcher | evolve | 360 天御第 1 来源（双源之一）：前置 14 参数 + `sign = MD5(按请求体顺序直拼 k+v)`、`report = RSA_long(轨迹) + MD5(captchaId+token)`、公钥 `atob(vConfig.k)` 为 PKCS#8、**背景切 32 条竖条**与 `charCodeAt(i)%32` 递增去重顺序表、544×284 / 条宽 17 还原、轨迹字段为「对象以 x 为 key」 |
+| 335 | `52pojie-2042898-某天御滑块逆向分析.md` | `f9f2c2219476f248a0601efd35f4426e` | 2026-09-23 | web-verify-patcher | evolve | 360 天御第 2 来源（双源之一）：`sign` 遍历口径与字面串口径互证、`nonce = round(now_ms) + floor(1e8*random())`、`encryptLong` 分段长度 = `key_size_bytes − 11`、切图函数（32 上限 + 去重）与 Python 实现、**该篇 `sdkName` 被脱敏 ⇒ 该字段值只按单源对待** |
+| 336 | `52pojie-2020008-【JS逆向】yun片滑块验证码分析.md` | `ff50107a5c4d7c73f2303ca7f1ef130d` | 2026-09-23 | web-verify-patcher | evolve | 云片第 1 来源（双源之一）：get/verify 两个 JSONP 接口、`i`=AES-CBC 与 `k`=RSA(key+iv)、明文结构（`browserInfo`/`fp`/`address`/`yp_`）、`distanceX = (imgWidth − 小图宽) × (offsetX/(imgWidth − 42)) / n` |
+| 337 | `52pojie-2057170-逆向过云片滑动验证码.md` | `5a611f1e8bb3323ed3e11bc3dc44daef` | 2026-09-23 | web-verify-patcher | evolve | 云片第 2 来源（双源之一）：可运行 Python + 内联公钥 JS、**轨迹点数 > 50 必须抽稀**（`len//50` 保首尾）、两篇 `cb` 生成方式不一致 ⇒ 服务端不校验该字段 |
+| 338 | `52pojie-1756696-【验证码逆向专栏】安某客滑块逆向.md` | `5809c59df10945d8d2c1bd17bf36f46a` | 2026-09-23 | web-verify-patcher | evolve | 安居客第 1 来源（双源之一）：三接口（首页 / `getInfoTp` / `checkInfoTp`）、**AES key = iv = sessionId 的奇数下标字符**、`dInfo` 需 `encodeURIComponent`、图片 480×270 → 渲染 280×158、样本轨迹缩放法 |
+| 339 | `52pojie-1796423-某居客滑块逆向分析.md` | `7f0d06e2281145fa322bc918221dfd37` | 2026-09-23 | web-verify-patcher | evolve | 安居客第 2 来源（双源之一，硬扣路线）：`AESEncrypt` 实现逐行互证、**输出用 `JSON.stringify(ciphertext)` 而非 `toString()`**（Python 侧 = `base64.b64encode` + `quote_plus`）、写死的指纹字典与 `_taN()` 分支不执行的判据 |
+| 340 | `52pojie-1846991-【验证码逆向专栏】螺丝帽人机验证逆向分析.md` | `478d8ca03de1baf87a4876010e8379ba` | 2026-09-23 | web-verify-patcher + ast-deobfuscation | evolve | 螺丝帽 Luosimao：五接口链（widget→request→frame→user_verify→submit）、**函数名叫 `SHA3` 实为 AES**、30 片（上下两半各 15，20×80）与 `l` 数组语义、`dots` **倒序且每点 x/y 互换**、**`frame` 校验 `Host`**；伪 OB 判据（有大数组但无数组移位/无解密函数）第 1 实例 |
+| 341 | `52pojie-1846995-【验证码逆向专栏】房天下登录滑块逆向分析.md` | `4073a805b88969de656b200a070a9d97` | 2026-09-23 | web-verify-patcher | evolve | 房天下：三接口 + 状态码语义（`100` 成功 / `101` 参数校验失败 / `102` 缺口识别错误）、41 项环境指纹表、**自定义 6bit 位压缩**（`join('!!')` → `encodeURIComponent` → 二进制串 → `parseInt(bin6,2)` 索引固定字符表）与轨迹同套压缩 |
+| 342 | `52pojie-2043649-某美官网案例滑块逆向.md` | `5478b5f8e2e402c5e5ee59ee7468e5e1` | 2026-09-23 | web-verify-patcher + ast-deobfuscation | evolve | 数美：**`isJsFormat` 自定义格式化检测 ⇒ 美化后 key 被换成「时间戳+域名」必失败**、`captchaUuid` 字母表（剔除 `I/L/O/U/V` 等易混字符）+ `yyyyMMddHHmmss` 前缀、`tm/tb/ly/fr` 字段、图片 600×300 → 渲染 300×150（距离 ÷2）；**「可读产物 ≠ 可替换产物」第 1 条实证** |
+| 343 | `52pojie-2040415-乐某自研滑块逆向分析.md` | `c979c9313089edb4a8086d0bb1985a1d` | 2026-09-23 | web-verify-patcher | evolve | 乐某（LOFTER）自研：`passport = SHA256(密码)`、图片以 `data:image/png;base64,` 内联、AES-CBC 且 **key/iv 每次请求新生成并同时用于加解密**、请求头 RSA(key+"-"+iv)；**头名本身只在截图里（正文只有函数名 `x_encseckey_get`）⇒ 已标注待复核** |
+| 344 | `52pojie-2025578-某当网登录滑块逆向.md` | `48f46f127ecfc1150c09d101b535d5c0` | 2026-09-23 | web-verify-patcher | evolve | 当当：四接口（`getSlidingVerifyCode` / `checkSlidingVerifyCode` / `accountLogin` / `getRankey`）、`permanent_id` 生成链（时间 + `MD5` 前 8 位转十进制取 6 位 + 双随机 + `DDClick521`）、`sign = AES(key=rankey)`（首轮密钥为空串）、**`requestId` 来自接口返回值**、`point_json` 用图片接口返回的 `encryptKey` |
+| 345 | `52pojie-2035508-某花顺登录滑块逆向.md` | `2b5f6d9650806247c6779d3482a05c37` | 2026-09-23 | web-verify-patcher | evolve | 同花顺：`getGS` → `dologinreturnjson2` → `getPreHandle` → 校验 → 登录、`crnd` 生成（base36 后 8 位重复两次）、`passwdsalt` 三段链（SHA256 → XOR(base64(ssv), n1) → HMAC_SHA256(MD5(pwd)) → XOR(SHA256(dsv)) → RSA）、滑块 `phrase = x;inity;w;h` 与 `inity = data.inity/195*opt.height`、**该链错一环保现象是 `dsk/ssv` 全空** |
+| 346 | `52pojie-1918745-[51]网站滑块验证码还原.md` | `ebabf76572969134d3df62462b492bea` | 2026-09-23 | web-verify-patcher | evolve | 51.com：**HTML 用极验早期同款 `gt_cut_fullbg_slice` 布局但协议完全不同**（13×25 片 → 260×100，`token = md5(challenge+times+point)`）⇒ 反例黑名单第 1 条「`gt_cut_*` 不等于极验」的判据来源 |
+| 347 | `52pojie-2042937-某财富网滑块逆向.md` | `84843f17c7c133e5349611379ae529d2` | 2026-09-23 | web-verify-patcher | evolve | 东方财富：cookie `qgqp_b_id` → `browserid`（20 位数字，首位 1-9、后 19 位 0-8）、**`request = base64(XXTEA(明文))`（不是 AES/DES）**、pipe 分隔明文格式（含 `d=x,y,t:…` 轨迹串）、26×2 = 52 片 `background-position` 还原、距离 `int(box_x − 8)`、canvas 断不住要搜 `DecodeImg` |
+| 348 | `52pojie-2038972-v5滑块验证逆向.md` | `9ae271b33cb8b2ced6a781d2f4f40e18` | 2026-09-23 | web-verify-patcher + websocket-reverse | evolve | v5（verify5）**唯一 WS 承载样本**：一次挑战 6 发 3 收、待发串按 1024 字节分片加消息头、**AES-CTR + NoPadding 且 `btoa(IV + 密文)`**、key 由 token 末字符 charCode%2 按奇偶下标拆分、轮间 key 用上轮返回值前 32 位；**`requestId` 时间戳若为过去时间必 false**；WS 层取证与拆帧落 `websocket-reverse` 新案例 |
+| 349 | `52pojie-1995970-雷池WAF滑块版本逆向分析.md` | `384c4d6afbb10c876b048688b89fb129` | 2026-09-23 | web-verify-patcher | evolve | 雷池 WAF（SafeLine）滑块：五步链（首页 → `challenge.js` → `issue` → `calc.js`(Worker+Blob+wasm) → `verify`）、cookie `sl-session` / `sl-challenge-jwt`、**43 个检测点累计 ≥100 分即判"被检测"**、wasm 固定四步 `reset → arg → calc → ret`、轨迹不校验；**无图 ⇒ 应判 `waf-challenge` 不进 Phase-2** |
+| 350 | `52pojie-1903141-浅逆某里227滑块.md` | `ce9d3b899c0966172f416ddf460f88e3` | 2026-09-23 | web-verify-patcher + ast-deobfuscation | evolve | 阿里 227（AWSC 无痕）：`nocaptcha/analyze.jsonp` 与 `n` 参数、脚本顺序 `awsc → et_f → fireyejs → nc`、`m.init` 后取 `__fy.getFYToken`、补环境三项（`getComputedStyle` 全属性 / `getEntriesByType` / font 指纹）、`s[]` 环境数组逐项含义（`s[5]`/`s[46]`/`s[26]`/`s[23]`/`s[90]` 轨迹且经过异或）；**「多层 switch → 单 switch」降层只能用于阅读、无法替换浏览器原代码** |
+| 351 | `52pojie-1897823-快手滑块轨迹分析.md` | `459fcc7225d433ce5c5ad22564d5f51f` | 2026-09-23 | web-verify-patcher | evolve | 快手：配置接口 `/rest/zt/captcha/sliding/config` 返回 `a/q/d/sx/sy/ix/iy`、坐标换算站点常量（`/276*1000`、`−282.25`）、**轨迹点两类变异**（`x' = x*sx+ix`；含 `d` 时按 `a` 起隔 `d` 个点变异、只含 `q` 时第 `a+1` 点起）、**不做变异也能过**（200/500/1000 次实测 99.5% / 98.2% / 93.8%）⇒ 先跑基线再决定是否复刻变异 |
+| 352 | `52pojie-1881668-异型滑块算法解决思路.md` | `df85db2008897cad3b40d58179b7e276` | 2026-09-23 | web-verify-patcher | evolve | 异型**拼接错位**滑块：同一站并存标准滑块与拼接滑块两种、纯算法路线（灰度 → 按 y 切 → 转置 → 归一化 → 相邻列余弦相似度取最低）、**准确率仅约 70%（颜色相近即判错）⇒ 批量任务优先走模型并报失败率** |
+
+### 本批次技能变更汇总（B19）
+
+**新建技能 0 个**（B5–B19 **十三次**确认不新建 `captcha-flow-orchestration`）；**演化既有技能 3 个**；附带修复 4 项。
+
+- **`web-verify-patcher`（主，最大增量）**
+  - 新增 `references/slider-vendor-matrix.md`（**41 KB，「厂商判据 + 链路 + 参数配方 + 该家专属坑」的唯一权威源**）：
+    §1 30 秒分流 · §2 17 族速查矩阵 · §3 逐家形态（每族四段固定）· §4 跨厂商共性 8 条 · §5 判不出时的证据补齐表 ·
+    §6 **反例与黑名单 10 条** · §7 来源与口径（21 篇 + 推导值声明 + 与其他文件的分工）。
+    强度标注贯穿全文：`★双源` / `单源` / `待复核`，**单源结论不写成定律**。
+  - 新增 `scripts/slider_vendor_identify.py`（零依赖判据器）：17 族规则 + **排他 veto**（360 天御 vs 腾讯云同名不同家）+
+    **重叠信号去重**（否则 `yunpian` 被 `captcha.yunpian.com` 顺带重复计分、阈值形同虚设）+ 图片几何提示；
+    `--fingerprint / --list / --explain / --markdown / --json / --min-score / --selftest`；
+    **退出码 0 判出 / 2 输入错误 / 3 证据不足（`unknown` 是正常结果，不是失败）**；
+    `--selftest` **71 项**，含 19 条正例（含"只靠 header 名"一条、**两条路由各一条**）、2 组判别对、
+    **5 条反例（必须 `unknown`）**、阈值行为、分数单调性、确定性、路由项 `next_steps` 必须指向**别的文件**、
+    以及 **「每条规则声明的小节必须在文档里真的存在」**（B13 判据④）。
+  - 增量：`references/motion-and-coordinate.md` 新增「轨迹格式与变异」节（**六种容器形态**对照 + 快手变异 + 逐站坐标换算常量表 8 行）与
+    轨迹字段对照表 9 行；`references/provider-execution-notes.md` 新增**唯一权威源声明** + 15 行厂商「最容易踩的一条」指针表 + 数美 `isJsFormat` 补充；
+    `SKILL.md` 新增分流条目与 description 触发词（18760 → 20326 字节 = **108.4%**，门禁 ≤150%）。
+- **`ast-deobfuscation`（演化）**：`references/ob-variant-taxonomy.md` 新增
+  **§八「伪 OB —— 有大数组但没有数组移位与解密函数」**（三条判据 + 三个固定顺序的 pass + 「不要对浅壳走主动调用路线」）
+  与 **§九「可读产物 ≠ 可替换产物」**（数美格式化 / 阿里 227 降层两条实测依据 + 双文件存放约定 + 4 条反例）；
+  `SKILL.md` 导航行补两节指引（17305 → 17724 字节 = **102.4%**）。
+- **`websocket-reverse`（演化，本轮第 3 个技能，首次因 B19 材料被触碰）**：
+  新增 `references/cases/case-ws-carried-captcha.md`（**WS 承载验证码/风控挑战**的取证顺序：先记「发 N 收 M」时序形状再动加密、
+  1024 分片与消息头、`btoa(IV+密文)` 的 AES-CTR、key 会话内滚动派生、时间戳新鲜度；**「不能重连」「不能 HTTP 重放」两条硬约束**；
+  5 条反例）；`SKILL.md` 案例区与关联区各接一线（10422 → 11130 字节 = **106.8%**）。
+
+**附带修复（7 项，其中 4 项由独立 judge 抓出）**
+
+1. `slider-vendor-matrix.md` 初版把 WS 案例文件名写成 `verify5-ws-captcha.md`（实际文件名为 `case-ws-carried-captcha.md`），
+   由 `check_skill_integrity.js` 的引用可达性检查**当场阻断**并暴露 —— 跨技能 `../../` 解析链工作正常。
+2. 判据器初版存在**重叠信号重复计分**缺陷（`yunpian` 是 `captcha.yunpian.com` 的子串），
+   导致 `--min-score 4` 阈值失效；由 `--selftest` 的阈值断言抓出，改为「同一规则内 needle 互为子串时只计更长的那个」。
+3. 来源核对（`b19-verify-sources.py`，175 项字面量）抓出 3 处**需要降级或标注口径**的描述：
+   360 天御的 `sdkName=360CaptchaSDK` 仅单源（另一篇该字段被脱敏）、乐某的请求头名只在截图里（正文只有 `x_encseckey_get`）、
+   同花顺/v5/数美的厂商名是由原文 base64 域名解出的**推导值**。三处均已改为显式标注（单源 / 待复核 / 推导值声明）。
+4. **Judge A（保真度）抓出 4 处描述过强/写错**（详见 §独立评审）：双源家数 5→4；腾讯云 §3.1 的 `ans`/`prehandle` 字段实为**单源**；
+   `ob-variant-taxonomy` §八 把"某初滑块"当伪 OB 举例是**错的**（该篇明写三要素 ⇒ 它是真 OB，已改为反例）；
+   安居客"两篇逐行一致 + `toString()` 会得到错值"的断言过强（两篇输出行不同但都实测通过 ⇒ 两种写法等价）。
+5. **Judge B（可用性）抓出 4 处"照着办会错"**：判据器把腾讯**防水墙旧形态**（`vData`）误判成 §3.1 新形态（已加 `vData` 排他 veto + 新增一条路由规则）；
+   `headers` 的 **key 没有进语料**，`x-encseckey` 这类"指纹在 header 名上"的规则永远匹配不到（已修 `build_corpus` 并加断言）；
+   v5 的 `1|1|` 是**第二条**消息的头（首版写成第三条）、且 `a|b|` 并非来源内容（已降级为"按抓包实测"）；
+   360 切图伪代码缺 `out = []` 初始化、"等价"的说法在 `len(s) < 32` 时不成立（已补初始化并收紧措辞）。
+6. **Judge B 复审又抓出 6 项开放项**：`browsercli` 调用形式写错（本技能规定必须 `browsercli call <tool>`，
+   案例文件写成 `browsercli list_network_requests`）、360 切图算法**缺样本与期望值**（已补自算示例 + 排列约束 oracle）、
+   `--markdown` 对路由项仍打印本文件 §2（已改为打 `redirect`）、docstring 规则条数 18→19、
+   `flat` 是死代码（已删）、§1「反之亦然」与实现不符（已改为"互斥方向单向"并说明为何反向不加 veto）。
+   增量复核（Judge A/B）另指出：**两条路由只有一条进了自检** ⇒ 已补极验路由正例 + `next_steps` 必须指别的文件；
+   `build_corpus` 的 `flat` 返回值从无使用者 ⇒ 已删（自检 **71 项**）。
+7. **Judge C（机械）抓出 1 个即时崩溃**：修锚点正则时引入 `re` 未导入 ⇒ `--selftest` 直接抛 `NameError`（已修）。
+8. Judge C 另抓出 2 处**断言弱化**并已加固：`ambiguous` 分支从未真正执行（新增"两家并列强信号"用例）、
+   锚点检查用子串匹配（`### 3.1` 可被 `### 3.10` 蒙混）⇒ 改为带边界的正则并加反例断言。
+   **另修正本表自身的口径错误**：`websocket-reverse` 的体积基线是 **10422** 而非 7169 ⇒ 实际 **106.8%**（首版报告写的 155.2% 是我算错基线）。
+9. **增量复核（Judge A/B 第二轮）**：两条路由只有一条进了 `--selftest`（半覆盖）⇒ 补极验路由正例 3 项，
+   并把「路由项 `next_steps` 必须指向**别的文件**」提成断言（自检 66 → **71 项**）。
+10. **工具链静默失败（收尾时抓到）**：`b19-md5.py diff` 的加载器只认 `md5  path`（两空格）格式，
+   而冻结/终态基线是 TSV ⇒ 两边都解析成空字典，**静默报告 `added=0 removed=0 changed=0`**
+   （与 B18 的 `md5sum` `*` 前缀问题同型：症状都是「看起来什么都没变」）。已改为兼容 TSV 并复算：
+   **真实差异 = 7 个文件被 judge 修复改动、2 个未再动**（`ast-deobfuscation/SKILL.md`、`websocket-reverse/SKILL.md`）。
+11. **扩了校验器的检查面（Judge C 提出）**：`check_skill_integrity.js` 的「小节重号」检测正则只认半角 `.` / 空格，
+   对**中文序号小节**（`## 1、xxx` —— 本批新矩阵正好全是这种）**完全不可见** ⇒ 补全角 `、` / `．`，
+   并做**阳性验证**（`## 1、` 与 `### 3.1` 能解析、`## 反模式` 不解析）；全库重跑仍 **0 阻断 0 告警**。
+12. **Judge C 的通道中途失效**（其自述「channel 掉了，无法复跑」）⇒ 按 B8/B11 既定规则**不以其未复跑的部分为准**：
+   它提出的 3 条（冻结基线陈旧、缺终态快照、正则覆盖率盲点）由主执行者**逐条自跑补位** ——
+   终态快照已生成（`b19-final-md5-20260923.tsv`）、差异已复算（见第 10 条）、校验器已扩面并阳性验证（见第 11 条）；
+   它未能复算的「自检 71 项」也由主执行者重跑并留了输出（71/71）。
+
+### 独立评审（Judge A / B / C）
+
+评审前**先冻结**（`artifacts/skill-evolution/b19-freeze-20260923-1020.tsv`，9 个文件；评审期间只做修复、不做顺手改 —— B9 教训），
+派 3 名独立 judge，分别按**保真度 / 新用户可用性 / 机械校验**三个视角评审，原始意见见
+`artifacts/skill-evolution/judge-findings-20260923.md`。
+
+| Judge | 视角 | 提出的问题 | 处置 |
+| --- | --- | --- | --- |
+| A | 来源保真度（逐字面量 grep） | 2 major + 9 minor（含双源家数、单源字段被当双源、伪 OB 举例错误、`toString()` 断言过强） | 全部回源复核后**成立**，当场修完 |
+| B | 新用户可用性（真跑命令） | 4 major + 8 minor/nit（旧形态误判、headers key 未入语料、v5 消息头归位、伪代码缺初始化、命令 cwd/schema/误差提示） | 同上 |
+| C | 机械校验（跑命令 + 算数字） | 1 major（`import re` 缺失致自检崩溃）+ 4 nit（2 处弱断言、体积口径、`--help` 元变量） | 同上 |
+
+**合计 3 个 major / 27 个 minor+nits（含第二轮 O/N 共 6 项与增量复核 2 项），全部回源复核后成立，0 驳回**
+（本轮无"judge 误判需驳回"的条目）。**唯一未采纳的一项**：Judge B 建议给旧形态路由也加反向 veto，
+经复核**不采纳** —— 两代参数同时出现的异常样本会让双方都被清零、只能返回 `unknown`，
+不如靠 `vData` 强信号单向入选（已在矩阵 §1 写明理由）。
+**棘轮结论：keep** —— 三个视角都没有提出"应回滚本次演化"的意见，全部意见都是**可修复的局部缺陷**，
+修复后正向断言（71 项自检 / 175 项来源字面量 / 机械校验 0 阻断 0 告警 / 镜像 0 mismatch / 切图顺序 oracle PASS）全绿。
+judge 的三条**最有价值**发现：① `ob-variant-taxonomy` §八 的举例**自相矛盾**（真 OB 被当伪 OB）——
+这类"文档内部逻辑错误"只有逐条回源才能发现；② 判据器把**同一家的新旧形态**混为一谈（`vData` 分水岭）；
+③ `headers` 的 **key 侧信号**永远匹配不到（规则写了但设计上不可达）。
+
+### 本批次的方法论增量（可复用）
+
+1. **「单源 vs 双源」必须在文档里逐字段标注，不能整节标**：本批 4 家双源互证拿到的都是**公式与结构**，
+   而个别**字段取值**仍只有一篇给出（360 的 `sdkName`）。把「双源」当整节标签，会让单源字段被误当稳定知识。
+2. **来源核对要按"字面量"逐条 grep，并且要预设假阴性**：本批 7 处未命中里，5 处是我自己的核对清单写错
+   （来源把 `yp_riddler_id` 缩写成 `yp_`、把请求头写成函数名 `x_encseckey_get`、厂商名在 base64 里），
+   只有 **2 处是真问题**（单源字段被写成双源、头名只在截图里）。
+   ⇒ **未命中先回源复核，再决定改内容还是改清单**（B16 教训的第二次应验）。
+3. **判据器必须自带"排他 veto"与"反例断言"**：两家产品命名高度相似（360 天御 vs 腾讯云 turing）时，
+   只有 veto 才能给出确定答案；而**只有反例断言才能防止判据器退化成"什么都能认"**——
+   本批 5 条反例全部走 `unknown` 且返回退出码 3。
+4. **阈值类逻辑必须配"能失败"的断言**：`--min-score` 的失效**不会**让任何正例测试变红（正例分数本来就高），
+   只有专门构造"刚好在阈值边界"的输入才抓得到。这与 B8「往返自检抓不到对称的错误」是同一类问题。
+5. **「同一份知识唯一权威源」在本批的落地方式**：厂商细节全部进新矩阵，
+   `provider-execution-notes.md` 只留「该家最容易踩的一条 + 指针」并在文首声明权威源，
+   轨迹编码统一放 `motion-and-coordinate.md`，WS 拆帧统一放 `websocket-reverse` 的案例文件 —— 三处互不复述。
+6. **技能名覆盖 ≠ 能力覆盖（B7 判据第二次命中）**：`websocket-reverse` 自建库起只有 1 个案例文件，
+   本批的 v5 是该技能第一次拿到"WS 承载的不是业务数据而是挑战协议"的样本；
+   **归属正确但内容为空**时同样按演化处理，不新建技能。
+7. **「冻结 → 终态」的差异必须自己算出来并留痕**：评审期间的修复会让冻结基线失效，
+   而「哪些文件被改过」正是「评审到底有没有起作用」的证据（本批 7 改 2 不动）。
+   **注意工具会静默骗你**：TSV 被当成空格分隔 → 解析为空 → 报「0 变更」。
+   判据：**基线对比脚本必须在有差异时有差异，并对它做一次「已知有改动」的阳性验证**。
+8. **给校验器扩检查面时，必须同时做「阳性验证」与「全库重跑」**：本批把重号检测的分隔符补上全角 `、` 后，
+   先证明 `## 1、xxx` 能被解析（否则「0 告警」可能只是「新规则根本没生效」），再全库重跑确认没翻出历史遗留。
+9. **文档里给了「自算示例」就必须配「机械判据 + 留痕路径」**：360 切图顺序的示例是本批自算的，
+   因此同时写了先验约束（**输出必须是 `0..31` 的排列**）；一次性 oracle **只作流程留痕、不进技能库**
+   **并与「双源结论」分级**（自算 ≠ 来源证据）。
+10. **技能之间存在"跨语料族协作点"时，两边各写一半**：v5 的厂商参数在 `web-verify-patcher`、
+   帧结构与取证顺序在 `websocket-reverse`，两处互放指针且明确"谁是权威源"——
+   避免同一段知识在两处漂移（B4 教训）。
+
+### 本批次明确留白（写进文档而非假装支持）
+
+1. **`slider_vendor_identify.py` 的图像侧覆盖有限**：除「异型拼接」靠域名/文案线索外，
+   **纯图片输入无法判厂商**（设计如此，返回 `unknown`），不假装能做图片分类。
+2. **4 家之外的 13 家仍是单源**：螺丝帽 / 房天下 / 数美 / 乐某 / 当当 / 同花顺 / 51.com / 东方财富 / v5 / 雷池 / 阿里 227 / 快手 / 异型拼接，
+   已逐篇标注 `单源`；其中快手变异点的触发条件来源自述「为多次测试归纳、未跟栈」。
+3. **3 处「来源表述含糊」未强行补全，只给复核方法**：
+   螺丝帽 `v = MD5(...)` 的入参、同花顺 `passwdsalt` 里"取等号后段作 HMAC key"、快手后续变异点的递推式 ——
+   均已在文档里写明「落地前用浏览器怎么对齐」，**不给猜测值**（未知常量不猜，B8 口径的延续）。
+4. **未做图像侧新增**：本批 21 篇全是协议侧，缺口识别/裁图/几何仍以
+   `tile-scramble-and-coordinate-mapping.md` 与 `captcha-model-training.md` 为准，本轮不动。
+5. **`web-verify-patcher` 的类型清单仍是三处并行维护**（`SKILL.md` 分类标签 / `captcha-types.md` / `solution-playbooks.md`），
+   结构性收敛自 B5 挂账至今，本轮仍未做（本批只加了厂商触发词与分流条目）。
+6. **`references/verification-workflow.md` 的"必须选一个厂家族"措辞与 `unknown` 路径冲突**（Judge B 提出）：
+   本轮未触碰该文件故未改，**记入下一批**（改的时候要连带复核它引用的分类标签口径）。
+7. **`ali-227` / `safeline` 的补环境规则未做成可执行件**：两者都是"环境数组/检测点 → 必须逐项实测"，
+   本批只给判据与来源清单，**不提供通用补环境脚本**（通用补环境属 `web-js-env-patcher`，按分工不在这里重复实现）。
+8. **360 切图顺序数组的示例是本文件自算的**（来源未给样本），已配机械 oracle（`verify-360-slice-order.py`
+   断言「输出必须是 `0..31` 的排列」）——**自算示例不算来源证据**，故不与双源结论同级。
+
+### B19 新增能力的复跑命令
+
+```bash
+# 1) 厂商判据器自检（71 项断言：19 条正例（含 2 条路由）+ 2 组判别对 + 5 条反例
+#    + 阈值/单调性/确定性 + 路由 next_steps 必须指别的文件 + 文档锚点可达性）
+python .claude/skills/web-verify-patcher/scripts/slider_vendor_identify.py --selftest
+
+# 2) 厂商清单与文档锚点（应列出 17 族 + 极验路由）
+python .claude/skills/web-verify-patcher/scripts/slider_vendor_identify.py --list
+
+# 3) 用指纹判厂（正例：应判 tencent-turing，退出码 0）
+python .claude/skills/web-verify-patcher/scripts/slider_vendor_identify.py -f artifacts/skill-evolution/b19-run-20260923-1020/fp-turing.json --explain
+
+# 4) 反例：陌生指纹必须 unknown 且退出码 3（这是"没判出来"，不是失败）
+python .claude/skills/web-verify-patcher/scripts/slider_vendor_identify.py -f artifacts/skill-evolution/b19-run-20260923-1020/fp-unknown.json --markdown
+
+# 5) 腾讯防水墙旧形态必须被路由出去、不得判成 §3.1 新形态（应输出 tencent-tcaptcha-old）
+python .claude/skills/web-verify-patcher/scripts/slider_vendor_identify.py -f artifacts/skill-evolution/b19-run-20260923-1020/fp-tencent-old.json --explain
+
+# 6) 来源保真度核对（175 项字面量逐篇 grep，0 未命中为通过）
+python artifacts/skill-evolution/tools/b19-verify-sources.py
+
+# 7) 整体机械校验（0 阻断 / 0 告警 为通过）
+node artifacts/skill-evolution/tools/check_skill_integrity.js --root . --markdown
+
+# 8) 双镜像一致性（0 mismatch 为通过）
+python artifacts/skill-evolution/tools/mirror-report.py .
+
+# 9) 360 切图顺序的机械 oracle（**pipeline-only，不进技能库**；自算示例 + "必须是 0..31 的排列"约束，PASS 为通过）
+python artifacts/skill-evolution/b19-run-20260923-1020/verify-360-slice-order.py
+
+# 10) 台账幂等复跑（应打印「已登记，跳过」）
+python artifacts/skill-evolution/tools/append-b19-ledger.py
+```
+
+### 下一批（B20）取材建议（承接本节）
+
+- 待处理 **452** 篇（台账 352 条后；候选 804）。
+- 优先级：
+  ① **验证码图像识别系剩余（~84 篇）**：真拼图 / 双缺口 / 旋转系的**协议侧**仍薄（本批只做了非极验滑块）；
+     `web-verify-patcher` 的**类型清单三处并行维护**的结构性收敛仍在挂账（B5 起，已连续 14 轮）。
+  ② **Cloudflare 系（CSDN 24 篇同题）**：B17 起连续三轮列为候选，B18 已实测确认信息量极低
+     （22/24 截断、0 代码块）⇒ 正确处置是**做工证伪 + 只登记不落地**，并当作「语料同质化」案例写进 `forum-corpus-archival`。
+  ③ **sign / 协议参数系剩余**：继续按「同一平台 ≥2 篇」聚簇补蓝图（B17/B18 两轮验证收益最高）。
+  ④ **JSVMP 剩余**：符号执行 / 中间代码优化，落 `ast-deobfuscation` 既有文件。
+- 候选新技能 `captcha-flow-orchestration` —— B5–B19 **十三次确认不新建**。
+- 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。

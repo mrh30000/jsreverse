@@ -168,6 +168,10 @@ WebSocket 逆向后建议沉淀：
 
 - `references/cases/case-websocket-protobuf.md`（含 protobuf WS 完整流程：方言判据、两层结构、
   `payloadType` 路由、gzip 内层、round-trip 验收口径，以及与 `protobuf-reverse` 的分工）
+- `references/cases/case-ws-carried-captcha.md`（**WS 承载验证码/风控挑战**：先记"发 N 收 M"的时序形状再动加密、
+  1024 分片与消息头、`btoa(IV+密文)` 的 AES-CTR、key 在会话内滚动派生、时间戳新鲜度；
+  **不能重连、不能 HTTP 重放**两条硬约束；厂商侧配方见
+  `../web-verify-patcher/references/slider-vendor-matrix.md` §3.13）
 
 完整案例参考：`docs/reference/reverse-workflow.md` + `scripts/cases/` 中的实际站点抽象 case。
 
@@ -175,6 +179,9 @@ WebSocket 逆向后建议沉淀：
 
 ## 关联
 
+- **WS 帧里承载的是验证码/风控挑战**（没有 HTTP 参数加密、交互结果只从 `onmessage` 回来）：
+  先读 `references/cases/case-ws-carried-captcha.md` 的取证顺序；厂商与提交参数见
+  `../web-verify-patcher/references/slider-vendor-matrix.md` §3.13（v5 / verify5）。
 - **WS 帧里的 protobuf / gRPC 编码**：`protobuf-reverse`（方言判据、零依赖 wire 解码、从生成 JS 抽 `.proto`、
   两级逐字节验收）
 - 完整六阶段工作流（Observe / Capture / Rebuild / Patch / PureExtraction / Port）：`skills/browsercli-playbook/SKILL.md` + `docs/reference/reverse-workflow.md`

@@ -138,7 +138,7 @@ description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反�
 - 运用 LLM 大模型辅助代码清洗、语义命名推导、VM 结构分析与思维链去虚拟化时，读 `references/llm-deobfuscation-prompts.md`。
 - 处理控制流平坦化、opcode 分发器和 VM 类 handler 时，读 `references/control-flow-and-opcode-patterns.md`；开始把状态机归约回 if/while/break/continue 前，先读 `references/control-flow-reduction-rules.md` 逐条核对前提。
 - **CFF 还原前先读 `references/mba-and-dispatcher-reduction.md` §3**：`while+switch` 的还原依赖「字符串数组已还原」这一前置，顺序错了不报错、直接清空函数体。多层位切片 dispatcher（`Ci = 31 & li; mi = 31 & fi; ...`）与 MBA 混合布尔算术表达式的归约配方也在该文档。
-- **在线反混淆网站只解开一部分时，读 `references/ob-variant-taxonomy.md`**：按「数组元素掺非字符串 / 去掉自执行 / 打乱 base64 码表 / 格式化检查语句 / 解密函数多重赋值分身 / 字典混淆（value 可为函数）/ 外衣函数嵌套」七类变体对号入座；含「导出目标函数 + AST 主动调用」的通用配方，可在完全不还原算法的前提下拿到结果。
+- **在线反混淆网站只解开一部分时，读 `references/ob-variant-taxonomy.md`**：按「数组元素掺非字符串 / 去掉自执行 / 打乱 base64 码表 / 格式化检查语句 / 解密函数多重赋值分身 / 字典混淆（value 可为函数）/ 外衣函数嵌套」七类变体对号入座；含「导出目标函数 + AST 主动调用」的通用配方，可在完全不还原算法的前提下拿到结果。**B19 增补两节**：§八「伪 OB」——有大数组但**既没有数组移位、也没有解密函数**时（三条判据），直接按下标取值即可，**不要对浅壳走"主动调用"路线**；§九「可读产物 ≠ 可替换产物」——降层/格式化产物**只能用于阅读**，替换回浏览器必须用与原始字节同形态的版本（数美 `isJsFormat`、阿里 227 降层实测）。
 - **`switch` 嵌套多层、起始 index 由调用传参决定时，读 `references/multi-entry-switch-reduction.md`**：三步还原法（收集 index → 最内层插探针 → 拖进 for 循环取映射），以及两个致命坑（case index 藏在调用点、还原后变量污染必须按入口拆回多个函数）。
 - 处理逗号表达式、IIFE、语句提升与三元/短路语法展开时，读 `references/sequence-normalization.md`。
 - 处理纯符号编码与表达式求值还原时，读 `references/jsfuck-reduction.md`。
