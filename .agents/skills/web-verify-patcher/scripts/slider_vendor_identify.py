@@ -107,9 +107,15 @@ RULES = [
         "anchor": "3.3",
         "signals": [("captchauuid", 3), ("ishumei", 3), ("isjsformat", 3),
                     ("abcdefghjkmnpqrstwxyzabcdefhijkmnprstwxyz2345678", 3),
+                    ("fengkongcloud", 3), ("castatic", 2),
+                    ("/ca/v1/conf", 3), ("/ca/v1/register", 2), ("/ca/v2/fverify", 2),
+                    ("auto_slide", 2), ("spatial_select", 2), ("seq_select", 2),
+                    ("getencryptcontent", 2),
                     ("organization", 1), ("risklevel", 1), ("shumei", 2)],
         "veto": [],
-        "recipe": "DES-ECB/ZeroPadding；**绝不格式化 JS**（isJsFormat 会让 key 变）；距离识别后除 2。",
+        "recipe": ("DES-ECB/ZeroPadding；**绝不格式化 JS**（isJsFormat 会让 key 变）；距离识别后除 2。"
+                   "⚠️ 提交参数名与 DES key **随 SDK 小版本变**（`tm/tb/ly`、`qd/mu/en/kq`、`gg/hg/th` 都是同一家）"
+                   "⇒ 判据只能用 `captchaUuid`/`organization`/域名/model 枚举，**不要拿参数名当判据**。"),
     },
     {
         "id": "yunpian",
@@ -512,6 +518,16 @@ def selftest():
     ok(res["next_steps"] and res["next_steps"][0].startswith("本项是路由"),
        "极验路由项的 next_steps 首条必须是「本项是路由：…」")
 
+    # 5e) B20：数美的"版本稳定信号"要能判出（域名 + model 枚举），
+    #     而"只有某一代的提交参数名"必须判不出来 —— 参数名随 SDK 版本变，拿它当判据是最常见的误判方向。
+    res = identify({"urls": ["https://captcha1.fengkongcloud.cn/ca/v1/register"],
+                    "blob": "model=auto_slide&organization=abc"})
+    ok(res["vendor"] == "shumei",
+       "数美域名 + model 枚举应判 shumei，实际 %s" % res["vendor"])
+    res = identify({"params": ["gg", "hg", "th"], "blob": "protocol=185"})
+    ok(res["vendor"] == "unknown",
+       "只给某一代的数美参数名（gg/hg/th）不得判出 shumei，实际 %s" % res["vendor"])
+
     # 6) 阈值行为：低于 --min-score 判定为 unknown
     res = identify({"blob": "captcha.yunpian.com"}, min_score=4)
     ok(res["vendor"] == "unknown", "min_score=4 时仅 3 分信号应 unknown，实际 %s" % res["vendor"])
@@ -543,6 +559,14 @@ def selftest():
             pat = re.compile(r"^%s\s+§?\s*%s(?:[.．、\s]|$)" % (level, re.escape(anchor)), re.M)
             ok(bool(pat.search(doc)),
                "文档缺少规则声明的小节：%s %s %s（%s）" % (os.path.basename(DEFAULT_DOC), level, anchor, rule["id"]))
+        # B20：数美小节必须把"参数名随版本变"写出来 —— 规则表的 recipe 与本断言成对，
+        # 只改一处会在这里被拦下（防止"脚本知道、文档没说"）。
+        shumei_rule = next((r for r in RULES if r["id"] == "shumei"), None)
+        if shumei_rule:
+            sec = re.search(r"^###\s+§?\s*%s(?:[.．、\s]|$)(?:(?!^###\s).)*" % re.escape(shumei_rule["anchor"]),
+                            doc, re.M | re.S)
+            ok(bool(sec) and "参数名" in sec.group(0) and "版本" in sec.group(0),
+               "数美小节（§%s）必须写明「提交参数名随 SDK 版本变、不可当判据」" % shumei_rule["anchor"])
 
     # 10) 规则表自身健康度
     ok(len(RULES) >= 17, "规则数应 ≥17，实际 %d" % len(RULES))

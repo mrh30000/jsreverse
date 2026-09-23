@@ -19,6 +19,8 @@
 | `dingxiang-captcha` | `dingxiang-inc.com`、`cdn.dingxiang-inc.com`、`dx-captcha`、`_dx.Captcha`、`captcha-ui/v5/index.js`、`顶象验证码` | `appId`、`constId`、`apiServer`、`dxToken` | `slider`、`click-select`、`rotate`、`scratch`、`semantic-reasoning`、`image-restore`、`area-select`、`difference-click`、`font-identify`、`audio`、`risk-score` |
 | `baidu-captcha` | `cloud.baidu.com/product-s/afd_s/captcha`、`console.bce.baidu.com/afd/captcha`、`验证码 Captcha-百度智能云` | 应用 ID、服务端验签参数、SDK 配置 | `slider`、`text`、`click-select`、`trace-draw` |
 | `jdcloud-captcha` | `docs.jdcloud.com/cn/captcha`、`Jcap.create`、`京东云验证码` | `appId`、`sceneId`、`productId`、回调字段 | `slider`、行为验证 |
+| `xiaohongshu` | `redcaptcha`、`/api/redcaptcha/`、`captchaInfo`、`verifyBiz`、`verifyUuid`、小红书风控 | `biz`、`captchaVersion`、`secretId`、`sourceSite`、`verifyBiz`、`verifyType`、`verifyUuid`、`rid`、`checkCount` | `rotate`（当前已知形态） |
+| `vaptcha` | `vaptcha.com`、`vaptcha(`、`vaptchanu`、`vaptchaut`、`GenerateFP`、`hashComponents`、`secretC`、`knock` | `vid`、`knock`、`en`、`origin_url`、`rm`、`vi` | `trace-draw`（`captcha_variant: gesture-draw` 手势绘制） |
 | `yunpian-captcha` | `yunpian.com/product/captcha`、`riddler-sdk`、`YpRiddler`、`云片行为验证` | 初始化配置、验证 token、回调字段 | `slider`、`click-select` |
 | `huawei-captcha` | `huaweicloud.com`、`OneAccess`、`图形验证码`、`captchaId`、`validateCode` | `captchaId`、`validateCode`、服务端校验参数 | `text`，也可能是自研/平台集成验证码 |
 | `tongdun-risk` | `tongdun.cn`、`tongdun.net`、`fraudmetrix`、`blackbox`、`tokenId` | `blackbox`、`tokenId`、`riskToken` | 风控/无感验证，通常归 `waf-challenge` 或 `unknown-custom` |
@@ -174,6 +176,18 @@ Yandex SmartCaptcha、CaptchaFox、Prosopo/Procaptcha、TrustCaptcha、MTCaptcha
 BotDetect、Securimage、Amazon CAPTCHA、Kaptcha、EasyCaptcha、HappyCaptcha 多数是传统文字/图片验证码库。强信号包括 `BotDetect`、`BDC_CaptchaDiv`、`securimage_show.php`、`opfcaptcha.amazon.com`、`/errors/validateCaptcha`、`Kaptcha` 等库名或文件名。
 
 这类通常分类为 `text` 或 `math`。重点是提取精确图片、确认字符集和刷新行为。
+
+### 小红书风控验证码（`redcaptcha`）
+
+小红书 Web 端登录/浏览触发时会在 `/api/redcaptcha/v2/captcha/register` 下发加密的 `captchaInfo`，`/check` 提交；当前已实测到**旋转**形态。协议与字段见 `rotation-and-gesture-protocols.md` §2.3。
+
+报告中要给出 `captchaInfo` 是否存在、`register`/`check` 两个接口名，以及 `verifyType`/`verifyBiz` 取值；只看到 `captcha` 这类通用词不算证据。
+
+### VAPTCHA 手势验证码
+
+VAPTCHA（`vaptcha.com`）的手势验证：在图上**按形状描一笔**，提交的是**加密后的整条轨迹**，不是滑块距离 —— 主类型应为 `trace-draw` 并补 `captcha_variant: gesture-draw`。
+
+四段链（`{vid}` → `config` → `get` → `validate`）、`en` 的构造、图片 5×2 还原、轨迹 `+30 px` 补偿与「间隔 < 5 不入列」两条坑、`validate` 返回码表见`rotation-and-gesture-protocols.md` §3。**把它当滑块处理会一直缺一个必填的轨迹字段。**
 
 ### 自托管行为验证码库
 

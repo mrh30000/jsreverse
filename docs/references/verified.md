@@ -2635,3 +2635,239 @@ python artifacts/skill-evolution/tools/append-b19-ledger.py
   ④ **JSVMP 剩余**：符号执行 / 中间代码优化，落 `ast-deobfuscation` 既有文件。
 - 候选新技能 `captcha-flow-orchestration` —— B5–B19 **十三次确认不新建**。
 - 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
+
+## 三·R、批次 B20 · 2026-09-23（验证码题型协议侧的稀疏区块：旋转系 / 手势系 / 数美三源 / 极验 v3 状态机）
+
+**取材口径**：单一主题「**非滑块题型的协议侧补齐**」+ 两条既有能力增强 —— 13 篇覆盖
+**旋转系（百度 v1/v2、小红书）+ 手势系（VAPTCHA）+ 数美（第三源固化）+ 极验 v3（AST 状态机与纯算）**，
+其中 **VAPTCHA 拿到双源互证**（且互证的正是"一家认不出、一家认出是 murmurhash3_x64_128"这种只靠单篇拿不到的结论）。
+
+**选它的理由（承接 B19 遗留①②）**：B19 的下一批建议里，
+① 是「验证码图像识别系剩余（~84 篇）：**真拼图 / 双缺口 / 旋转系的协议侧仍薄**」，
+本批直接把**旋转系与手势系**两条最薄的线一次做全；
+② 是「`web-verify-patcher` 的**类型清单三处并行维护**的结构性收敛（B5 起挂账 15 轮）」，
+本批不再继续挂账，改为**把它变成机械可校验的不变量**（见下）。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取知识点 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 353 | `52pojie-1806246-【验证码逆向专栏】某度滑块、点选、旋转验证码 v1、v2 逆向分析.md` | `6c57419e4035c8f9b6814f32932988b5` | 2026-09-23 | web-verify-patcher | evolve | 百度旋转/滑块/点选 **v1/v2 代际判据**（只看核心 JS 文件名 `mkd.js` / `mkd_v2.js`，不看接口名）；三接口链与**两套接口名**（`viewlog`/`getstyle`/`viewlog/c`）；`rzData` 两代结构（v2 的 `captchalist` 含 `spin-0`/`puzzle-0`/`click-0`）；**`ac_c` 四个口径**（v1 滑轨 212 在化简中被抵消、v2 旋转 238、v2 滑块分母 **290**、v2 点选为坐标+时间戳）；`fs` 的 AES 与 IV `as + appsapi0`(v1) / `appsapi2`(v2)；**三个报错码**（v1 `Unregistered Host` / `Invalid Request`、v2 `100600 Unauthorized Host`）；**收尾接口需 sleep 1~3 秒**（否则 `code 1 Verification Failed`）；`存在安全风险，请再次验证` 是正常态而非失败 |
+| 354 | `52pojie-1792807-《某度旋转验证码逆向》（水贴冒泡）.md` | `8e6a334681219aa968bd31e7f9f51652` | 2026-09-23 | web-verify-patcher | evolve | 百度旋转：**互证「提交值 `fs = AES(rzData)`、可导库直接复刻」**与"该家存在两代形态"（本批唯一的字段级双源点；其余百度结论均为 1806246 单源） |
+| 355 | `52pojie-1754224-简单聊聊旋转验证码攻防（24.03.19更新）.md` | `9922d448d42a7697023b1e3693d32b78` | 2026-09-23 | web-verify-patcher | evolve | 旋转系**通用方法论**（单源）：非 90° 倍数的旋转**必然引入插值伪影且会被网络学成特征**⇒ 高分辨率下应"先旋转再裁切缩放"；one-hot+交叉熵的**圆形距离失真**与圆形平滑标签；分类数不是越多越好；**鬼影**（明度/色相/饱和度涂抹 ⇒ imghash 攻法全挂、CNN 尚可）与**双旋转**的**互相关咬合法**（沿圆环展开成灰度序列求平移量）；回归损失改 SmoothL1Loss |
+| 356 | `52pojie-1988302-xhs 某书 旋转验证码 图片识别+算法 纯协议.md` | `778a84d1030f43ee8ecfa5cc4cbef7a1` | 2026-09-23 | web-verify-patcher | evolve | 小红书**旋转**纯协议（单源）：`POST /api/redcaptcha/v2/captcha/register` → `/check`；`captchaInfo` 明密文**同一函数**；check 明文四件套 `mouseEnd`/`time`/`track`/`width`；**失败即重新取图重试**（识别 95%、协议 100% 靠的是循环而非单次识别率）；该来源用截图展示算法（未落到文字）⇒ 标为"需现场扣函数" |
+| 357 | `52pojie-1888845-[验证码逆向]某手势验证码逆向分析.md` | `2b8d4f02e204889474104809b3bb6217` | 2026-09-23 | web-verify-patcher | evolve | VAPTCHA 手势（双源之一）：**四段链**（`{vid}` → `config`（返回 `knock`）→ `get` → `validate`（返回 `token`））；`en` 由 `GenerateFP`(canvas→base64→**CRC32**) 与 `hashComponents`(环境哈希) 等项构成；`secretC` 为固定值 `8549731620`；`globalMd5` 的 `splicing_obj` 拼接；图片 **5×2 = 10 片、源 400×230、每片 80×115**、顺序 `Decrypt(img_order, N)` 且**值 <5 贴下排语义**；**轨迹 +30 px 补偿**（canvas 230 vs 事件区 260）与**点间隔 <5 不入列**；`dt/ch/cw/v` 四件套 |
+| 358 | `52pojie-2051922-某手势验证码纯算逆向分析.md` | `ed7da839d5b55be242af908d5fcfd89f` | 2026-09-23 | web-verify-patcher | evolve | VAPTCHA 手势纯算（双源之一，且给出**机制级算法识别**）：`en` 的 **11 项加和明细**与 `selectFrom(3,15)` 随机量；**`hashComponents` = murmurhash3_x64_128**（附完整 Python 实现 —— 另一篇只记为"没见过的哈希"）；**`Decrypt` 的公式 = `str(int(img_order) - N)` 左侧补零到 10 位**；`splicingObj` 与 validate 阶段"结尾多拼一个固定值"；渲染 **290×167**（与另一篇的 400×230 并存 ⇒ 画布尺寸现场量）；**`validate` 返回码表 12 项**（`0103` 成功 / `0108 Attack` 先怀疑轨迹 / `0109` 区分域名挂与 challenge 过期）；轨迹加密前存在一套清洗算法（细节未展开，标待复核） |
+| 359 | `52pojie-1782883-【验证码逆向专栏】数美验证码全家桶逆向分析以及 AST 获取动态参数.md` | `da37c5fa5a131195027a02659e1006e0` | 2026-09-23 | web-verify-patcher + ast-deobfuscation | evolve | 数美全家桶 + **AST 直取动态参数**：`conf` 的 `model` **六题型枚举**（`slide`/`auto_slide`/`select`/`icon_select`/`seq_select`/`spatial_select`）+ `conf`/`register`/`fverify` 三接口；`captchaUuid = yyyyMMddHHmmss + 18 位`（正文写 17、代码 `range(18)` ⇒ 以代码为准）；`getEncryptContent` = **DES-ECB + ZeroPadding**，`appId`/`channel`/`lang`/`getSafeParams` 四个固定入参**可整段写死**；`this._data` **三套题型结构**（滑块 / 点选类坐标先归一化 / 无感）；`code` 枚举（`1100`/`1901`/`1902`/`1903`/`9101`）与 `riskLevel`；**多域名热备**（替换不生效的真因）；**AST 目标 = 12 个提交参数名 + DES key**（不是"还原所有混淆"），含适用版本区间与"结果有序未去重" |
+| 360 | `52pojie-1881927-数美点选验证协议全面剖析.md` | `fe7a874912ba303b49ee9487b37316ba` | 2026-09-23 | web-verify-patcher + ast-deobfuscation | evolve | 数美点选**逐字段 DES key 对照表**（`mp/oc/xy/jo` 为固定入参可直接写死；坐标/轨迹/尺寸各带一把版本内 key）；**点选坐标的三段语义 `[x / 图宽, y / 图高, 时间戳]`**（不是 `[x, y, t]` 的顺序）；**动态 JS URL 导致断点只生效一次** ⇒ Charles `Map Local` / mitmproxy 回写固定文件；控制流平坦化的 **switch 执行顺序由数组给定**（`2,0,3,4,1`）；解混淆法：抠出解码函数 → node CLI → Python 正则批量替换 |
+| 361 | `52pojie-2059636-数美滑动验证码逆向.md` | `749e1f8071afb113db0031d98d3e2439` | 2026-09-23 | web-verify-patcher | evolve | 数美 2025 版滑动（**第三源，用于证明"参数名与 key 随 SDK 版本变"**）：`register` 返回 JSONP 形态（**需先按文本正则取括号内再解析**）、提交量 `gg/hg/th` 与本版 key（`5129c2c2`/`be221ccf`/`231a540d`）、`protocol=185`（点选版为 `180`）、图片前缀 `castatic.fengkongcloud.cn`、滑块距离用 Canny 边缘模板匹配后 **÷2**、两种可运行轨迹生成实现 |
+| 362 | `52pojie-2045347-[原创] 某验3底图还原python算法改写.md` | `ea9821b999ed466ecc9d65f62fa4eb54` | 2026-09-23 | web-verify-patcher | evolve | 极验 v3 **底图还原的 Python 改写**：52 片顺序数组 `Ut` 为固定值；取片坐标 `c = Ut[_] % 26 * 12 + 1`、`u = (25 < Ut[_]) ? a : 0`；每片 `10 × a`；画布 `260 × r` —— 与既有 `restore_slices.py --model gt3` 的几何互为独立互证 |
+| 363 | `52pojie-2055730-某验3AST分析及实现.md` | `a708c8a32f14b6083a47eda3441002ed` | 2026-09-23 | ast-deobfuscation | evolve | 极验 v3 **AST 还原（一）**：文件名 `fullpage.9.2.0-guwyxh.js` / `slide.7.9.3.js`；结构 = 对象 `Vwtrj` 的四个方法（`$_CV` 字符解码 / `$_DD` 控制流状态表）+ 一个大自执行函数；**eval 前五条语句进内存**以获得解码器与状态表；**3-declarator 别名族**（`concat` + `shift`）还原；**`for (; S !== <下标表达式>;) switch(S)` 恒为真、按状态顺序执行**，展平时取 case 的 consequent 并去掉尾部 `break` |
+| 364 | `52pojie-2058187-手把手带你AST还原某验三代(一).md` | `4003eb8163c55d2073a16625f702aa0d` | 2026-09-23 | ast-deobfuscation | evolve | 极验三代 **AST 还原（一）独立第二源**：三个混淆文件 `slide.7.9.3.js` / `fullpage.9.2.0-guwyxh.js` / `gct.js`；`lACSb.$_Ce` 的**两种字符还原形态**（直接 `$_DAGEI(n)` 与 `["$_DAHCK"].concat(...)` 别名间接）；状态值形如 `lACSb.$_DN()[6][16]`（**二维取数，不是裸数字**）；还原法 = **把所有取值写进 map 后循环判断**；用 `scope.getBinding` + `referencePaths` 处理别名、`VariableDeclarator` 拆分逗号表达式 |
+| 365 | `52pojie-2063429-某验3纯算逆向分析.md` | `ea0034e0d35ed4011638a9d6ab8b0f05` | 2026-09-23 | web-verify-patcher + ast-deobfuscation | evolve | 极验 v3 **纯算全链**：六请求链与**三个 `w` 的分工**（第一次 `w = i + r`，`i` = 魔改 base64(AES)、`r` = RSA(aeskey) 的 **16 进制字符串**；第二次 `w` 无 RSA；第三次同第一次）；AES key = **16 位 16 进制随机**；**魔改 base64 的码表**（`=` 换成 `.`）；`tt` 由 4 段二进制串拼接后**每 6 位查 chars**；`userresponse` 由 challenge 末两位 **36→10 进制** + 前 32 位贪心生成；`rp = md5(gt + challenge[:32] + passtime)`；`ep` 的 `fp/lp/em/tm`；**AST 只解三步（OB / 合并 switch / unicode）就够**（可解一步替换验证一步） |
+
+### 本批次技能变更汇总（B20）
+
+**新建技能 0 个**（B5–B20 **十四次**确认不新建 `captcha-flow-orchestration`；
+"旋转/手势"属既有 `rotate` / `trace-draw` 题型的协议侧，按"避免滥建冗余技能"约束**在最近邻模块扩展**）；
+**演化既有技能 2 个**；**结构性收敛 1 项（挂账 15 轮）**；附带修复 12 项（5 项"整节贴 ★双源"的字段级降级由来源核对自查抓出，6 项由两个 judge 抓出，1 项为校验器自指缺陷）。
+
+- **`web-verify-patcher`（主）**
+  - 新增 `references/rotation-and-gesture-protocols.md`（**旋转系与手势系的协议唯一权威源**）：
+    §1 分流（`rotate` / `trace-draw`+`gesture-draw` / `dual-ring` / 弧线滑块）·
+    §2 旋转系（§2.1 通用方法论：插值伪影、鬼影、双旋互相关咬合；§2.2 百度 v1/v2 两代四口径与三个报错码；
+    §2.3 小红书 `redcaptcha`）· §3 手势系 VAPTCHA（四段链 / `en` 11 项 / 图片 5×2 还原 / 轨迹两条坑 / 状态码表）·
+    §4 两族共性 5 条 · §5 反例黑名单 6 条 · §6 来源与**字段级强度**声明（含 3 处明确挂账）。
+  - 新增 `scripts/rotation_and_gesture_calc.py`（零依赖）：`baidu-ac-c`（v1/v2、旋转/滑块四个口径）、
+    `vaptcha-order`（减法 + 补零 + **"必须是 0..9 的排列"**这一自检）、`vaptcha-restore`（PNG 5×2 还原，
+    非排列顺序直接拒绝）、`murmur3`（murmurhash3_x64_128，**如实声明未与公开测试向量对齐**）；
+    `--selftest` **27 项**。
+  - 新增 `scripts/check_verify_docs_consistency.py`（**本轮的结构性收敛**，见下）：A~I 九组一致性断言（含"判断表 ↔ 类型说明""`captcha_variant` 取值封闭""厂商标签集合"三组新增面），`--selftest` **30 项**，另配 **10/10** 的故障注入阳性验证。
+  - `references/slider-vendor-matrix.md`：§3.3 数美由 `单源` 升级为 **★三源**（并写下本批最重要的结论
+    ——**提交参数名与 DES key 随 SDK 小版本变，不可当判据**：`tm/tb/ly/fr`、`qd/mu/en/kq`、`gg/hg/th`
+    是同一家）；§2 矩阵第 3 行与 §7 来源表同步（新增 B20-1~B20-3 三行）。
+  - `references/provider-execution-notes.md`：百度旋转小节改写为"最容易踩的三条 + 指向协议全文"
+    （补齐 `mkd.js`/`mkd_v2.js` 代际判据、两套接口名、`fs` 二次加密的两派口径、三个报错码、sleep 坑、`cdnversion` 断点坑）；
+    数美小节同步收敛为"判据 + 指针"并写入**参数名不可当判据**。
+  - `references/captcha-types.md`：`rotate` 补协议指针与 `dual-ring` 子类；`trace-draw` 补
+    **`gesture-draw` 子类**（手势 ≠ 滑块：提交量是轨迹而非距离）与两条轨迹坑。
+  - `references/solution-playbooks.md`：`rotate` / `trace-draw` 两节加协议指针。
+  - `references/motion-and-coordinate.md`：百度旋转行的 `ac_c` 四个口径与 `mv` 实测不校验的口径落到表里。
+  - `references/verification-workflow.md`：**关闭 B19 遗留④** —— 明确"厂商允许是 `custom-or-unknown`，
+    证据不足时如实写，不要为了填表硬凑"。
+  - `scripts/slider_vendor_identify.py`：数美规则补**版本稳定信号**（`fengkongcloud`/`castatic`/三接口路径/
+    `auto_slide` 等 model 枚举/`getEncryptContent`）与 recipe 警示；新增自检断言 **+3 条**
+    （"域名 + model 枚举应判出"、"只给某一代参数名 `gg/hg/th` 必须判不出来"、**"数美小节必须写出参数名随版本变"**
+    的文档一致性断言）⇒ 自检 71 → **74 项**（该文档一致性断言的作用：防止"脚本知道、文档没说"的漂移）。
+- **`ast-deobfuscation`（演化）**
+  - `references/patterns/geetest4.md` 新增 **「v3 顺序恒真状态机」**节：判据三条、
+    **为什么不能只看源码顺序**（状态值由表函数给出且**同一数值落在多个下标上** ⇒ 必须按值比较）、
+    **两种声明位置**（for-init / 前一条语句）、展平前的"别名归一 → 状态机展平 → 通用平坦化"顺序，
+    以及与既有 `geetest4-guarded-pass.js` 的分工（后者是"按源码顺序展平"的快速路径，
+    **两者结论不一致时以按值推导的为准**）。
+  - 新增 `scripts/patterns/geetest3-state-machine-pass.js`（零依赖）：按键值链推导真实执行序并
+    **断言"源码顺序 == 推导顺序"**（`--check` 不一致时退出码 2）；**默认不删链外不可达 case**（而是跳过并报错），
+    确认死代码后才 `--drop-unreachable`；**只在"该名字全程序只剩声明本身"时才删掉残留声明**（防 `return S` 变 `ReferenceError`）；
+    `--selftest` **32 项**，含一条**照抄真实样本**（同值多下标 + 末态 `return`）的 `--table` 回归夹具，以及两条**"状态变量逃逸出循环"**的语义等价夹具（改前/改后各跑一遍比对返回值）。
+
+### 本轮的结构性收敛：把"类型清单三处并行维护"变成机械不变量（B5–B19 挂账 15 轮）
+
+**问题**：`references/captcha-types.md`（判断表 + 类型说明）、`SKILL.md`（分类标签）、
+`references/solution-playbooks.md`（类型小节）三处维护同一份清单，靠人眼同步，已挂账 15 轮。
+
+**为什么不是"物理合并成一处"**：三处在渐进式披露里各有职责 ——
+`SKILL.md` 需要一份**总是加载**的轻量索引、`solution-playbooks.md` 需要**按类型的方案小节**、
+`captcha-types.md` 需要**判断表 + 证据要求**。删掉任意一处都会让读者多跳一层或失去随手可查的索引。
+
+**落地方案**：新增 `scripts/check_verify_docs_consistency.py`，把**一致性本身**变成可执行断言（A~I 九组）：
+A 三处集合一致 · B 三处顺序一致 · C 无重复项 · D/E 权威源声明齐全 · F 清单规模 ≥ 20
+（**防止解析器失效后"校验通过"的假绿**）· G **判断表 ↔ 该文件自己的类型说明小节**一一对应 ·
+H **`captcha_variant` 取值封闭**（本批新增取值表，扫描全技能文档/脚本的字面量用法）·
+I **厂商标签集合一致**（`SKILL.md` ↔ `provider-products.md` 厂商信号表；厂商清单顺序无语义，只比集合）。
+并用 `artifacts/skill-evolution/tools/b20-verify-consistency-checker.py` 做**阳性验证 10/10**：
+在临时副本上分别注入"多一个类型 / 改名 / 顺序漂移 / 少一个小节 / 删权威源声明 / 删脚本指引 /
+类型说明脱节 / 自造 `captcha_variant` / 厂商表脱节"九种漂移，逐条确认校验器变红，
+并对**未改动副本**确认通过 —— 不注入故障就分不清"0 阻断"是"真的没问题"还是"新规则没生效"。
+
+> **落地时抓到的两个自指缺陷（都已修，也是这条路的固有风险）**：
+> ① 校验器**把自己扫了出来**：它的自检夹具里必须写"故意非法的 `captcha_variant`"，
+> 于是 H 项把校验器自身判成违规 ⇒ 显式排除该文件（"校验器不是使用点"）；
+> ② `captcha_variant` 取值表的**表头第一列写的就是** `` `captcha_variant` ``，
+> 初版解析把表头也当成一个取值（取值表被数成 9 项、真实 8 项，且假取值混进允许集）
+> ⇒ 改为"只收集 `| --- |` 分隔行之后的行"，并补一条"表头不得被当成取值"的回归断言。
+
+### 独立评审（Judge A / B）
+
+评审前**先冻结**（`artifacts/skill-evolution/b20-freeze-20260923-1154.tsv`）。
+评审期间主执行者同步做了来源字面量核对（`b20-verify-sources.py`，13 篇 / 194 项），
+并据此**主动改掉 5 处过度标注**；judge 按**磁盘当前内容**复核。
+
+| Judge | 视角 | 提出的问题 | 处置 |
+| --- | --- | --- | --- |
+| A | 来源保真度（逐字面量 grep + 实跑复现） | **2 阻断（判 revert）+ 6 次要**：<br>① 数美点选坐标三段语义**自相矛盾**（写着"别按 `[x,y,t]` 读"，而两篇来源 `1782883:237-242`、`1881927:507-518` 都是 `co[0]/300; co[1]/150; co[2]=time_` 的 `[x,y,t]` 形状）<br>② `geetest3-state-machine-pass.js` 的**形态①（声明在 for-init）没有声明安全守卫**：`for (var S=…; …;){…} return S;` 展平后 `var S` 被一起删掉（judge 实测复现：产物 `A(); B(); return S;`、`flattened=1` 且无告警 ⇒ 静默 `ReferenceError`）<br>③ `--markdown` 在状态表未解析时打"否"（顺序其实未知）<br>④ `geetest4.md` 把**自建夹具**的表值写成"实测样本里…"<br>⑤ §6 漏了**带外来源** `52pojie-2057521`（`p` 由 Worker 的 `powMap` 算、`common.mv` 不校验、`getNewKey` 查表选哈希、`cdnversion` 后缀四条只有它支持）<br>⑥ `ww` 被写成"坐标与宽高"（实为常量 `28504615`）、`captchaUuid` 的 18 位/字母表被写成硬约束（第三源用 16 位 + 完整 base62 也过）、"hex 前 16 位"有歧义 | **全部成立、全部当轮修完**：① 改写为"就是 `[x,y,t]`，只是先按原图 300×150 归一化"；② 新增 `countExternalRefs`：**逃逸出循环时补终态赋值 `S = <终态表达式>`**（形态①另补回 `var S` 声明），无法保持语义时（靠 `return` 退出且外部仍读 `S`）**直接跳过并报 `state-var-escapes-loop`**；③ 改为"未知（状态表未解析）"；④ 改为"本技能回归夹具（照抄函数形状自建），来源未给出表的实际内容"；⑤ §6 增列该来源行并逐条注明"只有它支持"；⑥ 三处按来源改正/降级 |
+| B | 文档一致性与集成（真跑命令 + 独立判断） | **0 阻断 + 6 次要**：<br>① 数美 **`★三源` 计数自相矛盾**（§3.3 列了四篇却写三源、§7 出现两条"三源之三"）<br>② `provider-execution-notes.md` 的参数名枚举是矩阵的**子集**（两处并存必然各自漂移）<br>③ 厂商标签清单**无任何校验**且已漂移（`SKILL.md` 有 `xiaohongshu`/`vaptcha`，`provider-products.md` 没登记）<br>④ 校验器三处盲区：判断表 ↔ 类型说明、`captcha_variant` 合法取值、厂商标签清单<br>⑤ `description` 只剩 13 字符余量<br>⑥ `geetest4.md` 文件名与内容范围（同时承载 v3/v4）不符 | **①~④、⑥ 当轮修完**：① 统一为 `★四源` 并写明"四篇"是哪四篇；② 降级为指针（"逐字段对照表见 §3.3，这里不复述"）；③ 补 `provider-products.md` 两行 + 两个产品小节；④ 落地为上面的 G/H/I 三组断言（含 10/10 阳性验证）；⑥ 在文件内加 v3 节交叉引用与脚本指针，**改名挂账到下一批**（改名要连带改三处以上引用）。⑤ **记录不改**：本批新增的触发词（手势验证码/手势/vaptcha）是必要的，宁可不加冗余词也不删已确认的触发词 |
+
+**棘轮结论：keep** —— Judge A 判 `revert`，但两条阻断**都是可修复的局部缺陷**（不是"这次演化方向错了"），
+且修复后**有强证据**：② 的回归夹具用「改前/改后各跑一遍、比对返回值」验证语义等价（`["ABC",0]` 一致），
+并单跑 judge 的原始复现用例确认 `var S` 与终态赋值都在；① 的改写直接对齐两篇来源的字面代码。
+Judge B 的 0 阻断 + 6 项次要亦已全部处置或明确挂账。
+⇒ 按 B8/B19 既定口径（**能用修复解决的不回滚**）**保留本次演化**，并在本表逐条留痕。
+
+**judge 的三条最有价值发现**：
+① **"自相矛盾的句子"比"写错的常量"更危险**：常量写错会被来源核对抓住，
+而"形状写对了却补一句'别那么读'"会让读者主动走错方向 —— 只有逐字回源 + 对照来源代码才能发现；
+② **AST 改写 pass 的"声明安全"必须覆盖所有声明形态**：初版只给形态②（声明在循环前）加了守卫，
+形态①被静默删掉，且**在 28 项自检全绿的情况下依然存在** —— 自检里没有"逃逸出循环"的夹具，
+这就是"测不到的分支等于没写"；
+③ **同一份知识写两处，即使当时一致也会分叉**（数美参数名枚举）：正确处置是把第二处降级成指针 ——
+与本轮 G/H/I 三组断言同源，只不过前者靠人守、后者靠机器守。
+
+### 本批次的方法论增量（可复用）
+
+1. **"整节贴 `★双源`"是本流水线最容易犯的系统性错误（B19 提出，B20 抓到实例）**：
+   本批初稿里 §2.2 百度、§3.1 四段链、§3.4 轨迹三处都整节贴了 `★双源`，
+   而实际只有"其中一两条"是双源，其余是单源。
+   ⇒ **强度标注必须落到字段级**，并且要**区分"直接读到 JS"与"作者用 Python 复刻能对上"** ——
+   后者是复刻口径，必须标 `待复核`（本批 `splicing_obj` 的排序细则就是这一类）。
+2. **"一家认不出、另一家认得出"是双源里价值最高的一类**：VAPTCHA 的 `hashComponents`，
+   一篇（2024-02）明确写"我没见过这种加密"，另一篇（2025-08）给出完整实现并点名
+   **murmurhash3_x64_128** ⇒ 双源不只互证"存在"，还能**补齐算法识别**。
+   这类结论**单篇永远拿不到**，是本流水线取材时应当优先寻找的信号。
+3. **"参数名随版本变"必须写进文档与判据器两侧**：数美三篇的参数名全不一样
+   （`tm/tb/ly/fr` / `qd/mu/en/kq` / `gg/hg/th`），如果按参数名判厂就会**在版本升级当天全线误判**。
+   ⇒ 判据只能锚在**域名、`captchaUuid`+`organization`、`model` 枚举**这类版本稳定的信号上；
+   并配一条"只给某一代参数名必须判不出来"的**反例断言**。
+4. **本批最值得复用的断言模式："顺序一致"**：
+   `geetest3-state-machine-pass.js` 断言"源码顺序 == 按值推导的执行顺序"，
+   `check_verify_docs_consistency.py` 断言"三处清单顺序一致"。
+   两处都是同一件事 —— **顺序在语义上是有信息的（执行序 / 分类优先级），
+   而"看起来对"的产物在顺序错时不会报任何错**。凡遇到"顺序即语义"的场景，都应把顺序提成断言。
+5. **"阈值/边界类断言必须有专门的边界用例"（B19 提出，B20 第二次应验）**：
+   一致性校验器自检初版把清单规模阈值写死在 `check()` 里，
+   于是 5 项合成清单让"清单过小"分支**先触发**、把其余 5 条断言全遮住（7/12 通过，看起来像校验器坏了）。
+   ⇒ 阈值必须参数化，并补一条"**正好等于阈值不得报错**"的边界用例（判据是 `<` 不是 `<=`）。
+6. **故障注入式的"阳性验证"要连"注入是否成功"一起断言**：本轮第一次阳性验证失败，
+   原因不是校验器失灵，而是**故障注入脚本只替换了第一处**，而 `唯一权威源` 在文档里出现两次
+   ⇒ 校验器当然看不见。**"注入后必须变红"与"注入本身必须成功"是两条不同的断言**。
+7. **"不知道就是不知道"要继续保持**：本批 3 处明确挂账
+   （`encryFunc(a,b)` 入参顺序、VAPTCHA 图片顺序里 `ha`/`hb` 的归属、`splicing_obj` 的排序细则），
+   文档一律只给**复核方法**、不给猜测值 —— 与 B8 起的口径一致。
+
+### 本批次明确留白（写进文档而非假装支持）
+
+1. **`murmur3` 未与公开测试向量对齐**：本机没有第二个参考实现，
+   自己照抄实现第二遍不构成独立验证（B19 的"自证式第二实现"教训）。
+   `--selftest` 只断言可自证性质（空串 → 32 个 0、长度 32、确定性、种子有效、四种输入长度分类互不相同），
+   **脚本 docstring 与协议文档都如实标注**这一点。
+2. **`vaptcha-restore` 不缩放**：保持源几何还原（`400×230`），
+   渲染尺寸（`290×167`）是站点值、且两份来源给出的数值不同 ⇒ 不假装能"还原成渲染态"。
+3. **旋转系的角度模型侧未新增训练资产**：本批只收方法论与判据
+   （插值伪影、鬼影、双旋咬合），模型训练闭环仍以 `captcha-model-training.md` 为准。
+4. **小红书 `captchaInfo` 的加解密算法未落到文字**：来源用截图展示 ⇒
+   文档只给"两接口 + 字段 + 明密文同函数"的定位结论，**不给算法**。
+5. **`geetest4.md` 文件名与内容范围已不匹配**（同时承载 v3 与 v4）：
+   本批在文件内加了 v3 节的交叉引用与脚本指针，**但未改名**（改名要连带改 SKILL.md 导航、
+   `obfuscation-detector.md` 分流表、`pattern-layering.md` 等多处引用，收益低于风险）；
+   记入下一批，改的时候先跑 `check_skill_integrity.js` 的引用可达性检查。
+6. **`websocket-reverse` 的文档/命令一致性（B19 判 worse）本轮未触碰** —— 仍留在待办。
+
+### B20 新增能力的复跑命令
+
+```bash
+# 1) 旋转/手势换算器自检（27 项）
+python .claude/skills/web-verify-patcher/scripts/rotation_and_gesture_calc.py --selftest
+
+# 2) 百度 ac_c 四个口径（v1/v2 × 旋转/滑块；v2 滑块分母必须是 290）
+python .claude/skills/web-verify-patcher/scripts/rotation_and_gesture_calc.py baidu-ac-c --version v2 --mode slide --distance 145 --pretty
+python .claude/skills/web-verify-patcher/scripts/rotation_and_gesture_calc.py baidu-ac-c --version v1 --angle 90 --pretty
+
+# 3) VAPTCHA 顺序（减法 + 补零；非 0..9 排列会给出 warning）
+python .claude/skills/web-verify-patcher/scripts/rotation_and_gesture_calc.py vaptcha-order --img-order 1234567890 --n 123456780 --pretty
+
+# 4) 类型清单三处一致性（本轮的"结构性收敛"）
+python .claude/skills/web-verify-patcher/scripts/check_verify_docs_consistency.py --markdown
+python .claude/skills/web-verify-patcher/scripts/check_verify_docs_consistency.py --selftest
+
+# 5) 一致性校验器的阳性验证（临时副本注入 6 种漂移，必须逐条变红）
+python artifacts/skill-evolution/tools/b20-verify-consistency-checker.py
+
+# 6) 极验 v3 状态机展平（28 项自检 + 真实形态夹具的 CLI 端到端）
+node --require ./artifacts/skill-evolution/tools/node-resolve-preload.js .agents/skills/ast-deobfuscation/scripts/patterns/geetest3-state-machine-pass.js --selftest
+node --require ./artifacts/skill-evolution/tools/node-resolve-preload.js .agents/skills/ast-deobfuscation/scripts/patterns/geetest3-state-machine-pass.js \
+  artifacts/skill-evolution/fixtures-20260923-1154/geetest3-real-sample.js /tmp/out.js \
+  --table artifacts/skill-evolution/fixtures-20260923-1154/geetest3-real-sample.table.json --markdown
+
+# 7) 厂商判据器自检（74 项，含数美三条新断言）
+python .claude/skills/web-verify-patcher/scripts/slider_vendor_identify.py --selftest
+
+# 8) 来源保真度核对（13 篇 / 194 项，0 未命中为通过）
+python artifacts/skill-evolution/tools/b20-verify-sources.py
+
+# 9) 整体机械校验（0 阻断 / 0 告警）与双镜像一致性（0 mismatch）
+node artifacts/skill-evolution/tools/check_skill_integrity.js --root . --markdown
+python artifacts/skill-evolution/tools/b20-mirror-sync.py
+
+# 10) 状态机 pass 的边界阳性验证（19 项：乱序 case / 缺表项不写盘 / 逃逸 / 幂等 / node --check）
+python artifacts/skill-evolution/tools/b20-verify-pass-edges.py
+
+# 11) 一键验收（把上面 1~10 全部跑一遍并留痕到 artifacts/skill-evolution/b20-run-20260923/）
+bash artifacts/skill-evolution/tools/b20-acceptance.sh
+
+# 12) 台账幂等复跑（应打印「已登记，跳过」）
+python artifacts/skill-evolution/tools/append-b20-ledger.py
+```
+
+### 下一批（B21）取材建议（承接本节）
+
+- 待处理 **453** 篇（台账 365 条后）。
+- 优先级：
+  ① **验证码图像识别系剩余**：真拼图 / 双缺口 / 旋转**点选坐标侧**仍薄；
+     另外本批证明"**同一家 ≥2 篇**"是最值钱的取材信号（VAPTCHA 的 murmur 识别就是这么拿到的），
+     继续按"同平台聚簇"找下一组。
+  ② **Cloudflare 系（CSDN 24 篇同题）**：B17 起连续五轮列为候选，B18 已实测确认信息量极低
+     （22/24 截断、0 代码块）⇒ 正确处置仍是**做工证伪 + 只登记不落地**，
+     并当作「语料同质化」案例写进 `forum-corpus-archival`。**本批再次跳过，若下批再跳应直接执行工证伪收口。**
+  ③ **sign / 协议参数系剩余**：继续按「同一平台 ≥2 篇」聚簇补蓝图。
+  ④ **JSVMP 剩余**：符号执行 / 中间代码优化，落 `ast-deobfuscation` 既有文件。
+  ⑤ **本批两处结构债**：`geetest4.md` 改名（v3+v4 同名不符）与
+     `websocket-reverse` 的文档/命令一致性（B19 判 worse 后未动）。
+- 候选新技能 `captcha-flow-orchestration` —— B5–B20 **十四次确认不新建**。
+- 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。

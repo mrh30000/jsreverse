@@ -51,7 +51,7 @@
 |---|-------------|---------------------------|------|---------|---------|------|
 | 1 | 腾讯云验证码 `tencent-turing` | `cap_union_prehandle` / `collect` / `tdc.js` / `pow_answer`（**旧形态有 `vData` ⇒ 不是本文形态**） | prehandle → tdc.js → collect → PoW → verify | jsvmp 内构 `collect`+`eks`；PoW 是散列原像 | 镂空缺口（+ sprite 含拖动条需裁） | §3.1 ★双源 |
 | 2 | 360 天御 `360-tianyu` | `pn=com.web.tianyu` / `sdkName=360CaptchaSDK`（后者**单源**） | 前置 `auto` → 校验 `check` | MD5 拼串签名 + RSA-long + MD5 后缀 | 背景 **32 条**竖向乱序 | §3.2 ★双源 |
-| 3 | 数美 `shumei` | `captchaUuid` + `organization` | 取图 → 校验 | DES-ECB/ZeroPadding + base64 | 镂空缺口（源 600×300） | §3.3 单源 |
+| 3 | 数美 `shumei` | `captchaUuid` + `organization`（**参数名不可当判据**：见 §3.3） | 取图 → 校验 | DES-ECB/ZeroPadding + base64 | 镂空缺口（源 600×300） | §3.3 ★四源 |
 | 4 | 云片 `yunpian` | `yp_riddler_id` / `captcha.yunpian.com` | `get` → `verify`（JSONP） | AES-CBC(key/iv 随机) + RSA(key+iv) | 镂空缺口（bg + front 两张） | §3.4 ★双源 |
 | 5 | 螺丝帽 `luosimao` | `data-site-key` / `captcha.luosimao.com` | widget → request → frame → user_verify → submit | AES（函数名假称 SHA3） | **30 片**（上下两半各 15，20×80） | §3.5 单源 |
 | 6 | 安居客 `anjuke` | `captchaNew.html` / `sessionId` + `responseId` | 首页 → getInfoTp → checkInfoTp | AES-CBC，key=iv=sessionId 奇位字符 | 镂空缺口（源 480×270） | §3.6 ★双源 |
@@ -138,23 +138,62 @@
   - 图片几何的条宽/画布尺寸是**站点渲染值**（544×284/17），换站要重新量，不要把 17 当全局常量。
   - 距离换算照抄别家的数会导致整体偏移（见 §4 第 5 条）。
 
-### 3.3 数美 `shumei`
+### 3.3 数美 `shumei` ★四源
 
-**来源**：`52pojie-2043649`（ishumei demo）。与 `provider-execution-notes.md` 的数美小节**互补**：
-那边已有 DES-ECB/ZeroPadding 结论，**本节只补新证据，不重复其字段表**。
+**来源（四篇）**：`52pojie-2043649`（ishumei demo，B19）、`52pojie-1782883`（全家桶 + AST 取动态参数）、
+`52pojie-1881927`（点选协议全面剖析）、`52pojie-2059636`（2025 滑块全流程可运行代码）。
+**B20 的三篇互不引用、站点不同、SDK 版本与参数名全不一样**，加上 B19 那篇共四篇，机制逐条吻合
+（`★四源` 指的就是这四篇；「三源」只数 B20 新增的那三篇时容易被误读成总数，故统一按四篇记）。
 
 - **一票判据**：请求参数 `captchaUuid` + `organization`（`organization` 该站固定）。
-- `captchaUuid = yyyyMMddHHmmss + 18 位随机`，随机字符表
-  `ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678`（**该表相对完整 base62 少了 `I/L/O/U/V` 等易混字符** ——
-  这是对来源字符表的观察，不推断作者意图；复现时**直接抄这张表**，用完整 base62 会生成"长得不像"的 uuid）。
-- 提交参数涉及 `tm / tb / ly / fr`：`tm`=轨迹、`tb`=距离比背景宽度、`ly`=滑动时间、`fr`=空数据明文；
-  另有 `mouseEndX`（滑动距离）、图片宽/高、滑块宽度同批送出。
-- 结果字段：`riskLevel: "PASS"` / `"REJECT"`。
-- 图片：源 `600×300`，页面渲染 `300×150` ⇒ 距离识别后**除 2**。
-- **该家专属坑（本文件最重要的一条）**
+  ⚠️ **不要用提交参数名当判据**——这是本批最重要的结论：
+  同一家三篇来源的参数名分别是 `tm/tb/ly/fr`（B19）、`en/dy/xy/tb/mu/oc/mp/nu/qd/ww/kq/jo`（2024）、
+  `to/ny/bs/fm/lf/sl/qt/yh/bq/gg/hg/th`（2025）。
+  **参数名 + DES key 都随 `captcha-sdk.min.js` 小版本变**，只有机制不变。
+- **三接口**：`GET /ca/v1/conf`（取配置，返回 SDK 地址）→ `GET /ca/v1/register`（取图）→
+  `GET /ca/v2/fverify`（提交）。域名 `captcha1.fengkongcloud.cn`，图片前缀 `castatic.fengkongcloud.cn`。
+  - `register` 可能**不是 JSON**：返回形如 `callback({...})`，**先按文本用正则取 `(...)` 再 `json.loads`**。
+- **`conf` 的 `model` 枚举就是全题型表**（一份来源给全，直接当分类依据用）：
+  `slide` 滑块 / `auto_slide` 无感 / `select` 文字点选 / `icon_select` 图标点选 /
+  `seq_select` 语序点选 / `spatial_select` 空间推理。
+  其余字段：`organization` / `appId` / `callback` / `lang` / `sdkver` / `channel` / `captchaUuid` / `rversion`。
+- **`captchaUuid` 的形态是"时间戳 + 随机串"，但位数与字符表不是硬约束**：
+  - 两篇给的是 `yyyyMMddHHmmss + 18 位`（其中一篇正文写"17 个"，**它的代码是 `range(18)`、示例值也是 18 位
+    ⇒ 以代码为准**），字符表 `ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678`
+    （**相对完整 base62 少了 `I/L/O/U/V` 等易混字符** —— 这是对来源字符表的观察）。
+  - **第三篇（2025 版）用的是 16 位 + `string.ascii_letters + string.digits`（完整 base62），实测同样通过**
+    ⇒ **服务端不校验位数与字符表**。⇒ 复现时位数/字符表可任选其一，**不要把这当成通过条件**。
+- **加密**：`getEncryptContent(word, key)` = **DES-ECB + ZeroPadding + base64**，
+  `word` 必须是**字符串**（数字也先转字符串）。**四个固定入参的字段可以整段写死**
+  （换版本的等价值可用现场抓包替换）：
+  `mp = DES('default', '9cc268c1')`、`oc = DES('DEFAULT', 'c2659527')`、
+  `xy = DES('zh-cn', 'b1807581')`、`jo = DES(getSafeParams(), '6d005958')`。
+  每字段对照（该版本实测）：`qd`=`selectData`（点选坐标）、`mu`=`mouseData`（轨迹）、
+  `nu`=图宽 `300`、`dy`=图高 `150`、`tb`=`1`、`en`=`0`、`kq`=`-1`、
+  **`ww` = 一个常量 `28504615`**（不是"宽高"——照字面猜会把常量写错）。
+  **同一批 key 只在同一 SDK 版本内有效**，升级就换。
+- **`this._data` 按题型分三套**（一份来源给全三套字段，**照它填即可**）：
+  - 滑块：`mouseData`=轨迹 `[x,y,t]`、`mouseEndX`=距离、`trueWidth`/`trueHeight`=300/150、
+    `blockWidth`=40、`selectData`=[]、`startTime`=0、`endTime`=轨迹末时间 + `random(100,500)`。
+  - 点选类：坐标先**归一化**（`x/300`、`y/150`）再打时间戳，
+    `startTime = 末点时间 − random(800, 20000)`，`selectData` 与 `mouseData` **是同一份坐标**。
+  - 无感：`mouseData=[[0,0,0]]`、`mouseEndX`=260、`endTime=random(100,500)`。
+- **点选坐标的最终形状**：`[x / 图宽, y / 图高, 时间戳]` —— 就是 `[x, y, t]` 三元组，
+  只是 x/y **先按图宽图高归一化**（`co[0] /= 300`、`co[1] /= 150`）。
+  ⚠️ 归一化的分母是**原图尺寸**（300×150），不是渲染尺寸。
+- **结果字段**：`riskLevel` = `PASS`（放行）/ `REJECT`（拦截）；
+  `code` 枚举：`1100` 成功、`1901` QPS 超限、`1902` 参数不合法、`1903` 服务失败、`9101` 无权限。
+- **图片**：源 `600×300`，页面渲染 `300×150` ⇒ 距离识别后**除 2**；`bg` 是底图、`fg` 是滑块。
+- **该家专属坑（本文件最重要的一组）**
   - ❌ 代码里有自定义格式化检测 `isJsFormat`：**一旦把 JS 格式化/美化，加密用的 key 会被换成"时间戳+域名"**，
     提交必然失败且现象是"参数看起来正常"。处置：**只做单行压缩缓存替换，不美化**；需要可读时另存一份只用于阅读。
-  - 该站 SDK 版本形如 `v1.0.4-184/captcha-sdk.min.js`，key 存在 ob 大数组里 ⇒ 版本变了 key 会变（来源口径："版本不更新 key 应该不会变"）。
+  - **资源有多个域名热备**：替换 JS 时若其中一个域名失败会自动跳另一个，
+    现象是"我明明替换了但没生效"。做替换时**先确认命中的是哪一个域名**。
+  - **动态 JS URL 会导致断点只生效一次**（每次 URL 都变）⇒ 用 Charles `Map Local`
+    或 mitmproxy 把页面/脚本回写成固定文件，再下断点。
+  - **样本里不同 DCC 工具链口径**：`v1.0.4` 从 `148` 起有混淆；`v1.0.3` / `v1.0.1` 的 `147` 及以前
+    **没有混淆**，可正则直取。AST 直取目标 = **12 个提交参数名 + DES key**
+    （不是"还原所有混淆"），提取结果**有序未去重，按索引取**。
 
 ### 3.4 云片 `yunpian` ★双源
 
@@ -457,7 +496,7 @@
 - ❌ **不要**把异型拼接滑块的 70% 纯算法路线当生产方案而不报失败率。
 - ❌ **不要**在 360 天御里按字典序重排 `sign` 的拼接顺序 —— 必须与请求体字段顺序一致。
 
-## 7、来源与口径（21 篇，可追溯）
+## 7、来源与口径（B19 的 21 篇 + B20 补充的 3 篇，可追溯）
 
 > **推导值声明**：来源出于脱敏，站点 URL 多为 base64（`aHR0…`）且标题写「某*」。
 > 本文件的厂商名（如 `10jqka` / `verify5` / `ishumei` / `lofter` / `dangdang` / `eastmoney` / `soufunimg`）
@@ -478,7 +517,10 @@
 | B19-8 | `52pojie-1796423-某居客滑块逆向分析` | 安居客：硬扣口径、`ciphertext` 直出 base64 + encodeURIComponent、指纹字典 | ★双源 |
 | B19-9 | `52pojie-1846991-【验证码逆向专栏】螺丝帽人机验证逆向分析` | 螺丝帽：五接口链、假 SHA3、30 片几何、dots 倒序逆序、Host 校验 | 单源 |
 | B19-10 | `52pojie-1846995-【验证码逆向专栏】房天下登录滑块逆向分析` | 房天下：三接口 + 状态码、41 项指纹、6bit 位压缩 | 单源 |
-| B19-11 | `52pojie-2043649-某美官网案例滑块逆向` | 数美：`captchaUuid` 字母表、`isJsFormat` 格式化检测、图片缩放比 | 单源 |
+| B19-11 | `52pojie-2043649-某美官网案例滑块逆向` | 数美：`captchaUuid` 字母表、`isJsFormat` 格式化检测、图片缩放比 | ★四源之一 |
+| B20-1 | `52pojie-1782883-【验证码逆向专栏】数美验证码全家桶逆向分析以及 AST 获取动态参数` | 数美：`model` 六题型枚举、`conf/register/fverify` 三接口、DES-ECB/ZeroPadding 与固定入参可写死、`_data` 三套题型结构、`code`/`riskLevel` 枚举、四域名热备、AST 直取「12 参数名 + key」及适用版本区间 | ★四源之二 |
+| B20-2 | `52pojie-1881927-数美点选验证协议全面剖析` | 数美：逐字段 DES key 对照表、点选坐标 `[x/图宽, y/图高, ts]` 的三段语义、动态 JS URL 的 Map Local / mitmproxy 处置、抠解码函数 + node CLI + python 正则批量替换的解混淆法 | ★四源之三 |
+| B20-3 | `52pojie-2059636-数美滑动验证码逆向` | 数美（2025 版）：`register` JSONP 文本预处理、`gg/hg/th` 三个提交量与本版 key、`protocol=185`、可运行 Python 全流程、轨迹生成两种实现 | ★四源之四（字段与该版本绑定） |
 | B19-12 | `52pojie-2040415-乐某自研滑块逆向分析` | 乐某：sha256 密码、内联 base64 图、随机 key/iv 会话内配对、`x-encseckey` | 单源 |
 | B19-13 | `52pojie-2025578-某当网登录滑块逆向` | 当当：四接口、`permanent_id` 链、`rankey`/`encryptKey`、`requestId` 来自接口 | 单源 |
 | B19-14 | `52pojie-2035508-某花顺登录滑块逆向` | 同花顺：RSA 登录、`crnd`、`passwdsalt` 三段链、`phrase` 与 `inity` | 单源 |

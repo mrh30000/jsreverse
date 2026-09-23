@@ -52,7 +52,7 @@ python scripts/generate_motion_track.py --mode slider --distance 128 --duration-
 | --- | --- | --- | --- | --- |
 | 数美（SM）/ 树美类 | `ud` / `wi` / `i` | `th` / `gq` | `gk` / `vs` | 三个字段各自带一把**固定 key** 做 DES/AES |
 | 极验 v3 | 底图内 `x` | `aa`（编码后） | — | 见 `references/geetest-protocol-matrix.md` §四 |
-| 百度旋转 | `ac_c` | `mv` | — | `ac_c = round(distance / (290 - 52), 2)` |
+| 百度旋转 | `ac_c` | `mv`（**实测不校验，写死/置空都能过**） | — | `ac_c = round(distance / (290 - 52), 2)` 是 **v2 旋转**口径（`mkd_v2.js`）；**v1（`mkd.js`）滑轨是 212**，两者化简后同为 `angle / 360`。**v2 的滑块分支分母是 `290` 不是 `238`** —— 两代两题型四个口径见 `references/rotation-and-gesture-protocols.md` §2.2 |
 | 拼图类（多组四元组） | 首元素 | 每组 `[x, y, t, 1]` | 第 3 位 | 整组列表再套加密 |
 | 360 天御 | `report` 内 | `[{ "<x>": {"t": <ms>, "y": y} }]` **对象** | 每点 `t` | 与 turing 同名不同家，见 `slider-vendor-matrix.md` §3.2 |
 | 腾讯云 turing | `ans` 里的 `x,y` | `collect` 内部（jsvmp，不透明） | — | `ans` 是**坐标**不是轨迹，见 §3.1 |

@@ -72,29 +72,34 @@ v4 的 PoW / 动态防篡改块 / `td`+`td_sign`、九宫格、以及 16 条实�
 
 ### 百度旋转验证码（`rotate`）
 
-三接口链路 + 两个目标参数 `fs`、`fuid`：
+> **协议全文（含 v1/v2 代际判据、两套接口名、`rzData` 两代结构、三个报错码、两条专属坑）**
+> 已收敛到 [`rotation-and-gesture-protocols.md`](rotation-and-gesture-protocols.md) §2.2。
+> 本节只留"最容易踩的三条"，避免两处并行维护。
 
-| 步骤 | 接口 | 关键产出 |
-| --- | --- | --- |
-| 1 | `init`（`_` 时间戳、`refer` 当前 url、`ak` 站点固定、`ver` 版本） | `as`、`tk` |
-| 2 | `style`（带 `tk`） | `backstr`、`path`（图片地址）、`ext` |
-| 3 | `log` | `op == 1` 即通过；响应 `ds` / `tk` 供后续接口用 |
-
-- **`fs` 赋值两次，只做一次必失败**：
-  ① `fs₁ = Li(JSON.stringify(rzData), {key, as, method})`；
-  ② `fs = Li(JSON.stringify({common_en: fs₁, backstr}), {key, as, method})`。
-- `rzData` 四件套：`ac_c`（角度）、`mv`（轨迹）、`p`（由 `ext` 经 worker 的 `powMap` 算出）、`backstr`。
-  `common.mv` 这组轨迹**不校验**可省；其余环境参数可写死。
-- **距离不是裸距离**：`ac_c = Number((distance / (e - 52)).toFixed(2))`，`e = 290` 是滑动框整体长度
-  ⇒ 视觉距离先减 52 再除 238，最后保留 2 位小数。
+- **代际判据只看核心 JS 文件名**：`mkd.js` = v1、`mkd_v2.js` = v2。接口名两代不同，**别按接口名判代际**。
+  （两套已实测名字：v1 取参 `viewlog`→`getstyle`、提交二次 `viewlog`、收尾 `viewlog/c`；
+  v2 结构一致但收尾走 `cap/c`。其它来源见过 `init`/`style`/`log` 口径 ⇒ **同一家多套接口名，按站点抓包为准**。）
+- **动态时间戳后缀导致断点打不上**：脚本 URL 形如 `mkd_v2.js?cdnversion=1756709834`，
+  直接断点无效。全局搜 `cdnversion` 找到拼接处 → 删掉后缀（等价 DevTools Overrides 重写文件）→ 刷新后再断。
+- **`fs` 是否二次加密两派口径**：另一来源给的是二次（`fs₁` → 包一层 `{common_en: fs₁, backstr}`），
+  B20 两篇独立来源都只描述**一次 AES** 且实测通过 ⇒ **先按一次实现，失败再补第二层**。
 - **AES key 派生带"算法开关"**：`getNewKey(as)` 取 `as` 的**最后一个字符**查表决定哈希算法
   （`FB→MD5`、`eR→SHA1`、`JQ→SHA256`、`o→SHA512`、`DZ→SHA3-256`、`NZ→SHA3-512`），
   输入是 `as + 'appsapi2'`，**取 hex 前 16 位**当 key。
   遇到"同一个加密函数在不同站点表现不同"时，优先怀疑这种"按某字符查表选算法"的写法。
 - **两处填充不同**：`fs` 用 **AES-ECB + ZeroPadding**；`fuid`（`window.passFingerPrint()`，含 canvas 指纹）
   用 **AES-ECB + PKCS7**。不要统一成一种。
-- **动态时间戳后缀导致断点打不上**：脚本 URL 形如 `mkd_v2.js?cdnversion=1756709834`，
-  直接断点无效。全局搜 `cdnversion` 找到拼接处 → 删掉后缀（等价 DevTools Overrides 重写文件）→ 刷新后再断。
+- **换算别抄错代际**：v1 旋转 `ac_c = parseFloat(angle/360).toFixed(2)`（滑轨 212 会抵消）；
+  v2 旋转同值，但 **v2 滑块分支的分母是 290**（不是 238）。
+  可执行件：`scripts/rotation_and_gesture_calc.py baidu-ac-c --version v2 --mode slide --distance <px>`。
+- **三个高频坑（都不指向算法，别去翻加密代码）**：
+  ① 第一步校验通过后**立刻**调收尾接口（v1 `viewlog/c`、v2 `cap/c`）会 `code 1 Verification Failed`
+  ⇒ **随机 sleep 1~3 秒**；
+  ② `Referer` 缺失/错误 → v1 `Unregistered Host` / `Invalid Request`、v2 `code 100600 Unauthorized Host`；
+  ③ `{'code': 0, 'msg': 'success', 'data': {'f': {'reason': '存在安全风险，请再次验证'}}}` **不是失败**
+  （浏览器手动滑也一样），本地加"再次验证"重试即可。
+- 环境项与轨迹写死的口径见协议全文；`ac_c` 与图片识别是两件事，别混在一起调。
+
 
 ### 数美、顶象、百度、京东云、云片
 
@@ -127,26 +132,27 @@ v4 的 PoW / 动态防篡改块 / `td`+`td_sign`、九宫格、以及 16 条实�
 
 ### 数美 / 树美（`shumei-captcha`）
 
-- **两段式**：请求 1 拿图（响应含 `bg` / `fg` / `rid`，**可能不是 JSON，先按文本处理再解析**）；
-  请求 2 提交校验。
-- 提交变动参数（滑块实测）：`wi`（距离）、`gq`（轨迹）、`vs`（滑动时间）、`callback`（可自行构造）；
-  另有 `i`（另一代口径的距离）、`organization`、`rversion`、`protocol`、`sdkver`。
-- 加密：`getEncryptContent(word, key)` = **DES-ECB + ZeroPadding**（CryptoJS 标准算法，可直接复刻），
-  `word` 必须是**字符串**。三个字段各带一把固定 key（实测 `72015d49` / `2ece114c` / `3494d909`），
-  key 可以先写死。
+> **详表在 [`slider-vendor-matrix.md`](slider-vendor-matrix.md) §3.3（B20 起为 ★三源）**：
+> 三接口、`model` 六题型枚举、`captchaUuid`、逐字段 DES key、`_data` 三套题型结构、
+> `code`/`riskLevel` 枚举、四域名热备、AST 直取「参数名 + key」。本节只留必读结论。
+
+- **一票判据是 `captchaUuid` + `organization` + 域名 `fengkongcloud`/`castatic`**；
+  ⚠️ **提交参数名不是判据** —— 本批证明**同一家在不同 SDK 小版本下的参数名完全不同**
+  （三篇来源各一套，逐字段对照表见 `slider-vendor-matrix.md` §3.3，**这里不复述那三套名字**，
+  避免两处枚举不一致）。参数名与 DES key 都随版本变，只有机制不变。
+- **加密**：`getEncryptContent(word, key)` = **DES-ECB + ZeroPadding + base64**，`word` 必须是**字符串**。
+  固定入参的字段（`appId` / `channel` / `lang` / `getSafeParams`）**可以整段写死**；
+  坐标/轨迹/尺寸那几把 key 每版都不同。
+- **`register` 可能不回 JSON**（JSONP 形态）⇒ **先按文本正则取括号内再解析**。
 - 反混淆定位技巧：控制流平坦化 + 字符串数组时，**按业务关键词给分支下断点**
   （`slide` / `auto_slide` 这类分支名），让运行时自己告诉你走哪条；
   再搜"解密后的可读变量名"（如 `getMouseAction`）比搜混淆后的 `_0x` 名字有效。
 - **格式化检测**：本地替换 / 格式化 `captcha-sdk.min.js` 后提交必失败，
-  检测点在路径加密函数内部，删掉或重新压缩回去 —— 见 `motion-and-coordinate.md`
-  的「格式化 / 改写 JS 后提交必失败」。
-- **B19 补充（`isJsFormat`）**：检测函数名实测就叫 `isJsFormat`；判定为"已被格式化"时，
-  代码把加密 key 换成「时间戳 + 域名」⇒ 请求参数看起来完全正常但必失败。
-  **处置：只做单行压缩缓存替换，绝不美化**。另：`captchaUuid` 的随机字符表为
-  `ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678`（**相对完整 base62 少了 `I/L/O/U/V` 等易混字符**——对来源字符表的观察），
-  生成规则 = `yyyyMMddHHmmss + 18 位随机`；该站源图 600×300、渲染 300×150 ⇒ 距离 **÷2**。
-  细节见 `slider-vendor-matrix.md` §3.3。
-- 距离识别用 ddddocr `slide_match` 或平台；滑动时间取轨迹最后一组时间 +50 即可。
+  检测函数实测就叫 `isJsFormat`；判定为"已被格式化"时，代码把加密 key 换成「时间戳 + 域名」
+  ⇒ 请求参数看起来完全正常但必失败。**处置：只做单行压缩缓存替换，绝不美化**。
+- **换 JS 没生效先怀疑多域名热备**（数美资源有多个域名，失败会自动跳另一个）。
+- **动态 JS URL 会让断点只生效一次** ⇒ 用 Charles `Map Local` / mitmproxy 回写固定文件再断点。
+- 距离识别用 ddddocr `slide_match` 或平台；滑动时间取轨迹最后一组时间 +50 即可；源图 600×300、渲染 300×150 ⇒ 距离 **÷2**。
 
 ### 同盾（`tongdun-risk`）
 

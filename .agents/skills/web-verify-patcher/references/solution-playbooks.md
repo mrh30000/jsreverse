@@ -180,8 +180,10 @@
 「旋转 / 弧线滑块」。
 
 关键风险：对称图片、边缘模糊、非线性滑块映射、厂商固定偏移。
-协议侧（百度旋转的 `init/style/log` 三接口、`fs` 二次加密、key 派生开关）见
-`references/provider-execution-notes.md` 的「百度旋转验证码」。
+协议侧（百度 v1/v2 的代际判据、两套接口名、`rzData` 两代结构、`fs` 是否二次加密的两派口径、
+三个报错码、`ac_c` 两代分母）见 `references/rotation-and-gesture-protocols.md` §2；
+换算直接用 `scripts/rotation_and_gesture_calc.py baidu-ac-c`。
+**注意 v1 与 v2 的旋转分支化简后同值，但 v2 的滑块分支分母是 290 —— 套错代际会整体偏大。**
 
 ## `grid`
 
@@ -239,8 +241,13 @@
 3. 将路径重采样为厂商接受的点列格式，记录时间间隔和坐标系。
 4. 对授权测试样本做轨迹平滑、速度和采样密度校准。
 5. 百度等轨迹绘制形态要单独标注，不要混入普通滑块。
+6. **手势绘制（`captcha_variant: gesture-draw`，如 VAPTCHA）**：提交量是**加密后的整条轨迹**，
+   没有"距离"这个字段；协议、`en` 构造、图片还原与两条轨迹坑见
+   `references/rotation-and-gesture-protocols.md` §3。
 
 关键风险：路径被遮挡、抗锯齿导致边缘不稳定、轨迹采样格式绑定浏览器状态。
+**手势类额外两条**：canvas 逻辑高常比事件区**小 30 px**（要点做 +30 补偿）；
+**点间隔 < 5 不入列**（自己造轨迹必须按同阈值抽稀）。
 
 ## `scratch`
 

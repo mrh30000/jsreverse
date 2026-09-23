@@ -44,6 +44,96 @@
 > 验证方式不是 diff 文本，而是**用 node 实跑改前/改后并比对 stdout**；
 > 静默删代码的 pass 不会报错，只会让产物"看起来更干净"。
 
+## v3 顺序恒真状态机（B20 新增，两篇独立来源互证）
+
+极验 v3 的 `slide.7.9.3.js` / `fullpage.9.2.0-guwyxh.js` / `gct.js` 里，控制流平坦化是
+**「恒为真 + 按状态值顺序执行」**，不是经典 OB 的 `while(!![])` 数组移位：
+
+```js
+function r(e, t) {
+  var $_DCGHt = Vwtrj.$_DD()[0][19];        // ① 初值：对象方法 + 二维下标
+  for (; $_DCGHt !== Vwtrj.$_DD()[3][16];) { // ② 终态：另一个下标
+    switch ($_DCGHt) {
+      case Vwtrj.$_DD()[12][19]:            // ③ 当前态
+        var n = 1;
+        $_DCGHt = Vwtrj.$_DD()[0][18];      // ④ 下一态（也可能直接 return，没有 ④）
+        break;
+      …
+    }
+  }
+}
+```
+
+**判据（三条同时成立才认定）**：
+
+1. 循环是 `for`，**没有 `update`**，`test` 形如 `S !== <下标表达式>`；
+2. `body` 只有一个 `switch`，`discriminant` 就是 `S`，每个 `case` 的 test 都是**同一种下标表达式**；
+3. 每个 `case` 的 consequent **以 `break` 结尾**，倒数第二条是 `S = <下标表达式>`（最后一态例外，可以是 `return`）。
+
+**为什么不能只看源码顺序**：状态值由 `Vwtrj.$_DD()` 这类**表函数**给出，
+「下一个执行哪个 `case`」只能**按值比较** —— 来源对此的表述是
+「把所有的取值写到 map 中，然后循环判断」，**并没有给出表的实际内容**；
+只要表里存在**同一个数值落在多个下标上**的情况，按下标文本比较就会判错。
+本技能的回归夹具
+`artifacts/skill-evolution/fixtures-20260923-1154/geetest3-real-sample.js`（照抄来源的函数形状自建）
+就刻意让 `[0][19]` 与 `[12][19]` 取同值、`[12][17]` 与 `[0][17]` 取同值；
+**该表的真实取值属于站点数据，本技能不声称它一定重复，只要求实现"按值比较"这个前提成立**。
+更关键的是：作者完全可以把 `case` 打乱书写，此时"按源码顺序展开"会**静默错序**
+（产物能跑、结果错）。这正是 `geetest4-guarded-pass.js` 的 `ForStatement` 分支的隐含假设，别默认它成立。
+
+> **两种声明位置都要认**（只看 `node.init` 会整段漏掉形态 ②）：
+> ① 写在 for-init 里 `for (var S = T.$_DD()[0][0]; S !== …;)`；
+> ② 写在前一条语句里 `var S = T.$_DD()[0][0];` + `for (; S !== …;)` —— **v3 实测更常见**。
+> 形态 ② 展平后会留下一条只读一次的 `var S = …` 死声明：**只有在全程序里该名字只剩声明本身时才能删**，
+> 否则 `return S` 之类会直接 `ReferenceError`。
+
+**执行顺序**（顺序反了会把真实业务语句当垃圾删掉）：
+
+```text
+① 别名归一 + 编码归一（geetest4-guarded-pass.js 的 VariableDeclaration 分支）
+② 状态机展平：geetest3-state-machine-pass.js
+   —— 先用 --table 给状态值表，或让脚本从顶层前缀 eval 出来
+③ 再走通用平坦化器处理剩下的 loop/switch 热点
+```
+
+### 可执行件：`scripts/patterns/geetest3-state-machine-pass.js`
+
+```bash
+# 状态表能从脚本顶层前缀 eval 出来时（对象定义在前几条语句里）
+node scripts/patterns/geetest3-state-machine-pass.js in.js out.js --markdown
+
+# 真实站点：$_DD() 在混淆对象内部、脚本外求不了值 ⇒ 显式给表
+#   键 = 状态引用的**压缩源码文本**（如 `Vwtrj.$_DD()[0][19]`），值 = 数值
+node scripts/patterns/geetest3-state-machine-pass.js in.js out.js --table state.json --markdown
+
+# 只做顺序断言（CI/回归）：源码顺序 ≠ 推导顺序时退出码 2
+node scripts/patterns/geetest3-state-machine-pass.js in.js --check
+```
+
+- **退出码三态**：`0` 正常（含"没有可还原的循环"）｜`1` 参数/解析错误｜
+  `2` `--check` 发现顺序不一致｜**`3` 状态表解析不全 —— 此时"不产出输出文件"**。
+  设 `3` 的理由：若照样写盘，用户会拿到一个**一字未改的产物**却以为展平成功了（典型静默失败）。
+- 默认**不删**链外（不可达）`case`，而是跳过该循环并报 `unreachable-cases`；
+  确认确为死代码后加 `--drop-unreachable`。
+- `--check` 的退出码 `2` 是「源码顺序与推导顺序不一致」——**这是断言，不是错误**。
+- 形态 ②（声明在循环之前）展平后会留下只读一次的 `var S = …` 死声明：
+  脚本**只在"全程序里该名字只剩声明本身"时才删**，否则保留
+  （否则 `return S` 之类会直接 `ReferenceError`）。
+- **状态变量逃逸出循环时（循环之后还读 `S`）必须保持语义**：展平会删掉循环内所有
+  `S = <下标表达式>` 赋值，而 `var` 是函数级作用域 ⇒ 只看文本会"能跑但值错"。
+  脚本对这类样本：**补上终态赋值** `S = <终态表达式>;`（正常退出时 `S` 恰等于终态值）；
+  若循环是**靠 `return` 退出**、外部却还要读 `S`，则**直接跳过该循环并报 `state-var-escapes-loop`**
+  （此时无法在不改写语义的前提下展平）。
+  自检里有两条夹具用「改前/改后各跑一遍、比对返回值」验证语义等价，而不是只 diff 文本。
+- `--selftest` 32 项，含一条**照抄真实样本**（表里同值多下标 + 末态 `return`）的回归夹具
+  `artifacts/skill-evolution/fixtures-20260923-1154/geetest3-real-sample.js`（配套 `--table` JSON），
+  另有 `artifacts/skill-evolution/tools/b20-verify-pass-edges.py` 的 **19 项边界阳性验证**
+  （乱序 case、缺表项不写盘、不可达 case 的两条路径、普通循环不误伤、二次运行幂等、产物过 `node --check`）。
+
+> 与 `geetest4-guarded-pass.js` 的分工：那份 pass 的 `ForStatement` 分支是
+> **「按源码顺序展平 + 要求 `init === null`」的快速路径**；本脚本只做**按键值链推导 + 顺序断言**，
+> 两者结论不一致时**以本脚本为准**。同名函数体的 3-declarator 别名族两份 pass 都能处理，先跑哪份都行。
+
 ## 可选的「外部工具链」前置（能省大量手工，但有代价）
 
 极验的混淆可以直接过两站工具，再回浏览器调试：

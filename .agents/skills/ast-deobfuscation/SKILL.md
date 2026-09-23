@@ -147,7 +147,15 @@ description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反�
   - `references/patterns/reese84.md`
   - `references/patterns/dingxiang.md`
   - `references/patterns/geetest4.md`（含「别名归一 → 字符串表 → 控制流」的**顺序硬约束**、
-    可选的 `deobfuscate.io → UglifyJS → DevTools Override` 外部工具链及其代价与处置）
+    可选的 `deobfuscate.io → UglifyJS → DevTools Override` 外部工具链及其代价与处置；
+    **B20 新增 v3 顺序恒真状态机**：`for (; S !== <下标表达式>;) switch(S){case <下标表达式>: …; S = <下标表达式>; break;}`
+    —— 状态值由 `$_DD()` / `$_DN()` 这类表函数给出且**同一数值会落在多个下标上**，
+    因此"下一个执行哪个 case"必须**按值比较**，按源码顺序展开会静默错序；
+    两种声明位置（for-init / 前一条语句）都要认。
+    可执行件 `scripts/patterns/geetest3-state-machine-pass.js`（`--table` 给状态值表 / `--check` 顺序断言 /
+    `--drop-unreachable` / `--selftest` 32 项；**退出码 3 = 状态表解析不全且不产出文件**；
+    **状态变量逃逸出循环时会补终态赋值，无法保持语义时直接跳过并报 `state-var-escapes-loop`**），
+    与 `geetest4-guarded-pass.js` 的分工见该文件）
   - `references/patterns/tonghuashun.md`
   - `references/patterns/yidun.md`
   - `references/patterns/xiaohongshu.md`

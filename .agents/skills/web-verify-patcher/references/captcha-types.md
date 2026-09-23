@@ -14,7 +14,7 @@
 | `grid` | “九宫格”“选择所有”、3x3 图片网格、红绿灯/斑马线/自行车等提示 | 完整网格截图、题面、格子边界、多轮状态 | 目标分类和格子编号/坐标方案 |
 | `audio` | “语音验证码”“音频验证码”、听音输入、播放按钮或音频资源 | 音频文件/播放接口、题面、答案格式、视觉替代方案 | 音频转写、数字/字符约束、可访问性替代 |
 | `drag-drop` | “拖放”“拖到目标区域”、draggable/droppable/dropzone | 被拖动元素、目标区域、坐标系、释放判定 | 目标定位、拖放路径、释放点校准 |
-| `trace-draw` | “轨迹绘制”“连线”“画线”、draw/trace/connect dots | 目标路径截图、canvas 尺寸、采样点格式 | 路径提取、采样重建、轨迹格式分析 |
+| `trace-draw` | “轨迹绘制”“连线”“画线”、draw/trace/connect dots | 目标路径截图、canvas 尺寸、采样点格式 | 路径提取、采样重建、轨迹格式分析；**手势绘制（在图上描一笔，如 VAPTCHA）保留本类型 + `captcha_variant: gesture-draw`** |
 | `scratch` | “刮刮卡”“刮开”、scratch card | 刮开前后状态、刮动区域、通过阈值 | 覆盖比例、轨迹采样、状态变化分析 |
 | `image-restore` | “图像复原”“图片还原”“乱序拼图”“滑动还原”“切片乱序”“分块乱序”“瓦片重排” | 分块图片、块边界、目标排列、`tileOrder`/`pieceOrder`、CSS/canvas 切片线索、滑动/拖动映射 | 先判定是否为 `tile-scramble`，再做页面顺序还原或图像边缘匹配 |
 | `area-select` | “面积验证”“框选”“圈出”“选择区域” | 完整题面截图、区域边界、坐标原点 | 目标分割、边界框/多边形坐标输出 |
@@ -98,6 +98,14 @@
 
 需要向用户索要轨道宽度、角度范围和初始角度信息。
 
+**协议侧（链路、字段、两代换算口径与专属坑）见 `references/rotation-and-gesture-protocols.md` §2**：
+百度 `mkd.js`(v1) / `mkd_v2.js`(v2)、小红书 `redcaptcha`；
+角度识别侧的关键细节（插值伪影、鬼影、双旋转咬合）在同文件 §2.1。
+换算用 `scripts/rotation_and_gesture_calc.py baidu-ac-c`。
+
+**双环旋转**（内外环各转一次）保留主类型 `rotate`，补 `captcha_variant: dual-ring`；
+攻方只需先解**咬合**，咬合后按单旋处理（做法见 §2.1）。
+
 ### `grid`
 
 固定格子、多数为 3x3 的图片选择任务，分类为 `grid`。方案需要：
@@ -126,6 +134,19 @@
 题面要求沿路径画线、连线、描轨迹或完成轨迹绘制时，分类为 `trace-draw`。百度等产品会把轨迹绘制作为独立形态。
 
 需要画布尺寸、路径参考图、采样点格式和提交字段。方案重点是路径提取、点列重采样、速度/间隔记录和坐标归一化。
+
+**子类（决定提交量的形状，判错方向会缺必填字段）**：
+
+| 子类 | `captcha_variant` | 交互特征 | 提交量 |
+| --- | --- | --- | --- |
+| 轨迹绘制 | —（默认） | 沿参考图描一条线/连点 | 点列 |
+| **手势绘制** | `gesture-draw` | 在图上**按某种形状描一笔**（VAPTCHA 类） | **加密后的整条轨迹**（没有"距离"这个量） |
+
+- **判据**：题面/交互是"描画"还是"拖动一个手柄"？后者是 `slider`。
+- **`gesture-draw` 协议全文见 `references/rotation-and-gesture-protocols.md` §3**：
+  四段链（`{vid}` → `config` → `get` → `validate`）、`en` 的 11 项加和、图片 5×2 还原、
+  轨迹 **+30 px 补偿**与「间隔 < 5 不入列」两条坑、`validate` 返回码表。
+- ❌ **不要把 `gesture-draw` 当滑块**：它没有"距离"这个提交量，缺的是轨迹字段。
 
 ### `scratch`
 
@@ -270,5 +291,27 @@ Cloudflare challenge page、AWS WAF、DataDome、Akamai/Imperva/PerimeterX/Kasad
 - 优先补齐证据后**重新归类到最接近的既有类型**；只有确实无法归入时才保留 `unknown-custom`。
 - ⚠️ 反例：把 `unknown-custom` 当"万能类型"直接给方案，会让用户按错误类型去准备材料。
 
+## `captcha_variant` 取值表（本表是**唯一权威源**）
+
+子类比主类型窄，但**判错方向无法靠调参补救**（例如把 `gesture-draw` 当滑块、把语序点选当普通点选）。
+因此取值必须从这个封闭集合里选，**不要临时自造**：
+
+| `captcha_variant` | 隶属主类型 | 判据要点 |
+| --- | --- | --- |
+| `gesture-draw` | `trace-draw` | 在图上**按形状描一笔**（VAPTCHA 类）；提交量是**加密后的整条轨迹**，没有"距离"字段 |
+| `dual-ring` | `rotate` | 内外**双环**各转一次；先解咬合再按单旋处理 |
+| `tile-scramble` | `image-restore` | 整图被切成多块后**顺序打乱**（顺序数组 / `background-position` / `drawImage`） |
+| `text-click` | `click-select` | 题面给 3~4 个汉字，**题面顺序 = 提交顺序** |
+| `icon-click` | `click-select` | 题面是一组图标小图，题面顺序 = 提交顺序 |
+| `word-order` | `click-select` | 「请按**正确语序**依次点击」⇒ **题面顺序 ≠ 提交顺序** |
+| `image-to-image` | `click-select` | 无题面文字，只在图上给参考小图 ⇒ 找参考图在底图上的位置 |
+| `semantic` | `click-select`（主类型可归 `semantic-reasoning`） | 「点击最大的/最小的 X」⇒ 按题面关系词筛出唯一目标 |
+
+- 无法归入上表时：**保持 `captcha_variant` 为 `null`**，把判据缺口写进 `missing_evidence`，
+  **不要新造一个名字**（自造名会让下游脚本与报告口径同时失效）。
+- 本表与三处类型清单一样，由 `scripts/check_verify_docs_consistency.py` 机械校验：
+  它会把本技能文档/脚本里所有 `captcha_variant` 的字面量取值与本表比对（`null`/`str` 这类占位不计）。
+
 > 本文件是**验证码类型的唯一权威源**；`SKILL.md` 的「分类标签」与
 > `references/solution-playbooks.md` 的类型小节都只做引用，新增/改名类型时先改这里。
+> `captcha_variant` 的取值同样只在本文件维护。

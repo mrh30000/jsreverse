@@ -1,6 +1,6 @@
 ---
 name: web-verify-patcher
-description: "网页验证码识别、方案选择与授权验证流程分析技能。当用户询问验证码识别、验证码类型、这是什么验证码、验证码方案、风控验证、WAF challenge、captcha recognition/type，或提到滑块/拼图、点选/文字点选/九宫格/图标点选/语序点选/按语序点击、旋转/旋转滑块、文字/数字/算术、GIF 动图、语音、拖放、轨迹绘制、刮刮卡、图片/图像复原、切片乱序、分块乱序、图片分割、瓦片重排、分割顺序打乱、区域/面积选择、差异点击/找茬、字体识别、空间语义、小游戏、PoW/工作量证明、无感/无痕/风险评分、一键/checkbox、多轮、问答、活体/人脸，或提到极验、易盾、腾讯云 turing、360 天御、阿里云、数美、顶象、百度、京东云、云片、螺丝帽、安居客、房天下、当当、同花顺、东方财富、快手滑块、v5/verify5、雷池 SafeLine、reCAPTCHA、hCaptcha、Turnstile、AWS WAF、DataDome、Arkose/FunCaptcha、Akamai、Imperva、PerimeterX/HUMAN、Kasada、ALTCHA/FriendlyCaptcha 等国内外验证码/风控厂商时使用。用于识别网页验证码/验证产品、输出方案，并在用户确认后编排离线求解、图片还原、坐标换算、用户手动成功样本基线采集、轨迹生成、模型训练、打码平台请求模板、失败复盘/方案切换和授权验证测试；打开真实网页时按 ruyiPage/Camoufox/CloakBrowser 取证模式。当需要拆解具体厂商的提交参数与交互链路（如极验 v3 的 gt/challenge/三个 w 七步链路与 seccode 绑定、极验 v4 的 captcha_id/lot_number/payload/w/td/td_sign/pow 两接口链路、易盾推理拼图的 token/data.m/data.p/data.ext/cb/callback 构造与 JSONP 提交、顶象 c1/a/v1 三段链路与 ac/ua 组装、腾讯防水墙 cap_union 系的 ua/sess/collect/eks/vData 五参数与魔改 TEA、Akamai 的 sensor_data 与环境指纹分层诊断），或排查「底图还原正确但提交坐标对不上」「验证通过却登录失败」「以前能过现在过不去」这一类问题时，也必须使用本技能。"
+description: "网页验证码识别、方案选择与授权验证流程分析技能。当用户询问验证码识别、验证码类型、这是什么验证码、验证码方案、风控验证、WAF challenge、captcha recognition/type，或提到滑块/拼图、点选/文字点选/九宫格/图标点选/语序点选/按语序点击、旋转/旋转滑块/手势验证码/手势、文字/数字/算术、GIF 动图、语音、拖放、轨迹绘制、刮刮卡、图片/图像复原、切片乱序、分块乱序、图片分割、瓦片重排、分割顺序打乱、区域/面积选择、差异点击/找茬、字体识别、空间语义、小游戏、PoW/工作量证明、无感/无痕/风险评分、一键/checkbox、多轮、问答、活体/人脸，或提到极验、易盾、腾讯云 turing、360 天御、阿里云、数美、顶象、百度、京东云、云片、螺丝帽、安居客、房天下、当当、同花顺、东方财富、快手滑块、v5/verify5、vaptcha、雷池 SafeLine、reCAPTCHA、hCaptcha、Turnstile、AWS WAF、DataDome、Arkose/FunCaptcha、Akamai、Imperva、PerimeterX/HUMAN、Kasada、ALTCHA/FriendlyCaptcha 等国内外验证码/风控厂商时使用。用于识别网页验证码/验证产品、输出方案，并在用户确认后编排离线求解、图片还原、坐标换算、用户手动成功样本基线采集、轨迹生成、模型训练、打码平台请求模板、失败复盘/方案切换和授权验证测试；打开真实网页时按 ruyiPage/Camoufox/CloakBrowser 取证模式。当需要拆解具体厂商的提交参数与交互链路（如极验 v3 的 gt/challenge/三个 w 七步链路与 seccode 绑定、极验 v4 的 captcha_id/lot_number/payload/w/td/td_sign/pow 两接口链路、易盾推理拼图的 token/data.* 构造与 JSONP 提交、顶象 c1/a/v1 三段链路与 ac/ua 组装、腾讯防水墙 cap_union 系的 ua/sess/collect/eks/vData 五参数与魔改 TEA、Akamai 的 sensor_data 与环境指纹分层诊断），或排查「底图还原正确但提交坐标对不上」「验证通过却登录失败」「以前能过现在过不去」这一类问题时，也必须使用本技能。"
 ---
 
 # Web Verify Patcher（网页验证码识别与验证方案分析）
@@ -51,7 +51,16 @@ description: "网页验证码识别、方案选择与授权验证流程分析技
      再只读命中那一节。**站点自研一律按 `site-<域名>` 记名，不要硬套别家字段名。**
      三条最容易踩的：① `gt_cut_*` **不等于**极验（51.com 用同一套 HTML 布局，协议完全不同）；② **函数名不可信**（螺丝帽的 `SHA3` 实为 AES）；
      ③ **格式化 / 改写 JS 后提交必失败**（数美 `isJsFormat`、阿里 227、雷池）。
-   - 需要厂商执行注意点时读 `references/provider-execution-notes.md`（含百度旋转验证码三接口 + `fs` 二次加密 + key 派生开关、数美/树美的 DES-ECB 与格式化检测、同盾自有 base64 变体、aj-captcha 的 `pointJson`、腾讯六宫格 AI 图、GIF 动图验证码）。
+   - **判为 `rotate`，或判为 `trace-draw` 且交互是「在图上描一笔」（`captcha_variant: gesture-draw`）时，
+     必须读 `references/rotation-and-gesture-protocols.md`**：
+     旋转系（百度 `mkd.js`(v1) / `mkd_v2.js`(v2) 的代际判据与两套接口名、`rzData` 两代结构、
+     `ac_c` 两代分母、小红书 `redcaptcha` 两接口）+ 手势系（VAPTCHA 四段链 `{vid}`→`config`→`get`→`validate`、
+     `en` 的 11 项加和与 `splicingObj` 排序口径、图片 5×2 还原与 `Decrypt` 减法、
+     轨迹 **+30 px 补偿**与 **间隔 < 5 不入列**、`validate` 返回码表）。
+     角度识别侧（插值伪影 / 鬼影 / 双旋咬合互相关）在同文件 §2.1。
+     换算与还原用 `scripts/rotation_and_gesture_calc.py`（`baidu-ac-c` / `vaptcha-order` /
+     `vaptcha-restore` / `murmur3`，`--selftest` 27 项）。
+   - 需要厂商执行注意点时读 `references/provider-execution-notes.md`（含百度旋转验证码的代际判据与三条高频坑、数美/树美的 DES-ECB 与格式化检测、同盾自有 base64 变体、aj-captcha 的 `pointJson`、腾讯六宫格 AI 图、GIF 动图验证码）。
    - **判为 `waf-challenge` 且「无图无交互、只有准入 Cookie 链」时，先分流再动手**：定族用 `node ../web-js-env-patcher/scripts/classify_edge_challenge.js --html <页面> --status <码> --cookies <Set-Cookie> --markdown`；判层与链路读 `../web-js-env-patcher/references/edge-waf-cookie-challenge.md`，可离线求解读 `../web-reverse-algorithm/references/10-waf-clearance-cookie.md`。**这类目标不属于本技能的 Phase-2 流程**（没有图片、没有人工成功样本基线）。
    - 进入真实网页验证前，先评估用户手动成功样本基线：默认同一授权目标至少 5 次成功样本；若观察到新的验证码类型，该类型至少 2 次成功样本。基线不足时输出强提示，但用户确认后仍可继续离线分析或受控验证。
    - 同一授权目标、同一验证码类型、同一用户选择方案出现连续失败时，用 `scripts/evaluate_verification_attempts.py` 复盘 attempts JSON；连续 5 次失败且图片/坐标/轨迹/切片还原/补环境/challenge 新鲜度均无明显异常时，主动建议 `recommended_next_route: platform-control`。
@@ -71,15 +80,21 @@ description: "网页验证码识别、方案选择与授权验证流程分析技
 
 使用这些固定类型标签，便于脚本和报告保持一致：
 
+> **本清单不是权威源，权威源是 `references/captcha-types.md`（判断表 + 类型说明），
+> 本清单与 `references/solution-playbooks.md` 的类型小节都由它派生。**
+> 三处清单必须保持一致——改任何一处后用
+> `python scripts/check_verify_docs_consistency.py --markdown` 做机械校验
+> （检查集合一致、顺序一致、无新增/缺失），不要靠人眼比对。
+
 - `text`：文字、数字、字母数字混合或简单图片验证码。
 - `math`：算术验证码，需要先 OCR 再解析表达式。
 - `slider`：滑块/拼图验证码，需要识别缺口或目标偏移。
 - `click-select`：点选文字、图标、物体或按顺序点击目标。
-- `rotate`：旋转图片或物体，使其转正或对齐。
+- `rotate`：旋转图片或物体，使其转正或对齐。协议见 `references/rotation-and-gesture-protocols.md` §2。
 - `grid`：九宫格或多宫格图片分类验证码。
 - `audio`：语音/音频验证码，需要识别播放内容。
 - `drag-drop`：拖放物体到目标区域，不等同于单纯滑块。
-- `trace-draw`：轨迹绘制、连线或画线验证。
+- `trace-draw`：轨迹绘制、连线或画线验证；手势绘制（在图上描一笔）补 `captcha_variant: gesture-draw`，协议见 `references/rotation-and-gesture-protocols.md` §3。
 - `scratch`：刮刮卡式验证，需要刮开或覆盖指定比例。
 - `image-restore`：图片/图像复原、乱序拼图、滑动还原；切片/分块顺序打乱时保留主类型，并补充 `captcha_variant: tile-scramble`。
 - `area-select`：框选、圈选或选择图片区域。
@@ -109,7 +124,7 @@ description: "网页验证码识别、方案选择与授权验证流程分析技
 
 使用这些固定厂商标签：
 
-- `recaptcha`、`hcaptcha`、`cloudflare-turnstile`、`cloudflare-waf`、`geetest`、`tencent-tcaptcha`、`netease-yidun`、`aliyun-captcha`、`shumei-captcha`、`dingxiang-captcha`、`baidu-captcha`、`jdcloud-captcha`、`yunpian-captcha`、`huawei-captcha`、`tongdun-risk`、`aws-waf`、`datadome`、`arkose-funcaptcha`、`mtcaptcha`、`keycaptcha`、`friendlycaptcha`、`altcha`、`yandex-smartcaptcha`、`captchafox`、`prosopo-procaptcha`、`trustcaptcha`、`private-captcha`、`capjs`、`mcaptcha`、`iconcaptcha`、`botdetect`、`securimage`、`visualcaptcha`、`amazon-captcha`、`cybersiara`、`aj-captcha`、`tianai-captcha`、`easycaptcha`、`happycaptcha`、`kaptcha`、`akamai-bot-manager`、`imperva-incapsula`、`perimeterx-human`、`kasada`、`netacea`、`radware-bot-manager`、`f5-bot-defense`、`custom-or-unknown`。
+- `recaptcha`、`hcaptcha`、`cloudflare-turnstile`、`cloudflare-waf`、`geetest`、`tencent-tcaptcha`、`netease-yidun`、`aliyun-captcha`、`shumei-captcha`、`dingxiang-captcha`、`baidu-captcha`、`xiaohongshu`、`vaptcha`、`jdcloud-captcha`、`yunpian-captcha`、`huawei-captcha`、`tongdun-risk`、`aws-waf`、`datadome`、`arkose-funcaptcha`、`mtcaptcha`、`keycaptcha`、`friendlycaptcha`、`altcha`、`yandex-smartcaptcha`、`captchafox`、`prosopo-procaptcha`、`trustcaptcha`、`private-captcha`、`capjs`、`mcaptcha`、`iconcaptcha`、`botdetect`、`securimage`、`visualcaptcha`、`amazon-captcha`、`cybersiara`、`aj-captcha`、`tianai-captcha`、`easycaptcha`、`happycaptcha`、`kaptcha`、`akamai-bot-manager`、`imperva-incapsula`、`perimeterx-human`、`kasada`、`netacea`、`radware-bot-manager`、`f5-bot-defense`、`custom-or-unknown`。
 
 ## 输出格式
 
