@@ -3520,3 +3520,184 @@ python artifacts/skill-evolution/tools/append-b25-ledger.py
   （证据池仍未跨越「单站一流程」到「可复用编排协议」的门槛）。
 - 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
   **注**：B1-17 / B13-216 的「不建小程序技能」结论在 B22 已被**推翻并取代**，旧结论只保留可追溯性。
+## 批次 B26 · 2026-09-23（第二十六次执行）
+
+取材口径：待处理队列 **441 篇**中取**一个整族 —— 网马时代（2008–2012）载荷族 18 篇**
+（`52pojie-31072/31094/31097/31098/31100/31101/31103/31113/31114/31115` 十篇"网马解密大讲堂"
++ `32204/32826/36347/39140/41909` 五篇实战解密 + `125529` 心得 + `99643` 挂马手法 + `78966` 分析素质）。
+
+选它的理由有三条，且**第一条是对上一批建议的证伪**：
+
+① **B25 列的"优先级①（验证码图像识别的坐标侧）"经复核不成立**：把该簇候选
+（`2014831` 某音滑块 `captchaBody`、`2108119` 易盾滑块、`2125447` 顶象滑块、`2058010` 某习通滑块全协议、
+`2044075` 某程滑块、`2098532` 某防水墙 AI 全链路 等）逐篇回源后，它们给的是**单站协议链**
+（易盾四包 `Getconf/up/get/check`、顶象 `aid/ak/_r` 四步链、某音 `sha512+salt` 四参数），
+而 `web-verify-patcher` 的 `provider-execution-notes.md` 已按厂商收录同型链路 ⇒
+**再收只会重复登记厂商参数**，不是新能力（按"避免滥建冗余"的约束，本轮不取）。
+② **网马通道是 B25 新开的供给线**（上游专门开了 MAL2 通道），且这一族的**编码形态与技能库零交集**：
+建库前全库 `grep` `alpha2` / `US-ASCII` / `charcodes` **0 命中**（只有 `forum-corpus-archival`
+把它们当语料过滤关键词）。
+③ **本批能拿到 8 组"机器可判"的 oracle**（全部带阴性对照）—— 这是选它而不是选"再讲一遍极验/瑞数"的决定性理由。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 508 | `52pojie-31072-网马解密大讲堂——网马解密初级篇.md` | `6656fb18c5e6488217bbf1b0a7d4bebe` | 2026-09-23 | web-malware-forensics | evolve | **挂马手法 11 类的结构清单**（框架 / JS 文件 / `JScript.Encode` / Flash / 不点即弹 / `top.document.body.innerHTML +=` / CSS `url(javascript:…)` / `window.open` / 图片伪装 / `frameset rows="444,0"` / 高级欺骗），以及一条可迁移判据：**iframe 的 src 最值得看，宽或高为 0/1 的可疑度最高**。工具链四件（Freshow / HTMLDecoder / Malzilla / MDecoder）首次落档。 |
+| 509 | `52pojie-31094-网马解密大讲堂——网马解密中级篇001(Freshow工具使用方法).md` | `bf320c627ecf5324dbd2769a1dc8430d` | 2026-09-23 | web-malware-forensics | evolve | **Freshow 的功能面**（`Qeye` 提链 / `Connect` 连串 / `Nuls` 去空 / `Replace` / `Reverse`；`Esc` / `ASCII` / `US-ASCII` / `Alpha2` / `enumXOR` / `Base64` / `Winwebmail`）—— 其中 `US-ASCII` 与 `Alpha2` 是**技能库此前 0 命中的两个编码名**。另得一条**算法级线索**（原文对 alpha2 的唯一描述）："首先转换到 `\x` 形式，因为可能会经过异或操作"。 |
+| 510 | `52pojie-31097-网马解密大讲堂——网马解密中级篇002(Eval篇).md` | `5582674c72484c2a7058d1865b2f1ff2` | 2026-09-23 | web-malware-forensics | evolve | **"把 `eval` 换成 `alert`"这条不执行载荷的取证姿势**的原始出处；同篇带一个 dean-edwards packer 实例（`62,62` 词表 + `Gameeeeex`/`983A`/`pif` 等词元），与本批 `39140` 的 `62,6` 实例构成**同族双样本**（都落进 `packer` 的 oracle）。 |
+| 511 | `52pojie-31098-网马解密大讲堂——网马解密中级篇003(Document.write篇).md` | `f4797fbc81fd8488e9470dbc830e3212` | 2026-09-23 | web-malware-forensics | evolve | `document.write` 的**语义判据**（"里面必须有 HTML 脚本标签，脚本才可以执行，否则会当作字符串输出"）＋ 完整多级链实录：`3.htm` → `3.css` → `a.cdd1.com/m.css`，且**该样本用的正是 alpha2** ⇒ 与 `31100` 互证 alpha2 的落点。 |
+| 512 | `52pojie-31100-网马解密大讲堂——网马解密中级篇004(Alpha2篇).md` | `cef73c3f0f0bdc5513de8645fad7da75` | 2026-09-23 | web-malware-forensics | evolve | **alpha2 的判据**：代码开头 `TYIIIIIIIIIIIIIIII`、RealPlayer 漏洞族；操作路径（alpha2 解一次 → `up` 上翻 → 再 `esc` 解一次）。**本批唯一没能离线复算的一类**：见下方"证伪与审计留痕"里的 4 条排除实验 ⇒ 登记为**工具依赖**，不做离线实现。 |
+| 513 | `52pojie-31101-网马解密大讲堂——网马解密中级篇005(Shellcode篇).md` | `2495f8d72383214bd3cafe7b5543b538` | 2026-09-23 | web-malware-forensics | evolve | **分隔符可以不是 `%u`**：本例分隔符是单词 `Game`（`Game54EBGame758B…`）。实测口径 = **先把 `Game` 归一化成 `%u`、再按组内交换 unescape**，解出三串 `urlmon.dll` / `C:\U.exe` / `http://haoxia18.com/xia/f5.css` ⇒ 这条把 B25 的"组内交换"从**单样本观察**升级为**多样本互证**（本批共 4 处）。另：原文给出 shellcode 的正式定义（Aleph One 1996 论文）。 |
+| 514 | `52pojie-31103-网马解密大讲堂——网马解密中级篇006(Base64篇).md` | `9324dd3f064d9bf27b13b66ab3cf69cd` | 2026-09-23 | web-malware-forensics | evolve | **base64 + UTF-16 这一变体**（`YgBlAGcAaQBu` = `b\0e\0g\0i\0n\0`）：识别特征是"解出来是成对字节"，工具此前只会按字节输出 ⇒ 新增 `b64-utf16` 子命令。实测 oracle：原文那串解出 `begin<br>…` 与 `http://www.cngg.org/ad/ad1.exe`（另有 msn074/qq23 与三条 `track.aspx` 回传）。 |
+| 515 | `52pojie-31113-网马解密大讲堂——网马解密中级篇007(US-ASCII篇).md` | `ea5fe756c0bbe528ad2e2952165e828a` | 2026-09-23 | web-malware-forensics | evolve | `US-ASCII` 的判据（原文原话："**代码类似汉字**"，且代码里含 `<meta http-equiv="Content-Type" …/>`）。⚠️ 原文**未给可复算样本**（附件不在语料池）⇒ 文档只登记判据、算法栏写"**未证**"，**不写推测性算法**。 |
+| 516 | `52pojie-31114-网马解密大讲堂——网马解密高级篇001(SWF解密).md` | `22b7ed8a5ba94ec46f58e68caf34e7bd` | 2026-09-23 | web-malware-forensics | evolve | **容器型载荷（SWF）**：判据是文件头 `CWS`（压缩）/`FWS`/`ZWS`，处置是**先 zlib 解压再找 `ActionScript` 里的 URL**；且原文明确 **SWF 与 PDF 共用同一套"结构拆分 + 数据流解压"** ⇒ 文档把两者合成一节，避免写成两件事。 |
+| 517 | `52pojie-31115-网马解密大讲堂——网马解密高级篇002(PDF解密).md` | `3722f75402f5b671ce366b9e5c0b5811` | 2026-09-23 | web-malware-forensics | evolve | **PDF = 容器 + 内嵌 JS**（可用记事本直读）；两条硬事实：① 拼接表达式里夹着 `\x30`（原文写成字符间带空格的 `\ x 3 0`），`"%u9"+"\x30"+"90"` 必须**先折回 `%u9090`** 再切组，否则整串错位；② 这是**带 XOR 密钥的 shellcode**，原文口径是"**里面有很多的 21**……密钥就是 21"。实测：`%u` 组内交换 **再 XOR `0x21`** 解出 `http://5l2o8.com/web/3.exe`（换 `0x20` 不命中）。 |
+| 518 | `52pojie-32204-一个网马解密实例 by 是昔流芳[LSG].md` | `957a90a2747a25d84c025ffa4b647562` | 2026-09-23 | web-malware-forensics | evolve | **"变量声明顺序 ≠ 拼接顺序"**这一反例（`Shell2` 先声明、`PayLoad = Padding + AdjESP + Shell + Shell2 + …` 里排第 4）⇒ 直接丢给工具解不出，必须先按**拼接表达式**手工合并；配一句可迁移结论："**不要依赖工具**，工具还没有智能到自动整理代码的地步"。 |
+| 519 | `52pojie-32826-分析一个简单的shellcode网马.md` | `98099ec7128cc83e501e9e3f8ea8f5fc` | 2026-09-23 | web-malware-forensics | evolve | **整型数组 + 偏移**一族：`arr[i]=String.fromCharCode(sss[i]-80)`，随后 `,`→空格、`@`→`,`（**顺序是契约**）。实测 oracle：149 个元素解出 `var SC=unescape(spray.replace(/abcd/g,"%u"));…memory=new Array();`。同篇还有 `abcd` 当分隔符、`%u0808` NOP 填充、以及"静态解不出时丢 OD 动态跑"的边界。 |
+| 520 | `52pojie-36347-[LCG作业]一个网马解密实例.md` | `aa248a983720dbfe000f37311c23933e` | 2026-09-23 | web-malware-forensics | evolve | **噪声字符过滤**一族：`'s#!c!$$r&$&&i#^!p@#t#'` + `.replace(/\$|\!|#|&|@|\(|\^|\)/ig,'')`。实测 oracle：395 字符噪声串过滤后还原出完整 URL `http://foxsports-com.narod.ru.dmm-co-jp.sugaryhome.ru:8080/…`（多层域名拼接也是该族特征）。作者结论"**解密网马不要太依赖工具，懂点脚本语言就好多了**"。 |
+| 521 | `52pojie-39140-[LCG作业]function(p,a,c,k,e,d)解密.md` | `a6b605a6c651541da44b9a2845e5a374` | 2026-09-23 | web-malware-forensics | evolve | dean-edwards packer 的**最小可复算实例**：`'2.4("3://5.0.1")',62,6,'baidu|com|document|http|write|www'.split('|')` ⇒ `document.write("http://www.baidu.com")`。价值在于它把"**进制 `a` 与词表 `k` 必须回源核对**"做成断言（把 `c` 改成 3 必须报"词元缺失"）。 |
+| 522 | `52pojie-41909-小小的例子，小小的网马(编辑完成) by 是昔流芳[LSG].md` | `17d6fa94e6e6351e7b0731f7881f11a0` | 2026-09-23 | web-malware-forensics | evolve | **两层结构 + 两处新编码**：① 外层是 `eval(sb(101)+sb(118)+…)`，`sb(m)=String.fromCharCode(m^3)` ⇒ 新增 `xorchain`（实测解出 `function replacestr(str){` 且 CRLF 对得上）；② 内层 `packcode`（`zC3z84z45zD4…`）是"**去 `/~?@` → 去 `z` → 每两字符交换 → `%XY` → unescape**"，实测解出 `<HTML>…classid="clsid:75108B29-202F-493C-86C5-1C182A485C4C"` ⇒ 这是"组内交换"口径的**第 4 处独立实证**。 |
+| 523 | `52pojie-125529-浅谈关于网马解密的一些心得.md` | `b152b723106b04072a24f187c819a5f0` | 2026-09-23 | web-malware-forensics | evolve | **两条铁律**（"浏览器是最终解释机" / "解铃还需系铃人"）+ 本族定性口径（"这种变形更准确的来说是称为 **obfuscation**，并非真正意义上的加密与解密"）⇒ 直接决定本技能的处置姿势是**反混淆**而不是找密钥。另带三件可迁移事实：`eval` 被主动隐藏的写法（`(document.getElementsByTagName+'').substr(1,4)` 探测 + `Object.prototype.bt3223` 污染 + `-h*eval` 字符码表）、`Redoce` 的 `3>标出 Eval / 6>Eval() 清除`、以及十六进制串样本（实测解出 `document.write('<iframe src="http://doubleclicck.co.cc/forum.php?tp=…" width="1" height="1"…`）。 |
+| 524 | `52pojie-99643-对某站挂马手法及网马加密方法的分析.md` | `c6481f9eb4d88470c16fa4ebaf154da0` | 2026-09-23 | web-malware-forensics | evolve | **定向投放 + 环境分派的老样本形态**：先判系统（`windows nt5.1` / `msie8` 命中就 `location.replace("about:blank")`）、再用 `new ActiveXObject("360SafeLive.Update")` **探测 360**（`catch` 里 `g=="[object Error]"` 判"没装"）；挂马链是多级 `?id=` 传递（`kbl.html?id=` → `load.html`），并用 cookie 去重标记 `IsGone` 控制只投一次；另有"随机数 `Math.random()*100 > 15` 才投"的概率闸门。 |
+| 525 | `52pojie-78966-从一个简单的例子,谈谈分析网马的基本素质.md` | `b1ae3f677d68c9f12a7c2cd071816213` | 2026-09-23 | web-malware-forensics | evolve | 同一族（整型数组）的**变体**：偏移用的是**除法**（`arr[i] = String.fromCharCode(Ttodeol56523657[i56236897]/7)`），且变量名被写成 `arr895636532`/`eaknNK678upHPboKT` 这类"前缀 + 随机数字"⇒ 识别特征是**"同一前缀后跟不同随机后缀"的标识符族**（比逐个认变量名快）；内层仍是 dean-edwards packer，但词表是**纯数字表**（`134|170|66|…`）⇒ 印证"`k` 表内容无意义，只有位置有意义"。 |
+
+### 本批次技能变更汇总（B26）
+
+| 技能 | 变更类型 | 主要落点 |
+| --- | --- | --- |
+| `web-malware-forensics` | evolve | 新增 `references/legacy-web-malware-family.md`（10 节：挂马手法 11 类与 iframe 尺寸判据 / 两条铁律与四步法 / 容器型 SWF·PDF / **编码族三联表 11 行（其中 6 行是建库前 0 命中的新族）** / "组内交换"的 4 处实证 / XOR 密钥发现口径 / **8 组实测 oracle 表** / 老工具链与现代等价 / 排错 10 条 / 反例 6 条）；`payload-and-obfuscation.md` 三联表 **+6 行**（#9–#14：自定义分隔符 / 两字符交换 / 整型数组 / XOR 字符码链 / base64-UTF16 / `alpha2`）并升级 §1.2 为"4 处独立实证"；`SKILL.md` 分流判据 **+9 行**、工作流第 4 步补编码族入口、失败模式 **+6 行**、反例 **+2 条**、命令入口 **+7 组**、资源小节新增文件与自检项数；`scripts/payload_unpack.py` 新增 5 个子命令（`delim` / `charcodes` / `xorchain` / `b64-utf16` / `strip-noise`）与 `esc --xor`，自检 **65 → 102 项**。 |
+
+### 结构性收敛（B26）
+
+| 项 | 处置 |
+| --- | --- |
+| **`description` 长度** | 本批给 `web-malware-forensics` 的 description 增补 8 组触发词（`Game54EBGame758B` / `TYIIIIIIIIIIIIIIII` / `alpha2` / `fromCharCode(sss[i]-80)` / `sb(m)=fromCharCode(m^3)` / `b64 + UTF-16` / 噪声字符过滤 / SWF `CWS` / PDF 内嵌 JS / Freshow 时代），一度冲到 **1107** ⇒ 按"**删解释性散文、保留独有触发词**"压到 **1000**（限 1024）。压缩时删掉的 5 个词已逐条 `grep`：`Content-Security-Policy` / `剪贴板` / `远程配置下发` / `VeryMal` / `Coinhive` **仍在正文里**；`autoThreads`（挖矿 IOC 关键词）**只在 description 里**⇒ 已**恢复**。另 3 个描述性词（`基于图像的恶意软件` / `假浏览器安装包` / `页面跳转劫持`）语义已由"图片隐写 / 假 Flash 安装包 / 跳转劫持"承接，**不算能力词丢失**。 |
+| **`esc` 的口径债** | B25 的"组内交换"当时只有 **1 个** oracle。本批新增 3 处独立实证后，文档与自检都升级为"**4 处**"，并把"**先交换再 XOR**"（顺序不可颠倒）做成**阴性断言**（换 `0x20`、或 `esc-noswap`+`0x21` 都必须读不出 URL）。 |
+| **`alpha2` 的处理口径** | 新增一条**"工具依赖项"**的登记范式：判据写清楚、算法栏写"未证"、**并附证伪实验**（避免下一个人用"base64 + XOR"再撞一次墙）。`US-ASCII` 同法登记为"未证"。 |
+
+### 证伪与审计留痕（B26）
+
+```bash
+# ⚠️ 以下命令均以**仓库根**为工作目录
+
+# 1) 解包器自检（102 项，含本批 8 组新 oracle）
+python .agents/skills/web-malware-forensics/scripts/payload_unpack.py --selftest
+python .agents/skills/web-malware-forensics/scripts/ioc_extract.py --selftest
+
+# 2) 真实样本实跑（8 条，输入由源文章现抽，见 artifacts/skill-evolution/b26-run-20260923/）
+S=.agents/skills/web-malware-forensics/scripts/payload_unpack.py; O=artifacts/skill-evolution/b26-run-20260923
+python $S delim    --in $O/in-31101-game.txt    --sep Game --out $O/out-31101.txt      # -> urlmon.dll / C:\U.exe / http://haoxia18.com/xia/f5.css
+python $S esc      --in $O/in-31115-pdf.txt     --xor 21  --out $O/out-31115.bin       # -> http://5l2o8.com/web/3.exe
+python $S b64-utf16 --in $O/in-31103-b64.txt    --out $O/out-31103.txt                 # -> begin<br>… / www.cngg.org/ad/ad1.exe
+python $S charcodes --in $O/in-32826-sss.txt --offset 80 --remap ',: ' --remap '@:,'   # -> var SC=unescape(spray.replace(/abcd/g,"%u"))
+python $S xorchain --in $O/in-41909-sb.txt --fn sb --key 3 --out $O/out-41909.js       # -> function replacestr(str){
+python $S delim    --in $O/in-41909-packcode.txt --sep z --pairs --drop '/~?@' --out $O/out-41909-stage1.txt  # -> <HTML>
+python $S strip-noise --in $O/in-36347-noise.txt --chars '!@#$^&()'                     # -> http://foxsports-com.narod.ru…
+python $S packer   --in $O/in-39140-packer.txt  --out $O/out-39140.js                  # -> document.write("http://www.baidu.com")
+
+# 3) alpha2 的证伪实验（4 条排除，全部否定）
+python - <<'PY'
+import base64, re
+s = open("docs/references/52pojie-31100-网马解密大讲堂——网马解密中级篇004(Alpha2篇).md",
+         encoding="utf-8").read()
+full = ""                                   # 逐行抽；一行里可能有多个拼接字面量，必须全部接上
+for line in s.splitlines():
+    if "ShellCode=ShellCode" in line:
+        seg = line.split("ShellCode=ShellCode", 1)[1].split(";")[0]
+        full += "".join(re.findall(r'"([^"]*)"', seg))
+raw = base64.b64decode(full + "=" * ((-len(full)) % 4))
+print("字符数", len(full), "| 标准 base64 ->", len(raw), "字节 | 可读段",
+| **台账追加脚本的编号校验口径（真实踩到）** | `append-b2x-ledger.py` 的"编号连续"检查原本用 `^\|\s*(\d+)\s*\|\s*`` —— 它会把**评审记录表**（`| 1 | 技能双镜像…`）也算成登记行。B25 当年能跑通只是因为那批的评审表是**本轮刚写进去**的；B26 追加时它们已在文件里，于是误报"编号不连续：[506, 507, 2, 3, 6]"。⇒ 口径收紧为"第 2 列是反引号包住的 `.md` 文件名"，**与台账的幂等口径同源**（`append-b26-ledger.py` 已改并留注）。 |
+      re.findall(rb"[ -~]{6,}", raw))       # -> 794 | 595 字节 | [b'4Cg[B}']（无意义）
+PY
+#   ② 4 种常见字母表（标准/数字优先×2/URL-safe/crypt）③ 位反转 / 半字节交换 ④ 单字节 XOR 枚举 256 种
+#   全部无 http / urlmon / .dll 命中 ⇒ alpha2 登记为"工具依赖"，不做离线实现
+
+# 4) 来源保真度（表 A 72 条 / 18 源文件 + 表 B 29 条 / 3 落点文件）
+python artifacts/skill-evolution/tools/b26-verify-sources.py
+
+# 5) 故障注入阳性验证（9/9 变红）
+python artifacts/skill-evolution/tools/b26-fault-injection.py
+
+# 6) 机械校验 + 双镜像
+node artifacts/skill-evolution/tools/check_skill_integrity.js --root . --markdown
+python artifacts/skill-evolution/tools/b20-mirror-sync.py
+
+# 7) 台账幂等复跑（应打印「已登记，跳过」）
+python artifacts/skill-evolution/tools/append-b26-ledger.py
+```
+
+**故障注入明细（基线绿 → 注入后红）**：
+
+| 注入点 | 结果 |
+| --- | --- |
+| `esc`：组内两字节交换被改掉 | 自检 88/99 → 红 ✓（4 处实证里至少 3 处同时命中） |
+| `delim`：「每段必须 4 位十六进制」守卫被关掉 | 自检 97/99 → 红 ✓（防"静默拼错"） |
+| `delim --pairs`：两字符交换被改回原序 | 自检 97/99 → 红 ✓（`packcode` 解不出 `<HTML>`） |
+| `charcodes`：字符重映射改成**逆序**执行 | 自检 98/99 → 红 ✓（"顺序是契约"那条在守） |
+| `b64-utf16`：「奇数长度必须报错」守卫被关掉 | 自检 98/99 → 红 ✓ |
+| `strip-noise`：「空字符集必须报错」守卫被关掉 | 自检 98/99 → 红 ✓ |
+| 保真度**表 A** 一条针改成不可能命中的串 | 「未命中 2 条」→ 红 ✓ |
+| 保真度**表 B** 一条针改成不可能命中的串 | 「未命中 1 条」→ 红 ✓（表 B 真的在守"文档必须逐字含该字面量"） |
+| 校验器：`references/` 引用被改成悬空 | 阴性 `rc=0` / 阳性 `rc≠0` → 红 ✓ |
+
+**⚠️ 本轮注入过程中如实记录的一处发现**：最初把"`charcodes` 的越界守卫"当注入点，结果**不变红** ——
+排查后确认是**守卫冗余**（`chr(-79)` 自己也会抛 `ValueError`，那条守卫只是为了把报错信息说得更具体），
+**不是断言漏洞**；该注入已替换为"重映射逆序"。这条记档的意义在于：**注入不变红时，先分清"断言没守"与"这层本来就没有可观测差异"**。
+
+### 独立评审（B26）
+
+**方式**：**1 名独立盲评审员**（只看产物与源文件，不给作者自评、**不允许改文件**），四个维度：
+事实保真度 / 可执行性 / 自检有效性 / 一致性；要求每条结论都带证据（文件 + 行号，或命令 + 实跑输出），
+并**明确要求它自己写代码复算文档里的数字、拒绝采信文档自述**。
+
+**结论：`pass`** —— 1 项低severity缺陷（措辞/语义精度），本轮已修并补上断言。
+
+| # | 严重度 | 缺陷 | 证据 | 处置 |
+| --- | --- | --- | --- | --- |
+| 1 | 低 | `charcodes` 的口径被写成"等价于把 `,` 换成空格"，而**源里其实有两种写法**：恶意代码 JS 是 `arr.toString().replace(/,/g,"")`（**删逗号**），作者的解码工具 C 才是 `0x2c -> 0x20`（**逗号变空格**） | 评审给出源行号（`52pojie-32826` 的 JS 段与 C 段）；并指出该样本解码后**含 0 个 `0x2c`**、故两口径在它上面结果相同（所以 oracle 与命令仍然正确） | **成立，已修 3 处**：`payload_unpack.py` 的 `charcodes_decode` docstring 改写为"两种写法、只在载荷含 `0x2c` 时分叉"；`legacy-web-malware-family.md` §4 表下加注 + §6 oracle 4 加注 + 排错表加一行；`SKILL.md` 失败模式加一行。**并新增 3 条断言**把分叉钉死（C 口径 / JS 口径 / **二者必须不同**）⇒ 自检 **99 → 102 项** |
+
+**评审自己实跑/复算的内容（节选，均为其原文）**：
+
+- **8 条 oracle 命令逐字复跑**（`esc --xor 21` 含 `0x20` 阴性对照、`delim --sep Game`、
+  `charcodes`、`b64-utf16`、`xorchain`、`strip-noise`、`packer`、`delim --pairs`）⇒ 全部按文档命中。
+- **`alpha2` 证伪数字独立重算**：`字符数 794 | 标准 base64 -> 595 字节 | 可读段 [b'4Cg[B}']`，与文档**完全一致**。
+- **"建库前全库 0 命中"独立复验**：在 `git bc6fe72` 版本上对 `alpha2|US-ASCII|charcodes|charcode` **0 命中**。
+- **一致性**：`.agents` 与 `.claude` `diff -rq` ⇒ `TREES IDENTICAL`；§ 引用全部存在；
+  `verified.md` B26 段 18 个 md5 抽验 9 个（含全部重点源）逐字节一致。
+- **反向实验 2 组**：不交换组内字节 / 偏移用 81 / base64-UTF16 用大端 ⇒ 均解不出可读串，**未发现恒绿断言**。
+
+**评审明确点名"值得保留"的 5 条（原文保留）**：
+
+1. 挂马手法 11 类里"**iframe 的 `src` 最值得看、宽高 0/1 即可疑**"这条判据不随时代失效，可直接迁到现代运行时写入点。
+2. "组内两字节交换"从**单样本观察**升级为 **4 处互证**，且把"不交换即读不出"做成断言 —— 把经验变规则的范本。
+3. `alpha2` / `US-ASCII` **如实标"工具依赖 / 未证"**，不编伪算法；证伪实验可复跑、数字经其重算吻合。
+4. **8 组 oracle 全带阴性对照**（`0x20` 不命中、packer `c=3` 报错），`--selftest 65 → 102`。
+5. **编码族三联表 ↔ 命令入口 ↔ 源文章行号**三者一一对应，并用 `git` 证明了"建库前 0 命中"。
+
+**评审如实声明的"未验证范围"**（记档，避免高估本轮证据强度）：
+
+- 未跑 B25 既有的 `stego` / `ioc_extract` 入口（非本批新增、且缺对应输入）。
+- 未实跑 `b26-verify-sources.py` / `b26-fault-injection.py` **这两个脚本本身**（以 `git` md5 抽验、
+  `--selftest 102/102` 与手工反向实验替代）。
+- 18 篇源文章**未逐篇全文通读**，只做了 25+ 条断言的定点抽查（重点项全覆盖）。
+- 未核查 `.agents` / `.claude` 之外的其它镜像位置。
+
+### 下一批（B27）取材建议（承接本节）
+
+- 待处理 **423** 篇（台账 507 → 525 条；本批登记 18 条）。
+- 优先级：
+  ① **网马时代这条线继续收尾**：本批只吃到"编码族 + 容器型 + 手法"三块；池里还剩
+     `52pojie-78966` 之外的 `31115` 同族（PDF/SWF 更深的利用侧）、`32826`/`41909` 之外的
+     `shellcode` 变体，以及 `928225`/`2113952`/`2115802`/`2100101` 四篇钓鱼/挂马实战 ⇒
+     **一律 evolve `web-malware-forensics`，只有出现"新壳型"才动脚本**。
+  ② **验证码簇的取舍口径要写死**：B26 已论证"单站协议链不再逐篇收"（易盾/顶象/某音都有既有落点）。
+     下一批若仍要碰该簇，**只取"新题型"或"带完整纯算交付"**的（例如真拼图坐标、双缺口几何）。
+  ③ **站前挑战厂商带**按 B24 的 6 处同改清单扩容（优先带可独立复算的 oracle）。
+  ④ **无感 / 行为验证**剩余并入 `behavior-verify-and-sign-headers.md`，不为每家建新文件。
+  ⑤ **桌面客户端薄区**（Tauri / node:sea / 原生模块）：B25 首次命中后本批 0 命中，
+     按 B25 暂缓的口径继续"有新素材就收，不再列为固定优先项"。
+- 候选新技能 `captcha-flow-orchestration` —— B5–B26 **二十次确认不新建**（证据池仍未跨越"单站一流程"门槛）。
+- 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
+  **注**：B1-17 / B13-216 的「不建小程序技能」结论在 B22 已被推翻并取代，旧结论只保留可追溯性。
+- **B26 待办（评审带出、非本轮引入）**：`miniprogram-reverse` 排错表里的 `RadiumWMPF` 版本绑定条目
+  在对应源文章里查不到（B25 已记，本批未碰该技能）⇒ 继续留到碰该技能的那一批回源复核。
