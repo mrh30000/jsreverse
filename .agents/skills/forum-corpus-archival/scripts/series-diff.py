@@ -155,7 +155,12 @@ def dump(path, groups, note):
 
 # ---------------------------------------------------------------- 模式
 
-def mode_struct(pool, arch_ids, out, only_gap):
+def mode_struct(pool, arch_ids, arch_titles, out, only_gap):
+    # 已归档标题也走一遍结构法，得到「已有归档成员的系列名」集合（坑 90）
+    arch_keys = set()
+    if only_gap:
+        for t in arch_titles:
+            arch_keys |= struct_keys(t)
     groups = defaultdict(list)
     for tid, (title, forum) in pool.items():
         if not title or tid in arch_ids:
@@ -166,6 +171,8 @@ def mode_struct(pool, arch_ids, out, only_gap):
     for k, items in groups.items():
         ids = {x[0] for x in items}
         if len(ids) < 2 or TAG_KEY.match(k):
+            continue
+        if only_gap and k not in arch_keys:      # 只看「既已有归档成员、又还有空缺」的组
             continue
         if PRODUCTISH.search(k):
             continue
@@ -223,7 +230,7 @@ def main():
     print("池=%d | 归档=%d | 归档标题=%d" % (len(pool), len(arch_ids), len(arch_titles)))
 
     if a.mode in ("struct", "both"):
-        mode_struct(pool, arch_ids, a.out + "_struct.txt", a.only_archived_gap)
+        mode_struct(pool, arch_ids, arch_titles, a.out + "_struct.txt", a.only_archived_gap)
     if a.mode in ("ngram", "both"):
         mode_ngram(pool, arch_ids, arch_titles, a.out + "_ngram.txt",
                    a.min_arch, a.max_arch, a.min_len, a.only_archived_gap)
