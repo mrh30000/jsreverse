@@ -9,6 +9,26 @@
       "name": "sign 字段自身不参与签名",
       "rule": "文章给出的待签名串里不含 sign 字段",
       "symptom_if_wrong": "文章未说明"
+    },
+    {
+      "name": "常量接在拼串**之后**（不是之前、也不是当密钥）",
+      "rule": "`md5(升序拼接串 + \"048a9c4943398714b356a696503d2d36\")` —— 常量是**消息的一部分且位于尾部**，不是 HMAC 的 key、也不是前置盐",
+      "symptom_if_wrong": "写成 `md5(常量 + 拼串)` 会得到另一个 32 位 hex（本例实测 `8ab345342e28abf0b1fdb701f953c1af`）⇒ **签名恒错、但服务端通常只回「参数错误」，不会告诉你位置**；把它当 HMAC key 会得到 64 位输出，长度就不对"
+    },
+    {
+      "name": "升序是 `Object.keys(t).sort()` 的字典序（区分大小写）",
+      "rule": "JS 默认 `sort()` 按 UTF-16 码元升序，**大写字母排在小写字母之前**；Python 侧若用 `sorted()` 结果一致，但若用 `sorted(key=str.lower)` 或 `ORDER BY` 类逻辑就会错序",
+      "symptom_if_wrong": "参数名同时含大写与驼峰时拼串顺序与浏览器不同 ⇒ 签名恒错。本例两面都是纯小写驼峰（`bizChannelId` / `pickRuleId`），**恰好不暴露这个坑** —— 换站前先确认参数名大小写构成"
+    },
+    {
+      "name": "空数组只留键名、对象值走 `JSON.stringify`",
+      "rule": "`Array.isArray(n)` 且长度为 0 ⇒ 只拼键名；非空数组 ⇒ 元素 `sort()` 后逐个拼、**元素间用 `,` 分隔**；对象值 ⇒ `e + r + JSON.stringify(n)`",
+      "symptom_if_wrong": "把空数组拼成 `[]`、或给非空数组用 JSON 序列化（得到 `[\"a\",\"b\"]` 而不是 `a,b`）⇒ 拼串长度与浏览器不一致 ⇒ 签名错"
+    },
+    {
+      "name": "参数值为 `undefined` 时跳过、`NaN` 时当空串",
+      "rule": "`void 0 === n` ⇒ 直接 `return e`（不拼这个键）；`Number.isNaN(n)` ⇒ `n = \"\"`（键名照拼、值为空）",
+      "symptom_if_wrong": "把 `undefined` 拼成字符串 `\"undefined\"` ⇒ 拼串多出一段 ⇒ 签名错（该分支在两面源文的示例里都未触发 ⇒ **属读码所得、未实测**）"
     }
   ]
 }

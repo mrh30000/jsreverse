@@ -96,6 +96,12 @@ description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反�
 
 - 从浏览器页面采集源码、补抓 Worker 脚本或验证运行时行为时，读 `references/browsercli-tools.md`，并使用 `browsercli` skill 获取完整命令契约。
 - 新增或调整适配器时，先读 `references/pattern-layering.md`。
+- **要用第三方「一键还原」框架（如 `sml2h3/ast_tools`）、或想看清「反混淆框架」的形态契约时，读 `references/ast-toolchain-frameworks.md`**：
+  框架形态（`main.js` → `common_fix.fix` → `pro/demo1_fix.js` 的 **15 个各自独立的 pass + 一个主函数集中声明执行顺序**）、
+  **判据「框架的价值在『函数独立 + 顺序显式』」**、与本仓 `pattern-layering.md` 分层管线的分工（内层纪律 vs 外层纪律）、
+  使用前提（`npm install iconv-lite @babel/core`、输出默认 `demos/demo1/output.js`）与
+  **验收标准（「控制流被还原 + 字符串被解出、可读性显著上升」，不是「100% 去混淆」）**。
+  ⚠️ 源文**没有贴出那 15 个函数中的任何一个**，该文只写框架形态与选型判据；具体 pass 读 `references/decode-obfuscator.md` 与 `references/obfuscator-io-four-step-pipeline.md`。
 - 任何逻辑想放进通用脚本前，先读 `references/safe-rewrite-rules.md`。
 - 处理字符串表、解码 stub、最小运行时求值时，读 `references/string-array-and-minimal-eval.md`；
   **极验系的「别名族 + 数组字面量」模板（真实形态是一条 `var` 带 3 个 declarator + 紧跟一条 `shift()`）

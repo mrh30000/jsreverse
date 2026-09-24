@@ -1,0 +1,84 @@
+{
+  "mutations": [
+    {
+      "name": "value 是鼠标坐标串（ceil + 竖线）",
+      "rule": "value = \"(\" + Math.ceil(mouseMap.x) + \"|\" + Math.ceil(mouseMap.y) + \")\"；x = winEvent.pageX || winEvent.clientX + scrollLeft，y = winEvent.pageY || winEvent.clientY + scrollTop，scrollLeft/Top 取 document.documentElement 或 document.body",
+      "symptom_if_wrong": "缺括号/缺竖线、或改用 Math.floor ⇒ pos 形态与服务端预期不符，判参数非法"
+    },
+    {
+      "name": "enc 的 d 是 charCode 十进制直接首尾相接",
+      "rule": "对 s 逐字符 charCodeAt().toString() 后用空串连接（不是逗号/竖线分隔，也不是 hex，也不是 UTF-8 字节）",
+      "symptom_if_wrong": "d 的长度与取值全变 ⇒ m / k 全错 ⇒ enc 全错，且脚本不报任何错（最典型的静默错）"
+    },
+    {
+      "name": "m 与 k 的取位口径",
+      "rule": "m = Math.floor(d.length / 5)；k = parseInt(d.charAt(m) + d.charAt(2m) + d.charAt(3m) + d.charAt(4m)) —— 四个位置的字符按顺序拼成一个十进制数（不是相加，不是各取一位求和，也不是取 4 个字符的数值）",
+      "symptom_if_wrong": "k 错 ⇒ LCG 的乘子与初值都错 ⇒ enc 全错"
+    },
+    {
+      "name": "k < 2 必须返回 null",
+      "rule": "if (k < 2) return null;",
+      "symptom_if_wrong": "漏掉这个判断会对小样本算出一串「看着正常」的 enc，而服务端预期是空值 ⇒ 调试时误以为算法已还原"
+    },
+    {
+      "name": "r = round(1e9 * rd) % 1e8（1e8 与 100000000 是同一个数）",
+      "rule": "r = Math.round(1000000000 * rd) % 100000000；⚠️ 源文把同一常数写成 `100000000`（line 213）与 `1e8` 两种形式，二者恒等，不是两个常量",
+      "symptom_if_wrong": "把 1e8 误读成别的量级 ⇒ r 错 ⇒ 既错在末尾 8 位 hex，又错在 LCG 初值 ⇒ enc 全错"
+    },
+    {
+      "name": "d += r 是「数字转字符串后追加」，超 10 位要截断",
+      "rule": "先 d = d + String(r)；再若 d.length > 10 则 d = String(parseInt(d.substring(0, 10)))",
+      "symptom_if_wrong": "把 d 当数字做算术相加（而不是追加 r 的十进制串）⇒ 种子初值完全不同；漏掉截断 ⇒ 中间数变长、取模结果不同 ⇒ enc 全错"
+    },
+    {
+      "name": "LCG 的初值与每轮递推",
+      "rule": "M = Math.pow(2,31) - 1；a = Math.ceil(s.length / 2)；初值 seed = (k * d + a) % M；循环体每轮末尾 seed = (k * seed + a) % M",
+      "symptom_if_wrong": "漏掉「异或之后的那一次递推」⇒ 第 1 个字符正确、从第 2 个字符起全错（这种「只对一位」的现象是本条最典型的指纹）"
+    },
+    {
+      "name": "逐字符 x = charCode ^ floor((seed / M) * 255)",
+      "rule": "x = parseInt(posData.charCodeAt(i) ^ Math.floor((seed / M) * 255))；先做 (seed/M) 再乘 255 再取整（不是 seed % 255，也不是整数除法）",
+      "symptom_if_wrong": "写成 seed % 255 或 seed * 255 / M ⇒ 每一位都错，输出长度却是对的（长度对、内容全错）"
+    },
+    {
+      "name": "hex 的小写与补零分支",
+      "rule": "x < 16 时用 \"0\" + x.toString(16)，否则 x.toString(16)；toString(16) 输出小写",
+      "symptom_if_wrong": "不补零 ⇒ 输出长度会随内容浮动（不再是 2*len(posData)+8）；改成大写 ⇒ 服务端判非法"
+    },
+    {
+      "name": "r 的 8 位 hex 尾是左补 0",
+      "rule": "for (r = r.toString(16); r.length < 8; ) r = \"0\" + r;（循环左补）",
+      "symptom_if_wrong": "不补 ⇒ 结果短于 8 位尾；补到右侧 ⇒ 值错。两种都让整串 enc 对不上"
+    },
+    {
+      "name": "_edt 的取值归属存疑（两个同名 _0x408603）",
+      "rule": "\"&_edt=\" + (_0x408603 + randomNumA)，randomNumA = Math.floor(10 * Math.random())（0~9）。⚠️ 源文有两个同名 `_0x408603`：line 209 的 Math.ceil(userIdAndQuestionIdAndRandom.length / 2) 与 line 270 的 \"\" + new Date().getTime()；源文自己点出「另外一个603的变量则是时间」却没写清 _edt 用哪个",
+      "symptom_if_wrong": "取值归属搞错 ⇒ _edt 与服务端不一致。本蓝图按 line 209 的 ceil(s.length/2) 记为主读法，line 270 的时间戳读法一并登记为存疑 —— 遇到 _edt 校验失败时，**先怀疑这里**"
+    },
+    {
+      "name": "OB 字符串表的「内存爆破」必须先处置",
+      "rule": "解密函数里 RvZSqA 用 `new RegExp(this.MTxJBI + this.FMdsHI).test(this.ZxBleI.toString())` 做三元判定；该分支跑出 false 时会落到 ebdBfN 的 `for(...) this.pNCgln.push(Math.round(Math.random()))` ⇒ 死循环 push（内存爆破）。处置两步：① 先把三元**强制成 `--this[\"pNCgln\"][1]`**；② 再把「第一个分支设 false、第二个设 true」",
+      "symptom_if_wrong": "不做处置 ⇒ 把解密函数复制到 node 一跑就卡死/OOM（源文原话「首先测试一下，发现卡死了，多半是正则爆破」）；**只做 ① 不做 ② 仍会内存爆破**（源文实测）"
+    },
+    {
+      "name": "环境检测在纯算还原时直接改 true",
+      "rule": "abcdx 一类检测（navigator.webdriver / document.$cdc_asdjflasutopfhvcZLmcfl_ / /PhantomJS/.test(userAgent) / window.callPhantom|_phantom）在还原阶段直接改成 return true",
+      "symptom_if_wrong": "不改 ⇒ 函数在任何非浏览器环境（含 node）直接 return undefined，enc / pos 全为空，且不报错"
+    },
+    {
+      "name": "先做字符串转义最小化，再解字符串表",
+      "rule": "第一步就用 generator(ast, {minified: true, jsescOption: {minimal: true}}) 输出一遍，把 \\x / \\u 转义串压回普通字符串；**然后**才去解字符串表（源文顺序：先解决字符串转义部分，再解 _0x56bc）",
+      "symptom_if_wrong": "跳过这一步 ⇒ 字符串表内容看起来仍是转义串，肉眼与正则判断全错；顺序反了则「字符串表已解出但内容是转义串」"
+    },
+    {
+      "name": "批量替换调用点要用 replaceInline，不要只改实参",
+      "rule": "traverse 命中解密函数调用（callee.name === '_0x56bc'）后，构造 types.stringLiteral(解密结果) 并用 path.replaceInline(str_node) 替换整个调用节点",
+      "symptom_if_wrong": "改成只写 path.node.arguments[0].value ⇒ 只改实参、调用点仍在跑解密函数（可能再次触发内存爆破），且返回值没变 ⇒ 等于没解"
+    },
+    {
+      "name": "⚠️ 源文是练习站，结论不可迁移",
+      "rule": "源文开头声明「这里的超星考试指本人的原创单机游戏【超级星星V.666】单词大考验关卡，并非通俗意义超星」",
+      "symptom_if_wrong": "把它当作真实超星生产站点的签名口径去套 ⇒ 结论不可迁移（站点不公开、无法独立验证）；只能当「LCG + 逐字符异或 + hex 尾」这一类手法的样本"
+    }
+  ]
+}

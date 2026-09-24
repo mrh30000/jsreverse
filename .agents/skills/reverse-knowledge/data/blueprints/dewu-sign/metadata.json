@@ -1,28 +1,32 @@
 {
   "id": "dewu-sign",
-  "title": "得物(DE物)商家后台 stark.dewu.com 统计数据接口 sign",
+  "title": "得物(DE物) sign（商家后台 stark.dewu.com + web 端首页推荐 `cxx`，两面同常量同拼法）",
   "category": "platform-signature",
-  "status": "unknown",
-  "version": "1.0.0",
-  "summary": "得物商家后台统计接口 body 里的 sign：参数按键名升序拼 key+value 后直接接 32 位十六进制常量，再交给 return_sign（算法正文未给）。",
+  "status": "partial",
+  "version": "1.1.0",
+  "summary": "得物 sign：参数按键名升序拼 key+value 后直接接 32 位十六进制常量，再交给 return_sign。**B35 起升级**：web 端首页推荐面的 `cxx()` 在打包产物里给出了完整实现 —— 就是 `MD5(升序拼接串 + 常量)`，且用的是与商家后台面**同一个常量** ⇒ 两个独立面结构互证，`family` 由 unknown 升为 `hash`（具体即 MD5）；但**两个面都没有服务端返回值可对拍**，故 `status` 记 `partial`。",
   "aliases": [
     "sign",
-    "return_sign"
+    "return_sign",
+    "cxx"
   ],
   "keywords": [
     "得物",
     "dewu",
     "stark.dewu.com",
     "sign",
+    "cxx",
+    "首页推荐",
+    "pickRuleId",
     "商家后台",
     "h5"
   ],
   "algorithm": {
-    "family": "unknown",
-    "detail": "文章未给出哈希/加密算法（正文为截图 + 已成功运行的 Python，未贴出 return_sign 源码）。仅可逐字核对的拼法：按参数名升序把「键名+值」直接相连（无分隔符），最后直接拼接常量 048a9c4943398714b356a696503d2d36；sign 自身不参与。",
-    "key_material": "048a9c4943398714b356a696503d2d36（原样出现在待签名串尾部；文章未说明其性质）",
-    "output_encoding": null,
-    "output_length": null
+    "family": "hash",
+    "detail": "**固定拼法（两个面逐字一致）**：把参数对象按键名升序（`Object.keys(t).sort()`）把「键名+值」直接相连（无分隔符），空数组只留键名，对象值取 `JSON.stringify`，随后**直接拼接常量 `048a9c4943398714b356a696503d2d36`**，sign 自身不参与。\n**B35 升级（web 端首页推荐面的 `cxx()`，从打包产物里读出）**：该拼串最终交给 `!function sign(e){…}({…})` 这个 webpack 包里的一个模块，函数体为\n`return u()(\"\".concat(<升序拼串>, \"048a9c4943398714b356a696503d2d36\"))`（源文 52pojie-2036327 第 974–980 行）。\n该模块即 **blueimp-md5**：同包第 597/746 行出现其核心 IV 常量 `1732584193 / -271733879 / -1732584194 / 271733878`，函数签名与 `bytesToWords(t)` + `8 * t.length` 也逐字一致 ⇒ `u()` 是 MD5 ⇒ **`return_sign(t) = md5(升序拼接串 + 常量)`**。\n⚠️ **证据等级**：① 「同常量 + 同拼法」在得物**两个界面**（商家后台 stark.dewu.com / web 端首页推荐）上独立出现；② MD5 内核为**读码所得**（未在服务端返回上对拍，两篇源文都**没有给出任何示例签名值**）⇒ 本库把 `family` 记为 `md5`、`status` 记 `partial`，落地前请用一次真实响应自证。",
+    "key_material": "048a9c4943398714b356a696503d2d36（**拼串尾部常量**，32 hex = 128 bit；源文未说明其性质。B35 已排除「它本身是某个 MD5 结果」的可能——见 self_check）。MD5 内核 IV 常量：1732584193 / -271733879 / -1732584194 / 271733878（blueimp-md5 特征）。",
+    "output_encoding": "hex（待自证）",
+    "output_length": 32
   },
   "sources": [
     {
@@ -48,23 +52,44 @@
       "line": 68,
       "quote": "{\"code\":200,\"msg\":\"success\",\"data\":{\"tradeOutline\":[{\"title\":\"提交订单金额\"",
       "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2036327-得物网页端首页推荐物品信息获取.md",
+      "line": 980,
+      "quote": "), \"\") : \"\", \"048a9c4943398714b356a696503d2d36\"))",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2036327-得物网页端首页推荐物品信息获取.md",
+      "line": 956,
+      "quote": "return u()(\"\".concat(t ? Object.keys(t).sort().reduce((function(e, r) {",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2036327-得物网页端首页推荐物品信息获取.md",
+      "line": 597,
+      "quote": "for (var a = e.bytesToWords(t), u = 8 * t.length, c = 1732584193, f = -271733879, h = -1732584194, l = 271733878, p = 0; p < a.length; p++)",
+      "verified_in_article": true
     }
   ],
   "entry": {
-    "location": "未给出（正文只有断点截图，未贴出 return_sign 实现）",
-    "trigger": "请求前构造 post_data 时生成",
-    "transport": "POST body（str(post_data) 后发送），字段名 sign"
+    "location": "商家后台面：`return_sign`（源文只有断点截图）；web 端首页推荐面：webpack 包内的 `cxx(t)`（源文 52pojie-2036327 第 956–981 行，已给出完整函数体）",
+    "trigger": "请求前构造 post_data / 首页请求体时生成",
+    "transport": "商家后台：POST body（str(post_data) 后发送），字段名 sign；web 端：请求体 `data['sign']`（源文经 `execjs` 调 `ctx.call('cxx', data)` 注入）"
   },
   "gaps": [
-    "return_sign 的具体哈希算法未知（正文未贴源码，只有断点截图）",
-    "文章未给出任何示例签名值，无法核对输出编码（hex/base64）与长度",
-    "常量 048a9c4943398714b356a696503d2d36 的性质（盐值 / 密钥 / 消息片段）文章未说明",
+    "★ **未对拍**：两个面都没有服务端返回值可核对 ⇒ `family: md5` 是**读码 + 跨面互证**所得，落地前必须用一次真实响应自证（本蓝图已给出可对拍的预测式，见 self_check 末条）",
+    "常量 048a9c4943398714b356a696503d2d36 的**性质**仍未知（盐值 / 密钥 / 消息片段）；但 B35 已确定它的**位置**：拼在升序拼接串**之后**、整体入 MD5",
+    "输出编码与长度未对拍：按 `md5` 推断为 32 位小写 hex（源文两面均未贴出 sign 值）",
     "时间戳/随机数是否参与签名未知：待签名串里只有 startDate/endDate 两个日期字符串，没有时间戳、没有 nonce",
-    "接口是否已改版（样本 2023-02）未知"
+    "两个面的**参数集不同**（商家后台带 `bizChannelId/brandIds/categoryLv3Ids/timeSpanType/timeType`；web 端首页推荐带 `pickRuleId/pageNum/pageSize/filterUnbid/showCspu`）⇒ 参数名与取值口径不可跨面照抄，**只有「升序拼法 + 常量」可跨面复用**",
+    "接口是否已改版（商家后台样本 2023-02、web 端样本 2025-06）未知"
   ],
   "self_check": [
     "按原文逐字拼接待签名串：bizChannelId-1|brandIds|categoryLv3Ids|endDate20230205|startDate20230130|timeSpanType2|timeType2，再接 048a9c4943398714b356a696503d2d36，合计 122 字符，与第 58 行字符串完全吻合",
     "常量长度核算：048a9c4943398714b356a696503d2d36 = 32 个十六进制字符（128 bit），形似一枚 MD5 摘要",
-    "MD5(参数拼接串)=038faad8f2cd7b1c60d90b64e7712bcd、MD5(拼接串+常量)=71c9f7ef54ec3ab5bb233e48934222b3、MD5(常量+拼接串)=8ab345342e28abf0b1fdb701f953c1af，三者均 ≠ 048a9c49…，故该常量不是上述任一式的 MD5 结果，只能是另取的固定值"
+    "MD5(参数拼接串)=038faad8f2cd7b1c60d90b64e7712bcd、MD5(拼接串+常量)=71c9f7ef54ec3ab5bb233e48934222b3、MD5(常量+拼接串)=8ab345342e28abf0b1fdb701f953c1af，三者均 ≠ 048a9c49…，故该常量不是上述任一式的 MD5 结果，只能是另取的固定值",
+    "★ **B35 复算（本流水线用 Node 从零实现，三值逐字符重现）**：上一条的三个 MD5 值已逐字符复算通过 ⇒ 该 self_check 可信。**其中 `MD5(拼接串+常量) = 71c9f7ef54ec3ab5bb233e48934222b3` 即为本文档所示那次请求的 `sign` 预测值**（参数：`bizChannelId=-1 / brandIds=[] / categoryLv3Ids=[] / endDate=20230205 / startDate=20230130 / timeSpanType=2 / timeType=2`）—— 待后续批次拿到该接口真实响应后**逐字符对拍**，即可把 `status` 从 `partial` 升为 `active`。",
+    "★ **跨面一致性复算（B35）**：web 端首页推荐面的拼法（`Object.keys(t).sort()` → 键名+值无分隔符相连 → 接同一常量 → MD5）与商家后台面**逐条规则相同**，且常量字符串**逐字符相同** ⇒ 两个独立面互证，不是单样本巧合。"
   ]
 }

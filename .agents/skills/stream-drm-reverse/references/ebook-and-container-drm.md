@@ -7,6 +7,12 @@
 `SKILL.md` 的分层表是围绕 `m3u8`/`ts` 写的，套到这里会出现「既不是 A 层也不是 C 层」的卡死。
 本文件给出这一族的判据、配方与坑。
 
+> **先划边界**：本文只管「**一章一份的加密正文**」（章节接口 / EPUB 正文 / 分章交付的阅读器）。
+> 若目标是**一页 / 一整份 PDF / 一张图片**，或现象是「页面能看、下载器拿不到 / 下到的 PDF 要密码」，
+> 那属于**载体形态**问题（Range 分块 / base64 内嵌 / 整体 AES / pdf.js 容器 / 一次性签名 URL）
+> ⇒ 去 `references/online-document-unlock.md`（`SKILL.md` 分层表「在线文档载体层」那行）。
+> 两篇的分界是**内容单位**：**一章一份** → 本文；**一页/一整份** → `online-document-unlock.md`。
+
 ---
 
 ## 1. 先判：这是不是容器型
@@ -18,6 +24,7 @@
 | 请求参数里有个 `k` / `params` / `enc` / `data` 字段，值是密文 | 容器型 |
 | 页面 JS 里出现 `Uint8Array` + 一个**自己写的长度读取函数** | 容器型，且是「长度前置」的自描述密文 |
 | 拿到的是 `m3u8` / `.ts` / `EXT-X-KEY` | 不是本文件，回 `SKILL.md` 分层表 |
+| 目标是**一页 / 一整份 PDF / 一张图片**：面板只见 `Range`、`data:application/pdf;base64,`、pdf.js worker、或「每页 4 个签名参数」的 URL；或「下到的 PDF 要密码」 | **不是本文件**，去 `online-document-unlock.md`（载体形态分流） |
 
 **通用流程**：
 
@@ -97,7 +104,7 @@ return n % 2 == 0 ? this.AESEncrypt(e, t) : this.DESEncrypt(e, t);   // n === th
 
 **算法**：
 
-```js
+```
 AESEncrypt(e, t) {
     n = Utf8.parse(e);
     o = MD5(Utf8.parse(t));               // key = MD5(tm) 的 WordArray（16 字节）
@@ -211,6 +218,7 @@ OEBPS/*.xhtml                # 正文章节（上面解出来的 content）
 ## 7. 和其他文件的分工
 
 - 流媒体（m3u8 / ts / DRM 许可证） → `SKILL.md` 分层表 + `hls-and-ts-structure.md`
+- 在线 PDF / 文库 / 阅读器的**载体形态**（Range 分块 / base64 内嵌 / 整体 AES / pdf.js / 一次性签名 URL） → `online-document-unlock.md`
 - 厂商 key 方案与接口配方 → `vendor-key-schemes.md`
 - 混淆外壳（OB / 平坦流 / jsjiami） → `../../ast-deobfuscation/SKILL.md`
 - 纯接口签名（不含内容加密） → `../../web-reverse-algorithm/SKILL.md`

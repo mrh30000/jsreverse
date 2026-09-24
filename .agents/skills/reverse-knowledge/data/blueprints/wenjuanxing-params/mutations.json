@@ -34,6 +34,16 @@
       "name": "调试地址可绕 debug 处理",
       "rule": "把 ks.wjx.top/vj/xxxxx.aspx 改成 ks.wjx.top/vm/xxxxx.aspx（vj 会做 debug 处理，vm 不会）",
       "symptom_if_wrong": "调试时反复被 debugger 打断"
+    },
+    {
+      "name": "get_jqParam 可复用版的返回值截断点（少做一次 abcd5 循环左移）",
+      "rule": "源文 1361387 贴出的**可复用** `get_jqParam()` 里是 `return jqParam`（位置在 `abcd3` 之后、`abcd5` 之前，且 `var _0x5d90fd = abcd5(jqParam);` 的结果**从未回写**）；而页面内联代码是 `jqParam = _0x5d90fd`（在 `abcd5` 之后）。⇒ 照抄可复用版本会**少做一次循环左移**",
+      "symptom_if_wrong": "长度对但内容错位、服务端判参数非法（少做 abcd5 的循环左移 ⇒ 字符完全一样、顺序不同）"
+    },
+    {
+      "name": "_0x3a5cf2 是数字相加不是字符串拼接",
+      "rule": "`var _0x3a5cf2 = _0xd16fcc + _0x4aaf4a + parseInt(activityId);` —— 三项都是 `number`（`_0xd16fcc = parseInt(时间戳串 + '89123')`、`_0x4aaf4a = abcd1(...)` 的数值、`parseInt(activityId)`）⇒ JS 左结合下是**算术和**",
+      "symptom_if_wrong": "写成 Python 字符串拼接（把三个数当字符串连起来）⇒ 进制编码前的整数与浏览器不一致 ⇒ 最终 jqParam 全错（注意区分：字符串 '89123' 的拼接发生在 `_0xd16fcc` 内部、是 `parseInt` 的入参，不要与这一处混淆）"
     }
   ]
 }

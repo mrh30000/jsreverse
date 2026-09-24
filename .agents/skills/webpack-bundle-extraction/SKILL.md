@@ -15,6 +15,7 @@ description: 打包产物（webpack 4/5、browserify、vite/rollup 直出）的�
 > 家族识别与结构常量在 `references/bundler-identification.md`，
 > 抠取流程在 `references/harvest-routes.md`，
 > 复用与补环境交接在 `references/node-reuse-and-env-handoff.md`，
+> 运行时的全局导出（`window.X = <加载器>`）与「整包交给 JS 引擎」在 `references/webpack-runtime-export-and-host-reuse.md`，
 > 免抠路线在 `references/no-harvest-routes.md`。本文只给分流判据与执行顺序。
 
 ## 判族（30 秒分流）
@@ -197,6 +198,9 @@ node $S/harvest-bundle.js closure artifacts/skill-evolution/wpfix/bundle.js   --
   运行时记录三个坑、手抠适用边界、**三个必须做的验收断言**、自动化替代品对照。
 - `references/node-reuse-and-env-handoff.md`：三段式复用骨架、最小 prelude（含 `defineProperty` 陷阱）、
   缺什么补什么 vs 环境自吐、**与 `web-js-env-patcher` 的交接判据表**、跨请求有状态变量、其他对不上的原因。
+- `references/webpack-runtime-export-and-host-reuse.md`：**`window.X = <加载器>` 的全局导出判据**、
+  整包 + 薄调用壳交给 JS 引擎（`execjs`）的宿主复用、入参是对象不是字符串、
+  与抠取路线（`node-reuse-and-env-handoff.md`）的分工表、代价与边界。
 - `references/no-harvest-routes.md`：该不该抠的三个问题、无头浏览器 / RPC 桥 / WASM 三条免抠路线、
   三条路对照表、**「用免抠取 oracle + 用抠取做实现」的组合打法**。
 - `scripts/detect-bundler.js`：家族识别 + 加载器/模块表定位（`--json`，退出码 2 = 不是打包产物）。

@@ -198,6 +198,26 @@ window.setTimeout = function (...args) {
 
 ---
 
+## 响应体改写与定位型 Hook（B35）
+
+详见 `references/response-rewrite-and-locating-hooks.md`。四条判据：
+
+1. **`ajaxHooker` 改写响应体**：油猴三行头（`@require` 引库 + `@run-at document-start` + `@grant unsafeWindow`）
+   缺一不可；命中后给 `request.response` 赋处理函数改 `res.responseText`。
+   ★ **改「响应体」比改「页面状态」稳** —— 页面自己会去读接口结果，把结果改成「有权限」即可，不必去找 UI 判断点。
+2. **`document.cookie` 的 `defineProperty` hook** + **hook 时机三档**（① 控制台注入 ⇒ 刷新即失效，
+   需在页面第一个 JS 处下断点后手动注入；② FD / Fiddler 替换响应，时机最靠前；③ 油猴 `document-start`）。
+   ⚠️ 裸模板（`get` 返回自维护字符串）**会把站点写坏**、也没有 `getOwnPropertyDescriptor` 保护与 `toString` 伪装
+   ⇒ 观测请走 `dataflow` 预设（转发原生描述符）。
+3. **`JSON.parse` 断点定位解密入口**：响应体是密文时全局搜 `JSON.parse` ⇒ 断点 ⇒ 刷新看明文 ⇒
+   看函数名提示（本例 `des`）定算法 ⇒ 扣代码 + `execjs`。
+   ★ **判据：解密入口 = 密文进入业务代码的第一个函数**，而 `JSON.parse` 是绝大多数站点的那个点。
+4. **★ 按 `this.toString()` 精确 hook `apply` 掐掉无限 `debugger`**：代码在 JSVMP 里、文件不好改时的**动态**路线
+   （按函数源码文本精确匹配）。字符串须**逐字符精确**，劫持全局 `apply` 影响面大。
+   与既有的「静态改文件 / 条件断点 / `antidebug` 预设」是不同路线，**不是替代关系**。
+
+---
+
 ## 定位「绑在元素上的真实代码」：jQuery 事件（B30）
 
 **问题**：老系统大量使用 jQuery。它在原生 DOM 事件机制之上自建了一套事件管理

@@ -1,0 +1,112 @@
+{
+  "parts": [
+    {
+      "name": "sign",
+      "description": "作用: 签名（服务端校验） | 来源: md5(token + '&' + t + '&' + appKey + '&' + data) | 示例: 0b7b9b56009a4b31c5c69b0ad95b924a（本流水线自算锚点）"
+    },
+    {
+      "name": "token",
+      "description": "作用: sign 拼接的第 1 段 | 来源: cookie '_m_h5_tk' 的值按 '_' 切分取第 0 段 | 示例: 43a8d19ad104ac584f86e23e273c6aa8"
+    },
+    {
+      "name": "t",
+      "description": "作用: 毫秒时间戳（同时是 query 参数与 sign 第 2 段） | 来源: str(round(time.time() * 1000)) | 示例: 1743764419015"
+    },
+    {
+      "name": "appKey",
+      "description": "作用: 应用 id（query 参数 + sign 第 3 段） | 来源: 固定 | 示例: 34839810"
+    },
+    {
+      "name": "data",
+      "description": "作用: 业务参数，POST body；其「紧凑 JSON 串本身」是 sign 第 4 段 | 来源: 手写 f-string（保证键序与空格） | 示例: {\"pageNumber\":\"1\",\"keyword\": \"鞋\",...}"
+    },
+    {
+      "name": "_m_h5_tk",
+      "description": "作用: mtop h5 token cookie，形如 <token>_<过期毫秒> | 来源: 浏览器 cookie | 示例: 43a8d19ad104ac584f86e23e273c6aa8_1743764419015"
+    },
+    {
+      "name": "_m_h5_tk_enc",
+      "description": "作用: token 的加密伴随 cookie（是否必需源文未说明） | 来源: 浏览器 cookie | 示例: 37d8a137028ac2a98bb85db99720098f"
+    },
+    {
+      "name": "jsv",
+      "description": "作用: mtop 协议版本 | 来源: 固定 | 示例: 2.7.2"
+    },
+    {
+      "name": "v",
+      "description": "作用: 接口版本 | 来源: 固定 | 示例: 1.0"
+    },
+    {
+      "name": "type",
+      "description": "作用: 响应类型 | 来源: 固定 | 示例: originaljson"
+    },
+    {
+      "name": "accountSite",
+      "description": "作用: 站点标识 | 来源: 固定 | 示例: xianyu"
+    },
+    {
+      "name": "dataType",
+      "description": "作用: 数据类型 | 来源: 固定 | 示例: json"
+    },
+    {
+      "name": "timeout",
+      "description": "作用: 超时（毫秒） | 来源: 固定 | 示例: 20000"
+    },
+    {
+      "name": "api",
+      "description": "作用: 接口名，与 URL 路径段同名（不带版本号） | 来源: 固定 | 示例: mtop.taobao.idlemtopsearch.pc.search"
+    },
+    {
+      "name": "sessionOption",
+      "description": "作用: 会话选项 | 来源: 固定 | 示例: AutoLoginOnly"
+    },
+    {
+      "name": "spm_cnt",
+      "description": "作用: 埋点位（是否固定源文未说明） | 来源: 示例值 | 示例: a21ybx.search.0.0"
+    },
+    {
+      "name": "spm_pre",
+      "description": "作用: 埋点位（是否固定源文未说明） | 来源: 示例值 | 示例: a21ybx.search.searchInput.0"
+    },
+    {
+      "name": "cna",
+      "description": "作用: 淘系设备 id cookie | 来源: 浏览器 cookie（示例值已过期） | 示例: o2VyIG74FTMCASShMKcIxy+k"
+    },
+    {
+      "name": "cookie2",
+      "description": "作用: 会话 cookie | 来源: 浏览器 cookie（示例值已过期） | 示例: 124e5ba3daf492b75775ddeb501c4470"
+    },
+    {
+      "name": "_tb_token_",
+      "description": "作用: 淘宝 token cookie | 来源: 浏览器 cookie（示例值已过期） | 示例: e33ff5759af39"
+    },
+    {
+      "name": "pageNumber",
+      "description": "作用: data 内的页码 | 来源: 用户输入 | 示例: 1"
+    },
+    {
+      "name": "keyword",
+      "description": "作用: data 内的搜索词 | 来源: 用户输入 | 示例: 鞋"
+    },
+    {
+      "name": "rowsPerPage",
+      "description": "作用: data 内的每页条数 | 来源: 固定 | 示例: 30"
+    },
+    {
+      "name": "sortValue",
+      "description": "作用: data 内的排序值（空串） | 来源: 固定 | 示例: （空串）"
+    },
+    {
+      "name": "sortField",
+      "description": "作用: data 内的排序字段（空串） | 来源: 固定 | 示例: （空串）"
+    },
+    {
+      "name": "fromFilter",
+      "description": "作用: data 内的过滤开关 | 来源: 固定 | 示例: false"
+    },
+    {
+      "name": "searchReqFromPage",
+      "description": "作用: data 内的来源页标记 | 来源: 固定 | 示例: pcSearch"
+    }
+  ]
+}

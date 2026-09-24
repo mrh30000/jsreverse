@@ -28,6 +28,8 @@ description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链�
 | **分享短链（`v.kuaishou.com/s/…` 一类）要 mp4「无水印直链」** | **§0 地址还原层（直链）** | 同上 §3B（落点是 `srcNoMark` / `origin_video_download` 这类**另一个字段**） |
 | **播放页 HTML 里捞到好几条 m3u8，不知哪条在播** | **A 层前置：挑选** | `references/hls-and-ts-structure.md` §1.5（「重复出现次数最多」只当第一猜想） |
 | **试看只有 N 秒 / m3u8 路径带 `_preview` / 拿不到完整 playlist** | **预览门控层**（§0 与 A 层之间） | `references/preview-gating-and-segment-enumeration.md` §1 二分判据 → §3 分片枚举补齐 |
+| **地址里有 `z` / `s1ig` 这类「短、看不出含义、按天变」的查询参数**（不是 `authKey`/`sign` 那一族） | **§0 · 按日期算的自定义参数** | `references/playback-url-shapes-and-page-carriers.md` §3（先确认 `+` 优先于 `^`、`^` 是 XOR，再用 §3.3 锚点对拍） |
+| **面板里只有 `…_0.ts?start=0&end=…` 且下载器报「密匙解析失败」**，或**播放页源码里有一个巨大的内联 JSON 赋值**（`window._SSR_HYDRATED_DATA` 一类） | **§0 · 地址形态没认对**（切片 URL ≠ 清单 URL；直出载体 ≠ 接口） | 同上 §4 / §5（前者改 `.m3u8` + 删 Range 参数；后者零请求直取 HTML，`iv = key[:16]`） |
 | m3u8 里有 `#EXT-X-KEY:METHOD=AES-128,URI="..."` | **A 容器层**：整片同一 key | `scripts/m3u8_probe.py <playlist.m3u8>` |
 | **拿到的 key 不是 16 字节**（32/47/64 位、或一长串 hex） | **W 包装层**：key 被二次构造过 | `scripts/key_wrapper.py alpha-check --enforce` → 再解 |
 | m3u8 里**没有** KEY，但 JS 里有 `decryptdata.key` / `this.decryptkey` / `qiniuDRMKey` | **B 播放器层**：key 由 JS 拼或由接口给 | 断点打 `decryptdata.key`；`license_parse.py mdcm` |
@@ -48,6 +50,7 @@ description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链�
 | 清单里没有 KEY，但 JS 里有 `decryptdata.key` / `this.decryptkey` / `qiniuDRMKey` | **B 播放器层**：key 由 JS 拼或由接口给 | 断点打 `decryptdata.key`；`license_parse.py mdcm` |
 | 加密函数在 wasm 或 wasm2js 产物里 | **F 白盒 / wasm 层** | `references/whitebox-and-wasm-crypto.md` |
 | 内容不是分片，而是「一章一份的加密正文」（EPUB / PDF / 阅读器章节接口） | **容器层** | `references/ebook-and-container-drm.md` |
+| **一页 / 一整份 PDF / 一张图片**：页面能看但下载器拿不到、或下到的 PDF 要密码；面板里只见 `Range` 分块、`data:application/pdf;base64,`、pdf.js worker、或「每页 4 个签名参数」的一次性 URL | **在线文档载体层** | `references/online-document-unlock.md` §2 载体形态五分流 → §3–§8 配方 |
 | 分片只有**文件头**被加密，或解密后长度变了、ffmpeg 报 NALU size | **回写层** | `scripts/ts_repack.py`（§10.2） |
 | 页面能播，但**网络面板看不到 m3u8/flv 请求** | **播放器侧** | `references/player-and-live-capture.md` §2（MSE 源码注入） |
 | **PC 端抓不到**、移动端能抓到；或只有 P2P/WSS | **发行版差异** | 换移动 UA / `m.` 域名，再从**页面源码**里找（§3） |
@@ -307,6 +310,14 @@ python $S/key_wrapper.py noise-check --chars "-_! " --json
   **分片名可预测 ⇒ 按序号枚举**（从 `0` 起、**连续 3 个 404** 停、末尾升序两位数字）、
   试看 m3u8 的 key/IV 相对路径拼法与 `Content-Length: 16` 判据、
   该案例 5 条安全缺陷（**L0 静态密钥 → L3 动态鉴权**）与 Python 枚举骨架、排错表。
+- `references/playback-url-shapes-and-page-carriers.md`：**播放地址的三种非接口形态（B35 新增）** ——
+  与 `playback-address-interfaces.md`（接口链路）**不重叠**的三类：① **按日期算的自定义查询参数**
+  （`z = md5(md5(str((day+18)^10))[:10])`，含「`+` 优先于 `^`」「`getDate` vs `getDay`」
+  「JS `getDay` 0=周日 vs Python `weekday` 0=周一」三个静默错 + **本流水线自算的 3 个回归锚点**）；
+  ② **ts 分片 URL 本身就是 m3u8 的伪装形态**（`…_0.ts?start=0&end=…` ⇒ 改 `.m3u8` + 删 Range 参数；
+  「下载器报 key 错 ≠ key 问题」，**该案例实测 / 单样本**）；③ **页面直出（SSR）载体**
+  （`window._SSR_HYDRATED_DATA` 由「只 base64」升级为「AES-CBC/Pkcs7 → base64 → base64」，
+  `iv = key[:16]`；**零请求入口**，先看 HTML 有没有直出再考虑抓接口）。含排错速查与来源表。
 - `references/key-wrapper-families.md`：**key 二次构造 / 包装层（W 族）唯一权威源** ——
   W1~W4 四族结构签名与还原、**W6 外部掩码异或（int32 / `DataView` 默认大端 vs `Uint32Array` 平台端序）**、
   W5 **字母表守卫**（覆盖性 / 单射性 / 越界下标）、
@@ -324,6 +335,21 @@ python $S/key_wrapper.py noise-check --chars "-_! " --json
   与流媒体不同的分层判据、某东 PC/H5-1 的 `utf16ToBytes` 自写加解密、H5-2 的 `enc=1` 家族
   （**AES/DES 由时间戳奇偶切换**、`uuid`/`sign` 的派生与 `localStorage` 陷阱）、某学堂 EPUB 的
   双层 AES/ECB + 长度前置（`dpbt`）、拿到明文后的 EPUB 回填与验收。
+  **只管「一章一份的加密正文」**；「一页 / 一整份 PDF」的载体形态去 `online-document-unlock.md`。
+- `references/online-document-unlock.md`：**在线文档 / PDF / 文库载体解锁（B35 新增）** ——
+  **载体形态五分流（30 秒判据：看网络面板的响应形态，不扣 JS）**：① Range 分段懒加载
+  （`Range: bytes=0-327679` + `206` + `Content-Range`，**实测 320 KiB 块粒度**、
+  「先返回总长再收 Range」的**两次请求语义**、**「小十个字节」实测坑 ⇒ 以 `total` 核对边界**）；
+  ② base64 内嵌（30MB 单文件 HTML / `data:application/pdf;base64,` / blob，**可能带密码**）；
+  ③ 整体加密（XHR 追栈找 AES；wasm `_decodeData` **直接 hook 整份 PDF 出口**；
+  `HCNO → Module._init → UTF8ToString` 解出「密钥 + IV + hcno」三元组，**`#` 段是 IV**）；
+  ④ pdf.js 容器（`PDFViewerApplication.download()`「基本上通用」+ `.onPassword` 追码）；
+  ⑤ 一次性 URL + 签名分页（**阻止请求域 / 跑两次**两个验证动作 + `MD5('123456'+nonce+stime)` 四参数按页循环）；
+  ⑥ 逐页图片流（元数据 ECB + `canvas_info` 只重映射中间 10% 字节）。
+  另含：**PDF 文件头四种表示法**（`%PDF-1.` / `JVBERi0x` / `25 50 44 46 2D 31` / `{37,80,…}`）、
+  **base36 两位一组解码**（原函数 + 可复算向量）、**postMessage 自动传密码链（`r0inab`/`r0inyk`）**、
+  `@media print` 破除法与**边界**（只能拿看得到的页面 ≠ 破会员）、内嵌 PDF 密码两条路线、blob 下载片段、
+  软件差异登记（只登记不判因），排错表 + 来源表（5 篇）。
 - `references/license-and-key-hierarchy.md`：**国内派 E 层唯一权威源** —— CDRM/STSDK 式 **Provision → License** 全流程、许可证 TLV 单元编码、
   密钥层级（DevPrK → SessionKey/MACKey → CEK）、SM2/SM4/HMAC-SM3 参数口径、`mdcm` 与 `dcm` 混合模式、
   NALU 尾部 CRC16、ffmpeg 重封装接入点。

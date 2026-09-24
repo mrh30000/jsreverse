@@ -530,6 +530,10 @@ node artifacts/skill-evolution/tools/check_skill_integrity.js --root . --markdow
 > **B7 后更新（2026-09-21 11:30）**：B6（27 篇）+ B7（18 篇）已登记，
 > 目录文章数已增至 460。**B7 取材口径回顾**：`web-font-obfuscation` 从 B1 建库到 B6
 > **一次都没被演化过**，而这一族积压 15+ 篇 —— 属于「技能名覆盖了、能力没覆盖」的隐性缺口。
+>
+> ⚠️ **本小节之后各批不再逐批改这张表**（改动集一多就必然漂移）。**权威口径一律以
+> `node artifacts/skill-evolution/tools/scan-pending.js` 的实跑输出为准**。
+> B35 收尾时实跑值：目录 `.md` **1167** / 文章 **1162** / 已登记 **679** / **待处理 483**。
 
 下一批取材建议（按「同族聚簇、一次落一个技能」原则）。
 
@@ -4903,3 +4907,211 @@ B31 的 `b31-verify-docs.js` 用的是**硬编码文件清单**，于是「清�
 | 653 | `52pojie-1799911-一个菜鸡对关注公众号回复密码获取下载链接的分析.md` | `850d2ab8896b71651e344845decf6da8` | 2026-09-24 | `web-reverse-hook` | evolve | ★★ **核心教训：「看着像 token 的参数其实是 base64」**——提交参数末尾**有两个 `=`**，源文自陈「当时看到这边的时候只是觉得这个参数最后面有两个 `=` 很眼熟，**并没有认真看**，毕竟传一个 token 或者是加密的参数实在是太常见了」⇒ **错过了能快速解决问题的捷径**；页面里的解码函数是固定写法：`b64DecodeUnicode(a) = decodeURIComponent(atob(a).split("").map(b => "%" + ("00"+b.charCodeAt(0).toString(16)).slice(-2)).join(""))`（**`atob` → 逐字符拼 `%XX` → `decodeURIComponent`**）⇒ **判据：参数以 `=`/`==` 结尾 + 参数名看着像 token/加密串 ⇒ 先 `atob` 解一次看内容**，再决定要不要啃代码；另登记门控判定的服务端性（`shortcodeapi` **返回 1 才显示隐藏的下载链接**，否则弹「密码错误」）+ 从按钮点击事件顺到 `wxpass` / `wxshowyz` 两个 id 的定位法 |
 | 654 | `52pojie-1801614-网站公众号引流-密码分析.md` | `7e67e422c2a1427c54ed72411865d9f9` | 2026-09-24 | `web-reverse-hook` | evolve | **内容门控三通路之「F12 搜界面文案 → 顺到下发接口 → 控制台直接调」**：F12 全局搜**界面文案**（`验证失败，请重试！`）命中校验分支 → 读到判断逻辑（`file.length > 10` 时调 `getlink(file)`，否则 `setTimeout` 1 秒后重跑 `down()`）→ 找到真正的「取下载地址」接口 → **复制该接口到控制台直接执行**，拿到下载链接；★ 判据（与同簇两篇合起来成一条）：**「先搜用户能看到的文案，再搜赋值函数名，最后才读代码」** —— 本样本正文极短（26 行）却直接给出结论，**恰好说明这条路比硬啃代码便宜**；边界与另两篇一致：门控判定在服务端，前端只是把隐藏内容显示出来 |
 | 655 | `52pojie-1638865-酷狗音乐歌曲爬取.md` | `a09e097ebd5ad1fe23eb6ef842d4c9db` | 2026-09-24 | `reverse-knowledge` | evolve | ⚠️ **本批唯一「已在册」的条目**——`kugou-signature` 蓝图**已完整覆盖**本文的算法（`signature = MD5(固定盐值 + 18 项 `k=v` 按序无分隔拼接 + 同一固定盐值)`），故**不重复登记算法**，只补三件此前缺的：① ★ **结构断言（机械核对通过）**：`sign_params` 去掉首尾盐值后共 **18** 项，键序 `bitrate → callback → clienttime → clientver → dfid → inputtype → iscorrection → isfuzzy → keyword → mid → page → pagesize → platform → privilege_filter → srcappid → token → userid → uuid` **严格字典升序、无重复键** ⇒ 以后「顺序对不上」先怀疑站点改过参数；② ★★ **「伪多源」判定**：本文（2022-05-20）与在册的 `1719655`（2022-12）**是同一份代码的两个来源**——本文正文代码与后者代码块**逐字同构**，且后者在代码注释里**自陈来源 `thread-1638865`** ⇒ **不是两次独立观察、不能互相印证**（凡「两篇不同文章给同一段代码」，先查引用来源关系再当多源）；③ **两处存疑登记（源文未说明）**：`play/getdata` 的 **`_` 是硬编码 `'1653050047389'`**（既非当时时间、也不随请求变化，与同文 `clienttime/mid/uuid` 的实时值口径不同）、同文 `dfid`/`mid` 写成**固定值**（设备标识可复用还是会话值？未知）；★ 另附**本流水线独立复算的两个回归锚点**（`t=1653050047.389` + `keyword=一生所爱` + `page=1` ⇒ `cf5e1fed8199e46de6733a8df5a539f3`；整数秒 ⇒ `2e4bbd38f064b453485614b09fa5911d`）——**均为自算、源文无示例值，只作回归对拍锚点** |
+## 批次 B35 · 2026-09-24（第三十六次执行）
+
+**开局状态**：台账 B34 后 **655** 条 / 目录 `.md` **1167**（文章 **1162**）/ 待处理 **507**。
+三方对齐（台账最后一节 = B34 × `git log` 最新 = `7b50e70`（B34）+ `a50ee33`（归档线第 35 轮） ×
+自动化记忆最后一条 = B34）**一致** ⇒ 上一轮已闭环。`scan-pending.js` 反引号口径自检 **0**（没有"永久漏做"隐患）。
+工作区的 `AGENTS.md` / `project/*`（cloudflare / tiktok 探针）是别会话在途改动，**未纳入本批**。
+
+**取材口径（严格按记忆里「遗留 / 下一批（B34 更新）」的优先级 ①）**：
+
+- **① 归档线第 35 轮（`a50ee33` 新收 24 篇）—— 本批 24 篇 = 全取（24/24 命中）**：
+  在线文档 / PDF 载体 5（`1375791` / `1385134` / `1433013` / `1674294` / `2088383`）·
+  猿人学攻防赛 3（`1288315` / `1469419` / `1487946`）·
+  WAF / 风控 / 补环境 3（`1186703` / `1912763` / `1984407`）·
+  Hook / 调试工具 4（`1722262` / `1492463` / `1477905` / `1851890`）·
+  平台签名 / 打包产物 5（`2036327` / `2021569` / `1361387` / `1790893` / `1601414`）·
+  媒体链路 3（`1490196` / `1843783` / `1917707`）· 字体反爬 1（`1911970`）。
+  **命中率 24/24**（建档即定稿，无需二次筛）。
+- **未取**：网马时代线（继续不列）；验证码簇（本轮无「新题型 / 完整纯算交付」供给）；
+  网盘族（本轮无新形态供给，百度 §A 的 `42 小时`、城通/奶牛仍未覆盖 —— 继续挂）。
+
+> ⚠️ 本轮**未**新增任何技能 —— 24 篇全部有最近邻模块，**能力缺口评估 = 0**（详见下文「新建技能评估」）。
+> 候选新技能 `captcha-flow-orchestration` B5–B35 **二十九次确认不新建**；
+> 候选元技能「本流水线自身的批次作业」**本次正式评估：暂不建**（理由见「新建技能评估」）。
+
+### 材料 → 技能分流（含「为什么不是新建」的判据）
+
+| 材料簇 | 最近邻模块 | 判据（为什么落这里 / 为什么不是新建） |
+| --- | --- | --- |
+| 在线文档 / PDF / 文库（5 篇） | `stream-drm-reverse`（**容器层**） | 该技能 `references/ebook-and-container-drm.md` 首段**已经写着**「在线阅读器、EPUB / **PDF** 平台、文档站」⇒ 这是**既有能力面的纵深**，不是新面。新建 `document-unlock` 会造成「容器型内容保护」一分为二 |
+| 猿人学 1–9 / 16 题（3 篇） | `web-reverse-algorithm` | 该技能已有 `01-decision-tree` / `15-call-site-locating` / `16-ciphertext-structure-diagnostics` 三份「题型 → 定位」文档；本批补的是**第四种视角：跨题复用的判据索引** |
+| reese84 / `___utmvc` / testab（3 篇） | `web-js-env-patcher` | 三者同一条流水线「接口下发 VM/混淆代码 → 补环境 → 跑出参数」，与该技能 `ruishu-botgate.md` / `case-patterns.md` 同族 |
+| 百度云加速挑战页（1 篇） | `web-verify-patcher` | 已有 17 族厂商对照；百度云加速是第 18 族的**表单型 WAF 挑战** |
+| ajaxHooker / cookie hook / `JSON.parse` 定位 / `apply` 掐 debugger（4 篇） | `web-reverse-hook` | 全部是「**非阻塞改写 + 定位钩子**」，与该技能 `anti-hook-detection-and-bypass.md` / `page-unlock-and-userscript-recipes.md` 同族 |
+| 得物 webpack 包（1 篇） | `webpack-bundle-extraction` | 包形态 `!function sign(e){…}({…})` + `window.b = a` 暴露 require ⇒ 打包产物复用 |
+| 闲鱼 mtop / 超星 pos（2 篇） | `reverse-knowledge`（**蓝图**） | 成熟平台签名参数 ⇒ 走蓝图契约（`blueprint-schema.md`） |
+| 问卷星 jqParam（1 篇） | `reverse-knowledge`（**既有蓝图**） | `wenjuanxing-params` 蓝图**已在册**，本批是**更早的独立来源 + 两个静默错** |
+| `ast_tools` 框架（1 篇） | `ast-deobfuscation` | 反混淆**框架形态与选型**，与 `pattern-layering.md` 互补 |
+| m3u8 `z` 参数 / 小鹅通 ts URL 变形 / 西瓜直出载体（3 篇） | `stream-drm-reverse`（**§0 地址还原层**） | 与该技能 `playback-address-interfaces.md` 同族（「拿到一个能播/能下的地址」这一步） |
+| 知乎盐选动态字体（1 篇） | `web-font-obfuscation` | 该技能 `css-and-sprite-obfuscation.md` 已覆盖字体反爬；本批补的是「**查表走不通 ⇒ 改走字形 OCR**」这条**路线分岔** |
+
+### 新建技能评估（**结论：0 新建**）
+
+- **唯一的候选**是「在线文档 / PDF / 文库载体解锁」。**不建的判据有两条**：
+  ① `stream-drm-reverse` 的边界声明（`SKILL.md` 分层表 + `ebook-and-container-drm.md` 首段）**已经包含 PDF**，
+     新建会造成同一能力面分裂成两个入口，违反本仓「同一份清单只在一处维护」的红线；
+  ② 本批 5 篇的知识全部是**「容器层」的纵深**（载体形态分流 / 分段枚举 / key 解包 / 权限边界），
+     没有出现新的**加密层**或新的**交付形态**。
+  ⇒ 按「避免滥建冗余技能」与「优先在最邻近模块补充扩展」两条约束，落为 `stream-drm-reverse` 的新 references 文件。
+- **候选元技能 `captcha-flow-orchestration`**：本轮验证码供给为 0 ⇒ 维持不建（**第 29 次确认**）。
+- **候选元技能「本流水线自身的批次作业」**：本轮**首次正式评估**，结论 **暂不建**。
+  判据：本批自曝缺陷 **6 处**，其中 **5 处是「并行写者 + 跨文件不变量」型**（引用路径前缀 / 代码块语言标签 / 描述长度），
+  **1 处是「照抄上一批脚本」型**。这些**全部可以用可复跑的机械门禁覆盖**，而门禁**已经存在**
+  （`check_skill_integrity.js` / `bNN-verify-docs.js`）——把它们写成「技能文档」不会比写成「门禁脚本」更有效。
+  ⇒ **下一次若再现「门禁抓不到的流程缺陷」，才考虑建**。
+
+**技能变更汇总（7 个技能全部 evolve，0 新建）**
+
+- `stream-drm-reverse`（evolve，本批最大增量：**2 个新文件**）：
+  **新增 `references/online-document-unlock.md`（749 行）** —— 在线文档 / PDF / 文库载体解锁：
+  **载体形态五分流**（① Range 分段懒加载：`Range: bytes=0-327679` + `206` + `Content-Range`、
+  **「先返回总长再收 Range」的两次请求语义**、**「小十个字节」实测坑 ⇒ 以 `total` 核对边界**；
+  ② base64 内嵌（30MB 单文件 HTML / `data:application/pdf;base64,` / blob，**可能带密码**）；
+  ③ 整体加密（XHR 追栈；wasm `_decodeData` **直接 hook 整份 PDF 出口**；
+  `HCNO → Module._init → UTF8ToString` 解出「密钥 + IV + hcno」三元组，**`#` 段是 IV**）；
+  ④ pdf.js 容器（`PDFViewerApplication.download()`「基本上通用」+ `.onPassword` 追码）；
+  ⑤ 一次性 URL + 签名分页（**阻止请求域 / 跑两次**两个验证动作 + `MD5('123456'+nonce+stime)` 四参数按页循环）；
+  ⑥ 逐页图片流（元数据 ECB + `canvas_info` **只重映射中间 10% 字节**））；
+  另含 **PDF 文件头四种表示法**、**base36 两位一组解码**（原函数 + 可复算向量）、
+  **postMessage 自动传密码链（`r0inab`/`r0inyk`）**、`@media print` 破除法与边界、内嵌 PDF 密码两条路线、blob 下载片段。
+  **新增 `references/playback-url-shapes-and-page-carriers.md`** —— 地址还原层的三类新形态：
+  **按日期算的自定义查询参数（`z` 参数 = `md5(md5(String((day+18)^10))[0:10])`）**、
+  **ts 分片 URL 本身就是 m3u8 的伪装形态（改后缀 + 删 `start/end`）**、
+  **页面直出载体 `window._SSR_HYDRATED_DATA`（AES-CBC/Pkcs7 → base64 → base64 → JSON）**。
+  `references/ebook-and-container-drm.md` 顶部补分工指针；`SKILL.md` 分层表 **+1 行**（在线文档载体层）、资源段 **+2 条**。
+- `web-reverse-algorithm`（evolve）：**新增 `references/17-yuanrenxue-match-playbook.md`（550 行）** ——
+  「比赛题 / 靶场题」的**题型 → 定位手法 → 算法 → 可迁移判据**主表（覆盖第 1/2/3/4/5/6/7/8/9/16 题）与 §2 逐条判据：
+  ★ **`m` 参数里的 `丨`（U+4E28 分隔符）⇒ 先按「拼接串」拆，别按整体加密读**（并点破 **`丨` ≠ ASCII `|`**，抄串必确认码位）、
+  ★ **属性名拼接混淆（成员访问方括号里是加法表达式）**、★ **内联 RC4 字符串表「不要静态读、在控制台逐项调用」**、
+  ★ **动态 cookie 的入口是「不带 cookie 时服务端返回的那段 script」而非 cookie 本身**、
+  ★ **「接口本身没有反爬」时把注意力从请求侧转到响应侧**、
+  ★ **累积历史参数 `q`（`a-b\|c-d\|…`）必须按请求顺序生成**、
+  ★ **node 补环境「值对齐即止」与 express / execjs / `os.popen` 三种调用形态**、
+  ★ **OB 三段 script（自检 / 保活 / 业务）**、★★ **蜜罐判据：一段代码只用自己产出的值做校验 ⇒ 先怀疑它是蜜罐**（处置是浏览器 vs node 逐字符回溯，而不是改算法）。
+  `SKILL.md` 参考导航 **+13 行**。
+- `web-reverse-hook`（evolve）：**新增 `references/response-rewrite-and-locating-hooks.md`（285 行）** ——
+  §1 **`ajaxHooker` 改写响应体**（★ 判据：**改「响应体」比改「页面状态」稳**）+ 油猴头部三行；
+  §2 **`document.cookie` 的 `defineProperty` hook 模板 + hook 时机三档**（控制台注入刷新即失效 / FD 替换响应 / 油猴 `document-start`）
+  与 ⚠️ **源文写法的两个缺陷（裸 hook 会被 `getOwnPropertyDescriptor` 检出）**；
+  §3 **`JSON.parse` 断点定位解密入口**（★ 判据：**解密入口 = 密文进入业务代码的第一个函数**）；
+  §4 ★ **按 `this.toString()` 精确 hook `apply` 掐掉无限 debugger**（含**与既有「静态改文件」路线的区别**：
+  本手法用于**代码在 JSVMP 里、文件不好改**的场景；并点破**字符串必须逐字符精确**与**劫持全局 `apply` 的影响面**）。
+- `web-js-env-patcher`（evolve）：**新增 `references/vmp-verify-params-env-patching.md`（280 行）** ——
+  reese84 / `___utmvc` / testab **三个样本归并为同一条流水线**「接口下发 VM/混淆代码 → 补环境 → 跑出参数」：
+  ★ reese84 的**唯一定位抓手**（`invokeTask` → `e.callback.apply(n, r)` → **跳约 5 个栈**）+ 扣代码三条（**19 方法数组** / 字符串切片当属性名 / `JSON.stringify` 后再 base64）；
+  ★ `___utmvc` 的 AST 两步；★ testab 的**补环境清单与顺序**（`self = top = window` → 删 `process`/`global`/`buffer` → `appendChild` → `createElement` → 原型链 + `toString`），
+  **验收判据 = `args` 与浏览器逐值一致（源文为 64 位大数组）**；★ testab 纯算的**「插装打值 → 基于值分析」笨办法**与**沿指令集索引对栈**的定位法。
+- `web-verify-patcher`（evolve）：**新增 `references/baidu-yunjiasu-safety-check.md`（199 行）** ——
+  百度云加速「安全检查」挑战页的**完整可复算链路**（`cf-ray` 取 `ray` / 正则取 `posturl` 与 `r` /
+  `captcha.su.baidu.com/session_cb?pub=` 取 `session` / 换验证码图 / 四字段表单提交）+
+  ★ **参数固化判据（哪些能写死：`pub`；哪些必须每次取）** + ★ **厂商误判提醒（`cf-ray` 不是 Cloudflare 专属）** +
+  **人工输码的边界（不是自动识别）与移交分工**。
+- `ast-deobfuscation`（evolve）：**新增 `references/ast-toolchain-frameworks.md`** ——
+  `sml2h3/ast_tools` 的**框架契约**（`main.js` 的 `common_fix.fix` 入口 → `./pro/demo1_fix.js` 导出 **15 个各自独立的 pass 函数 + 一个主函数集中声明执行顺序**）
+  与 ★ **判据「反混淆框架的价值在『函数独立 + 顺序显式』」**（要改一个 pass 不动其它），
+  含落地前提（`npm i iconv-lite @babel/core` / 输出到 `demos/demo1/output.js` / 10 秒级）与
+  ⚠️ **登记：源文没有贴出那 15 个函数中的任何一个 ⇒ 不得编造函数名或实现**。
+- `webpack-bundle-extraction`（evolve）：**新增 `references/webpack-runtime-export-and-host-reuse.md`** ——
+  ★ 判据「**某些包会把 require 直接暴露到全局**（得物样本叫 `window.b`）⇒ 先看 IIFE 尾部有没有 `window.X = <loader>`」、
+  ★ **宿主复用形态**（`execjs` 里 `ctx.call('cxx', data)`，**入参是对象不是字符串**）与其**代价**（耦合 JS 引擎 / 并发受限 / 要带全包），
+  并与 `node-reuse-and-env-handoff.md` 划清分工。
+- `web-font-obfuscation`（evolve）：**新增 `references/glyph-ocr-and-rotation.md`** ——
+  ★ **路线判据（30 秒分流）**：`码位↔真值表稳定 ⇒ cmap 查表；不稳定 ⇒ 字形 OCR`，含源文的**三步判定**（先 F12 再禁 JS 再粘贴网址 / 对比源码与显示文字 / **刷新两次对比源码文字**）；
+  ★★ **核心坑：按映射表逐条 `replace` 会「自我污染」**（`一二一二…` + `[("一","二"),("二","一")]`）与源文的 `replaced_positions` 修法，
+  **并由主线补出源文没做的推演**：根因是「顺序 + 就地改写同一个串」，**通用解是单趟逐位置映射**（`''.join(map_table.get(ch, ch) for ch in text)`）；
+  ★ OCR 选型三段弯路（Tesseract / easyocr / **CnOCR**）与「先用在线 demo 跑自己的字形图」这条判据。
+- `reverse-knowledge`（evolve，**2 个新蓝图 + 1 个既有蓝图升级**）：
+  **新建 `xianyu-mtop-h5-sign`**（`sign = md5(token + '&' + t + '&' + appKey + '&' + data)`，`token` 取 `_m_h5_tk` 的 `_` 前段）；
+  **新建 `chaoxing-pos`**（⚠️ **title/summary 已如实标注「源文自称是练习站，非真实超星站点」**；
+  `pos = (ceil(x)\|ceil(y))` 坐标串 + `enc` 的 **LCG（`seed = (k*seed + a) % (2^31-1)`）+ 逐字符异或 + 8 位 hex 尾**）；
+  **升级既有 `dewu-sign`**（本批**唯一的「结论级升级」**，详见下节）；两个新蓝图均已登记进 `index.json`（**修复孤儿警告**）。
+  蓝图库 **29 → 31 个**。
+
+### ★ 本批唯一的「结论级升级」：`dewu-sign` 蓝图 · `family: unknown → hash(MD5)`
+
+**怎么发生的**：本批的得物文章（`2036327`，web 端**首页推荐**面）**不是同一接口**（既有蓝图是 `stark.dewu.com` 商家后台面），
+表面上只能各记一处。但**交叉核对发现两处结构常量完全同一**：
+
+| 证据 | 内容 |
+| --- | --- |
+| 常量 | 两面都是 `048a9c4943398714b356a696503d2d36`（**逐字符相同**） |
+| 拼法 | 两面都是「`Object.keys(t).sort()` 升序 → 键名+值无分隔符相连 → 空数组只留键名 → 接同一常量」 |
+| 算法 | web 面的 `cxx()` **给出了完整函数体**：`u()("".concat(<升序拼串>, "<常量>"))`；而 `u()` 所在模块即 **blueimp-md5**（同包第 597/746 行出现其核心 IV 常量 `1732584193 / -271733879 / -1732584194 / 271733878`，函数签名 `bytesToWords(t)` + `8 * t.length` 也逐字一致） |
+
+⇒ 升级为 **`return_sign(t) = MD5(升序拼接串 + 常量)`**，`family: unknown → hash`，`version 1.0.0 → 1.1.0`。
+**但 `status` 只记 `partial`**（不是 `active`）：**两个面都没有服务端返回值可对拍**，
+按本仓硬规则「只登记、不判因」，这一点必须在文档里说清。
+`metadata.json` / `mutations.json` / `workflow.md` / `index.json` **四处同步**（避免"同一事实两处不一致"）。
+`mutations` **+4 条**（常量位置 / 升序的字典序语义 / 空数组与对象值的拼法 / `undefined` 与 `NaN` 分支），每条都带 `symptom_if_wrong`。
+★ 并**顺手把蓝图既有的 `self_check` 变成了可对拍的预测**：`MD5(拼接串 + 常量) = 71c9f7ef54ec3ab5bb233e48934222b3`
+—— 该式的**三个中间值已由本流水线用 Node 逐字符复算通过**（见验收），后续只要拿到一次该接口真实响应即可 `partial → active`。
+
+### 本批自曝缺陷与修正（**全部在本轮内修完**）
+
+| # | 缺陷 | 根因 | 处置 |
+| --- | --- | --- | --- |
+| 1 | 子代理把跨技能引用写成 `../<skill>/…`（**17 处**），`check_skill_integrity.js` 全报 BLOCK | 该文件位于 `references/` 下，`../` 只到**技能根**，必须 `../../<skill>/…`；子代理**没有按要求 `ls` 逐个验证可达性** | 统一改为 `../../`，并把「写完后逐个 `ls` 验证」写进下一次的 brief **硬性门禁**（本轮已在 brief 里写过，但**没有要求它把 `ls` 结果贴回**⇒下次必须要求贴回） |
+| 2 | 文档门禁 4 处 ```js 代码块语法错误 | ① 2 处**本批新引入**：「对象属性片段」`success: function(data){}` 与「`case` 片段」`case 1: … break;` 被标了 `js`；② 2 处是**历史遗留**（`ebook-and-container-drm.md` 的 `AESEncrypt(e,t){…}` 类方法简写、`online-document-unlock.md` 的 `decodeData(data){…}`）——**由「改动集派生」机制首次覆盖到该文件才暴露**（B34 同款现象） | 四处**一律去掉语言标签**（**不是放宽门禁**）；并按 B33 判据确认：去掉标签的块都是**片段**、不是真语法错 |
+| 3 | 第三方项目路径被门禁误判为「仓库相对引用」（`./pro/demo1_fix.js` / `./demos/demo1/output.js` / `references/patterns/<site>.md` / `./scripts/login_param_probe.py`） | `ast_tools` 是**外部项目**，其内部路径写进文档时用了「仓库路径」的书写形态；门禁按「改动文档里的路径型引用必须可解析」一律拦截 | 去 `./` 前缀 / 把「目录」与「文件名」拆开写（`references/patterns/` 下的站点文件）⇒ 语义不变、不再形成路径形态；**未放宽门禁** |
+| 4 | `reverse-knowledge` 新蓝图 `dewu-sign` 的 `family` 先写成 `md5`，被 `blueprint-lint.js` 判 error（**枚举不含 `md5`**） | **我（主线）**凭直觉写了算法名，没先读 `algorithm.family` 的枚举契约 | 改为 `hash`（算法名进 `detail`），并**对照 5 个既有蓝图的 family 取值**确认为仓库通行口径 |
+| 5 | 主线在两条子代理**仍在跑**时就想同步镜像 | 与 B33 踩过的「并行写者」同族，但**触发点不同**：这次是「镜像同步与子代理写入竞争」 | **先 `TaskList` 确认 11 个任务全部 completed、再跑镜像**；并记一条「**同步前必须确认在跑的子代理数为 0**」（比 B33 的「看文件 mtime」更硬） |
+| 6 | 本批 `b35-verify-numbers.js` 首跑 **1 项断言失败**（自写断言把密文长度写成 70，实际 72） | **我（主线）**写断言时凭记忆填数，没让断言自己算 | 把常数改成**从输入推导**（`enc.length % 2 === 0 && got.length === enc.length / 2`）⇒ 断言不再依赖人肉计数 |
+
+> ★ **流程层面的结论（可复用）**：
+> ① **6 处缺陷里 3 处是「跨文件不变量」**（引用路径前缀 / 语言标签 / 枚举取值）⇒ 全部**已能由门禁覆盖**，
+> 这也正是「不新建元技能」的直接证据；
+> ② **「改动集派生」机制连续两批（B34/B35）各抓出 2 处历史遗留** ⇒ **它已经是本仓最有效的"存量体检"通道**，
+> 下一批应**主动扩大改动集**（例如把「本批引用到的邻近文件」也纳入门禁），而不是等它被动暴露；
+> ③ **子代理 brief 里写过的硬性要求，若不要求"把验证结果贴回"，等于没写**（本轮缺陷 1 的直接原因）。
+
+### 验收（全部实跑）
+
+- `check_skill_integrity.js` **全库 0 阻断 0 告警**（台账 655 → **679** / 候选 1162 / 待处理 507 → **483**）。
+- `tools/b35-verify-docs.js`（**改动集从 `git status` 派生**，与 B32–B34 同口径）**0 阻断**：
+  完整脚本 **30** · 函数体片段（包壳通过）**2** · 跳过教学占位 **9** · 路径引用可解析 **337** / 不可解析 **0**。
+  22 个技能的 frontmatter / description 契约**全部通过**（**本批无人改 description ⇒ 无长度回归**）。
+- `blueprint-lint.js` **error 0 / warn 1**（= 基线的 `toutiao-a-bogus` 缺 `mutations.json`，历史遗留，未增未减）；
+  `query-blueprint.js --selftest` **33/33**；`index.json` 与磁盘目录**无孤儿**（新蓝图已登记）。
+- ★ **`browsercli` 真机 Chrome 7 组 12 项断言全绿**（`artifacts/skill-evolution/b35-run/assert-js-semantics.js` + 结果原文）：
+  `new Function("debugger").toString()` 逐字节匹配 / **反证**带分号与带空格写法对不上 / **端到端**装上 `apply` hook 后该函数被静默吞掉且不影响正常 `apply` /
+  `^` 优先级与 `getDate`≠`getDay` / **base36 解码命中源文密码** / testab 64 元数组 / `+` 的类型分派 /
+  ★ **裸 `defineProperty` hook 后 `getOwnPropertyDescriptor().get` 不再是 `[native code]` ⇒ 真的可被检出**（坐实 `web-reverse-hook` 里登记的源文缺陷）/ 超星 `enc` 结构与「漏更新 seed 静默改变内容」。
+- ★ **Node 独立复算 38 项全绿**（`tools/b35-verify-numbers.js`，原文见 `b35-run/verify-numbers.result.txt`）：
+  base36 解码 **有源文 oracle**（`d28a17ea2415+f47a+8e11+d5af+3fb043f7` 逐字符命中）·
+  testab 数组 → **64 位小写 hex**（与源文「64 位大数组」的表述互证）·
+  `new Function('debugger')` 串逐字节 · `z` 参数三条回归锚点 + **两处静默错反证** ·
+  问卷星「数字相加 vs 字符串拼接」· 超星 `enc` 结构 + **漏更新 seed 的静默错** ·
+  闲鱼 `sign` 顺序敏感反证 · 百度云加速正则顺序敏感 · ★ **`dewu-sign` 升级式的三值 + 预测值 + 常量位置反证**。
+- 台账 **655 → 679** / `verify-ledger-md5.py` 逐条一致 / 幂等复跑 · 待处理 **507 → 483** ·
+  双镜像 **31/31 逐字节一致**（含反向复核「同步后仍不一致 = 0」）· 提交后门禁**可复跑**。
+
+**评审**：本轮按自动化口径执行、未派独立评审（如实记录）。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 656 | `52pojie-1186703-python爬虫遇到【安全检查! 百度云加速】的解决方案.md` | `283f1437ea2c1ddfa9cab7f5ae480e49` | 2026-09-24 | `web-verify-patcher` | evolve | **表单型 WAF 挑战页的完整可复算链路**（百度云加速，判据三件套：标题含「安全检查」+ 响应头有 `cf-ray` + 响应体里一个待提交表单）：① `cookie = Set-Cookie` 首段；② `ray = cf-ray` 去掉 `-` 后缀；③ `posturl = 站点根 + html.unescape(action="…")`；④ `r = value="…"`；⑤ `session` 从 `captcha.su.baidu.com/session_cb?pub=<写死>` 的响应里按 `split('"')[-2]` 取；⑥ 验证码图 `captcha.su.baidu.com/image?session=&pub=`；⑦ 四字段表单 `r / id(ray) / captcha_challenge_field(session) / manual_captcha_challenge_field(人输)`；★ **可迁移判据：「`pub` 多次抓包不变 ⇒ 写死」——先分清哪些参数是站点级常量、哪些是每会话必换**；★★ **厂商误判提醒：`cf-ray` 头在非 Cloudflare 厂商（本样本是百度云加速）上也会出现 ⇒ 不要凭 `cf-*` 头反推厂商**；边界：源文是 **2020-05** 样本、`pub` 只对该站当时有效，且**验证码是人工输入**（非自动识别）⇒ 自动识别移交 `captcha-model-training.md` |
+| 657 | `52pojie-1288315-某网站Web端爬虫攻防大赛题目交流.md` | `d90f9a347d4f80fc401126ae30a6afd0` | 2026-09-24 | `web-reverse-algorithm` | evolve | ★ **猿人学 1–9 题逐题讲解（405 KB / 7468 行，正文到第 9 题、后段为回帖）**，本批把它蒸馏成**题型索引**而非流水账：★★ **第 1 题 `m` 参数里的分隔符是 `丨`（U+4E28，CJK 竖线）而不是 ASCII `|`** ⇒ 固化判据「**参数出现竖线类分隔符（`丨`/`|`/`｜`）时先按『拼接串』拆成 `[密文/哈希] + [分隔符] + [常为明文时间戳]`，而不是当整段密文解**」，并点破**抄串必须先确认码位**（字形相近、码位不同，写错服务端只回「参数错误」）；★★ **属性名拼接混淆**：`String[document.e + document.g](…)` / `window.a[i][document.f + document.h]()` —— **识别信号是「成员访问方括号里是加法表达式」**，处置是先把 `document.<x>`/`window.<y>` 常量还原；★ **内联 RC4 字符串表**（`U = ['W5r5…','WQ8C…']` + 按下标取 + 第二参加密）⇒ **不要静态读 RC4，直接在控制台逐项调用 `J('0x0','dQ')` 读出明文**；★ **动态 cookie 的入口不是 cookie 本身**——**不带 cookie 访问时服务端返回一段 script**，cookie 由这段 script 算出（第 2/9 题同构，第 9 题是 **OB 三段 script：反调试 / 字符串表 / 业务**）；★★ **第 4 题「接口本身没有反爬」**（源文原话「直接获取数据即可」）⇒ **难点全在响应侧**（`class` 里 32 位 hex 标记隐藏图 + `style:left` 定序 + base64 图）⇒ 判据「**参数平平无奇时，把注意力从请求侧转到响应侧**」；★ **第 6 题是「js 混淆 - 回溯」**（`m = encodeURIComponent(RSA(...))`、累积历史参数 `q` 必须按请求顺序生成）；★ **第 7 题动态字体每次换文件**、**第 8 题 30×30 个 `div` 对应点选序号**（均已在 §1 主表登记并指向 `web-font-obfuscation` / `web-verify-patcher`） |
+| 658 | `52pojie-1361387-对问卷星参数jqparam的分析和探索.md` | `73866a865f3e927c5d49bda16823a366` | 2026-09-24 | `reverse-knowledge` | evolve | ⚠️ **「已在册」条目**——`wenjuanxing-params` 蓝图**已完整覆盖** `abcd1~abcd5` 全链，故**不重复登记算法**；本篇（**2021-01，比在册来源更早**）的独立价值是**两处静默错 + 一条定位手法**：① ★★ **「抠出来的函数与页面实际行为不一致」**——源文贴出的可复用 `get_jqParam()` **`return jqParam`（在 `abcd5` 之前）**，而页面内联代码是 `jqParam = _0x5d90fd`（**在 `abcd5` 之后**）⇒ **照抄可复用版本会少做一次循环左移**（长度对、内容错位、服务端判参数非法）⇒ 已作为 `mutations` 登记；② ★★ **`_0x3a5cf2 = _0xd16fcc + _0x4aaf4a + parseInt(activityId)` 是「数字相加」不是「字符串拼接」**（JS 左结合、三项都是 `number`）⇒ 写成 Python 字符串拼接会得到完全不同的值（本批真机实测 `1428901062` vs `123456789088888888105444284`）；③ ★ **定位手法：`ReRes` 把 `<混淆 js 地址>.*` 映射到 `http://localhost:9000/tool.js`**（`python -m http.server` 起本地服务，**问号及后面的参数用 `.*` 代掉**）⇒ **先把混淆文件换成本地反混淆版，再打断点**；④ 登记：参数生成**挂在鼠标移动事件上**（`$(document).bind('mousemove', …)` + `window.hdm1113` 1 秒后才为 `true` + `pageX > 0`）；⑤ 交叉验证：**62 字符表与 `3597397` 常量与在册来源逐字一致** ⇒ 该蓝图的常量可信度上升 |
+| 659 | `52pojie-1375791-关于GB688文件下载的脚本讨论.md` | `a614b9857073b95fffcbcd5e08c65801` | 2026-09-24 | `stream-drm-reverse` | evolve | **openstd（GB688）在线预览的载体结构**（源文转述自 `lzghzr/TampermonkeyJS` issue #27 + gist）：★ **页内 `var HCNO="…"`（一段 base64）= 承载「密钥 + IV + hcno」三元组**，由 `pdf-work.wasm` 解密：`Module.onRuntimeInitialized → allocateUTF8(HCNO) → Module._init(ptr) → UTF8ToString(retPtr)`，**解出形如 `**********:################:CC68F6BFD3E104560914271598AFE8C8`**——**`#` 段即 IV**；★ **两次请求的语义区分**：同 URL 第一次**「没有发生文件传输」**（只是从 `Content-Range: bytes 0-2967096/2967097` 拿到**总长**），第二次才带 `Range: bytes=0-327679` 取块（**320 KiB 粒度**，`206 Partial Content`）；★ **懒加载**：用户下拉才继续请求，直到 `bytes=2949120-2967096` 收尾；★ 边界：源文自陈「太专业了实在看不懂，发出来大家一起研究」⇒ **只登记结构与抓包事实，未复算密钥/IV 的具体取值**；另登记两条**非逆向的替代路线**（打印成 PDF / 无头浏览器批量取），并注明后者对 pdf.js 在线预览同样适用 |
+| 660 | `52pojie-1385134-记一次有限制的网页pdf破解.md` | `e4ff48fce7d423fc1d8d4b9c88beb03f` | 2026-09-24 | `stream-drm-reverse` | evolve | **单文件 HTML 内嵌 base64 PDF 的完整闭环**：① **识别**：一个 HTML 30+ MB ⇒ 数据都在本地，`010 Editor` 打开就能看到**一大段 base64**，读到 `application/pdf` + `;base64,` 定性；② **禁用控制台的 6 种绕法**（源文列的清单：本地 JS 直接编辑 / `ctrl+shift+I` / 菜单「更多工具→开发者工具」/ `ctrl+shift+C` / **FD 自动转发** / **先开控制台再开网页**）⇒ 判据「**只挡 F12 的前端手段一律不算"加密"**」；③ ★ **`convertDataURIToBinary` 的等价复现**（去 `data:` 头 → `atob` → 逐字节 `charCodeAt & 255` 填 `Uint8Array`）；④ ★ **PDF 带密码的两条路线**：**解密 JS 法**（`_0x4c77('0x2','V%DS')` 直接运行出密码）与 ★ **劫持事件法**（在「输入密码以打开此 PDF 文件」的**确定按钮监听处**下断点，刷新即断，鼠标悬停 `value` 看密码）；⑤ ★ **blob 下载片段（源码原样）**：`atob` → `Uint8Array` → `Blob({type:'application/pdf'})` → `a.download` + `click()` + `revokeObjectURL`；源文观察「**比 Python 解码还快**」（**只登记不判因**）；⑥ 边界：去密码用现成工具即可，**本文件只到「拿到明文 PDF」** |
+| 661 | `52pojie-1433013-某度文库导出pdf格式的html.md` | `9c3eae06479ee46d5cbb03c4393fbd0c` | 2026-09-24 | `stream-drm-reverse` | evolve | ★ **「打印限制」的最小破除法**：文库类页面「`ctrl+P` 打印」失效时，保存页面后用 **filelocator 搜 `@media print`**（或在 console 里找到 `xreader` 文件 → `reveal in source panel` → 格式化），**把那段 `@media print` 删掉即可**；★ **判据**：「**打印/复制类限制大多写在 CSS 的 `@media print` 媒体查询里 ⇒ 先搜它，再怀疑 JS**」；★★ **边界（源文原话，必须连边界一起用）**：「**此方法只能获取看得到的页面**！！可以绕过复制等限制，**不能破解会员**」⇒ **它解决的是"输出"，不是"权限"**；与「关注公众号 / 回复密码」类**服务端门控**（`web-reverse-hook` 的 `page-unlock-and-userscript-recipes.md` §7）的分工须写清：**门控判定在服务端时，前端手段只能拿到已下发的内容** |
+| 662 | `52pojie-1469419-猿人学爬虫攻防赛 第6题.md` | `e207424295ba04fade8634af0806564f` | 2026-09-24 | `web-reverse-algorithm` | evolve | **第 6 题的 node 补环境路线（177 KB）**，与同批 `1288315` 的浏览器断点路线**互为交叉验证**：★ **补环境的验收判据是「值对齐即止」**——把浏览器侧与 node 侧的中间值逐项打印对齐（而不是"能跑不报错"）；★★ **三种调用形态的实测差异**：`express 服务调用`（起 HTTP 服务）/ `execjs 调用`（Python 里 `ctx.call`）/ **`os.popen` 起 node 进程**（源文列了三者的取舍，落地时按「是否需要常驻/是否要传大对象/是否要并发」选，**不是随便挑一个**）；★ **JS 混淆 - 回溯**这条题型的关键：**同一个函数在浏览器与 node 里走的分支不同** ⇒ 必须**逐字符回溯**比对（与同批第 16 题的蜜罐判据同源）；★ 本流水线把它与 `1288315` 的对应用法固化为判据「**同一题有两种解法（浏览器断点 / node 补环境）时，两者的中间值必须能互相对上**」 |
+| 663 | `52pojie-1477905-关于遇到加密数据怎么提取的一些案例.md` | `0338ce7b02bad85ffa74da78cc11c292` | 2026-09-24 | `web-reverse-hook` | evolve | ★ **「定位 `JSON.parse`」这条最省事的解密入口找法**（源文全篇只讲这一件事，正文极短却直接给结论）：响应体是密文时**全局搜 `JSON.parse`**（本样本**两处都命中**，都下断点）→ 刷新 → **断下来时密文已经变成明文对象** ⇒ 顺着栈回看**函数名提示**（源文看到的右上角名字是 `des`）⇒ 判定 DES ⇒ 扣代码 + `execjs`；★★ **判据：「解密入口 = 密文进入业务代码的第一个函数」，而 `JSON.parse` 是绝大多数站点的那个点**（比从头读混淆代码便宜一个数量级）；⚠️ 边界：**该判据只在「站点解密后立刻解析成对象」时成立**——若站点先解密再 `eval`、或解密结果先落地到 `window` 变量，则入口分别是 `eval` 与**赋值点**（后者见 `web-js-env-patcher` 的 `crypto-entry-location.md`）；登记：**该样本只给出了"能拿到明文"，未给出 DES 的 key/iv 与模式** ⇒ 不得据本篇复算算法 |
+| 664 | `52pojie-1487946-猿人学爬虫攻防赛 第16题.md` | `965b23088522c283f295cc8b270c90bb` | 2026-09-24 | `web-reverse-algorithm` | evolve | ★★ **蜜罐判据的样本来源**（第 16 题）：参数 `m = btoa(ms 时间戳)` 看似极简，但 `btoa` **被页面重写过**——重写后的实现**只用自己产出的值做自洽校验**（喂回服务端不认）；★★ **升格为通用判据**：「**一段代码只用它自己产出的值做校验、不依赖任何外部输入 ⇒ 先怀疑它是蜜罐/纯装饰**」，处置是**浏览器 vs node 逐字符回溯找出被改写的那个内置方法**（**不要试图"改算法"**——算法本身没错，错的是被替换的内置实现）；★ **定位**：XHR 断点关键词 `/api/match/16` → 往前追几个栈；★ 与同批 `1469419`（第 6 题 node 补环境）的关系：**两题都靠「两侧逐字符 diff」收口** ⇒ 本批把这条固化为「**凡『本地算得出、服务端不认』，第一动作是逐字符 diff 而不是改算法**」；⚠️ 登记：源文只给了结论与定位路径，**未给出 `btoa` 重写后的完整实现** |
+| 665 | `52pojie-1490196-m3u8 获取 （js学习）.md` | `a1c4bf5f335e569792e5a00b12f35e7c` | 2026-09-24 | `stream-drm-reverse` | evolve | ★ **「按日期算的自定义查询参数」这一形态**：某 m1907 站接口 `GET /api/v/` 需 `z / jx / s1ig / g`，其中 **`z` 是双重 MD5 截断**——JS：`var slig = m.getDate() + 9 + 9 ^ 10; p = String(slig); p = Et(p).substring(0,10); p = Et(p)`（`Et(e)` 单参时等价于**小写 MD5 hex**）；Python：`slig = y.weekday() + 11397`（**这是另一个参数 `s1ig`，不是 `z`**）；★★ **两处静默错（本批真机 + Node 双重复算）**：① **`getDate()`（月内日）与 `getDay()`（星期）语义不同**——本样本 JS 用的是前者，误读成后者会让 `z` 全错（真机实测同日 `getDate=7 / getDay=6`，两条路径产出不同 `z`）；② **`^` 的优先级低于 `+`** ⇒ `getDate()+9+9^10` 是 `(day+18)^10`（**JS 与 Python 同**）；③ **源文给的 JS 片段只算 `z`、不算 `s1ig`** ⇒ 登记为「两版口径不同、非矛盾」；★ **本流水线给出的回归锚点**（源文无示例值）：`day=7 ⇒ z=15a40fd4c6c6019f8f3dba73ff9242f8`、`day=1 ⇒ z=7468d5aae4ba551a0069655a67105999`；请求侧登记 `g=vod.bun` + `referer` 带同一 `jx` |
+| 666 | `52pojie-1492463-js hook初学笔记.md` | `f6f3eba9c494105f49ed067bddc4c861` | 2026-09-24 | `web-reverse-hook` | evolve | ★ **hook 时机三档**（源文原话式的清单，本批已并入新文件 §2.2）：① **在控制台注入的 hook，刷新网页就失效** ⇒ 必须在**网页加载的第一个 JS 处下断点**、再手动注入（源文注：「有可能在注入有些站点的时候时机会晚一点」）；② **利用 FD 替换响应**（「FD 就是个代理，让网页数据都从 FD 过」，时机最靠前）⇒ **拦截 + 注入 + 放过**；③ 油猴 `@run-at document-start`；★ **模板（源文逐字）**：`Object.defineProperty(document,'cookie',{set(v){debugger;console.log(v);aaa=v;return v;},get(){return aaa;}})` —— 用**闭包变量 `aaa` 暂存**实现「写入可见、读取可还原」；⚠️ **本批把该模板的两个缺陷如实登记**：① 没有 `Object.getOwnPropertyDescriptor` 保护、② 没有 `toString` 伪装 ⇒ **裸 hook 会被页面检出**（★ 本批真机实测坐实：hook 后 `getOwnPropertyDescriptor(document,'cookie').get` **不再是 `[native code]`**）⇒ 指向 `anti-hook-detection-and-bypass.md`；★ `Object.defineProperty` 的三参数语义（obj / prop / descriptor）与「属性里存的可能是值，也可能是 setter+getter」这段源文注解一并保留为**新手入口** |
+| 667 | `52pojie-1601414-ast框架一键还原某里140初体验.md` | `df4d70052af57aff13e513a6215deaa9` | 2026-09-24 | `ast-deobfuscation` | evolve | ★ **反混淆「框架形态」的选型样本**（`sml2h3/ast_tools`，基于 Babel）：入口 `main.js` 里的 **`common_fix.fix`** 是「源码 → 输出」的唯一门面；反混淆核心在 **`./pro/demo1_fix.js`**，其结构是「**官方函数导入区** + **15 个各自独立的功能函数** + **一个主函数集中声明执行顺序**」；★★ **判据：「反混淆框架的价值在『函数独立 + 顺序显式』」**——每个 pass 只干一件事、顺序由主函数集中声明 ⇒ **要改一个 pass 不动其它**（与本仓 `pattern-layering.md` 的「分层可回退管线」对照读）；★ **落地前提**：`npm i iconv-lite @babel/core`、默认输出到 `demos/demo1/output.js`、**10 秒级完成**；★ **验收标准**是「**控制流被还原 + 字符串被解出、可读性显著上升**」，**不是**「100% 去混淆」（源文原话只到「简单的一步操作，将代码的可读性大幅增加」）；⚠️ **登记：源文没有贴出那 15 个函数中的任何一个**（只有截图与文字描述）⇒ **不得编造函数名或实现**，本文件只写「框架形态 + 选型判据 + 使用前提」，具体 pass 内容指向 `decode-obfuscator.md` / `obfuscator-io-four-step-pipeline.md`；⚠️ 源文是 2022-03 的初体验、**未声称通用** |
+| 668 | `52pojie-1674294-在线阅读文档解密.md` | `520e65b1e0c44d36f65dc54c2697fb8c` | 2026-09-24 | `stream-drm-reverse` | evolve | ★★ **本批「在线文档」簇的主干来源**（四种载体形态 + PDF 文件头）：① ★ **PDF 文件头四种表示法**（源文原话「这个很重要，至少要记住前两行」）：`%PDF-1.` / base64 `JVBERi0x` / hex `25 50 44 46 2D 31` / bytes `{37,80,68,70,45,49}`；② **形态一 · Range 分段**：请求头 `Range: bytes=0-0` 探长 → 改 `bytes=0-` 取全；★★ **实测坑**（源文自陈）：「我碰到过一个，如果直接按 `bytes=0-`，**会报错**，后来发现**直接翻到最后一页，请求头中的范围比响应头返回的要小十个字节左右**」⇒ **以响应头 `Content-Range` 的 total 为准核对边界，不要盲信一次 `0-` 拿全**（**单样本，只作该案例实测登记**）；③ **形态二 · base64 内嵌**（解 base64 写文件，或直接下 blob）——⚠️ 「**有可能 pdf 会有密码**，也有可能在生成 blob 时加上了密码」；④ **形态三 · AES 等整体加密**（`aHR0cDovL3d3dy5qdHlzYnouY246ODAwOS9wZGYvdmlld2VyLzA5NDY0MjcyNWJmOWE=`：XHR 断点 → 看堆栈 → 源文「人家注释都标上了，就是一个 AES」）；⑤ **形态四 · 一次性 URL + 签名分页**：`pinst / nonce / stime / sign` 四参数，`nonce = uuid.uuid4()`、`sign = MD5('123456' + nonce + stime).upper()`、页数参与循环；★ **两个验证动作**（本批提炼）：**右键「阻止请求域」→ 翻页 → 链接生成了但发不出去** ⇒ 拿到链接；**同一链接跑两次，第二次失败** ⇒ 坐实「一次性」；⑥ **附带形态 · 逐页图片流**：元数据整串 base64 + AES/ECB + JSON；图片本体**只重映射中间 10% 的字节**（走 `canvas_info` 索引表） |
+| 669 | `52pojie-1722262-畅玩空间SVIP解锁（ajaxHooker应用）.md` | `862b669b4831059685988e841155ed1e` | 2026-09-24 | `web-reverse-hook` | evolve | ★ **「改响应体」这条最省事的解锁路线**（源文全文极短、核心代码就几行）：油猴里 `@require` 引 `ajaxHooker`，`ajaxHooker.hook(request => { if (request.url.endsWith('userinfo')) request.response = res => { const a = JSON.parse(res.responseText); a.info.LevelInfo.VipLevel = 10; a.info.LevelInfo.Svip = 1; res.responseText = JSON.stringify(a); }; })`；★★ **判据：「改『响应体』比改『页面状态』稳」**——页面自己会去读接口结果，**把接口结果改成"有权限"即可，不需要去找 UI 上的判断点**（对比 `page-unlock-and-userscript-recipes.md` §1 的「控制台条件断点注入法」：那条适合**找不到接口、只能改状态**时）；★ **油猴头部关键三行**：`@require`（引库）、`@grant unsafeWindow`、`@run-at document-start`（**时机必须最早**，否则页面先发请求就晚了）；⚠️ 边界：**只对"页面自己请求、自己渲染"的前端门控有效**；若服务端按权限裁剪了响应内容，改 `responseText` 也拿不到（与 §7 内容门控的服务端边界同一条） |
+| 670 | `52pojie-1790893-超星考试pos参数破译.md` | `f31b376bcd8968da7f36182866dbddd3` | 2026-09-24 | `reverse-knowledge` | evolve | ⚠️ **源文作者自陈这是他自己造的练习站**（「并非通俗意义超星，请勿联想」）⇒ **新蓝图 `chaoxing-pos` 的 title/summary 已如实标注**，不得据它推断真实超星站。★ **`pos` 的四件套**：`pos = "(" + ceil(pageX \|\| clientX+scrollLeft) + "\|" + ceil(pageY \|\| clientY+scrollTop) + ")"`（鼠标坐标串）/ `qid = document.getElementById('questionId').value` / `rd = Math.random()` / `_edt`；★★ **`enc` 的完整算式（本批核心）**：`s = userId + "_" + questionId + "\|" + randomNum` → `d = 逐字符 charCodeAt().toString()` **首尾相接**（不是分隔）→ `m = floor(d.length/5)`、**`k = parseInt(d[m] + d[2m] + d[3m] + d[4m])`（四个位置拼成十进制数）** → `k < 2 ⇒ return null` → `r = round(1e9*rd) % 1e8`、`d += r`、若 `d.length > 10` 则 `d = parseInt(d.substring(0,10)).toString()` → ★ **LCG**：`M = 2^31-1`、`a = ceil(s.length/2)`、`seed = (k*d + a) % M` → 对 `posData` 逐字符 `x = charCodeAt ^ floor(seed/M*255)`（<16 补 `0` 转 16 进制），**每轮 `seed = (k*seed + a) % M`** → 最后把 `r` 转 16 进制**左侧补 `0` 到 8 位**追加；★ **本批真机 + Node 双重复算**：产出长度 = `2n+8`、全小写 hex，并**实测「漏更新 seed」的静默错**（长度仍对、内容全不同、不报错）；★ **OB 字符串表的「内存爆破」处置**（源文实测）：`RvZSqA` 里 `new RegExp(...).test(...)` 的三元分支跑出 `false` 会触发 `Math.random()` **死循环 push** ⇒ **先把三元强制成 `--this["pNCgln"][1]`**，再「把第一个分支设 `false`、第二个设 `true`」；环境检测（`navigator.webdriver` / `$cdc_` / `PhantomJS`）在还原时**直接 `return true`**；★ 两个通用手法也一并登记：`generator(ast,{minified:true, jsescOption:{minimal:true}})` 先做**字符串转义最小化**、`path.replaceInline(types.stringLiteral(...))` 批量替换 |
+| 671 | `52pojie-1843783-小鹅通视频下载，猫爪密匙解析失败后的方法.md` | `84a0dea6781878a39bccb15a02b931db` | 2026-09-24 | `stream-drm-reverse` | evolve | ★★ **「下载器报密匙错误」的第一嫌疑不是 key，而是"拿到的 URL 是切片形态"**：网络面板里只有 `…_0.ts?start=0&end=132927`（猫爪提示「密匙无法解析」），**把 `_0.ts` 改成 `.m3u8`、把 `start=0&end=` 删掉**即可直接下载；★ **原理（本批提炼）**：`?start=&end=` 是**服务端按 Range 切片**的形态，**同一路径去掉 Range 参数即返回完整清单**；★★ **升格为通用判据**：「**下载器报 key / 密匙错误时，先确认手上是『切片 URL』还是『清单 URL』**」；⚠️ **边界（必须一起写）**：这只对「ts 与 m3u8 同路径、靠查询参数区分」的服务端成立，**不是所有站都能这么改**（改了仍不成 ⇒ 回 `preview-gating-and-segment-enumeration.md` 走分片枚举）；源文为 **2023-10 单案例实测**；★ 另登记源文提到的两条**当时的失败路线**（改 `_0.ts` 为其他名 / 只改后缀不删参数）与它们的现象，用于排错 |
+| 672 | `52pojie-1851890-文心一言开发者控制台调试破解.md` | `6165b5c103375ddc654239f75ce354bd` | 2026-09-24 | `web-reverse-hook` | evolve | ★★ **按 `this.toString()` 精确 hook `apply` 掐掉无限 debugger**（本批真机端到端验证）：`const apply = Function.prototype.apply; Function.prototype.apply = function (thisArg, argsArray = []) { if (this.toString() === 'function anonymous(\\n) {\\ndebugger\\n}') return; return this.call(thisArg, ...argsArray); }`；★★ **与既有「静态改文件」路线的区别（必须写清）**：既有四招（函数级注释 / `return;` 前置 / 注释 `eval` 调用 / 中间人改 `eval` 实参）都要**改得到文件**；本手法是**动态、按函数源码文本精确匹配**，适用场景正是「**代码在 JSVMP 里、文件不好改**」（源文原话「往上一层可以发现是 jsvmp，这样替换文件相对来说就不太好搞」）；★ **前提观察**：「**卡在 debugger 就跳转页面、放行 debugger 就正常使用 ⇒ debugger 前后存在计时程序**」——**这条观察是选择该手法的依据**；★ **本批真机实测坐实三条**：① `new Function('debugger').toString()` 与源文写死串**逐字节相同**；② **反证**：带分号（`debugger;`）或带空格（` debugger `）的写法**对不上** ⇒ **匹配必须逐字符精确**；③ **端到端**：装上 hook 后该函数**被静默吞掉**、且**不影响正常 `apply`**（`fn.apply(null,[1,2])` 仍返回 3）；⚠️ **风险登记**：劫持**全局** `Function.prototype.apply` 影响面大（只适合调试期用），且需在页面脚本**最早**注入 |
+| 673 | `52pojie-1911970-css字体反扒的尝试记录小说下载.md` | `2ba1b2f21d5e86a0430505ff2e50044c` | 2026-09-24 | `web-font-obfuscation` | evolve | ★ **「cmap 查表走不通 ⇒ 改走字形 OCR」这条路线分岔的样本**（知乎盐选付费专栏）：★ **三步判定（源文实测，务必按序）**：① 新开标签页**先 F12 再禁用 JS**、再粘贴网址（否则页面直接跳转，抓不到源码）；② **对比网页显示文字与 HTML 源码文字** ⇒ 不等即反爬；③ **刷新两次对比源码文字**——源文原话「发现是两次源代码的文字是不一样的，确认是动态加载」⇒ **这就是「映射每次都变」的判据**（真值表不稳定 ⇒ 查表法失效）；★ **主流程五步**：读源码 → 提取 base64 字体 → **从字体里取出「字形图片 + 真 Unicode」** → 识别字形 → 按规则替换正文；★★ **核心坑：「按映射表逐条 `replace` 会自我污染」**——源文例：原文 `一二一二…`，识别结果 `[("一","二"),("二","一")]` ⇒ 第一次把「一」全换成「二」、第二次又把「二」全换回「一」，**结果全错**（源文实测现象：`到 02 把"不"替换为"用"`、`到 31 又把"用"替换成"可"`）；源文修法是用 `replaced_positions = set()` 记录**已替换位置**；★ **本批由主线补出源文没做的推演**：根因是「**顺序 + 就地改写同一个串**」，**通用解是单趟逐位置映射**（`''.join(map_table.get(ch, ch) for ch in text)`），源文的 `set()` 方案能修好单字符映射，但**当「被混淆的字」与「本来就是真值」是同字符时仍依赖遍历顺序**；★ **OCR 选型三段弯路**：Tesseract（需装 exe，「一个都没识别出来」⇒ 放弃，**属源文环境/配置问题**）/ easyocr（「某些可以识别，某些不能识别」+ 包大 + 英文文档 ⇒ 放弃）/ **CnOCR**（**有中文文档 + 有在线测试站**⇒ 采用，★ 判据「**选 OCR 之前先用它自己的在线 demo 跑你的字形图**」）；⚠️ **落地坑**：CnOCR 需**单独下载「检测模型」与「识别模型」**（源文因网络原因需手动下载后放入指定目录）；★ 同族交叉验证：与 `1288315` 第 7 题「**每请求一次字体文件都换**」互为第二样本 |
+| 674 | `52pojie-1912763-reese84 及_utmvc 逆向流程分析.md` | `c3edfda4eca14a7438222346b2766014` | 2026-09-24 | `web-js-env-patcher` | evolve | **reese84 cookie + `___utmvc` 两个样本**（源文作者自陈「自己也是一知半解的」，只登记可复现部分）：★ **reese84 的本质**：「其实就是个 cookie，**只有带着这个 cookie 才能去请求页面**」，而它**靠 hook 拿不到**——**值是从接口返回的**（判据：**刷新页面后两个带 `d=` 的链接**，负载里的 `p` 就是上一步请求生成的东西）；★★ **定位法（源文给的唯一抓手）**：`invokeTask` 方法入栈 ⇒ 全局搜 `return this._invokeTaskZS ? this._invokeTaskZS.onInvokeTask(this._invokeTaskDlgt, this._invokeTaskCurrZone, t, e, n, r) : e.callback.apply(n, r)` ⇒ 断在 `e.callback.apply(n, r)` ⇒ **跳大约 5 个栈**进到 `<computed>` 的下一个匿名栈 ⇒ 即算法生成处；★ **升格判据**：「**Zone.js 的 `invokeTask` 是 Angular 系站点里『回调链最后一跳』的通用入口**」；★ **扣代码三条**：① `NV` 是 **19 个方法**构成的数组；② `CN[wm.substr(1613,13)](wm.substr(234,1) + Dp9); Dp9 += 1;` 这类**「字符串切片当属性名」的调用**在循环填大数组；③ 最终 `window.JSON.stringify(Hw)` 后**再走一层 base64** ⇒ 生成 `p`；★ `___utmvc` 那条：服务端抛一段 **OB**，AST 两步（`delete path.node.extra` 去转义 + 对 `_0x…` 调用 `eval(path.toString())` 合并大数组）⇒ 「全部解混淆之后找到 cookie 生成的地方慢慢扣」；⚠️ 登记：源文**未给出 reese84 的完整算法**（只到「生成地方」）与 `___utmvc` 的最终公式 ⇒ 不得据本篇复算 |
+| 675 | `52pojie-1917707-[2024-04-22] 西瓜视频的视频下载链接变动.md` | `b43b83403dca3d5f9623dfeed59b453b` | 2026-09-24 | `stream-drm-reverse` | evolve | ★ **页面直出（SSR）载体这条零请求入口**：`window._SSR_HYDRATED_DATA` 就在播放页 HTML 文档里，**不需要任何接口调用**；★ **演进事实（源文标题即结论）**：`2024-04-22` 起该字段里的下载链接**从「只 base64」升级为「先 AES 再 base64」** ⇒ 判据「**直出载体里的字段会单独升级，不要因为"以前只 base64"就跳过**」；★ **算法（源文给出的 Python，原样收录）**：`data = b64decode(密文)` → `key = key.encode()`、**`iv = key[:16]`（IV 取 key 前 16 字节）** → `AES-CBC` → `unpad` → **再 `b64decode`** → `decode()`；★ **识别信号**：「HTML 里有一个巨大的内联 JSON 赋值」⇒ **先看 HTML 有没有直出，再考虑抓接口**（与 `playback-address-interfaces.md` 的接口链路分工写清）；⚠️ **登记（只登记不判因）**：源文自陈「**测试时发现有两种情况**」（给了两张截图但**未说明差异**）⇒ 如实写「源文未说明第二种情况」；⚠️ 源文**只给了 key/iv 的截图、没有把 key 写成文本** ⇒ **不得编造 key/iv**，只写「从截图取值」；★ 边界：源文自陈「整个分析过程我觉得**运气**占了 90%」「本文只给出思路，不提供程序」 |
+| 676 | `52pojie-1984407-testab 逆向流程分析.md` | `c3b2ee34e3116d7b088a75571569a943` | 2026-09-24 | `web-js-env-patcher` | evolve | ★ **「接口里返回 VM 代码」这条流水线的第三个样本**（与 reese84 / `___utmvc` 归并）：定位是「直接搜索参数名 → 下断点 → 发现进了 JSVMP」，且**VM 代码是某个请求里返回出来的**；★★ **补环境清单与顺序（源文实测顺序，务必按序）**：① **`self = top = window;` 且 `window.self = window.top = window;`**（源文原话「第一步就是要赋值」，**到这一步就能生成一个错误的值了**）→ ② **删 `process` / `global` / `buffer` 等 Node 检测**（`Process 检测`：「在开头也要删除掉 process，可以把 global buffer 的一些 Node 检测全部删除」）→ ③ `appendChild` 的**先后问题**（★ 源文原话「如果这个不会补，**可以不补**。你实现的乱七八糟可能不一定对，反正最后都是 `false`」）→ ④ `createElement` 拿 CSS 标签值（**要对比**）→ ⑤ **原型链检测 + `toString()` 检测**（含 `Image` / `Screen` / `HTML*` / `Window`）；★★ **验收判据**：在 `apply` 调用处打印 `args`，**与浏览器里的「64 位大数组」逐值一致 ⇒ 补 OK**（本批用 Node 把该数组复算成 **64 位小写 hex**，与源文「64 位大数组」的表述互证）；★ **纯算路线的「笨办法」（源文自陈，教学价值高）**：① 找出某个生成值 → ② 看逻辑 → ③ **在逻辑处持续插装打值** → ④ 基于值分析；**定位点**：沿「返回的指令集索引」逐个对栈；产物是一串 `String.fromCharCode` 的 char code 数组 ⇒ `map(String.fromCharCode).join('')`（本批自算得 `32b2827348643a73a081a1eed35fc86517d364460f5a4805a47c9fe69c150c1d`）；★ **工具建议**：`v-jstools` 吐环境后改 `process` 等值；⚠️ 登记：源文**没有给出生成该数组的完整算式** ⇒ 「源文未展开、不可直接复用」；★ 判据「**手补环境不能跑错，一步错步步错**」 |
+| 677 | `52pojie-2021569-闲鱼数据的获取与下载.md` | `47b17fac4048e483aaf7877d82036789` | 2026-09-24 | `reverse-knowledge` | evolve | ★ **新建蓝图 `xianyu-mtop-h5-sign`**（淘宝系 mtop h5 这一支的固定形态，与在册 `taobao-isg-cna` **不同面**）：`POST https://h5api.m.goofish.com/h5/mtop.taobao.idlemtopsearch.pc.search/1.0/`；★ **固定 query**：`jsv=2.7.2` / `appKey=34839810` / `v=1.0` / `type=originaljson` / `accountSite=xianyu` / `dataType=json` / `timeout=20000` / `api=<api 名>` / `sessionOption=AutoLoginOnly` / `spm_cnt=spm_pre`；★★ **`token = _m_h5_tk` cookie 值的 `split('_')[0]`**（cookie 形如 `<token>_<过期毫秒>`）、**`t = round(time.time()*1000)` 毫秒串**、★★ **`sign = md5(token + "&" + t + "&" + appKey + "&" + data)`**，其中 **`data` 是那个**紧凑 JSON 字符串本身**（键序与空格都必须与浏览器一致）**；★ **本批 Node 复算四条**：sign 为 32 位小写 hex、**顺序敏感**（换顺序结果不同）、**`data` 不能用再序列化结果**、`_m_h5_tk` 切分口径；⚠️ **源文缺陷登记**：`shop_link` 里 `itemId=893424239322` **是写死的常量**、而 `categoryId={shop_id}` 实际塞的是 **itemId**（**字段名与实际值不符**）⇒ 不得照抄进「正确做法」；⚠️ 源文 `cookies`/`headers` 里的凭据是**已过期的示例值** ⇒ 蓝图只写「从浏览器取」 |
+| 678 | `52pojie-2036327-得物网页端首页推荐物品信息获取.md` | `89b87de89404a4c8673ad4ccc1e41c1e` | 2026-09-24 | `webpack-bundle-extraction` + `reverse-knowledge` | evolve | ★★ **本批唯一的「结论级升级」来源**：整包是 `!function sign(e){…}({0:function(…){…}, …})`，★ **判据「某些包会把 require 直接暴露到全局」**——该包**尾部有 `window.b = a`**（`a` 即 `__webpack_require__`：`var n = {}` 缓存表 + `a.e` 懒加载 chunk 加载器）⇒ **先看 IIFE 尾部有没有 `window.X = <loader>`，有就直接用，不必自己造加载器**；★ **宿主复用形态**：Python `ctx = execjs.compile(整包)` → `ctx.call('cxx', data)` → 写回 `data['sign']` ⇒ **把一个薄调用壳交给 JS 引擎，而不是把算法翻译成 Python**（★ **入参是对象不是字符串**，复用时必须保持同样形态，不要自己先 `JSON.stringify`）；★ **代价登记**：耦合 JS 引擎 / 并发受限 / 必须带全包 ⇒ 与 `node-reuse-and-env-handoff.md` 分工；★★ **跨面互证导致既有蓝图升级**：该包的 `cxx(t)` 给出完整实现 `md5(升序拼串 + "048a9c4943398714b356a696503d2d36")`，而同包第 597/746 行即 **blueimp-md5** 的 IV 常量 ⇒ 与在册 `dewu-sign` 蓝图（`stark.dewu.com` 商家后台面）**同常量、同拼法** ⇒ **`dewu-sign` 的 `family` 由 `unknown` 升为 `hash`（MD5）**、`version → 1.1.0`，但 **`status` 只记 `partial`**（两面都没有服务端返回值可对拍）；★ 另登记源文的**业务枚举做法**（类目 id 用 0–10 编号映射到 `pickRuleId`）与 **`ctx.call('cxx', …)` 的两次调用**（首页与翻页各一次）；⚠️ 注册与翻页用的是**不同参数集**（`pickRuleId/pageNum/pageSize/filterUnbid/showCspu`）⇒ **不可与商家后台面的参数名互相照抄** |
+| 679 | `52pojie-2088383-pdf.js 通用pdf下载教程.md` | `20330b6892fe92c202586a342b4f1ef3` | 2026-09-24 | `stream-drm-reverse` | evolve | ★★ **pdf.js 的两条通用抓手 + 一个可逐字符复算的算法**：① **通用下载**：F12 定位到 pdf 渲染层（页面嵌套）后**执行 `PDFViewerApplication.download()`**——源文原话「**基本上通用**」（除非服务器做了限制）；② ★ **追密码：在 pdf.js 里搜 `.onPassword`**（手速不够就刷新；有密码时会在此断下并报 `No password given`）——**偷懒做法是在 `e.onPassword` 的第一个回调参数（即 `s` 函数）下断点**；★★ **完整密码链（本批逐字符复算通过）**：外层页面把 `document.getElementById("r0inab").innerText`（**JSON**）通过 `postMessage` 发给内层，内层 `onPassword` 的 `window.addEventListener('message', …)` 收到后逐字符解码：`for (o = 1; o < n.length; o++) o % 2 && (s += String.fromCharCode(parseInt(n[o-1] + n[o], 36)))`（**两位一组按 base36 解析**）；★ **源文给出的密文与密码可对拍**：`2s1e1k2p1d1j2t2p1e1g1d1h172u1g1j2p171k2t1d1d172s1h2p2u171f2u2q1c1g1f2u1j` ⇒ **`d28a17ea2415+f47a+8e11+d5af+3fb043f7`**（本批 Node + 真机 Chrome **双重复算，逐字符命中**）⇒ 这是本批**唯一有源文 oracle 的算法**；★ 两个 `script` 标签 `r0inab` / `r0inyk` 分别承载密钥与密码；★★ **登记（只登记不判因）**：源文观察到「**同样是这个密码，Chrome / 2345pdf 说密码不对，而 Edge / 福昕 / ilovepdf 能正确打开**」⇒ 软件差异，源文未给原因；边界：**`download()` 拿到的可能仍是带密码的 PDF** ⇒ 两步都要做 |

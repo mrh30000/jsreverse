@@ -1,0 +1,76 @@
+{
+  "parts": [
+    {
+      "name": "pos",
+      "description": "作用: 鼠标坐标串 | 来源: \"(\" + Math.ceil(x) + \"|\" + Math.ceil(y) + \")\"，x = pageX || clientX + scrollLeft，y = pageY || clientY + scrollTop | 示例: (1890|22)"
+    },
+    {
+      "name": "qid",
+      "description": "作用: 题目/试卷 id，取自页面隐藏域 | 来源: document.getElementById('questionId').value | 示例: （页面隐藏域值）"
+    },
+    {
+      "name": "rd",
+      "description": "作用: 随机数，是 enc 里 r 的种子来源 | 来源: Math.random() | 示例: 0.7836752714778081（源文调试值）"
+    },
+    {
+      "name": "enc",
+      "description": "作用: 核心加密参数 | 来源: getEncData(posData, userId, questionId, randomNum, rd)（LCG 逐字符异或 + 8 位 hex 尾） | 示例: 46a214f06a86eb133e04fcc887（本流水线自算锚点）"
+    },
+    {
+      "name": "_edt",
+      "description": "作用: 以 \"&_edt=\" 形式拼接的参数 | 来源: (_0x408603 + randomNumA)（取值归属存疑，见 algorithm.detail） | 示例: （源文未给）"
+    },
+    {
+      "name": "posData",
+      "description": "作用: enc 的第 1 个入参，被逐字符异或 | 来源: 源文示例传的是 pos 形态的坐标串（两者是否恒等源文未明说） | 示例: (1890|22)"
+    },
+    {
+      "name": "userId",
+      "description": "作用: enc 拼接的第 1 段 | 来源: 用户 id（源文用中文占位符「用户id」，未给真值） | 示例: （源文未给）"
+    },
+    {
+      "name": "questionId",
+      "description": "作用: enc 拼接的第 2 段 | 来源: 试卷/题目 id（源文用中文占位符「试卷id」，未给真值） | 示例: （源文未给）"
+    },
+    {
+      "name": "randomNum",
+      "description": "作用: enc 拼接的第 3 段（与 qid 用 '|' 分隔） | 来源: 源文未说明来源 | 示例: 265（源文调试值）"
+    },
+    {
+      "name": "randomNumA",
+      "description": "作用: _edt 的加数 | 来源: Math.floor(10 * Math.random())（0~9） | 示例: （每次随机）"
+    },
+    {
+      "name": "s",
+      "description": "作用: enc 的中间串（源文变量名 userIdAndQuestionIdAndRandom） | 来源: userId + \"_\" + questionId + \"|\" + randomNum | 示例: 12345_67890|265"
+    },
+    {
+      "name": "d",
+      "description": "作用: enc 的中间数字串/种子载体 | 来源: 对 s 逐字符 charCodeAt().toString() 直接首尾相接；后追加 r；超 10 位截断为前 10 位再转字符串 | 示例: 4950515253955455565748124505453（锚点）"
+    },
+    {
+      "name": "m",
+      "description": "作用: k 的取位步长 | 来源: Math.floor(d.length / 5) | 示例: 6（锚点）"
+    },
+    {
+      "name": "k",
+      "description": "作用: LCG 乘子 | 来源: parseInt(d.charAt(m) + d.charAt(2m) + d.charAt(3m) + d.charAt(4m))；< 2 时整个函数返回 null | 示例: 5554（锚点）"
+    },
+    {
+      "name": "a",
+      "description": "作用: LCG 步长 | 来源: Math.ceil(s.length / 2) | 示例: 8（锚点）"
+    },
+    {
+      "name": "M",
+      "description": "作用: LCG 模数 | 来源: Math.pow(2, 31) - 1 = 2147483647 | 示例: 2147483647"
+    },
+    {
+      "name": "r",
+      "description": "作用: 随机数（既进种子又做 8 位 hex 尾） | 来源: Math.round(1e9 * rd) % 1e8；输出时 toString(16) 左补 0 到 8 位 | 示例: 83675271 ⇒ 04fcc887（锚点）"
+    },
+    {
+      "name": "seed",
+      "description": "作用: LCG 状态（源文变量名 _0x469e62，与中间串 d 复用同一变量） | 来源: 初值 (k * d + a) % M；每轮 (k * seed + a) % M | 示例: （逐轮递推）"
+    }
+  ]
+}

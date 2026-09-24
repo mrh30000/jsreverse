@@ -102,6 +102,7 @@ python $S/font_template_diff.py apply <站点字体.ttf> --template tmpl.json -o
 - `references/font-cmap-decode.md`：两层映射四类模板、**glyphName 四种形态判据**、gid 顺序表、
   稳定性判定、轮廓指纹自动化、渲染+OCR 兜底、真实案例（抖音 / 58 同城 / 起点 / 快手）。
 - `references/css-and-sprite-obfuscation.md`：**B/C/D/E/F 五族分流判据、还原算法、oracle 清单、排错速查**。
+- `references/glyph-ocr-and-rotation.md`：**cmap 查表走不通时的字形 OCR 路线**（三步判定 / OCR 选型实测 / 替换顺序自我污染与单趟逐位置映射 / 字体按请求动态下发）。
 - `scripts/font_cmap_dump.py`：零依赖 cmap 导出/比对/替换 CLI（sfnt / WOFF1 / TTC），自带 `--selftest`。
 - `scripts/font_glyph_fingerprint.py`：轮廓指纹与**跨版本**对齐（同一站点 A 版 ↔ B 版字体）。
 - `scripts/font_template_diff.py`：**官方字体模板 → 伪造字体反推**（F 族），歧义不猜、未命中显式报告。

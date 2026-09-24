@@ -1,0 +1,130 @@
+{
+  "id": "xianyu-mtop-h5-sign",
+  "title": "闲鱼 mtop h5 搜索接口 sign（md5(token&t&appKey&data)）",
+  "category": "platform-signature",
+  "status": "active",
+  "version": "1.0.0",
+  "summary": "闲鱼 mtop h5 签名：token 取 _m_h5_tk cookie 的 '_' 前段，t 为毫秒时间戳，sign = md5(token + '&' + t + '&' + appKey + '&' + data)。",
+  "aliases": [
+    "sign",
+    "_m_h5_tk",
+    "idlemtopsearch",
+    "mtop.taobao.idlemtopsearch.pc.search"
+  ],
+  "keywords": [
+    "闲鱼",
+    "xianyu",
+    "goofish",
+    "mtop",
+    "h5",
+    "_m_h5_tk",
+    "sign",
+    "md5",
+    "h5api.m.goofish.com",
+    "34839810",
+    "淘宝系"
+  ],
+  "algorithm": {
+    "family": "hash",
+    "detail": "sign = md5(token + \"&\" + t + \"&\" + appKey + \"&\" + data)。其中 token = cookie '_m_h5_tk' 的值按 '_' 切分取第 0 段（cookie 形如 <token>_<过期毫秒>）；t = str(round(time.time()*1000)) 毫秒字符串；appKey = '34839810'；data = POST body 里那一整串「紧凑 JSON」本身（不是 dict）。四段用单个 '&' 连接，无其它分隔符、无盐值、无排序。与同属淘系母体的 taobao-isg-cna 蓝图（cookie isg，异或流 + URL-safe base64）是两条不同的支线：`_m_h5_tk` + '&' 拼接是 mtop h5 这一支的固定形态，isg 是页面反爬 cookie 那一支。",
+    "key_material": "appKey 常量 '34839810'；token 来自 _m_h5_tk cookie 的 '_' 前段（会话级，会过期）；无固定盐值",
+    "output_encoding": "hex（32 位小写，hashlib.md5(...).hexdigest()）",
+    "output_length": "32"
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-2021569-闲鱼数据的获取与下载.md",
+      "line": 82,
+      "quote": "'https://h5api.m.goofish.com/h5/mtop.taobao.idlemtopsearch.pc.search/1.0/',",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2021569-闲鱼数据的获取与下载.md",
+      "line": 65,
+      "quote": "'api': 'mtop.taobao.idlemtopsearch.pc.search',",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2021569-闲鱼数据的获取与下载.md",
+      "line": 39,
+      "quote": "'_m_h5_tk': '43a8d19ad104ac584f86e23e273c6aa8_1743764419015',",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2021569-闲鱼数据的获取与下载.md",
+      "line": 70,
+      "quote": "token =cookies['_m_h5_tk'].split('_')[0]",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2021569-闲鱼数据的获取与下载.md",
+      "line": 55,
+      "quote": "time = str(round(time.time() * 1000))",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2021569-闲鱼数据的获取与下载.md",
+      "line": 72,
+      "quote": "appKey = \"34839810\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2021569-闲鱼数据的获取与下载.md",
+      "line": 75,
+      "quote": "i = ( token + \"&\" + time + \"&\" + appKey + \"&\" + data_1)",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2021569-闲鱼数据的获取与下载.md",
+      "line": 76,
+      "quote": "sign=md5(i.encode()).hexdigest()",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2021569-闲鱼数据的获取与下载.md",
+      "line": 52,
+      "quote": "'data': f'{{\"pageNumber\":\"{page}\",\"keyword\": \"{keyword}\",\"fromFilter\":false,\"rowsPerPage\":30,\"sortValue\":\"\",\"sortField\":\"\",\"customDistance\":\"\",\"gps\":\"\",\"propValueStr\":{{}},\"customGps\":\"\",\"searchReqFromPage\":\"pcSearch\",\"extraFilterValue\":\"{{}}\",\"userPositionJson\":\"{{}}\"}}'",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2021569-闲鱼数据的获取与下载.md",
+      "line": 79,
+      "quote": "print(data,data_1)",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2021569-闲鱼数据的获取与下载.md",
+      "line": 42,
+      "quote": "}   #cookies过一段时间会刷新，记得改成自己电脑的cookies，",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-2021569-闲鱼数据的获取与下载.md",
+      "line": 105,
+      "quote": "shop_link = f'https://www.goofish.com/item?id=893424239322&categoryId={shop_id}'",
+      "verified_in_article": true
+    }
+  ],
+  "entry": {
+    "location": "sign 在请求发出前用 hashlib.md5 现算（源文 line 75-77）；无独立 JS 函数名可断，属「协议级签名」——照着 mtop h5 的通用口径拼串即可",
+    "trigger": "每次 POST 搜索请求前；同一请求的 query 参数 t 与参与 sign 的 t 必须是同一个值",
+    "transport": "query（sign 与 jsv/appKey/t/v/type/accountSite/dataType/timeout/api/sessionOption/spm_cnt/spm_pre）；POST body：data"
+  },
+  "gaps": [
+    "源文未给出任何 (token, t, appKey, data) → sign 的示例四元组，也没有贴出 sign 的值 ⇒ 算式只做逐字登记，无法与源文对拍",
+    "spm_cnt / spm_pre 是固定值还是随页面变化的埋点位，源文未说明",
+    "sessionOption=AutoLoginOnly 的作用与是否必需，源文未说明",
+    "t 与 _m_h5_tk 的过期时间（cookie 里 '_' 后那段毫秒）之间是否有关联，源文未说明",
+    "源文 cookies/headers 里的凭据是示例值且已过期（源文自陈），无法据此复现请求",
+    "data 里 'keyword' 与其它字段的引号/空格口径（f-string 手写）是否为服务端硬性要求，源文未说明——只知道源文是这么写的",
+    "请求是否需要额外 cookie（_m_h5_tk_enc 是否必需）源文未说明"
+  ],
+  "self_check": [
+    "token 口径核对：示例 cookie '43a8d19ad104ac584f86e23e273c6aa8_1743764419015' 按 '_' 切分 ⇒ 第 0 段 '43a8d19ad104ac584f86e23e273c6aa8'（32 位 hex），第 1 段 '1743764419015'（13 位毫秒）——与「<token>_<过期毫秒>」口径一致",
+    "appKey 两处一致核算：line 58 的 query appKey 与 line 72 的独立变量 appKey 都是 '34839810'（逐字相同，机械核对通过）",
+    "data / data_1 同一性核算：line 52 与 line 73 两条 f-string **逐字符相同**（机械核对通过）⇒ 源文 print(data,data_1) 打的是同一串，作者为「签名用」复制了第二份变量，不是两个不同参数",
+    "★ 本流水线独立复算锚点（源文未给示例，**不能当作「与源文一致」的证据**，只作回归对拍）：token='43a8d19ad104ac584f86e23e273c6aa8'、t='1743764419015'、appKey='34839810'、data 取 line 52 模板且 page='1'、keyword='鞋'（串长 240）⇒ sign=0b7b9b56009a4b31c5c69b0ad95b924a",
+    "★ 同一锚点改用 json.dumps 默认分隔符（', ' 与 ': '）得到 data 串 ⇒ sign=9bc63f0e2e3aa4865d0fa9a9fb0c370b。两个值不同 ⇒ 证明「data 串必须与浏览器逐字节一致」不是形式要求"
+  ],
+  "notes": "源文（52pojie-2021569，2025-04）作者 13955925361。与 taobao-isg-cna 同属淘系母体，但分别是 mtop h5 签名支线与 isg cookie 支线，两者不可互换。源文为爬虫脚本教程，含若干业务代码缺陷（见 mutations.json 末条）。"
+}

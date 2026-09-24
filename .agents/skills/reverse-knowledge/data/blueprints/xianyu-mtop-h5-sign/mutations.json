@@ -1,0 +1,54 @@
+{
+  "mutations": [
+    {
+      "name": "token 取 _m_h5_tk 的 '_' 前段",
+      "rule": "cookie 形如 <token>_<过期毫秒>；token = 值.split('_')[0]，即只取第 0 段（32 位 hex），既不含下划线也不含过期时间",
+      "symptom_if_wrong": "sign 恒错；接口返回「参数非法 / ILLEGAL_ACCESS」一类业务错误，脚本本身不报任何异常"
+    },
+    {
+      "name": "t 是毫秒字符串，且与 sign 同源",
+      "rule": "t = str(round(time.time() * 1000))，13 位毫秒字符串；query 里的 t 与参与 sign 的 t 必须是同一个变量",
+      "symptom_if_wrong": "秒/毫秒混用、或分两次取时间（差 1 毫秒）⇒ sign 与 t 不同源，服务端判签名不匹配"
+    },
+    {
+      "name": "sign 拼接顺序与分隔符",
+      "rule": "token + '&' + t + '&' + appKey + '&' + data：四段、三个单字符 '&'，顺序不可换，无盐值、无排序、无末尾追加",
+      "symptom_if_wrong": "sign 恒错、无报错；换任意一段顺序都会得到完全不同的 32 位 hex"
+    },
+    {
+      "name": "参与签名的是 data 那一个 JSON 字符串",
+      "rule": "拼接里的 data 与 POST body 里的 data 必须是同一个字符串（源文为此写了两份内容完全相同的 f-string：line 52 与 line 73）",
+      "symptom_if_wrong": "两份串只要有任何一个字符不同（多一个空格、键序不同）⇒ sign 与实际发送的 body 不匹配，服务端判参数非法"
+    },
+    {
+      "name": "data 必须是紧凑 JSON 且键序固定",
+      "rule": "源文用 f-string 手写 JSON 以保证键序与空格口径（注意 'keyword' 后跟一个空格，其余为紧凑形式）",
+      "symptom_if_wrong": "改用 json.dumps 默认分隔符（', ' 与 ': '）会插入大量空格 ⇒ sign 与 body 一起变（仍自洽），但服务端按浏览器口径校验会判非法"
+    },
+    {
+      "name": "appKey 两处必须一致",
+      "rule": "query 的 appKey 与 sign 拼接里的 appKey 都是 '34839810'（源文 line 58 与 line 72 是同一常量）",
+      "symptom_if_wrong": "sign 恒错"
+    },
+    {
+      "name": "api 参数值与 URL 路径段同名",
+      "rule": "query 的 api = 'mtop.taobao.idlemtopsearch.pc.search'（不带 '/1.0/'），与请求 URL 的路径段一致",
+      "symptom_if_wrong": "sign 恒错，或请求被路由到不存在的接口"
+    },
+    {
+      "name": "sign 走 query，data 走 POST body",
+      "rule": "requests.post(url, params=params, data=data)：sign 与其余 mtop 协议参数在 query，data 作为 body 发送",
+      "symptom_if_wrong": "把 data 也塞进 query、或把 sign 放进 body ⇒ 服务端取不到对应参数，返回参数缺失"
+    },
+    {
+      "name": "_m_h5_tk 会过期（会话级）",
+      "rule": "源文自陈「cookies 过一段时间会刷新，记得改成自己电脑的 cookies」",
+      "symptom_if_wrong": "token 过期时算式仍算得出 32 位 hex，但服务端拒绝（token 失效类错误）⇒ 现象是「算对了也不通」，必须回浏览器重新取 cookie"
+    },
+    {
+      "name": "源文业务代码缺陷：详情页链接字段名与实际值不符（不要照抄）",
+      "rule": "源文 line 105 写成 item?id=893424239322&categoryId={shop_id}，其中 893424239322 是写死常量，而 {shop_id} 实际取自 detailParams['itemId']",
+      "symptom_if_wrong": "照抄会生成「名为 categoryId、实为 itemId」的错误链接；这是源文业务代码缺陷，与签名无关，但会污染采集结果"
+    }
+  ]
+}

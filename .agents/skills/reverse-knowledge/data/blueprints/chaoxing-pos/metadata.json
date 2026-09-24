@@ -1,0 +1,277 @@
+{
+  "id": "chaoxing-pos",
+  "title": "超星考试 pos 参数（⚠️ 源文自称是练习站，非真实超星站点）",
+  "category": "platform-signature",
+  "status": "active",
+  "version": "1.0.0",
+  "summary": "⚠️ 源文自称是练习站（非真实超星站点）：考试 pos = (ceil(x)|ceil(y)) 坐标串、qid/rd 明文；enc 为 LCG 逐字符异或 + 8 位 hex 尾；_edt = ceil(s.length/2) + 随机数。",
+  "aliases": [
+    "pos",
+    "enc",
+    "_edt",
+    "qid",
+    "getEncData",
+    "chaoxing"
+  ],
+  "keywords": [
+    "超星",
+    "chaoxing",
+    "pos",
+    "enc",
+    "_edt",
+    "LCG",
+    "ob混淆",
+    "字符串表",
+    "内存爆破",
+    "navigator.webdriver",
+    "练习站",
+    "AST还原"
+  ],
+  "algorithm": {
+    "family": "custom",
+    "detail": "★ enc（核心，逐行）：① s = userId + \"_\" + questionId + \"|\" + randomNum；若 s 为空/长度 ≤0 返回 null。② d = 对 s 逐字符取 charCodeAt().toString() 后「直接首尾相接」（十进制、无分隔符）。③ m = Math.floor(d.length / 5)；k = parseInt(d.charAt(m) + d.charAt(2m) + d.charAt(3m) + d.charAt(4m))（四个位置的字符按顺序拼成一个十进制数）。④ 若 k < 2 返回 null。⑤ r = Math.round(1e9 * rd) % 1e8（rd 是 Math.random()）；d += r（数字转字符串后追加）；若 d.length > 10 则 d = parseInt(d.substring(0,10)).toString()。⑥ LCG：M = Math.pow(2,31) - 1；a = Math.ceil(s.length / 2)；seed = (k * d + a) % M。⑦ 对 posData 逐字符：x = parseInt(posData.charCodeAt(i) ^ Math.floor((seed / M) * 255))；x < 16 时补 \"0\" 再 toString(16)（小写），否则直接 toString(16)；每轮末尾 seed = (k * seed + a) % M。⑧ 把 r.toString(16) 左侧补 \"0\" 到 8 位，追加到结果末尾。⇒ 输出长度 = 2 * len(posData) + 8。\n★ 其余三个参数：value = \"(\" + Math.ceil(mouseMap.x) + \"|\" + Math.ceil(mouseMap.y) + \")\"，其中 x = winEvent.pageX || winEvent.clientX + scrollLeft、y = winEvent.pageY || winEvent.clientY + scrollTop（scrollLeft/Top 取 document.documentElement 或 document.body）；qid = document.getElementById('questionId').value；rd = Math.random()。\n★ _edt：\"&_edt=\" + (_0x408603 + randomNumA)，randomNumA = Math.floor(10 * Math.random())（0~9）。⚠️ 源文有两个同名 _0x408603（line 209 的 Math.ceil(userIdAndQuestionIdAndRandom.length / 2) 与 line 270 的 \"\" + new Date().getTime()），源文自己点出「另外一个603的变量则是时间」，但没写清 _edt 用的是哪一个 ⇒ 本蓝图按 line 209 的 ceil(s.length/2) 记为主读法，line 270 的时间戳读法一并登记为存疑。",
+    "key_material": "M = 2^31 - 1 = 2147483647（LCG 模数）；a = Math.ceil(s.length / 2)（LCG 步长，随 s 长度变）；k（LCG 乘子，由 d 的四个位置拼出的十进制数）；r = Math.round(1e9 * rd) % 1e8（1e8 = 100000000，同一个数）；随机数上界 1e9；hex 输出小写、字符位不足 16 补 '0'、尾 8 位左补 '0'",
+    "output_encoding": "hex（小写；字符级异或流 + 8 位 hex 尾）",
+    "output_length": "2 * len(posData) + 8"
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 11,
+      "quote": "这里的超星考试指本人的原创单机游戏【超级星星V.666】单词大考验关卡",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 12,
+      "quote": "并非通俗意义超星",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 18,
+      "quote": "点击考试预览可以追到AST部分这里可以看到是ob混淆+字符串转义",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 138,
+      "quote": "value像是鼠标的数据，我们先看value,确实是鼠标的相对页面键值",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 154,
+      "quote": "\"(\" +",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 167,
+      "quote": "(qid = _0x210627[\"value\"])",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 175,
+      "quote": "var rd = Math[\"random\"](),",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 187,
+      "quote": "function getEncData(posData, userId, questionId, randomNum, rd) {",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 189,
+      "quote": "userId + \"_\" + questionId + \"|\" + randomNum;",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 201,
+      "quote": "userIdAndQuestionIdAndRandom[\"charCodeAt\"](_0x388a1f)[\"toString\"]();",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 202,
+      "quote": "var _0x210627 = Math[\"floor\"](_0x469e62[\"length\"] / 5),",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 203,
+      "quote": "_0x215858 = parseInt(",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 209,
+      "quote": "_0x408603 = Math[\"ceil\"](userIdAndQuestionIdAndRandom[\"length\"] / 2),",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 210,
+      "quote": "_0x3ed445 = Math[\"pow\"](2, 31) - 1;",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 211,
+      "quote": "if (_0x215858 < 2) return null;",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 213,
+      "quote": "_0x58d995 = Math[\"round\"](1000000000 * rd) % 100000000;",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 214,
+      "quote": "10 < (_0x469e62 += _0x58d995)[\"length\"] &&",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 215,
+      "quote": "(_0x469e62 = parseInt(_0x469e62[\"substring\"](0, 10))[\"toString\"]()),",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 216,
+      "quote": "(_0x469e62 = (_0x215858 * _0x469e62 + _0x408603) % _0x3ed445);",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 225,
+      "quote": "? \"0\" + _0x3c1f52[\"toString\"](16)",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 228,
+      "quote": "for (_0x58d995 = _0x58d995[\"toString\"](16); _0x58d995[\"length\"] < 8; )",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 230,
+      "quote": "return (_0x435dce += _0x58d995);",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 246,
+      "quote": "代码生成成功，然后看最后的\\_edt，来源是",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 247,
+      "quote": "(\\_0x408603 + randomNumA)，其中randomNumA是一个生成的随机数",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 260,
+      "quote": "return Math[\"floor\"](10 * Math[\"random\"]());",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 265,
+      "quote": "而另外一个603的变量则是时间",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 270,
+      "quote": "_0x408603 = \"\" + new Date()[\"getTime\"](),",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 54,
+      "quote": "var _0x403f16 = new RegExp(this[\"MTxJBI\"] + this[\"FMdsHI\"]);",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 72,
+      "quote": "this[\"pNCgln\"][\"push\"](Math[\"round\"](Math[\"random\"]()));",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 79,
+      "quote": "应该是正则下面的三元运算符在捣乱，我们跑一下发现是false，所以直接强制改成true内的--this[\"pNCgln\"][1]",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 86,
+      "quote": "var _0x55e9af = --this[\"pNCgln\"][1]",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 96,
+      "quote": "直接将第一个设为false，第二个设为true",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 34,
+      "quote": "let code = generator(ast, {",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 36,
+      "quote": "jsescOption: { minimal: true },",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 116,
+      "quote": "let str_node = types.stringLiteral(_0x56bc(loc1, loc2));",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1790893-超星考试pos参数破译.md",
+      "line": 117,
+      "quote": "path.replaceInline(str_node);",
+      "verified_in_article": true
+    }
+  ],
+  "entry": {
+    "location": "考试页的内联脚本（源文从「点击考试预览」追到 AST 部分）；enc 由闭包函数 getEncData(posData, userId, questionId, randomNum, rd) 生成（源文 line 187-231 的抽离版）",
+    "trigger": "答题/考试提交前由页面脚本构造 pos / qid / rd / enc / _edt（源文未说明具体触发点，只给了各参数的取值来源）",
+    "transport": "源文未给出完整请求样例；已知参数名为 pos / qid / rd / enc / _edt（_edt 以 \"&_edt=\" 形式拼接，说明是 query 参数）"
+  },
+  "gaps": [
+    "源文自称是练习站（超级星星V.666），站点不公开 ⇒ 无法独立验证，算法结论不可迁移到真实超星生产站点",
+    "源文未给出 (posData, userId, questionId, randomNum, rd) → enc 的示例值（line 234 的调用里 userId/questionId 是中文占位符「用户id」「试卷id」，不是真值）⇒ 无法与源文对拍；截图里的「官方数据」不可机械核对",
+    "_edt 里的 _0x408603 到底是 ceil(s.length/2) 还是 new Date().getTime()：源文自己点出有两个同名变量但没写清（见 algorithm.detail）",
+    "请求的完整形态（URL / method / 其它参数 / 是否有签名校验）源文未给出",
+    "randomNum（getEncData 第 4 参）与 randomNumA（_edt 用）是否为同一个量：源文未说明（源文示例里 randomNum=265，而 randomNumA 是 0~9 的随机数，二者显然不同源，但页面里 randomNum 从哪来未说明）",
+    "pos 参数是否参与 enc（enc 的 posData 是否就是 pos）：源文示例 getEncData(\"(1890|22)\", …) 的第一个实参形如 pos，但源文未明说二者是同一个值",
+    "OB 字符串表用到的 62 字符表/正则常量（MTxJBI / FMdsHI / ZxBleI / GRlANK）的实际取值：源文未给"
+  ],
+  "self_check": [
+    "输出长度核算：enc 每个 posData 字符产出 2 位 hex，末尾再追加 r 的 8 位 hex ⇒ 2 * len(posData) + 8；用锚点 posData=\"(1890|22)\"（9 字符）算得 26 位，机械核对通过",
+    "常量同一性核算：源文 line 213 的 `100000000` 与文档里的 `1e8` 是同一个数（1e8 === 100000000），不是两个常量 —— 机械核对通过，登记为「易误读点」",
+    "中间量核算（锚点用）：s=\"12345_67890|265\"（长 15）⇒ d 长 31、m=6、k=5554、a=8、r=83675271；k ≥ 2 故不返回 null —— 各步均与源文算式逐行一致",
+    "★ 本流水线独立复算锚点（源文未给示例值，**不能当作「与源文一致」的证据**，只作回归对拍）：posData=\"(1890|22)\"、userId=\"12345\"、questionId=\"67890\"、randomNum=265、rd=0.7836752714778081 ⇒ enc=46a214f06a86eb133e04fcc887（26 位，尾 8 位 04fcc887 = 83675271 的 hex 左补 0 到 8 位）",
+    "★ 源文示例调用的实参随机性：rd=0.7836752714778081 与 randomNum=265 是源文写死的调试值；真实请求里 rd 是 Math.random()、randomNum 来源未说明 ⇒ enc 每次请求都不同，不能用「同一个 enc 复现两次」做验收"
+  ],
+  "notes": "源文：52pojie-1790893（2023-05，作者 李恒道）。⚠️ 源文开头即声明「这里的超星考试指本人的原创单机游戏【超级星星V.666】单词大考验关卡，并非通俗意义超星」—— 本蓝图如实标注为练习站来源；算法本身完整可复算（status=active 指算式完整，不表示站点在线）。OB 字符串表的「内存爆破」处置同时是 `ast-deobfuscation` 的判据。"
+}

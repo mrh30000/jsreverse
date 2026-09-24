@@ -128,6 +128,36 @@
       ]
     },
     {
+      "id": "chaoxing-pos",
+      "path": "chaoxing-pos",
+      "title": "超星考试 pos 参数（⚠️ 源文自称是练习站，非真实超星站点）",
+      "category": "platform-signature",
+      "status": "active",
+      "summary": "⚠️ 源文自称是练习站（非真实超星站点）：考试 pos = (ceil(x)|ceil(y)) 坐标串、qid/rd 明文；enc 为 LCG 逐字符异或 + 8 位 hex 尾；_edt = ceil(s.length/2) + 随机数。",
+      "aliases": [
+        "pos",
+        "enc",
+        "_edt",
+        "qid",
+        "getEncData",
+        "chaoxing"
+      ],
+      "keywords": [
+        "超星",
+        "chaoxing",
+        "pos",
+        "enc",
+        "_edt",
+        "LCG",
+        "ob混淆",
+        "字符串表",
+        "内存爆破",
+        "navigator.webdriver",
+        "练习站",
+        "AST还原"
+      ]
+    },
+    {
       "id": "csdn-x-ca-signature",
       "path": "csdn-x-ca-signature",
       "title": "CSDN bizapi x-ca-signature 签名（HMAC-SHA256 + Base64，阿里云 API 网关规范）",
@@ -157,19 +187,23 @@
     {
       "id": "dewu-sign",
       "path": "dewu-sign",
-      "title": "得物(DE物)商家后台 stark.dewu.com 统计数据接口 sign",
+      "title": "得物(DE物) sign（商家后台 stark.dewu.com + web 端首页推荐 `cxx`，两面同常量同拼法）",
       "category": "platform-signature",
-      "status": "unknown",
-      "summary": "得物商家后台统计接口 body 里的 sign：参数按键名升序拼 key+value 后直接接 32 位十六进制常量，再交给 return_sign（算法正文未给）。",
+      "status": "partial",
+      "summary": "得物 sign：参数按键名升序拼 key+value 后直接接 32 位十六进制常量，再交给 return_sign。**B35 起升级**：web 端首页推荐面的 `cxx()` 在打包产物里给出了完整实现 —— 就是 `MD5(升序拼接串 + 常量)`，且用的是与商家后台面**同一个常量** ⇒ 两个独立面结构互证，`family` 由 unknown 升为 `hash`（具体即 MD5）；但**两个面都没有服务端返回值可对拍**，故 `status` 记 `partial`。",
       "aliases": [
         "sign",
-        "return_sign"
+        "return_sign",
+        "cxx"
       ],
       "keywords": [
         "得物",
         "dewu",
         "stark.dewu.com",
         "sign",
+        "cxx",
+        "首页推荐",
+        "pickRuleId",
         "商家后台",
         "h5"
       ]
@@ -590,7 +624,7 @@
       "title": "问卷星(答题)提交协议参数：jqsign / jqParam 自定义加密",
       "category": "platform-signature",
       "status": "unknown",
-      "summary": "问卷星提交参数：jqsign=dataenc(jqnonce)=逐字符 XOR(ktimes%10)；jqParam 由 rndnum/starttime/activityId 经自定义 abcd1~abcd5（含固定 62 字符表）算出，再 encodeURIComponent。",
+      "summary": "问卷星提交参数：jqsign=dataenc(jqnonce)=逐字符 XOR(ktimes%10)；jqParam 由 rndnum/starttime/activityId 经自定义 abcd1~abcd5（含固定 62 字符表）算出，再 encodeURIComponent。★ 2021-01 的 52pojie-1361387 是更早的独立来源，62 字符表与 3597397 常量与既有来源逐字一致。",
       "aliases": [
         "jqsign",
         "jqnonce",
@@ -638,6 +672,33 @@
         "mnsv2",
         "XXTEA",
         "自定义Base64"
+      ]
+    },
+    {
+      "id": "xianyu-mtop-h5-sign",
+      "path": "xianyu-mtop-h5-sign",
+      "title": "闲鱼 mtop h5 搜索接口 sign（md5(token&t&appKey&data)）",
+      "category": "platform-signature",
+      "status": "active",
+      "summary": "闲鱼 mtop h5 签名：token 取 _m_h5_tk cookie 的 '_' 前段，t 为毫秒时间戳，sign = md5(token + '&' + t + '&' + appKey + '&' + data)。",
+      "aliases": [
+        "sign",
+        "_m_h5_tk",
+        "idlemtopsearch",
+        "mtop.taobao.idlemtopsearch.pc.search"
+      ],
+      "keywords": [
+        "闲鱼",
+        "xianyu",
+        "goofish",
+        "mtop",
+        "h5",
+        "_m_h5_tk",
+        "sign",
+        "md5",
+        "h5api.m.goofish.com",
+        "34839810",
+        "淘宝系"
       ]
     },
     {

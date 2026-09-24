@@ -4,7 +4,7 @@
   "category": "platform-signature",
   "status": "unknown",
   "version": "1.0.0",
-  "summary": "问卷星提交参数：jqsign=dataenc(jqnonce)=逐字符 XOR(ktimes%10)；jqParam 由 rndnum/starttime/activityId 经自定义 abcd1~abcd5（含固定 62 字符表）算出，再 encodeURIComponent。",
+  "summary": "问卷星提交参数：jqsign=dataenc(jqnonce)=逐字符 XOR(ktimes%10)；jqParam 由 rndnum/starttime/activityId 经自定义 abcd1~abcd5（含固定 62 字符表）算出，再 encodeURIComponent。★ 2021-01 的 52pojie-1361387 是更早的独立来源，62 字符表与 3597397 常量与既有来源逐字一致。",
   "aliases": [
     "jqsign",
     "jqnonce",
@@ -27,7 +27,7 @@
   ],
   "algorithm": {
     "family": "custom",
-    "detail": "共 6 个自定义函数：① dataenc(a,ktimes)：b = ktimes % 10（b==0 时取 1），对 a 每个字符 e = charCodeAt(d) ^ b，再 String.fromCharCode 拼接——即整串逐字符 XOR 一个 1~9 的数字。② abcd1(x) = abcd2(x, 3597397)，而 abcd2 把两数拆成高 31 位与低 31 位分别异或后再合并，等价于 32 位整数异或 x ^ 3597397。③ abcd4(数字串, 字母表)：把每个数字位 d 取出，交换 字母表[d] 与 字母表[len-1-d]，得到重排后的 62 字符表。④ abcd3(n, 字母表)：递归 n%62 取表中字符做「62 进制」编码（n-62<0 时取 substr(n,1)）。⑤ abcd5(s)：把字符串循环左移（所有字符码之和 % 长度）位。⑥ abcdu(date)：date.getTime()/1000 + (-480 - new Date().getTimezoneOffset())*60，即换算成 GMT+8 的秒级时间戳。另有 abcdx() 反调试：检查 navigator.webdriver、document.$cdc_asdjflasutopfhvcZLmcfl_、/PhantomJS/ test userAgent、window.callPhantom/_phantom，任一命中则整个运算 return。jqParam 流程：_0x4b9009 = rndnum.split('.')[0] → _0x37348b = abcd1(parseInt(_0x4b9009)) → _0x17071c = abcdu(new Date(starttime.replace(/-/gm,'/'))) → _0x12e25a = _0x17071c+''，若 _0x17071c%10>0 则反转字符串 → _0x24bc24 = parseInt(_0x12e25a + '89123') → _0xd36323 = abcd4((_0x24bc24+''+_0x37348b).split(''), 62字符表) → _0xc23193 = _0x24bc24 + _0x37348b + parseInt(activityId) → jqParam = abcd5(abcd3(_0xc23193, _0xd36323))。",
+    "detail": "共 6 个自定义函数：① dataenc(a,ktimes)：b = ktimes % 10（b==0 时取 1），对 a 每个字符 e = charCodeAt(d) ^ b，再 String.fromCharCode 拼接——即整串逐字符 XOR 一个 1~9 的数字。② abcd1(x) = abcd2(x, 3597397)，而 abcd2 把两数拆成高 31 位与低 31 位分别异或后再合并，等价于 32 位整数异或 x ^ 3597397。③ abcd4(数字串, 字母表)：把每个数字位 d 取出，交换 字母表[d] 与 字母表[len-1-d]，得到重排后的 62 字符表。④ abcd3(n, 字母表)：递归 n%62 取表中字符做「62 进制」编码（n-62<0 时取 substr(n,1)）。⑤ abcd5(s)：把字符串循环左移（所有字符码之和 % 长度）位。⑥ abcdu(date)：date.getTime()/1000 + (-480 - new Date().getTimezoneOffset())*60，即换算成 GMT+8 的秒级时间戳。另有 abcdx() 反调试：检查 navigator.webdriver、document.$cdc_asdjflasutopfhvcZLmcfl_、/PhantomJS/ test userAgent、window.callPhantom/_phantom，任一命中则整个运算 return。jqParam 流程：_0x4b9009 = rndnum.split('.')[0] → _0x37348b = abcd1(parseInt(_0x4b9009)) → _0x17071c = abcdu(new Date(starttime.replace(/-/gm,'/'))) → _0x12e25a = _0x17071c+''，若 _0x17071c%10>0 则反转字符串 → _0x24bc24 = parseInt(_0x12e25a + '89123') → _0xd36323 = abcd4((_0x24bc24+''+_0x37348b).split(''), 62字符表) → _0xc23193 = _0x24bc24 + _0x37348b + parseInt(activityId) → jqParam = abcd5(abcd3(_0xc23193, _0xd36323))。\n★ 独立来源核对（B35 追加）：`docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md`（2021-01-29，比 1625463 早一年多）是同一套算法的**更早独立来源**：其 abcd1/abcd2/abcd3/abcd4/abcd5/abcdu/abcdx 与 62 字符表 `kgESOLJUbB2fCteoQdYmXvF8j9IZs3K0i6w75VcDnG14WAyaxNqPuRlpTHMrhz`、常量 `3597397`、后缀 `'89123'` 与既有来源**逐字一致**（机械核对通过）。两点差别：① 可复用版 `get_jqParam()` 的 `return` 截断点不同（见 mutations.json）；② 该文给出 jqParam 所在的混淆文件为 `https://image.wjx.com/joinnew/js/cktoole.js?v=5`。另：该文的 jqParam 生成**挂在 `$(document).bind('mousemove', …)` 上**（三重门禁 pageX>0 / abcdx() / window.hdm1113），见 workflow.md。",
     "key_material": "62 字符表 = kgESOLJUbB2fCteoQdYmXvF8j9IZs3K0i6w75VcDnG14WAyaxNqPuRlpTHMrhz（62 个不重复字符）；XOR 常量 = 3597397（abcd1/abcd2 第二参）；时间戳后缀常量 = \"89123\"；时区常量 = -480（分钟）；activityId 异或常量 = 2130030173",
     "output_encoding": "自定义字母表",
     "output_length": null
@@ -134,17 +134,131 @@
       "line": 305,
       "quote": "到此所有参数分析完毕,如有遗漏或不解,可以回帖问我",
       "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md",
+      "line": 14,
+      "quote": "#### 打开浏览器调试模式后会自动进入debugger模式",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md",
+      "line": 22,
+      "quote": "会发现该参数位于[这里](https://image.wjx.com/joinnew/js/cktoole.js?v=5)，但是很快你会发现这里进行了ob混淆，很难分析",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md",
+      "line": 59,
+      "quote": "return abcd2(_0x17164c, 3597397);",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md",
+      "line": 96,
+      "quote": "var _0x45571c = _0x420610 % 62;",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md",
+      "line": 100,
+      "quote": "return abcd3(_0x4e6181, _0x1b425f) + _0x1b425f[\"substr\"](_0x45571c, 1);",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md",
+      "line": 125,
+      "quote": "function abcd5(_0x5565b6) {",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md",
+      "line": 187,
+      "quote": "window[\"hdm1113\"] = true;",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md",
+      "line": 188,
+      "quote": "}, 1000);",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md",
+      "line": 191,
+      "quote": "if (_0x151a89[\"pageX\"] > 0 && abcdx() && window[\"hdm1113\"]) {",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md",
+      "line": 212,
+      "quote": "var _0x1b3de6 = abcd4(_0x149db2, \"kgESOLJUbB2fCteoQdYmXvF8j9IZs3K0i6w75VcDnG14WAyaxNqPuRlpTHMrhz\");",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md",
+      "line": 214,
+      "quote": "var _0x3a5cf2 = _0xd16fcc + _0x4aaf4a + parseInt(activityId);",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md",
+      "line": 218,
+      "quote": "var _0x5d90fd = abcd5(jqParam);",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md",
+      "line": 220,
+      "quote": "jqParam = _0x5d90fd;",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md",
+      "line": 225,
+      "quote": "$(document)[\"bind\"](\"mousemove\", _0x3ef545);",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md",
+      "line": 258,
+      "quote": "<https://image.wjx.com/joinnew/js/cktoole.js>.\\*",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md",
+      "line": 262,
+      "quote": "js映射时去调问号及后面的参数用.\\*代替即可",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md",
+      "line": 263,
+      "quote": "`python -m http.server`",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md",
+      "line": 379,
+      "quote": "function get_jqParam(rndnum, initstime, activityId) {",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1361387-对问卷星参数jqparam的分析和探索.md",
+      "line": 408,
+      "quote": "return jqParam",
+      "verified_in_article": true
     }
   ],
   "entry": {
-    "location": "jqmobo2.js 中的 dataenc()（jqsign/jcn）；jqParam 来自一个 ob 混淆 JS（文中给出解混淆后函数 _0x156205 / abcd1 / abcd2 / abcd3 / abcd4 / abcd5 / abcdu / abcdx）",
+    "location": "jqmobo2.js 中的 dataenc()（jqsign/jcn）；jqParam 来自一个 ob 混淆 JS（文中给出解混淆后函数 _0x156205 / abcd1 / abcd2 / abcd3 / abcd4 / abcd5 / abcdu / abcdx）。★ 另一来源（1361387，2021-01）指出 jqParam 所在的混淆文件是 https://image.wjx.com/joinnew/js/cktoole.js?v=5",
     "trigger": "答题提交时",
     "transport": "URL query（shortid, starttime, source, submittype, ktimes, hlv, rn, jqpram, jcn, nw, jwt, jpm, t, jqnonce, jqsign）；POST body：submitdata"
   },
   "gaps": [
     "jqParam 没有给出数值示例（作者只贴了可运行 JS 与 console.log 行），无法对拍",
     "ktimes 可随机，但服务端如何校验 ktimes 与 jqsign 的一致性未说明",
-    "jqParam 来源的 ob 混淆 JS 文件名未给出（只说「来源于一个混淆的js，用的是ob混淆」）",
+    "jqParam 来源的 ob 混淆 JS 文件名：1625463 未给出（只说「来源于一个混淆的js，用的是ob混淆」）；1361387（2021-01）给出的是 `https://image.wjx.com/joinnew/js/cktoole.js?v=5` ⇒ 两文的文件名不同（cktoole.js vs jqmobo2.js），是否同一文件的不同版本未说明",
     "submitdata 的字段结构未展开（文章只截图）",
     "问卷是否存在其他校验（如短信/滑块/答题时长）未涉及"
   ],
@@ -152,6 +266,10 @@
     "activityId 核算：2035206417 ^ 2130030173 = 129722188，与第 297 行示例 var activityId=\"129722188\" 完全一致 → DecodeId 逻辑确认无误",
     "62 字符表核算：kgESOLJUbB2fCteoQdYmXvF8j9IZs3K0i6w75VcDnG14WAyaxNqPuRlpTHMrhz 长度 62 且无重复字符（无 '+' '/' '='），可用于 62 进制编码",
     "abcd1 等价性核算：3597397 < 2^31，abcd2 把两数拆成高 31 位与低 31 位分别 ^ 后合并，故 abcd1(x) 等价于 x ^ 3597397",
-    "文中两次运行示例的 rndnum/starttime 不同（第 78 行 607374188.63586548 vs 第 295 行 607374188.44535993；starttime 12:10:55 vs 14:25:20），系不同次运行，不是矛盾"
-  ]
+    "文中两次运行示例的 rndnum/starttime 不同（第 78 行 607374188.63586548 vs 第 295 行 607374188.44535993；starttime 12:10:55 vs 14:25:20），系不同次运行，不是矛盾",
+    "★ 多源逐字核对（B35 追加）：1361387 与 1625463 的 62 字符表 `kgESOLJUbB2fCteoQdYmXvF8j9IZs3K0i6w75VcDnG14WAyaxNqPuRlpTHMrhz`、常量 `3597397`、后缀 `'89123'` 三者**逐字符相同**（机械核对通过）⇒ 属同一套算法的两次独立观察，可互证",
+    "★ 两篇的 jqParam 结果无法对拍（两文都只贴可运行 JS、没给数值示例）；1361387 的样例输入是 rndnum='2008883437.96038739'、initstime=\"2021/1/28 16:55:06\"、activityId='105444284'（其中 activityId 未做 DecodeId 异或，与 1625463 的口径不同——见 mutations.json）",
+    "🔴 1361387 的可复用 `get_jqParam()` 有**死代码**：`var _0x5d90fd = abcd5(jqParam);` 之后直接 `return jqParam`，`_0x5d90fd` 从未被回写/使用 ⇒ 该版本少做一次循环左移（登记为源文缺陷，不是页面真实行为）"
+  ],
+  "notes": "来源关系（B35 追加）：1625463（2022-04）与 1361387（2021-01）是同一套 jqParam 算法的**两次独立观察**（常量与 62 字符表逐字一致），但两者在「get_jqParam 的截断点」「activityId 是否先异或」上口径不同 ⇒ 以 1361387 为更早来源、1625463 为更完整来源，冲突处已逐条登记（见 mutations.json 与 workflow.md）。"
 }

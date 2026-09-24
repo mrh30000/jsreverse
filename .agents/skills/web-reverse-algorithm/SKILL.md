@@ -384,6 +384,19 @@ python scripts/waf_clearance_solver.py --selftest
   内置编解码函数的**形态指纹表**（能从产物形状反查用了 `escape` / `encodeURI` / `btoa` / `fromCharCode` / `CryptoJS`）；
   「形态像 ≠ 就是它」的四个陷阱（32 位 hex 未必是 MD5、末尾 `==` 未必是 AES、**前 16 字节乱是 IV 错不是算法错**）；
   以及**求助帖式任务（原文没有结论）的登记纪律**——只登记可复现的结构观察，一条结论都不许往外推。
+- [references/17-yuanrenxue-match-playbook.md](./references/17-yuanrenxue-match-playbook.md)
+  用途：**「比赛题 / 靶场题」的题型索引与可迁移判据集**（以猿人学 1–9 / 16 题为样本）——
+  **题型 → 定位手法 → 算法 → 可迁移判据**主表，以及逐条判据：
+  **`m` 参数里 `丨`（U+4E28）分隔符 ⇒ 先按「拼接串」拆而非整体加密**、
+  **属性名拼接混淆（成员访问方括号里是加法表达式）与内联 RC4 字符串表**、
+  **动态 cookie 的入口是「不带 cookie 时服务端返回的那段 script」而非 cookie 本身**、
+  **「接口本身没有反爬」时把注意力从请求侧转到响应侧（响应侧 CSS 隐藏 / `left` 偏移 / 字体）**、
+  **同一值既当查询参数又当 cookie 密钥 ⇒ 先标成密钥材料**、
+  **累积历史参数 `q`（`a-b\|c-d\|…`）必须按请求顺序生成**、
+  **node 补环境「值对齐即止」与 express/execjs/os.popen 三种调用形态及其实测限制**、
+  **OB 三段 script（自检 / 保活 / 业务）先反混淆再读**、
+  以及 **★ 蜜罐判据：一段代码只用自己产出的值做校验 ⇒ 先怀疑它是蜜罐，处置是「浏览器 vs node 逐字符回溯」而非改算法**；
+  并与 `../web-font-obfuscation/SKILL.md`（动态字体）、`../web-verify-patcher/SKILL.md`（图文点选）分工。
 - 媒体流 / DRM / ts 分片（判层、AES/SM4 内容解密、许可证体系、白盒 wasm）→ `../stream-drm-reverse/SKILL.md`：
   本技能不覆盖这条链路，遇到 `m3u8` / `EXT-X-KEY` / `GetLicense` / 花屏类现象请直接切过去。
 
