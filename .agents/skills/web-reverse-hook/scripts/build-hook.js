@@ -16,6 +16,7 @@
  * - antidebug: 反调试综合防御（debugger清除、console保护、窗口尺寸伪造、强退拦截、反Hook/iframe原生借用阻断）
  * - dataflow: 数据流追踪（Promise resolve回调追踪、Cookie写入、Storage存储、网络请求、时间随机数固定）
  * - spa-vue: Vue 2/3 动态路由深度提取、导航守卫解除、强跳阻断
+ * - spa-state: Vue/Vuex 运行时状态固化（含「挡回写」）+ 组件注册表探针与替换
  * - spa-react: React Fiber 树与 Router 动态路由提取
  *
  * 用法：
@@ -23,6 +24,8 @@
  *   node build-hook.js spa-vue --out hook-vue.js
  *   node build-hook.js dataflow --targets promise,cookie --keyword token --out hook-dataflow.js
  *   node build-hook.js cryptojs --algorithms AES,MD5 --out hook-cryptojs.js
+  node build-hook.js spa-state --state-path vipInfo.isVip=true --state-path visitUserInfo.isTaskUser=true --out hook-vue-state.js
+  node build-hook.js spa-state --registry-root window.videojs --registry-names Player --out hook-registry.js
  */
 
 import {writeFileSync} from 'node:fs';
@@ -45,6 +48,9 @@ import {
   installSpaReactHook,
   installSpaVueHook,
 } from './hooks/spa-router.js';
+import {
+  installSpaStatePatchHook,
+} from './hooks/spa-state-patch.js';
 import {
   installJsvmpProxyHook,
   installJsvmpTransparentHook,
@@ -85,6 +91,11 @@ const PRESETS = {
     hookId: 'spa_react_router',
     install: installSpaReactHook,
     description: 'React Fiber 树与 Router 动态路由扫描与候选提取',
+  },
+  'spa-state': {
+    hookId: 'spa_state_patch',
+    install: installSpaStatePatchHook,
+    description: 'Vue/Vuex 运行时状态固化（访问器挡回写）+ mutation 流水 + 组件注册表替换',
   },
   'jsvmp-proxy': {
     hookId: 'jsvmp_probe',
@@ -195,6 +206,24 @@ function resolveConfig(preset, options) {
     };
   }
 
+  if (preset === 'spa-state') {
+    const root = options.registryRoot || '';
+    return {
+      statePaths: options.statePaths ?? [],
+      lockState: options.lockState ?? true,
+      traceMutations: options.traceMutations ?? true,
+      registry: root
+        ? {
+            root: root,
+            method: options.registryMethod || 'registerComponent',
+            names: options.registryNames ?? [],
+          }
+        : null,
+      pollInterval: options.pollInterval ?? 500,
+      maxTries: options.maxTries ?? 20,
+    };
+  }
+
   const scriptUrl = options.scriptUrl ?? '';
   const idSuffix = `:${scriptUrl || 'all'}`;
   if (preset === 'jsvmp-transparent') {
@@ -255,6 +284,15 @@ dataflow options:
   --fixed-time <n>      固定 Date.now() 时间戳
   --fixed-random <n>    固定 Math.random() 返回值 (默认 0.5)
 
+spa-state options:
+  --state-path <expr>   可重复。形如 vipInfo.isVip=true / visitUserInfo.taskStatus=1
+                        （路径相对 store 的 state 根；值支持 true/false/数字/'字符串'）
+  --lock-state=false    关闭「访问器挡回写」（默认开启；SPA 重挂载后仍被强制为目标值）
+  --trace-mutations=false 关闭 Vuex subscribe（默认开启，打印每次 mutation 的 type/payload）
+  --registry-root <expr> 组件注册表所在对象，如 window.videojs
+  --registry-method <m>  注册方法名（默认 registerComponent）
+  --registry-names <list> 关心的组件名，逗号分隔，如 Player
+
 spa-vue / spa-react options:
   --clear-guards=false  spa-vue: 不自动清除 beforeEach / beforeResolve 守卫
   --block-redirects     spa-vue: 清空 router.push/replace/go 阻断页面跳转
@@ -278,6 +316,8 @@ jsvmp-proxy 追踪开关（默认全开，用 =false 关闭）:
   node build-hook.js spa-vue --block-redirects --out hook-vue.js
   node build-hook.js dataflow --targets promise,cookie --keyword token --out hook-data.js
   node build-hook.js cryptojs --algorithms AES,MD5 --out hook-cryptojs.js
+  node build-hook.js spa-state --state-path vipInfo.isVip=true --state-path visitUserInfo.isTaskUser=true --out hook-vue-state.js
+  node build-hook.js spa-state --registry-root window.videojs --registry-names Player --out hook-registry.js
 `);
 }
 
@@ -294,6 +334,8 @@ const BOOL_FLAGS = [
   'clear-guards',
   'block-redirects',
   'log-at',
+  'lock-state',
+  'trace-mutations',
 ];
 
 function extractBoolFlags(argv) {
@@ -344,6 +386,10 @@ function main() {
       'fixed-outer-width': {type: 'string'},
       'fixed-outer-height': {type: 'string'},
       'max-tries': {type: 'string'},
+      'state-path': {type: 'string', multiple: true},
+      'registry-root': {type: 'string'},
+      'registry-method': {type: 'string'},
+      'registry-names': {type: 'string'},
       'script-url': {type: 'string'},
       'max-entries': {type: 'string'},
       'proxy-objects': {type: 'string'},
@@ -371,6 +417,12 @@ function main() {
     fixedOuterWidth: values['fixed-outer-width'] ? Number(values['fixed-outer-width']) : undefined,
     fixedOuterHeight: values['fixed-outer-height'] ? Number(values['fixed-outer-height']) : undefined,
     maxTries: values['max-tries'] ? Number(values['max-tries']) : undefined,
+    statePaths: values['state-path'],
+    lockState: boolFlags.values['lock-state'],
+    traceMutations: boolFlags.values['trace-mutations'],
+    registryRoot: values['registry-root'],
+    registryMethod: values['registry-method'],
+    registryNames: values['registry-names'] ? parseList(values['registry-names']) : undefined,
     bypassDebugger: boolFlags.values['bypass-debugger'],
     consoleGuard: boolFlags.values['console-guard'],
     windowDimensions: boolFlags.values['window-dimensions'],

@@ -1,6 +1,6 @@
 ---
 name: web-reverse-hook
-description: 生成并注入页面级运行时 Hook 脚本，用于拦截加密库（CryptoJS/JSEncrypt/SM-crypto）、JSVMP 虚拟机探针、反调试综合防御绕过（debugger/console/窗口尺寸/强退/iframe原生借用）、关键数据流追踪（Promise/Cookie/Storage/网络/时间）以及 SPA 动态路由深度提取（Vue/React 路由表与守卫清除）。当用户提到“hook CryptoJS”“拦截 RSA 明文密文”“国密 hook”“JSVMP 探针”“绕过反调试”“无限 debugger”“阻止跳转/关闭”“SPA 隐藏路由提取”“拦截 cookie/storage/promise”时使用。
+description: 生成并注入页面级运行时 Hook 脚本，用于拦截加密库（CryptoJS/JSEncrypt/SM-crypto）、JSVMP 虚拟机探针、反调试综合防御绕过（debugger/console/窗口尺寸/强退/iframe原生借用）、关键数据流追踪（Promise/Cookie/Storage/网络/时间）、SPA 动态路由深度提取（Vue/React 路由表与守卫清除）以及**Vue/Vuex 运行时状态固化与组件注册表替换**（油猴 / 篡改猴 / userscript 注入范式）。当用户提到“hook CryptoJS”“拦截 RSA 明文密文”“国密 hook”“JSVMP 探针”“绕过反调试”“无限 debugger”“阻止跳转/关闭”“SPA 隐藏路由提取”“拦截 cookie/storage/promise”“改 Vuex state”“$store.state 改不动”“__vue__ 取不到”“registerComponent 替换组件”“videojs Player 注入”“油猴脚本怎么注入”时使用。
 ---
 
 # Web 运行时 Hook 脚本
@@ -18,8 +18,111 @@ description: 生成并注入页面级运行时 Hook 脚本，用于拦截加密�
 | `dataflow` | **关键数据流追踪、环境锁定与限流熔断**：Promise resolve、Cookie 条件断点、Storage、XHR/Fetch、原生编解码（JSON/Base64/URI）、定时器、调用栈行号回溯与防卡死熔断 | 1. 拦截 `Promise` 构造器，记录 resolve 值与调用栈，快速定位异步回调完成点<br>2. 监控 `document.cookie` setter，支持 `--cookie-match` 命中特定 key/value 时触发 `debugger`<br>3. 监控 `localStorage` / `sessionStorage` 增删改查<br>4. 拦截常用 Builtins：`JSON.parse/stringify`、`atob/btoa`、`encodeURI/decodeURI` 及 `setTimeout/setInterval`<br>5. 内置 `--limit-per-api`（默认 50 次）防死循环控制台刷屏卡死，`logAt` 自动提取触发文件名与行号<br>6. 固定 `Date.now`、`performance.now`、`Math.random` 支持脱敏复现 |
 | `spa-vue` | **Vue 2/3 动态路由与接口深度探测** | 1. DOM BFS 扫描自动定位 Vue 2 (`__vue__`) 与 Vue 3 (`__vue_app__`) 根实例并读取完整路由表<br>2. **解除导航守卫**：拦截 `Array.prototype.push` 自动剔除 `beforeEach` 与 `beforeResolve`<br>3. 可选阻断 `router.push/replace/go` 强退 |
 | `spa-react` | **React Fiber 树与路由扫描** | BFS 探测 React 根挂载点 (`__reactContainer$*`, `_reactRootContainer`)，深度扫描 Fiber 树属性，提取 Route 配置 |
+| `spa-state` | **Vue/Vuex 运行时状态固化 + 组件注册表替换**（B28 新增） | 1. 定位 Vue 2 (`__vue__`) / Vue 3 (`__vue_app__`) 根实例并解析 `$store`（Vuex 取 `.state`，Pinia 取自身）<br>2. 按 `a.b.c=值` 固化状态；**用访问器挡回写**（SPA 重挂载后仍被强制回目标值）<br>3. 包装 `store.subscribe` 打印每次 mutation 的 `type` / `payload`（定位"到底是谁改的"）<br>4. 组件注册表探针（如 `window.videojs.registerComponent`）+ `replaceComponent(name, fn)`：自动接原型链并**搬运你自己写在 prototype 上的成员** |
 | `jsvmp-proxy` | JSVMP 虚拟机探针（全覆盖） | 代理全局对象、`Function.prototype` 与 `Reflect` |
 | `jsvmp-transparent` | JSVMP transparent 探针（无感） | 只替换原型 getter，痕迹更小，规避强指纹检测 |
+
+---
+
+---
+
+## 油猴 / userscript 注入范式与运行时状态改写（B28）
+
+这一节回答：**"页面上的某个判断，我不想改源码，只想在运行时把它按下去"** 该怎么做。
+两个来源都出自实战（`52pojie-1830072` 百度文库复制、`52pojie-1669080` video.js 注入），
+可复用的部分**不是某一行代码，而是两条通用范式**。
+
+### 范式 A：状态树改写（Vuex / Pinia）
+
+**为什么是改状态而不是改函数**：SPA 的界面行为由**状态**驱动，函数只是状态的消费者。
+改了消费者，下一次渲染又用状态把行为算回来；改了状态，所有消费者一起变。
+
+定位链条（按顺序走，别跳）：
+
+1. **从交互入手**：点一下那个按钮 → 在事件监听器里断下 → 走到 Vue 的事件分发
+   （`o._wrapper` → `n.fns` → render 模板函数 → `clickCopy()` 这样的具名方法）；
+2. **找状态写入**：具名方法里那一串 `this.setVisible(!1), this.setIsCopyActivated(!0)`
+   就是 `mapMutations` 映射出来的 commit 包装 —— 顺着 `store.commit` 走到 `_mutations[type]`，
+   那里才是"用户写的分发函数"（如 `setTaskStatus: function(e,t){ e.taskStatus = t }`）；
+3. **找状态读取**：`mapState("visitUserInfo", ["isTaskUser","taskStatus"])` /
+   `mapGetters("readerPlugin", ["canCopy"])` —— **这一行就是"这个组件关心哪些字段"的清单**；
+4. **找真正的判定**：`watch: { isCopyActivated: function(t){ t && !this.canCopy && this.fetchCopyTimes(...) } }`
+   —— 状态变化**之后**触发的那个动作，往往才是"跳去付费页"的真凶；
+   `canCopy` 的 getter 里出现 `n.vipInfo.isVip` ⇒ 目标字段就找到了；
+5. **写值**：`document.querySelector('.header-wrapper').__vue__.$store.state.vipInfo.isVip = true`。
+
+**用本技能固化它**（而不是在控制台手敲一次 —— 手敲的那次会在刷新/重挂载后失效）：
+
+```bash
+node .agents/skills/web-reverse-hook/scripts/build-hook.js spa-state \
+  --state-path vipInfo.isVip=true \
+  --state-path visitUserInfo.isTaskUser=true \
+  --state-path visitUserInfo.taskStatus=1 \
+  --out hook-vue-state.js
+```
+
+⚠️ **"挡回写"是这个预设的核心价值**：SPA 会重挂载、会重新初始化、会 `history.go(0)`；
+只赋一次值的写法在这些时刻会被冲掉。本预设用访问器把叶子锁住，**任何后续写回都被强制改回目标值**，
+并且会打印一行"挡回一次…"的日志 —— 这行日志本身也是证据（说明确实有人在往回写）。
+
+### 范式 B：全局注册表替换（组件 / 插件 / 编解码器）
+
+**判据**：目标是一个"按名字注册、按名字取用"的注册表 ——
+`Component.components_[name]`、`X.getComponent(name)`、`X.registerComponent(name, factory)`。
+
+**为什么能替换**（video.js 的源码级判据，可迁移到同类库）：
+
+```js
+Component.getComponent = function getComponent(name) {
+  if (!name || !Component.components_) return;
+  return Component.components_[name];          // 取用点：只认这张表
+};
+// 注册时的守卫（决定了"还能不能换"）
+if (name === 'Player' && Player && Player.players) { ... throw ... }
+// 结论：只有"已经创建过实例"才禁止替换 ⇒ 注入必须早于实例化
+```
+
+**三步替换**（原型链继承，保留原实现）：
+
+```js
+const Origin = X.getComponent('Player');
+function Wrapper(...args) { /* 前置逻辑 */ const p = new Origin(...args); /* 后置逻辑 */ return p; }
+Wrapper.prototype = Object.create(Origin.prototype);   // ⚠️ 会丢掉你自己写的 prototype 成员
+X.registerComponent('Player', Wrapper);
+```
+
+本预设把这三步做成了可调用接口，并且**比原文多一步**：搬运你自己写在 `prototype` 上的成员
+（直接 `Object.create` 会**静默丢弃**它们 —— 这是 B28 实跑带出的缺陷，已修）：
+
+```bash
+node .agents/skills/web-reverse-hook/scripts/build-hook.js spa-state \
+  --registry-root window.videojs --registry-method registerComponent --registry-names Player \
+  --out hook-registry.js
+# 页面里：
+#   __mcp_vue_hook__.registry.Player.factory   // 探针记录到的原工厂
+#   __mcp_vue_hook__.replaceComponent('Player', Wrapper)
+```
+
+**三条时机纪律**：
+
+1. **注入必须早于注册**（否则探针记录不到原工厂）；本预设 `installRegistry()` 在注入时先试一次，
+   之后按 `pollInterval` 轮询重试；
+2. **替换必须早于实例化**（`Player.players` 非空就换不动了）；
+3. **先注册再替换**：`replaceComponent` 依赖探针已记录原工厂，没记录就返回 `false` 并打印原因。
+
+### 与油猴脚本的关系
+
+上面两段**就是油猴脚本的本质**：`@match` 决定作用面、`@grant` 决定权限面、脚本体里做上面两件事。
+区别只有分发方式：
+
+| 维度 | 本技能（注入） | 油猴 / userscript |
+| --- | --- | --- |
+| 生效时机 | 你控制（导航前注册最稳） | `@run-at`（`document-start` 最稳） |
+| 作用面 | 当前会话 | `@match` 声明的所有站点 |
+| 风险 | 无第三方代码 | 脚本可读你的登录态、可回传数据（审计走 `web-malware-forensics`） |
+
+**结论**：调试阶段用本技能注入（可控、可撤、日志全）；要"长期生效"才考虑落成油猴脚本，
+并且**落成前先按 `web-malware-forensics` 的清单审一遍自己的脚本**（别自己造一个回传面）。
 
 ---
 
@@ -55,6 +158,14 @@ node .agents/skills/web-reverse-hook/scripts/build-hook.js jsencrypt --log-forma
 
 # 10. 国密 SM2/SM3/SM4 拦截
 node .agents/skills/web-reverse-hook/scripts/build-hook.js smcrypto --out hook-sm.js
+
+# 11. Vue/Vuex 运行时状态固化（含挡回写；路径相对 store 的 state 根）
+node .agents/skills/web-reverse-hook/scripts/build-hook.js spa-state \
+  --state-path vipInfo.isVip=true --state-path visitUserInfo.taskStatus=1 --out hook-vue-state.js
+
+# 12. 组件注册表探针（先看注册了什么，再决定替换谁）
+node .agents/skills/web-reverse-hook/scripts/build-hook.js spa-state \
+  --registry-root window.videojs --registry-method registerComponent --out hook-registry.js
 ```
 
 支持管道直接传给 `inject_hook`：
@@ -87,6 +198,15 @@ node .agents/skills/web-reverse-hook/scripts/build-hook.js antidebug --json \
 - **SPA 路由结果**：写入 `window.__spa_routes__`，直接在控制台或通过 `evaluate_script` 读取：
   ```bash
   browsercli call evaluate_script --function "() => JSON.stringify(window.__spa_routes__)"
+  ```
+- **运行时状态改写结果**：写入 `window.__mcp_vue_hook__`：
+  ```bash
+  # 看固化结果 / 谁被挡回过 / mutation 流水
+  browsercli call evaluate_script --function "() => JSON.stringify({applied: window.__mcp_vue_hook__.applied, mutations: window.__mcp_vue_hook__.mutations.slice(-20)})"
+  # 手动重放一次（页面重挂载后想立刻再压一遍）
+  browsercli call evaluate_script --function "() => window.__mcp_vue_hook__.apply()"
+  # 看注册表里都有哪些组件（决定替换谁）
+  browsercli call evaluate_script --function "() => JSON.stringify(Object.keys(window.__mcp_vue_hook__.registry))"
   ```
 - **控制台输出缓冲**（在 attach 模式下防止丢失 `console.log`）：
   ```bash

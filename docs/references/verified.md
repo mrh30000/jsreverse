@@ -3864,3 +3864,139 @@ python artifacts/skill-evolution/tools/append-b26-ledger.py
   4. `miniprogram-reverse` 排错表的 `RadiumWMPF` 版本绑定条目仍待回源复核（B25 记，连续三轮未碰该行）。
 - 候选新技能 `captcha-flow-orchestration` —— B5–B27 **二十一次确认不新建**。
 - 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
+
+## 批次 B28 · 2026-09-24（第二十八次执行）
+
+**开局状态**：台账 B27 后 **543** 条 / 目录 `.md` **1040**（文章 **1035**）/ 待处理 **492**。
+三方对齐（台账最后一节 = B27 × `git log` = `00a3af4`(B27) × 自动化记忆最后一条 = B27）**一致** ⇒
+上一轮已闭环；工作区里的 `AGENTS.md` 与 `project/*` 是别会话在途改动，未纳入本批。
+
+**取材口径**：本批的新供给是归档线第 28 轮（`bac0ad6`）新开的 **T8 网盘/文件站 + T9 扩展/油猴/Electron** 两条通道，
+外加 09:13 那批未被上一轮扫描到的 21 篇。**先做了一次证伪**（B26 教训：上一批的「优先级」不能当指令照做）：
+B27 列的「网马时代线继续 evolve」与「小游戏线继续收」在新增 56 篇里 **0 命中**，因此本批改取**新供给线**，
+并按「同一主题 ≥2 篇且能聚成一个能力块」聚簇：
+
+- **簇 A · 网盘/文件站直链族（12 篇）**：蓝奏云全代际 9（`713762` G2018 / `988145` G2019 / `1668489` G2022 /
+  `1701084` 文件夹 / `1703600` 时效 / `1865269` 抓包 / `1901884` G2024 / `1904710` 含提取码 / `1908049` 优享版 /
+  `2078178` G2025）+ 阿里云盘签名 1（`1745677`）+ 助手类脚本判型 1（`1828098`）。
+  **选它的理由**：`grep 网盘|蓝奏|直链` 全库只命中归档类技能与 `stream-drm-reverse` 的媒体直链 ——
+  **没有任何技能覆盖「文件托管站分享链接 → 可用直链」**（动词是「解析」，不是「解密/还原/取证」）。
+- **簇 B · 打包型前端的另外三种壳（7 篇）**：浏览器扩展 2（`1215596` / `1225639`）+
+  油猴运行时改写 2（`1669080` 注册表替换 / `1830072` Vuex 状态树）+ 扩展劫持 1（`1707613`）+
+  nw.js 1（`1679769`）+ Electron 埋点法 1（`1847258`）。
+  **选它的理由**：`desktop-client-reverse` 只覆盖 Electron / WebView2 / JSC 三类壳，
+  **扩展（CRX）与 nw.js 是零覆盖**；而 `web-reverse-hook` 的 `spa-vue` 只做「路由提取」，**没有「状态改写」**。
+
+**产出**：**新建技能 1**（`cloud-drive-direct-link`）、**演化技能 3**（`desktop-client-reverse` /
+`web-reverse-hook` / `web-malware-forensics`）、**附带修复 1**（新建技能自查时发现的两处引用写法）。
+
+### 新建判据（可复核，三条同时成立）
+
+1. **无最近邻能力模块**：`grep -ril "lanzou|蓝奏|直链|网盘|filemoreajax|ajaxm" .agents/skills/`
+   只命中 `stream-drm-reverse`（媒体直链，产出是「解密与 TS 重封装」）与归档类技能的语料过滤词；
+   `code-analysis` 的自述产出是「结构 / 风险评分契约」，与本族「分享链接 → 直链」是两套产出。
+2. **单簇规模足够 + 上游专门开通道**：12 篇同族，且归档线第 28 轮**新开 T8 通道**（蓝奏/城通/奶牛/123 云盘）。
+3. **目标动词不同**：本族是**解析/取值**（拿一个能直接下的 URL + 门禁与时效），
+   不是「还原算法」（`web-reverse-algorithm`）、不是「补环境」（`web-js-env-patcher`）、不是「取证定性」（`web-malware-forensics`）。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 544 | `52pojie-713762-【原创】蓝奏盘的真实下载地址解析思路与过程及成品源码.md` | `5b9a544300e77be39d15cc1e41aec87f` | 2026-09-24 | `cloud-drive-direct-link` | create | G2018 六字段老链（`/fn?f=&t=&k=` → `action=down_process&file_id=&t=&k=` → `{zt,dom,url}` → `dom + "/file/" + url` → 302 `Location`）；`t`/`k` 是绑定 `file_id` 的签名对；`st/e/ip/fi/up/q` 参数语义（`ip` = **出口 IP** ⇒ 直链可能绑出口）；`.com` 后直接跟 `?` 不是合法 URL ⇒ **必须补 `/file/` 段** |
+| 545 | `52pojie-988145-【原创】蓝奏云解析，抱歉，抓包抓得好真的可以为所欲为。.md` | `24c6e653181fc5988d655f922ab8463b` | 2026-09-24 | `cloud-drive-direct-link` | create | G2019 相对 G2018 的**唯一增量**：POST 必须带 Cookie / UA / Referer（原文自述「几次验证都过不去，后来发现是倒在这里」）；站方同时开始上验证码 |
+| 546 | `52pojie-1668489-最新可用蓝奏云质量解析源码-PHP.md` | `40e61c00e83c2b7170850ccefbf17206` | 2026-09-24 | `cloud-drive-direct-link` | create | G2022 双链：**有码**走 `function down_p(){` + `var skdklds` + `p=<提取码>`（一跳）；**无码**走 `iframe` + `sign = '…'` + `action=downprocess&signs=?ctdf&sign=`（两跳）；判有码的三条独立判据（`<title>文件</title>` / 大量 `<style>` / 函数存在性）；最终直链必须带 `Referer` 与 `Cookie: down_ip=1` |
+| 547 | `52pojie-1701084-蓝奏云分享文件夹解析-PHP.md` | `9b60cfd983bd025f84e2ea58a997168a` | 2026-09-24 | `cloud-drive-direct-link` | create | 文件夹分页 `filemoreajax.php` 七字段（`lx=2`/`fid`/`uid`/`pg`/`rep=0`/`t`/`k`/`up=1`/`ls=1`/`pwd`）；**`t`/`k` 是「变量名 → 值」两跳**（页面先出现变量名再出现赋值）；**翻页必须与取 T/K 同批**（直接请求 `pg=2` 会重新生成 T/K 且没访问第一页 ⇒ 取不到数据）；一页 50 条 |
+| 548 | `52pojie-1703600-LanZouDown蓝奏云文件夹解析软件库后端+APP.md` | `4e0aa3521504bae3126faf578056ebc4` | 2026-09-24 | `cloud-drive-direct-link` | create | T/K 的**时效来源**：`T` 是时间戳、网页缓存约 **3 分钟**后失效 ⇒ 生产做法是「定时任务每 2 分钟刷新」或**每次现取**；这条决定「直链不落库、只在要下的时候现算」的设计 |
+| 549 | `52pojie-1865269-蓝奏云直链抓包教程（手慢无）.md` | `841e3edbc19722a77b689ff64eb62937` | 2026-09-24 | `cloud-drive-direct-link` | create | 抓包视角的三会话链（分享页 → `fn?` → `ajaxm.php`）与「**直链失效时间很短**」；再次独立证实 `Referer` 必带（「有次没带所以就没获取到数据」）；把 `\` 删掉、`.com` 后必须加 `/file/` |
+| 550 | `52pojie-1901884-取蓝奏云直链教程（附python源码）.md` | `ee78b87e945ee541f2e634ab06485c99` | 2026-09-24 | `cloud-drive-direct-link` | create | G2024 无码链五字段（`action=downprocess` / `signs=?ctdf` / `sign` / `websign` / `websignkey=bL27` / `ves=1`）；`iframe class="ifr2"` 抽取正则与 **`matches[1]` 索引口径**；最终地址需 `Referer` + `Cookie: down_ip=1` 且 `allow_redirects=False` 读 `Location`（否则 400） |
+| 551 | `52pojie-1904710-取蓝奏云直链教程2（含密码）（附python源码）.md` | `5861d606a19dbf3e40d339b2fff0d1fa` | 2026-09-24 | `cloud-drive-direct-link` | create | 有码链（一跳）：`var skdklds` + `url : '/ajaxm.php?file=<id>'` + `p=<提取码>`；**有码/无码的三条区分法**；提取码传 str/int 皆可 |
+| 552 | `52pojie-1908049-蓝奏云优享版js代码扣取.encryptHex.md` | `a3bda6663b9fa169fe80ef0669946939` | 2026-09-24 | `cloud-drive-direct-link` | create | 优享版 `ilanzou` 不走 `ajaxm.php`：把参数加密后拼进 URL 再 302。`downloadId = encryptHex(fileId\|userId)`、`auth = encryptHex(fileId\|timestamp)`、`×tamp = encryptHex(ts)`（同一明文拼法出现三次）、`devType`、`uuid` 取 `localStorage`；`encryptHex` 在 webpack 模块 `n(6686)` 里 ⇒ 按 webpack 抠模块而不是正则硬抠 |
+| 553 | `52pojie-2078178-Python蓝奏云直链解析.md` | `4af4502af893db29e192652849613a5c` | 2026-09-24 | `cloud-drive-direct-link` | create | G2025 代际：站点前置 **Cloudflare JS 挑战**（`acw_sc__v2` / `_0x4818` / `arg1` / `posList`）⇒ 本技能只负责「判出来并转交 `web-js-env-patcher`」，不重造挑战求解 |
+| 554 | `52pojie-1745677-阿里云盘签名算法探究及可用 PoC.md` | `2b63d13f5086b76d750bf9173c036c01` | 2026-09-24 | `cloud-drive-direct-link` | create | 签名型网盘：`x-device-id`（UUID，种子取 userId）+ `x-signature`。**判型关键**：能从私钥单独推出公钥 ⇒ 不是 RSA；断在 `getPublicKey` 看到**乘法**而不是模幂、且 `e` 从不是 65537 ⇒ 是 **ECDSA secp256k1**；签名体 `appId:deviceId:userId:nonce` → SHA-256 → 签名 → 末尾拼 `01`；公钥 `04\|\|x\|\|y` 需上报 `get_public_key`；**签名不可复用、必须原样透传**；nonce 初始 0 超时 +1；「列目录顺带返回下载链接」是**旁路（实现漏洞）不是契约**。本批已把源文给出的真实私钥 → 未压缩公钥做成**纯标准库 oracle**（逐字符命中） |
+| 555 | `52pojie-1828098-某【网盘直链下载助手】验证码获取思路.md` | `2d2e1696c13085ea132da48bc19d977a` | 2026-09-24 | `cloud-drive-direct-link` | create | 助手类脚本的**判型只有一条**：点击后**有没有产生网络请求**。没有 ⇒ 本地校验（前端表演）：`if (pan.num === $('#init').val())` 改成 `if (true)` 即过；配置全在脚本内（`pan.num` / `pan.img` / `pan.init[]`），服务端从未参与 |
+| 556 | `52pojie-1215596-【Chrome插件】Chrome插件修改教程（一款GitHub的插件为例，附样品）.md` | `86719ee90007f100572dd60a33d830b9` | 2026-09-24 | `desktop-client-reverse` | evolve | 浏览器扩展=**第四类壳**：`chrome://extensions/` 看 ID → `chrome://version` 拿个人资料路径 → `Extensions/<ID>/<版本号>/`；Chrome 74+ 禁止离线安装未认证插件（须开发者模式）；**定位四步：界面文案 → 语言文件 → 变量名 → 逻辑文件**（`remained` → `content.js`）；状态枚举 `SUBSCRIPTION_OK/EXPIRED/TRIAL_EXPIRED` + `_verifySubscription` + `_decodeTokenPayload` 的三种改法；三个调试面（popup / content script / service worker）与「异常前下断点」；**私钥即插件身份**（不同插件同私钥会互相覆盖）、解压版不带 `key` 重打包会新旧共存 |
+| 557 | `52pojie-1225639-[交作业]记一次简单的chrome插件破解.md` | `c4d25fc179469f1dc5bace9450f966ad` | 2026-09-24 | `desktop-client-reverse` | evolve | 许可证校验函数的形态 `verifyAndSaveLicens()`：「第一个 `if` = 验证通过、其余 `if` = 试用/过期」⇒ 把第一个 `if` 的**内容搬到 `if` 之外**、其余分支注释掉；命中面 `background.js`/`options.js`/`prefs.js`；收尾改 `manifest.json` 的更新链接与版本号 |
+| 558 | `52pojie-1669080-[油猴脚本开发指南]实战videojs极限注入.md` | `4f3562fb3e10dc6541f09889feae5278` | 2026-09-24 | `desktop-client-reverse` | evolve | **全局注册表替换范式**：`Component.getComponent(name)` 只认 `Component.components_[name]`；守卫判据是「`name === 'Player' && Player && Player.players` 且所有实例非空才禁止替换」⇒ **注入必须早于实例化**；三步替换 `Object.create(Origin.prototype)` + `registerComponent`；**本批实跑带出并修复**：直接 `Object.create` 会**静默丢弃**你自己写在 `prototype` 上的成员 ⇒ 工具改为「先搬运 own 成员再挂原型链」 |
+| 559 | `52pojie-1830072-【油猴开发指南】实战破解Vue百度文库复制.md` | `e2b65a1e52caa837b2210d873da97f6c` | 2026-09-24 | `desktop-client-reverse` | evolve | **Vuex 状态树改写范式**：事件监听器 → Vue 分发 `n.fns` → render 模板 → 具名方法（`clickCopy`）→ `mapMutations` 包装 → `_mutations[type]` → 用户分发函数；读取侧 `mapState("visitUserInfo", ["isTaskUser","taskStatus"])` / `mapGetters("readerPlugin",["canCopy"])` 就是「本组件关心哪些字段」的清单；`watch: isCopyActivated` + `fetchCopyTimes` 才是跳付费页的真凶；最终写值 `document.querySelector('.header-wrapper').__vue__.$store.state.vipInfo.isVip = true`。**本批把它做成 `spa-state` 预设（带访问器「挡回写」）**——手敲一次会在重挂载后失效 |
+| 560 | `52pojie-1707613-从吾爱破解弹广告到浏览器插件网页挟持行为分析.md` | `f8d14fc1e3e222224166e5adf792e54a` | 2026-09-24 | `web-malware-forensics` | evolve | 扩展劫持的完整链路：`manifest.json` 前置 js → 全局搜 `getonlinecode` **只命中一次**（`backg.img`）→ 后台页 XHR 断点 → `openDoor` **OpenSSL 加盐 AES**（口令 `softwarecenter`，密钥仅 14 字符是**误解**）→ `eval` 在线下发 JS → `createTxtJson` 反序列化策略表（`\n` 分行 + `\|\|` 分隔，type ∈ `list/rule/insertjs/special/biglist`，实测 44/12/2/4）→ `biglist` 按 version 枚举 `all1.json…allN.json` 取回 16 长度字符串（**域名 MD5**）→ `listorrule` 改写链接（`item.jd.com/10057674219694.html` → `http://a.anhg33.com/t2.php?<原URL>`）/ `special` 加返利参数；处置判据：目录里同时有 `image` 与 `backg*` 文件 |
+| 561 | `52pojie-1679769-一款nw.js打包的steam游戏逆向.md` | `5a754295cfb755726ffe58767ccd64b0` | 2026-09-24 | `desktop-client-reverse` | evolve | nw.js + `nwjc`：`is_nwjc` 全局标记 + 加载 `mrd.min.bin` + 定时判断加载完成；**`nwjc` 是编译不是加密**；最快路线是「把加载二进制的代码换成源码」；换回后闪退 ⇒ **拦路虎是 MD5 摘要文件校验**（「MD5 不是加密」），改判断 `false` 且**必须恢复「加载完成」检测**；资源用 `decryptImg`（MD5 摘要 + XOR + 截取）⇒ **能跑就不要逆**：找调用点改输出目录跑一遍批量导出 |
+| 562 | `52pojie-1847258-Electron编写的exe 逆向思路.md` | `f5e6549f4bc323fe1c0814bcd790878b` | 2026-09-24 | `desktop-client-reverse` | evolve | Electron **`console.log` 顺序埋点法**：压缩代码 + 格式化后无法重打包时，插 `console.log("1")…` 再重打包替换，用 **Debugtron** 强制打开调试看输出（顺序法优于二分法：每次只改一处、永远可回退）；**扣出来结果不对 ⇒ 先怀疑「还有一层编码/还有一次调用」，不要先怀疑扣错**（本例还执行了一次 base64） |
+
+
+### 验收（B28，全部实跑）
+
+| 门禁 | 结果 |
+| --- | --- |
+| `cloud-drive-direct-link/scripts/lanzou_parse.py --selftest` | **96/96** |
+| `cloud-drive-direct-link/scripts/aliyun_ecc_sign.py --selftest` | **52/52** |
+| `web-malware-forensics/scripts/salted_aes.py --selftest` | **51/51** |
+| `web-reverse-hook` 新预设 `spa-state`（Node 真实引擎实跑） | **48/48**（`b28-check-hook-runtime.js`） |
+| `browsercli` 真实浏览器（Chrome 153 + 真实 DOM）契约校验 | **37/37**（`b28-browsercli-contract.js`） |
+| 既有脚本回归（`payload_unpack` / `ioc_extract` / `asar_offset_repair` / `jsc_xxtea_tool` / `byte_flag_patch` / `find-lost` / `restore_slices` / `m3u8_rewrite` …） | **全绿**（由 `check_skill_integrity.js` 统一跑 `--selftest`） |
+| 双向来源保真度（表 A 源→断言 **131** + 表 B 落点→断言 **266**） | **397 条 0 未命中**（`b28-verify-sources.py`） |
+| 故障注入 | **14/14**（12 项注入 + 2 项阴性对照；`b28-fault-injection.py`，临时目录 **0 残留**） |
+| 机械校验 `check_skill_integrity.js` | **0 阻断 0 告警** |
+| 双镜像 `.agents/skills` ↔ `.claude/skills` | **0 mismatch** |
+| 台账 | **562 条**（本批 #544–#562）· `verify-ledger-md5.py` **逐条一致** · 追加脚本**幂等复跑**（打印「已登记，跳过」） |
+| **外部工具交叉验证（本批最强的锚点）** | ① EVP_BytesToKey 与 `openssl enc -aes-256-cbc -md md5 -S … -P` 在 **4 组独立参数**下 key/iv **逐字符一致**；② 两段 **openssl 真实产物**（带头部 / 带 `-S` 无头部）端到端解回明文**逐字节一致**；③ AES 核心过 **FIPS-197 C.3** 与 **NIST SP 800-38A F.2.5** 官方向量；④ secp256k1 公钥由 **Python 与浏览器 BigInt 两套独立实现**对同一份源文私钥互证（逐字符命中源文常量） |
+
+**本批真机跑出的两个"测试自身的缺陷"**（值得记档）：
+
+1. **`lockState=false` 的阴性对照一开始失败**，根因不是 hook 有问题，而是
+   `findRoot()` 取的是**文档里第一个**带 `__vue__` 的元素 —— 测试没有先撤掉前一个宿主节点，
+   于是第二个 hook 又去 patch 第一个 store。**同一份断言在 Node 假环境里绿、在真浏览器里红**，
+   差别就在"DOM 是真的"。⇒ 真机跑不是"再确认一遍"，它测的是**另一类事实**。
+2. **加盐封装的长度断言写错了**（我按"8 头 + 8 salt + 48 密文"写成 64，真机实得 **80**：
+   明文 54 字节经 PKCS#7 补到 64）⇒ 与 B25「断言对、文档错」同型：**凡是"我算出来的数"，
+   都必须有一处外部来源或一次实跑钉住它**。
+
+### 三条最有价值结论（B28）
+
+① **「打包 ≠ 加密」是第四类壳的共同误判点。** `nwjc` 是**编译**成二进制、`.crx` 是**带签名的压缩包**、
+   asar 是**归档** —— 三者都不是密码学意义上的加密，"解密"这条路本身就走错了。
+   本批把它写成**跨壳六条通用纪律**（改判断不改字符串 / 改赋值处不改消费处 / 绕过校验要恢复检测 /
+   勤备份 / 能跑就不要逆 / 解包成功 ≠ 拿到逻辑），落 `desktop-client-reverse/references/extension-and-nwjs.md`。
+
+② **「挡回写」是运行时状态改写的核心价值，而它必须是「默认开启且被断言覆盖」的值。**
+   故障注入 10 第一版**不变红**（把 hook 里的 `lockState ?? true` 改成 `?? false` 也不红），
+   根因**不是断言漏洞**，而是 harness **显式传了 `lockState`** ⇒ 默认值**无人覆盖**。
+   ⇒ 判据：**改了默认值却不红 ⇒ 先问"有没有人真的在用默认值"**，而不是去改断言。
+   修法是把"默认值"补成正式断言（`b28-check-hook-runtime.js` 加了 3 条）。
+
+③ **加密实现唯一可靠的验收口径是「能不能与外部工具对上」。**
+   本技能自己写不出可信的加密断言 —— 所以本批的锚点全部来自**外部**：
+   KDF 对 `openssl -P`、AES 核心对 FIPS/NIST 官方向量、公钥对源文常量 + **第二套独立实现**。
+   这三条都做成了 `--selftest` 里的常量，任何一次改动都会立刻打出来。
+
+### 附带修复（本批实跑带出）
+
+| # | 位置 | 问题（怎么发现的） | 处置 |
+| --- | --- | --- | --- |
+| 1 | `web-reverse-hook/scripts/hooks/spa-state-patch.js` | `replaceComponent` 直接 `factory.prototype = Object.create(Origin.prototype)` 会**静默丢弃**调用方写在 `prototype` 上的成员（原文三步法本身就有这个坑） | 改为**先搬运 own 成员再挂原型链**，并打印搬运数量；`b28-check-hook-runtime.js` 加 2 条断言钉住 |
+| 2 | `b28-verify-sources.py` 表 A | `up=1` / `ls=1` 被**归错源**（写在 `1703600` 名下，实际出自 `1701084` 的抓包表） | 移到正确来源；并把该抓包表**原样补进** `lanzou-protocol-generations.md` §4（既修错又增强） |
+| 3 | `b28-append-ledger.py` 竖线校验 | 注释里的字面量竖线（`||`、`fileId|userId`、`04||x||y`）会**撑破表格列数**；`!= 6` 应为 `!= 8`（7 列 ⇒ 8 个竖线） | 断言改为 8，并让工具**自动转义**注释里的裸竖线（**工具要为自己的输出负责**），故障注入验证它真的会变红 |
+| 4 | `cloud-drive-direct-link` 初稿 | 两处引用写法不合约定：`signed-api-and-helper-scripts.md` 里写了**裸跨技能路径**（缺 `../../`）、多处 §指针缺 `references/` 前缀 | `check_skill_integrity.js` 的规则 2/2b **当场抓出**并修正 |
+
+### 下一批（B29）取材建议
+
+- 待处理 **473** 篇。
+- 优先级：
+  ① **T10 媒体链路族（本批主动未取）** —— 理由是它与 `stream-drm-reverse` 的既有覆盖
+     （`player-and-live-capture.md` / `vendor-key-schemes.md` / `hls-and-ts-structure.md`）高度重叠，
+     需要先做一次**"是否只值 evolve"的证伪**再动手（B26 教训：上一批的"优先级"不能当指令照做）。
+     其中 **`52pojie-2017001` 是第 27 轮被 `BLOCK_EXTRA27` 静默误杀的真阳性**，应**单独判族**。
+  ② **T8 剩余**（城通 / 奶牛 / 123 云盘 / 百度盘等**非蓝奏云族**）继续落 `cloud-drive-direct-link`
+     —— **只有出现"新形态"（新的签名方式 / 新的门禁）才动脚本**，同类只补 references。
+  ③ **T9 剩余**（油猴 / 扩展 / Electron 变体）继续落 `desktop-client-reverse` 与 `web-reverse-hook`。
+  ④ **网马时代线 + 小游戏线**（B27 列过，但在本批新增的 56 篇里 **0 命中**）仍待语料回流。
+  ⑤ **验证码簇**只取"新题型或带完整纯算交付"（B26 已论证单站协议链不再逐篇收）。
+- **B28 遗留**：
+  1. `52pojie-1908049` 的 `encryptHex` **算法本体未还原**（只登记"它是算法型 + 在哪 + 怎么用"）；
+  2. `52pojie-1745677` 的 `01` 后缀语义（`concat(u)` / `recovered`）**源文未展开**，文档已按"未证"标注；
+  3. `52pojie-1865269` 的"验证码"只登记为现象，未拿到样本；
+  4. `52pojie-1707613` 的 `pan.num` 配置对象是"脚本内联"还是"远端下发"**源文未明确**，
+     文档按前者写并注明；后续若拿到样本需回源复核；
+  5. `52pojie-2078178` 的 `acw_sc__v2` 只做"判出并转交"，未落实现（属 `web-js-env-patcher`）；
+  6. `miniprogram-reverse` 排错表的 `RadiumWMPF` 版本绑定条目仍待回源复核（B25 记，**连续五轮未碰**）。
+- 候选新技能 `captcha-flow-orchestration` —— B5–B27 **二十一次确认不新建**；B28 **未出现新的同族簇**，
+  **二十二次确认不新建**（本批反而把"状态改写 / 注册表替换"归入了 `web-reverse-hook` 的既有能力面）。
+- 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
