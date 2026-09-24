@@ -853,6 +853,16 @@ python scripts/audit-corpus.py --ref <语料目录> --pool <候选池.json>
    保留 `--mal2` 只为「黑名单体检」用途（G 表已连续 4 轮 0 误杀）。
    ⇒ 若还要在恶意内容方向增量，只能换**新形态**（如第 27 轮发现的「网盘/文件站前端链路」）。
 
+75. **推送失败的两种不同成因：credential helper（坑 16）与 socks5 代理（第 27 轮）**：
+   - 第 16 轮踩的是 `credential.helper=helper-selector` 抢认证 → 用 `-c credential.helper=store` 解决；
+   - 第 27 轮踩的是 **`http.proxy=socks5(h)://127.0.0.1:17890` 已失效**，表现为
+     `schannel: failed to receive handshake, SSL/TLS connection failed`（切 `http.sslBackend=openssl`
+     则报 `unexpected eof while reading`），**重试 3 次全失败**；而此时 `curl https://github.com` 返回 200
+     ⇒ **不是网络不通，是本地代理挂了**。
+   - 判据：`git config --list | grep -i proxy` 有值 + `curl` 能通 + `git ls-remote` 握手失败
+     ⇒ **用 `git -c http.proxy= -c https.proxy= ...` 直连**（实测 `ls-remote`/`push` 均立即成功）。
+   - 完整稳妥命令：`git -c http.proxy= -c https.proxy= -c credential.helper=store push`。
+
 ## 产物与索引
 
 - 语料：`<语料目录>/<platform>-<id>-<title>.md`
