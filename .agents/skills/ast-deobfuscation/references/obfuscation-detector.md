@@ -44,6 +44,7 @@
 | --- | --- | --- |
 | `ob-variant`（`_0x` 命名 / 大数组 / 解密函数） | 是标准 OB，但在线站点只解开一部分 | `references/ob-variant-taxonomy.md`（变体分类 + 主动调用配方） |
 | `javascript-obfuscator` + 结构干净 | 标准 OB，通用 pass 够用 | `scripts/decode-obfuscator-pass.js`；安全边界见 `references/decode-obfuscator.md` |
+| `javascript-obfuscator` + **要按「字符串 → 字典 → 假分支 → 平坦化」手工分步推进 / 手写 pass** | 教学链视角（顺序依赖、5 类返回值、手写崩溃点、自造样本 oracle） | `references/obfuscator-io-four-step-pipeline.md` |
 | `webpack` / `browserify` | 是打包，不是混淆 | `references/webcrack-bundle-unpack.md` |
 | `control-flow-flattening` | 单层 `while+switch` 平坦化 | `references/control-flow-and-opcode-patterns.md` |
 | `control-flow-flattening` + **switch 嵌套多层、起始 index 由调用传参** | 多入口多层 switch，**不是**单层 CFF | `references/multi-entry-switch-reduction.md`（先读，别直接 `flatten`） |

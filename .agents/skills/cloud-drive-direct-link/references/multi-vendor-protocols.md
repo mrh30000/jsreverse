@@ -191,6 +191,37 @@ require(["function-widget-1:share/util/service/createLinkShare.js"])
 `require(["function-widget-N:…"])` 能取到的模块，都能在运行时替换其 `prototype` 上的方法。
 与 §2.1.1 的 host 替换、`1735138` 的 `video.pause = null` 同属**"不改源码改运行时"**一族。
 
+### §2.6 客户端平台伪装（`navigator.platform`）：**限制在前端，不在协议里**
+
+来源 `52pojie-742650`（2018 年，转载，工具 `BaiduYunEnhancer` 0.5.2）。整个脚本**只有一行有效代码**：
+
+```js
+// ==UserScript==
+// @match        http*://pan.baidu.com/*
+// @run-at       document-start
+// ==/UserScript==
+Object.defineProperty(navigator, 'platform', { get: function () { return 'Maoger'; } });
+```
+
+脚本自己的 description 直接说明了目标：「通过修改浏览器的操作系统和（或）硬件平台（`navigator.platform`），
+破解 百度云/百度网盘 的下载限制」。
+
+| 要点 | 说明 |
+| --- | --- |
+| **`@match http*://…`** | `http*` 是合法写法，等价于 **http + https 两条**；只写 `https` 会漏掉 http 入口 |
+| **`@run-at document-start` 是必须的** | 站点在**页面脚本里**读 `navigator.platform`；装晚了读到真值。注入时机四档见 `../../web-reverse-hook/SKILL.md`「断点暂停」一节 |
+| **必须用 `defineProperty` 覆盖 getter** | 直接 `navigator.platform = 'X'` 在多数浏览器上是**只读属性、静默失败**（赋值不报错但读出来还是真值） |
+
+**判据（这才是本节的长期价值）**：接口链路**完全正确**、直链也拿到了，但**行为仍被限制**
+（限速 / 要求装客户端 / 要求登录），**且 Network 里看不到任何额外请求** ⇒
+限制落在**前端环境判断**上，不在协议里。此时去查 `navigator.platform` / `navigator.userAgent` /
+`navigator.hardwareConcurrency` 这类**被读了但没影响请求**的属性。
+
+⚠️ **边界与时效**：这是 2018 年的手法，今天的百度早已换成**服务端限速 + 客户端签名**
+（`x-device-id` / `x-signature`，见 `signed-api-and-helper-scripts.md`）—— **不要把这一行当今天的可用解**。
+它登记的是**判据**与**手法族**：与 §2.1.1 的 host 替换、§2.5 的原型替换、`1735138` 的 `video.pause = null`
+同属「**不改源码改运行时**」，区别只在「改的是环境 / 地址 / 方法 / 播放器」。
+
 ## §3 123 云盘：三步，终点藏在 `params=<base64>` 里
 
 | 步 | 接口 | 参数 | 取什么 |

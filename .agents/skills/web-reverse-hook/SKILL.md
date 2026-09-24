@@ -1,6 +1,6 @@
 ---
 name: web-reverse-hook
-description: 生成并注入页面级运行时 Hook 脚本，用于拦截加密库（CryptoJS/JSEncrypt/SM-crypto）、JSVMP 虚拟机探针、反调试综合防御绕过（debugger/console/窗口尺寸/强退/iframe原生借用）、关键数据流追踪（Promise/Cookie/Storage/网络/时间）、SPA 动态路由深度提取（Vue/React 路由表与守卫清除）以及**Vue/Vuex 运行时状态固化与组件注册表替换**（油猴 / 篡改猴 / userscript 注入范式）。当用户提到“hook CryptoJS”“拦截 RSA 明文密文”“国密 hook”“JSVMP 探针”“绕过反调试”“无限 debugger”“阻止跳转/关闭”“SPA 隐藏路由提取”“拦截 cookie/storage/promise”“改 Vuex state”“$store.state 改不动”“__vue__ 取不到”“registerComponent 替换组件”“videojs Player 注入”“油猴脚本怎么注入”“无直链视频怎么下”“video 的 src 是 blob:”“网络面板只有分片没有可播地址”“hook addSourceBuffer”“MSE 缓存视频”“控制台反检测”“devtools 检测”“注入太晚拦截不到”“jQuery 事件定位”“Event Listener 只有 jQuery 闭包”“jQuery hook 拿不到真实回调”“$._data events”时使用。
+description: 生成并注入页面级运行时 Hook 脚本，用于拦截加密库（CryptoJS/JSEncrypt/SM-crypto）、JSVMP 虚拟机探针、反调试综合防御绕过（debugger/console/窗口尺寸/强退/iframe原生借用）、关键数据流追踪（Promise/Cookie/Storage/网络/时间）、SPA 动态路由深度提取（Vue/React 路由表与守卫清除）以及**Vue/Vuex 运行时状态固化与组件注册表替换**（油猴 / 篡改猴 / userscript 注入范式）。当用户提到“hook CryptoJS”“拦截 RSA 明文密文”“国密 hook”“JSVMP 探针”“绕过反调试”“无限 debugger”“阻止跳转/关闭”“SPA 隐藏路由提取”“拦截 cookie/storage/promise”“改 Vuex state”“$store.state 改不动”“__vue__ 取不到”“registerComponent 替换组件”“videojs Player 注入”“油猴脚本怎么注入”“无直链视频怎么下”“video 的 src 是 blob:”“网络面板只有分片没有可播地址”“hook addSourceBuffer”“MSE 缓存视频”“控制台反检测”“devtools 检测”“注入太晚拦截不到”“jQuery 事件定位”“Event Listener 只有 jQuery 闭包”“jQuery hook 拿不到真实回调”“$._data events”、以及“cookie hook 装完页面就不正常”“覆盖 document.cookie 后其它 cookie 丢了”“油猴 @match 不生效/只命中首页”“setter 里 debugger 断太多次”“没有任何注入设施时怎么抢在页面代码之前”时使用。
 ---
 
 # Web 运行时 Hook 脚本
@@ -180,6 +180,122 @@ browsercli call evaluate_script --function "() => JSON.stringify(window.__jquery
   它会明确打印「仍未拿到 window.jQuery」并给出替代路线（`dataflow` 预设按选择器 / 关键字追）；
 - 现代框架（Vue/React）的合成事件不走 jQuery，走 `spa-vue` / `spa-react` 或直接看组件注册表；
 - 本预设**不代理请求**：只解决「这段代码在哪」，不解决「它发了什么」。
+
+---
+
+## Cookie hook：三个「一定有」的坑（B31）
+
+来源：`docs/references/52pojie-1746432`（一篇**没人解答的提问帖**，反而把三个坑同时暴露在一段代码里）
++ `52pojie-1900424`（同型脚本的完整操作序列）。目标 cookie 是 `passport.1905.com` 的 `PHPSESSID`。
+
+### 坑 1 · `@match` 只写主机名 = **只匹配根路径**
+
+```js
+// @match        https://passport.1905.com      ← 只命中这一个 URL
+// @match        https://passport.1905.com/*    ← 才是「该站所有页面」
+```
+
+- **判据**：油猴装了、也启用了、Console 里却什么都没有 ⇒ 先看 `@match` 有没有 `/*`。
+  match pattern 的 path 部分不可省略；省略后语义是**根路径精确匹配**，带 path 或 query 的页面一律不命中。
+- 同类问题：`@match *://*.example.com/*` 与 `@match *://example.com/*` **不互相覆盖**（子域要单独写）。
+
+### 坑 2 · ★ 覆盖 `document.cookie` 时「只留最后一次写入的值」**会毁掉整站**
+
+提问帖里的代码是这个形态：
+
+```js
+let cookieTemp = '';
+Object.defineProperty(document, 'cookie', {
+  set: (newValue) => { /* 打日志 */ ; return (cookieTemp = newValue); },
+  get: () => cookieTemp,
+});
+```
+
+- **它的问题不是「hook 不到」，是「hook 把它改坏了」**：`cookieTemp = newValue` 是**赋值覆盖** ——
+  只保留**最后一段**写入的 `k=v`，站点之前写进去的会话 / 风控 / 埋点 cookie 全被丢掉；
+  `get` 又只返回这一段 ⇒ 页面自己再读 `document.cookie` 时读到的是残缺值。
+- **症状**：hook 装上之后页面「行为不正常」（登录态掉、风控失败、跳转异常），
+  于是第一反应是「hook 写错了」—— 其实逻辑没错，**是它干了观测之外的活**。
+- **正确姿势：转发给原生描述符，只做观测**（本技能 `dataflow` 预设的实现，见 `scripts/hooks/dataflow.js`
+  的 cookie 分支 —— 它会依次在 `document` / 原型 / `Document.prototype` / `HTMLDocument.prototype`
+  上找 `cookie` 描述符，找不到就静默跳过，找到才包）：
+
+```js
+const d = Object.getOwnPropertyDescriptor(document, 'cookie')
+       || Object.getOwnPropertyDescriptor(Document.prototype, 'cookie');
+Object.defineProperty(document, 'cookie', {
+  configurable: true,
+  get() { return d.get ? Reflect.apply(d.get, this, []) : ''; },   // ← 读走原生
+  set(v) { /* 只观测：打日志 / 条件断点 */ ; return Reflect.apply(d.set, this, [String(v)]); },  // ← 写走原生
+});
+```
+
+- **判据（一句话）**：**装完之后页面还正常，才是合格的观测 hook。**
+  凡是把 getter 换成「自己维护的字符串 / 自己维护的 map」的写法，都属于**改写**而不是观测 ——
+  要改写就明确说出来、并自己负责把 `k=v; ` 拼接与过期语义补齐（那已经不叫 hook 了）。
+
+#### 真机验收（Chrome，`artifacts/skill-evolution/b31-run/cookie-hook-ab.js`）
+
+同一页面顺序执行「坏 hook → 还原 → 好 hook」，实测：
+
+| 观测点 | 实测值 | 结论 |
+| --- | --- | --- |
+| `Object.getOwnPropertyDescriptor(document, 'cookie')` | `undefined` | **描述符默认不在 `document` 自身**（在 `Document.prototype` 上）⇒ 必须先沿原型链找，否则拿到 `undefined` 后 `defineProperty` 直接抛 `Property description must be an object: undefined` |
+| 坏 hook 写一次后读 `document.cookie` | `rj_c=3; path=/` | **读回来的就是最后一次写入的原始串** —— 之前的 `rj_a` / `rj_b` 在读取结果里全部消失 |
+| `delete document.cookie` 之后再读 | `rj_a=1; rj_b=2` | **cookie 本身没丢，是坏 hook 的 `get` 在「说谎」** ⇒ 症状是「页面行为异常」而不是「cookie 没了」 |
+| 好 hook 写一次后读 | `rj_a=1; rj_b=2; rj_d=4` | 旧 cookie 全在；同时 `seen` 里拿到原始写入串（观测不受影响） |
+
+- **附带结论**：被坏 hook 吞掉的那次写入（`rj_c`）是**真的没有落盘**（后面的检查 `good_all_present` 因它而 false）——
+  坏 hook 的破坏对被吞的写入是**不可逆**的，不只是「读不到」。
+- **还原技巧**：调试完要撤掉 hook，用 **`delete document.cookie`**（删掉自己装的**自有**属性即可，
+  原型上的原生描述符会自动重新生效）；**不要**用 `Object.getOwnPropertyDescriptor(document,'cookie')` 去「存原描述符再 restore」
+  —— 在干净页面上它本来就是 `undefined`，restore 会直接抛错。
+
+### 坑 3 · 无条件 `debugger` 放在 setter 里会断到你崩溃
+
+- 页面初始化阶段写 cookie 十几次很常见；无条件断点会让「刷新一次要点十几次继续」。
+- 本技能的做法：`--cookie-match <关键词>` ⇒ **只在匹配时才 `debugger`**，其余只打日志：
+
+```bash
+node .agents/skills/web-reverse-hook/scripts/build-hook.js dataflow \
+  --targets cookie --cookie-match PHPSESS --out hook-cookie-debug.js
+browsercli call evaluate_script --file hook-cookie-debug.js
+```
+
+- **匹配是「子串包含」**：想抓 `PHPSESSID` 写 `PHPSESSION` 也能命中（提问帖里就是这么写的，恰好能中）。
+  但反过来要小心 —— 关键词写得太短（如 `a`）会命中一切，等于没有条件。
+
+### 复现前置：先清 cookie
+
+`52pojie-1900424` 的第一步是**清空目标站 cookie** 再刷新。理由：让「写 cookie」的动作**从零开始**，
+否则响应里已经带着旧值，你分不清哪一次写入是首次、哪一次是更新。
+
+---
+
+## 「断点暂停」= 最可靠的注入时机（缺 `document-start` 时的穷人版）
+
+注入时机表（`inject_hook` / `@run-at document-start` / Tampermonkey *Userscript API Dynamic*）在
+下文「注入与生效时机」§3。这里补**第四个手段**，专治「纯 DevTools 手工环境、没有任何注入设施」或
+「前三个都还是不够早」：
+
+1. Network 勾 **`Preserve log`**，清掉目标站 cookie，刷新；
+2. 找到**第一个请求**（通常是文档本身）→ 右键 *Open in Sources panel*；
+3. 在该脚本**顶端**打一个断点；
+4. 再刷新 ⇒ 页面会在你手上**停住**（此刻页面自己的 JS **一行都没跑**）；
+5. 在 Console 里粘贴 hook 脚本（`evaluate_script` 在这里等价于「手工粘贴」）；
+6. 放行 ⇒ hook 在所有页面代码**之前**生效。
+
+**为什么它比 `document-start` 还稳**：断点暂停不是「抢跑」，而是把**时间轴停住**了 ——
+注入窗口是「你决定放行的那一刻」，理论上无限宽。三个前提前提是「你必须能停在第一个脚本上」。
+
+**三条纪律**：
+
+- 断点**必须打在第一个脚本**上，打晚了前面的代码已经跑完；
+- 「第一个脚本」不一定是文档本身 —— **内联 `<script>` 也算**，按 Network 里最先出现的那个资源找；
+- 这只解决**「装得早」**，不解决**「装得对」** —— 上面坑 1/2/3 照样要逐条处理。
+
+**边界**：手工调试用它最快；要长期生效仍应落成油猴脚本或 `inject_hook`
+（并注意 `52pojie-1746432` 的教训：**落成油猴时 `@match` 与描述符转发是两个必查项**）。
 
 ---
 

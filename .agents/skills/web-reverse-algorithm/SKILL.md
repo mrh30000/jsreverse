@@ -1,6 +1,6 @@
 ---
 name: web-reverse-algorithm
-description: 面向 Web/JS 逆向中的纯算、验证码纯算、复杂 header/cookie 签名、混合加密、JSVMP/VMP、Wasm、PoW、响应解密、指纹与 challenge 参数还原工作流。用于需要从最终请求、最终 cookie、最终 verify 或最终 WebSocket 帧倒推 writer、builder、entry、source，设计浏览器与本地对齐检查点，判断何时做 AST 解混、何时插桩、何时做最小补环境、何时拆图像线与参数线、以及如何把研究结果落成 solver、SDK、脚本或服务的场景。用户明确提到纯算、验证码纯算、滑块、点选、旋转、PoW、collect、w、x-s、a_bogus、encSecKey、captchaBody、X-Bogus、Wasm、国密、补环境、指纹、challenge、verify、header 签名、cookie 签名、登录密码加密、登录提交参数、表单参数、单点登录、CAS、WebVPN、execution 令牌、RSA 公钥、JSEncrypt、密码 MD5 加盐、`publickey_mod`、DES 解密、`encoded` 隐藏字段时使用。当目标带无限 debugger / 反调试（打开 DevTools 就断住、document.write 覆写页面、eval 监管脚本）、JS 每次访问都变、响应体是加密的 JS、需要 mitmproxy/Fiddler 改写响应做在线补丁、或要判断某个参数属于「固定 / 上次返回 / JS 计算」时，同样使用本技能。
+description: 面向 Web/JS 逆向中的纯算、验证码纯算、复杂 header/cookie 签名、混合加密、JSVMP/VMP、Wasm、PoW、响应解密、指纹与 challenge 参数还原工作流。用于需要从最终请求、最终 cookie、最终 verify 或最终 WebSocket 帧倒推 writer、builder、entry、source，设计浏览器与本地对齐检查点，判断何时做 AST 解混、何时插桩、何时做最小补环境、何时拆图像线与参数线、以及如何把研究结果落成 solver、SDK、脚本或服务的场景。用户明确提到纯算、验证码纯算、滑块、点选、旋转、PoW、collect、w、x-s、a_bogus、encSecKey、captchaBody、X-Bogus、Wasm、国密、补环境、指纹、challenge、verify、header 签名、cookie 签名、登录密码加密、登录提交参数、表单参数、单点登录、CAS、WebVPN、execution 令牌、RSA 公钥、JSEncrypt、密码 MD5 加盐、`publickey_mod`、DES 解密、`encoded` 隐藏字段时使用。当目标带无限 debugger / 反调试（打开 DevTools 就断住、document.write 覆写页面、eval 监管脚本）、JS 每次访问都变、响应体是加密的 JS、需要 mitmproxy/Fiddler 改写响应做在线补丁、或要判断某个参数属于「固定 / 上次返回 / JS 计算」时，同样使用本技能。当需要在 DevTools 里**跟栈定位加密发生在哪一行**（参数在某层「消失」、断在函数头部已带密文、函数没有形参却返回密文）、用**条件断点**在几十个共用同一拦截器的请求里筛出目标包、按「缺什么补什么」扣代码并让加载器自己报出缺失模块、排查**原型追加的方法必须在 `new` 之前补**或加载器头部「形参与 `e = {}` 冲突」时，也用本技能。
 ---
 
 # Web 逆向纯算
@@ -53,6 +53,7 @@ node skills/web-reverse-algorithm/scripts/detect-crypto.js -i ./dist/sign.js --j
 优先判断你卡在下面哪一类：
 
 - 入口没找对
+- **加密发生在哪一行还没钉死**（多层调用栈、同一个加密函数被几十个请求共用、异步栈里断不住）
 - 原始串或原始 payload 没对齐
 - 中间数组 / 中间对象没采到
 - 运行时依赖没补齐
@@ -64,6 +65,14 @@ node skills/web-reverse-algorithm/scripts/detect-crypto.js -i ./dist/sign.js --j
 
 后两类不要硬啃代码，读 [references/07-antidebug-and-live-patching.md](./references/07-antidebug-and-live-patching.md)：
 响应改写 + 在线补丁比「扣代码」快一个数量级，且动态 JS 类目标**扣代码必然失效**（判据：JS 变、加密逻辑不变 ⇒ 只还原逻辑，不扣代码）。
+
+**「加密在哪一行」还没钉死时**，读 [references/15-call-site-locating-playbook.md](./references/15-call-site-locating-playbook.md)
+（该文是「跟栈 + 断点定位调用点」的唯一权威源）：五条判据（其中 **J1「参数在某层消失」复用率最高**）、
+`send` 起点的统一开场、三种生成形态（另一模块产出 / 本函数内逐步生成 / 来自会话）、
+**唯一验收动作「断点处的值与最终请求里的值逐字符对拍」**、
+**多包共用同一加密函数时的条件断点**（`e.url.includes('...')`，异步栈里要改到异步那一帧）、
+以及「扣代码」的四个实操要点（报错驱动补全 / 让加载器 `console.log` 自己报缺哪个模块 /
+**原型追加的方法必须补在 `new` 之前** / 加载器头部「形参 vs `e = {}`」冲突）。
 
 **反调试的范围远不止 `debugger`**：还有窗口尺寸探测、console 探测、跳转/清 DOM/内存炸弹、
 原生方法完整性校验、以及**受 hook 影响的隐藏 iframe**（从 `contentWindow` 取回未 hook 的原生 API）。
@@ -359,6 +368,14 @@ python scripts/waf_clearance_solver.py --selftest
   用途：新站点或新 challenge 建标准化案例目录。
 - [scripts/browser_rpc_bridge.py](./scripts/browser_rpc_bridge.py)
   用途：**浏览器 WebSocket RPC 桥接中继服务** —— 支持 `--emit-inject` 打印浏览器注入脚本，支持 `--serve` 启动双向 WS/HTTP 调用中继，支持 `--call` 命令行快速验证。
+- [references/15-call-site-locating-playbook.md](./references/15-call-site-locating-playbook.md)
+  用途：**「加密发生在哪一行」的唯一权威源** —— 跟栈五判据（J1「参数在某层消失」/ J2 头部已带密文 /
+  J3 头部没有尾部有 / J4 函数无形参 / J5 控制台是明文）、`send` 起点与 `Preserve log` 开场、
+  三种生成形态、**「断点处的值 vs 最终请求里的值」逐字符对拍**（唯一验收动作）与「连抓两次」定参数三分类、
+  三个隐藏依赖（**响应 Cookie 既是加密输入又是请求头** / 时间戳同源 / 表单格式一致）、
+  `public` 密钥包 → 目标密文包的两包链、扣代码四要点（报错驱动补全 / `console.log(e)` 让加载器报缺模块 /
+  **原型方法必须补在 `new` 之前** / 加载器头部形参与 `e = {}` 冲突）、
+  条件断点定位器（`e.url.includes(...)`，异步栈内要换帧）、八条静默陷阱（**抄串先搜 `&#` 实体** / 待签数组 `sort()` / 参数在 URL 而非 body）。
 - 媒体流 / DRM / ts 分片（判层、AES/SM4 内容解密、许可证体系、白盒 wasm）→ `../stream-drm-reverse/SKILL.md`：
   本技能不覆盖这条链路，遇到 `m3u8` / `EXT-X-KEY` / `GetLicense` / 花屏类现象请直接切过去。
 

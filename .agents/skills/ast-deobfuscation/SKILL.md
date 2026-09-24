@@ -1,6 +1,6 @@
 ---
 name: ast-deobfuscation
-description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反混淆。适用于 `_0x` 标识符、字符串表、自执行解码包装、`["$_x"].concat(fn)` + `shift()` 形式的别名族、dispatcher 对象、虚假常量分支、`while/for + switch` 控制流平坦化、`if (literal === opcode)` 分发链、OB 混淆变体（数组元素掺非字符串、去自执行、打乱 base64 码表、解密函数多重赋值分身、字典混淆、外衣函数嵌套）、多入口多层 switch，以及 Sojson（v4/v5/v6 定向解密与自毁反调试清理）、JSFuck 纯算符号递归折叠等场景。需要通过 browsercli 从页面定位、导出或运行时验证混淆脚本，以及用户明确提到 decodeObfuscator、sojson、jsfuck、reese84、顶象、极验（v3 的 `$_` 前缀变量族与 v4 的 guarded-switch）、同花顺、网易易盾、小红书、BOSS 直聘/zp_stoken、OB 变种或类似站点适配时也使用本 skill。JSVMP 场景下同样适用于：反汇编产物（IR）的常量折叠 / 死 case 消除 / 短路还原 / CFG 回译成 JS、指令集与 opcode 位域还原、助记符表对齐、插桩日志常量取证。
+description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反混淆。适用于 `_0x` 标识符、字符串表、自执行解码包装、`["$_x"].concat(fn)` + `shift()` 形式的别名族、dispatcher 对象、虚假常量分支、`while/for + switch` 控制流平坦化、`if (literal === opcode)` 分发链、OB 混淆变体（数组元素掺非字符串、去自执行、打乱 base64 码表、解密函数多重赋值分身、字典混淆、外衣函数嵌套）、多入口多层 switch，以及 Sojson（v4/v5/v6 定向解密与自毁反调试清理）、JSFuck 纯算符号递归折叠等场景。需要按 obfuscator.io 默认输出的「函数调用还原 → 对象调用还原 → 分支流程判断 → 平坦化控制流」四步链手工推进（含同一配置自造样本、拿原码做端到端 diff 的 oracle 法），或需要通过 browsercli 从页面定位、导出或运行时验证混淆脚本，以及用户明确提到 decodeObfuscator、sojson、jsfuck、reese84、顶象、极验（v3 的 `$_` 前缀变量族与 v4 的 guarded-switch）、同花顺、网易易盾、小红书、BOSS 直聘/zp_stoken、OB 变种或类似站点适配时也使用本 skill。JSVMP 场景下同样适用于：反汇编产物（IR）的常量折叠 / 死 case 消除 / 短路还原 / CFG 回译成 JS、指令集与 opcode 位域还原、助记符表对齐、插桩日志常量取证。
 ---
 
 # AST 反混淆
@@ -100,6 +100,13 @@ description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反�
 - 处理字符串表、解码 stub、最小运行时求值时，读 `references/string-array-and-minimal-eval.md`；
   **极验系的「别名族 + 数组字面量」模板（真实形态是一条 `var` 带 3 个 declarator + 紧跟一条 `shift()`）
   必须整组先处理，否则字符串表永远还原不出来**，配方与两个坑（哨兵变量被误删、`shift()` 残留）见该文件「别名族」一节。
+- **拿到的是 obfuscator.io / javascript-obfuscator 的默认输出、且想按「字符串还原 → 字典对象 → 假分支 → 平坦化」
+  的顺序手工推进时，读 `references/obfuscator-io-four-step-pipeline.md`**：
+  该文给**四步的顺序依赖表**（每步漏做的症状：S2 漏做 ⇒ `test` 两侧不是字面量，S3 漏做 ⇒ 顺序串定位被干扰）、
+  S1「函数名不能写死」的顶层三节点结构、S2 的**5 类返回值替换表**、
+  S3 **手写实现（Python / estraverse）的三个静默崩溃点**（`alternate === null`、父节点没有 `body`、`==` 当成 `===`），
+  以及**最高性价比的一招：用同一份配置自己生成混淆样本、拿原码做端到端 diff**（原码在手 ⇒ 失败必然是 pass 错）。
+  ⚠️ 判据只对**同一 shell** 有迁移性：先核对顶层结构（`_0x` 名 + 大数组 IIFE + 取值函数），不要按站点名套用。
 - 需要理解 decodeObfuscator 兼容能力和 `eval` 安全边界时，读 `references/decode-obfuscator.md`。
 - 深入 BabelPack AST 变换与动态求值时，读 `references/babelpack-enhancer.md`。
 - 零宽字符与特殊编码清洗时，读 `references/invisible-unicode.md`。

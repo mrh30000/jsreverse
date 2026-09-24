@@ -130,6 +130,9 @@ description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链�
 | ★ license 请求 200 但 key 是空的/假的 | 没设 **service certificate**（Privacy Mode） | 先 POST `\x08\x04` 拿证书 → `set_service_certificate`（`widevine-cdm-and-eme.md` §2） |
 | ★ `mp4decrypt` 直接报错 | 它必须显式 `--key KID:KEY` | 或换 `ffmpeg -decryption_key <KEY>`（免 KID） |
 | ★ Postman/curl 能过、脚本过不去 | CDN 强制 **HTTP/2** + TLS 指纹 | 改用 HTTP/2 发包，别只改 cipher 顺序 |
+| ★ 直播源**看一会就断** | 地址里带 `wsAuth`/`token`/`expire`/`did` ⇒ 短效，不是解析失败 | 长期化三步：换稳定 CDN + 从 `.flv?` 截断 + 清清晰度后缀（`references/live-source-longevity.md` §0/§1） |
+| ★ **本地能取、服务器取不到**（关键字段为空） | **机房 IP 黑名单**，不是算法问题 | 先做本地 vs 线上同请求 A/B；处置走代理 IP 池（同上 §3） |
+| ★ 抄来的页面串里出现 `amp;` / `&#182;` / `×` | **HTML 实体残留**（三个已确认实例） | 一律先搜这三个模式再拼串（同上 §2） |
 
 ## 反例黑名单（不要做的事）
 
@@ -259,6 +262,14 @@ python $S/key_wrapper.py noise-check --chars "-_! " --json
 
 ## 资源
 
+- `references/live-source-longevity.md`：**直播源「长期化」唯一权威源（B31 新增）** ——
+  §0 一句话判据（地址带 `wsAuth`/`token`/`expire`/`did` ⇒ 必然短效，长期化 = 切「不变段 + 时效段」）、
+  斗鱼三步改写（二级域名→`tx2play1`、从 `.flv?` 截断、清晰度后缀；**必须 HTTP** + `_4000p` 兜底）、
+  虎牙（`hyPlayerConfig` 内联 JSON / `"state":"ON"` 开播判据 / `str_replace('amp;','')`
+  —— **HTML 实体残留的第三例，三例已升格为通用判据**）+ **手机 UA `m.huya.com` 一条正则出源**、
+  B 站三接口关系（③ = ① + ②；② 未开播也有 `durl` ⇒ 接近永久源）与
+  **★★ 机房 IP 黑名单**（本地绿、线上红且关键字段为空 ⇒ 先怀疑 IP 段，别在请求头上打转）、
+  asx 容器作为长期源的交付形态、8 行排错表。
 - `references/playback-address-interfaces.md`：**§0 地址还原层（视频 / 直播 / 音频站取地址）唯一权威源** ——
   定层判据（§0 与 A–F 的分界）、长视频三段式链路（爱奇艺 `cache.video.iqiyi.com/dash` +
   `authKey=md5(md5("")+tm+tvid)` 与清晰度成套参数 / 腾讯 `proxyhttp` + `auth_refresh` 会话自举 +

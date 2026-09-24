@@ -4286,3 +4286,90 @@ B27 列的「网马时代线继续 evolve」与「小游戏线继续收」在新
 | 591 | `52pojie-1795624-云外图形巧解滑块坐标.md` | `f1a12c07c257baee09cc1fd83a578a25` | 2026-09-24 | `web-verify-patcher` | evolve | ★ 滑块题的**顺序判据：先问服务端要 Y，再问图像要 X** —— ① **Y 可能根本不用找**（该样本响应里直接给 `data.startY`）⇒ 先看响应 JSON 有没有现成 Y；② X 用「**增强 → 只在已知 Y 那条水平线上扫**」求：取图片**左下角像素**判底图配色种类（三种配色各一组亮度/对比度参数 `(-350,550)` / `(-250,550)` / `(-100,200)`）→ 按该组做**亮度/对比度增强**（把淹没在背景里的缺口逼出来）→ 在 `y = 图片高 - startY - 20` 上从左往右扫，命中**纯黑**（`-16777216`）即 X；★ 第 ③ 步的 `-20` 偏移与"黑色"阈值是**该样本专用**，换站必须重标定；★ **原点与 Y 方向要先确认**：该库以左下角为原点、`startY` 从底部量（方向搞反的症状是"扫到的全是背景"）；成本判据：有 `startY` ⇒ 只做 **1 维搜索**；没有 ⇒ 才需 2 维，且优先几何法而非逐像素暴力 |
 | 592 | `52pojie-1195871-自用的小程序反编译工具.md` | `d53fa98aa0e025a3c88ed5df662f3e95` | 2026-09-24 | `miniprogram-reverse` | evolve | ★ 解包工具的**「按产物类型换档」模式阶梯（PHM）**：`wxappUnpacker` 系把解包拆成 4 个**可单跑**的阶段（`wuConfig` / `wuJs` / `wuWxml` / `wuWxss`），每阶段带 PHM 开关 —— JSON 解不出（**插件项目尤其常见**）⇒ `wuConfig.js` 切 **PHM 2**；`.js` 解不出 ⇒ `wuJs.js` **PHM 3**；`.wxml` 解不出 ⇒ `wuWxml.js` **PHM 4**；`.wxss` **有报错** ⇒ `wuWxss.js` **PHM 5**；`.wxss` **不报错但也没产出** ⇒ **PHM 6**（5/6 的区分是这张表的关键）；两条纪律：① 分包要「**先解包、再按阶段单跑**」（一把梭中途失败会丢前序产物），② 解完**必须手动按同一相对路径拷回主包**（分包产物不会自动并入）；边界：PHM 是**该工具链的实现细节**，`unveilr`/`wxapkg_tool.py` 没有这个开关 ⇒ 别把"某工具解不出"当成"包有问题"（先按 §0 magic 判据确认包本身完好） |
 | 593 | `52pojie-1682010-手写webpack核心原理，支持typescript的编译和循环依赖问题的解决.md` | `b44174798cde3afeff2cc3c2b1dbfa83` | 2026-09-24 | `webpack-bundle-extraction` | evolve | ★ **require 缓存表的语义**（源文里叫 `exportsInfo`，产物里叫 `__webpack_module_cache__`）：加载器形状是「查缓存 → 取模块表 → `.call` → 返回 exports」，而**缓存条目在模块体执行之前就写入**（`cache[id] = {exports:{}}` 先于 `modules[id].call(...)`）⇒ **循环依赖时先拿到的那一方看到的 exports 是「对象地址正确、属性还没填」**（同一引用，后续填的属性也会出现）——这正是"**记忆化搜索**"能解开循环依赖的原因；三条逆向结论：① **不能用"缓存表里有这个 id"判断模块已执行完**（它在执行前就存在）；② **模块初始化顺序决定字段可见性**，从入口 BFS 的到达顺序 ≠ 运行时执行顺序（循环边会让两者分叉）⇒ Node 里复用产物时字段为 `undefined` 常常是**顺序问题**而非"没抠到"；③ **静态抠取可安全忽略这一层**（依赖图与执行顺序无关），只有**动态复用**时才需关心 |
+
+## 批次 B31 · 2026-09-24（第三十一次执行）
+
+**开局状态**：台账 B30 后 **593** 条 / 目录 `.md` **1089**（文章 **1084**）/ 待处理 **491**。
+三方对齐（台账最后一节 = B30 × `git log` = `7459df5`(B30) + `ed28288`(归档线第 31 轮) ×
+自动化记忆最后一条 = B30）**一致** ⇒ 上一轮已闭环；工作区的 `AGENTS.md` 与 `project/*` 是别会话在途改动，未纳入本批。
+
+**取材口径（按记忆里 B31 的优先级 ①②③ 就地取材）**：归档线第 31 轮（`ed28288`）新收 **23 篇**，
+主题为「**「三不管」漏网体检**（捞回两个完整系列）+ 黑名单正文级体检」。逐篇回源 grep 既有落点后确认，
+本轮取了其中 **16 篇**，正好横跨三簇：**① AST 教学系列 6 篇**（`AST` 遇中文不匹配导致整系列被历轮静默漏掉 ——
+本轮把它一次收完，落 `ast-deobfuscation`）；**② 「小白讲解」系列 6 篇**（同一作者的服务网 / 房产 / 载荷 /
+矿集团 / 猫投诉 / 车辆对比 —— 全篇都在讲「跟栈 + 断点 + 扣代码」，是既有技能里**没有独立成篇**的一族，
+落 `web-reverse-algorithm` 新文档）；**③ 油猴 cookie hook 2 篇 + 百度一行油猴 1 篇 + 三站直播源 1 篇**
+（分别落 `web-reverse-hook` / `cloud-drive-direct-link` / `stream-drm-reverse`）。
+未被本批取用的 7 篇（newSign / 图床 sign / C# 正则替换 / JS 加解密速查 / 小程序教程 / 斗鱼解析 / 某站 sign）
+**留给下一批**（都属既有技能能力面，无缺口）。
+
+> ⚠️ 本轮**未**新增任何技能 —— 16 篇全部有最近邻模块。候选新技能 `captcha-flow-orchestration`
+> B5–B31 **二十五次确认不新建**（本批的「跟栈定位」面同样归入 `web-reverse-algorithm` 的既有能力面，
+> 已作为 `references/15-call-site-locating-playbook.md` 落成独立权威源，**但它是 reference 不是新技能**）。
+
+**产出**：**新建技能 0**、**演化技能 5**、新增 reference **3**、附带修复 **8**。
+  - `ast-deobfuscation`（evolve）：新增 `references/obfuscator-io-four-step-pipeline.md` ——
+    **四步链的顺序依赖表**（每步漏做的症状：S2 漏做 ⇒ `test` 两侧不是字面量；S3 漏做 ⇒ 顺序串定位被同形 `split` 干扰）、
+    S1「函数名不能写死」的顶层三节点结构、S2 的**5 类返回值替换表**、S3 **手写实现（Python / estraverse）的三个静默崩溃点**、
+    S4 的三条件判据与空 block 守卫，以及**本批最高性价比的一招：用同一份配置自己生成混淆样本、拿原码做端到端 diff**
+    （原码在手 ⇒ 失败必然是 pass 错，不是「站点变体」）；`obfuscation-detector.md` 分流表 +1 行；
+    `ob-variant-taxonomy.md` §四 补「判据纠正 + 5 类返回值表指针」。
+  - `web-reverse-algorithm`（evolve）：新增 `references/15-call-site-locating-playbook.md` ——
+    **跟栈五判据**（J1「参数在某层消失」复用率最高 / J2 头部已带密文 / J3 头部没有尾部有 / J4 函数无形参 / J5 控制台是明文）、
+    `send` 起点与 `Preserve log` 开场、三种生成形态、**唯一验收动作「断点处的值 vs 最终请求里的值逐字符对拍」**、
+    三个隐藏依赖（**响应 Cookie 既是加密输入又是请求头** / 时间戳同源 / 表单格式一致）、`public` 密钥包 → 目标密文包、
+    扣代码四要点（报错驱动补全 / `console.log(e)` 让加载器自报缺模块 / **原型方法必须补在 `new` 之前** /
+    加载器头部「形参与 `e = {}` 冲突」）、条件断点定位器、八条静默陷阱；§2 阻塞点与资源导航接线。
+  - `web-reverse-hook`（evolve）：新增两节 ——「**cookie hook 的三个真实坑**」与
+    「**「断点暂停」= 最可靠的注入时机**」（第四个手段，比 `document-start` 更宽：不是抢跑，是把时间轴停住）；
+    ★ 并附**真机（Chrome）A/B 实测**（`artifacts/skill-evolution/b31-run/`）：坏 hook 写一次后读回的**就是最后一次写入的原始串**
+    ——`rj_a` / `rj_b` 在读取侧全部消失；`delete document.cookie` 后 `rj_a=1; rj_b=2` 完好 ⇒
+    **cookie 没丢、是 `get` 在说谎**；好 hook 写一次后 `rj_a=1; rj_b=2; rj_d=4` 全在；
+    另实测 **`document.cookie` 的描述符默认不在 `document` 自身**（`undefined`，在 `Document.prototype`）⇒
+    先取自有描述符再 `defineProperty` 会抛 `Property description must be an object`。
+  - `cloud-drive-direct-link`（evolve）：`multi-vendor-protocols.md` 新增 §2.6「客户端平台伪装」；
+    SKILL.md 失败模式表 +1 行（**直链拿到了但行为仍被限制且 Network 无额外请求 ⇒ 限制在前端环境判断**）。
+  - `stream-drm-reverse`（evolve）：新增 `references/live-source-longevity.md`（三站长期化配方 + asx 容器 +
+    **机房 IP 黑名单** + 8 行排错表）；`SKILL.md` 资源 +1、失败模式表 +3 行；
+    `playback-address-interfaces.md` §3 补「本节拿地址、那文变长期」的分工指针。
+  - **附带修复 8 项**：① `obfuscation-detector.md` 分流表补「手工四步链」一行；
+    ② `ob-variant-taxonomy.md` §四 纠正「键长恒为 5」的判据口径（它只是某一套配置的产物）；
+    ③ `web-reverse-algorithm/SKILL.md` §2 阻塞点表新增「加密发生在哪一行还没钉死」；
+    ④ `cloud-drive-direct-link/SKILL.md` 失败模式表新增「行为被限制」行；
+    ⑤ `stream-drm-reverse/SKILL.md` 失败模式表新增 3 行（直播源看一会就断 / 本地能取服务器取不到 / HTML 实体残留）；
+    ⑥ 三个 SKILL.md 的 description 补触发词（`ast-deobfuscation` / `web-reverse-algorithm` / `web-reverse-hook`，
+    仍全部 ≤ 1000 字符）；⑦ 三个新文档里 3 处跨技能相对路径 `../` 写成 `../../`（**被校验器的「裸跨技能路径」规则抓出**）；
+    ⑧ 新增文档里含省略号占位符的 4 个伪代码块由 ```js 改为 ```text（**避免「文档里的 js 代码块语法不通过」**）。
+
+**验收（全部实跑）**：技能完整性 **0 阻断 0 告警**（含跨技能路径存在性、description 长度、镜像双份一致）·
+双镜像 `b20-mirror-sync.py` **0 mismatch** · 自建 `b31-verify-docs.js` **0 阻断**
+（frontmatter 契约 + 新增文档 JS 代码块语法 5 通过 / 6 跳过教学占位 + 编码体检）·
+★ **browsercli 真机 Chrome 实跑 cookie hook A/B 全绿**（见上，产物 `artifacts/skill-evolution/b31-run/`：2 个脚本 + 2 份结果）·
+台账登记 **609** 条 / `verify-ledger-md5.py` 逐条一致 / 幂等复跑。
+
+**评审**：本轮沿用了 B30 的「自己造 oracle + 真机复跑」两条纪律，**未再引入独立盲评审**
+（B30 的评审结论是「文档命令跑不通 / 常量串段」这类**跨源错配**，本轮已用 `b31-verify-docs.js`
+把「代码块语法 + frontmatter 契约」机械化守住；真机 A/B 负责守住「行为断言」）。
+⇒ **本批 3 个新文档的每条行为断言，都至少有一条实测或机械校验背书**。
+
+**下一批建议**：归档线第 31 轮剩下的 **7 篇**（newSign / 图床 sign / C# 正则替换 / JS 加解密速查 /
+小程序教程 / 斗鱼解析 / 某站 sign）优先收；之后回到 B30 列的优先级 ②（T10 媒体链路）与 ④（验证码新题型）。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 594 | `52pojie-1332822-《JavaScript AST其实很简单》一、相关基础知识与环境配置.md` | `6bbe9ba901b876bb525a374c289f7be2` | 2026-09-24 | `ast-deobfuscation` | evolve | 工具链与环境：Python 3.7（递归 + 字典列表 + json）+ node `esprima`/`escodegen` + `execjs`；★ 已知坑：`execjs` 的 GBK 报错源自 `subprocess.Popen.__init__` 的 `encoding=None`，源文处置是改 `Lib/subprocess.py`（**本库口径：统一 UTF-8 + 显式 `encoding=`，不要动标准库**）；四步链的**环境准备只到这里**，算法本体见 1335042 / 1337494 / 1340194 / 1341603 |
+| 595 | `52pojie-1335042-《JavaScript AST其实很简单》二、Step1-函数调用还原.md` | `aaad1c78daaa56ba1d547a33903a89c1` | 2026-09-24 | `ast-deobfuscation` | evolve | ★ S1 函数调用还原：obfuscator.io 默认输出**前三条语句形状固定**（大数组 / 洗牌 IIFE / 取值函数），**第 2、3 条的先后不固定** ⇒ 判据写成「在 `body[1]` 与 `body[2]` 之间找函数定义」，**绝不把随机 hex 函数名写死**；调用点判据 = `CallExpression` + `callee.name == 该函数名`；实参个数要容错（源文调用点有 1 参与 2 参两种，`len != 2` 时第二个补空串）；返回值为字符串 ⇒ 就地替换成 `Literal` 节点；**收尾必须删掉前 3 条语句**，否则 S4 的 `BlockStatement` 扫描会把它们当噪声；验证手法：只留前 3 条语句 generate 成小文件 + 一行 `console.log(fn("0x305"))` 先确认求值通路 |
+| 596 | `52pojie-1337494-《JavaScript AST其实很简单》三、Step2-对象调用还原.md` | `a7a224461489b84313981d305e361ee6` | 2026-09-24 | `ast-deobfuscation` | evolve | ★ S2 字典对象调用还原（**本批最可复用的一张表**）：识别判据 = `VariableDeclaration` 且 `init` 是 `ObjectExpression` 且**所有键都是字符串字面量、键长一致**（源文样本恒 5 位 —— 但「5 位」是**该配置的产物**，稳定判据是「全字符串键 + 同文件内键长一致」）；调用点 = `CallExpression` + `callee` 是 `MemberExpression` 且 `object` 名 ∈ 已收集集合（漏掉最后一条会把 `JSON.stringify(...)` 一起吃掉）；★ **5 类返回值的替换表**：`Literal` / `MemberExpression` 直接替换；`BinaryExpression` 与 `LogicalExpression` 把第 1、2 实参按序放到符号左右；`CallExpression` **必须先比形参个数**（相等 ⇒ 只按序替换实参、函数名不变；不等 ⇒ 第 1 个实参充当返回函数的函数名）；替换与删定义要**分两趟**（同一趟既替又删会漏） |
+| 597 | `52pojie-1340194-《JavaScript AST其实很简单》四、Step3-分支流程判断.md` | `7001d3afb8e8a6fd87b79bd69eed9717` | 2026-09-24 | `ast-deobfuscation` | evolve | S3 假分支剪除：`IfStatement` 的 `test` 是**两侧均为字面量**的 `BinaryExpression` ⇒ 按 operator 算真假后取 `consequent` / `alternate`；恒假形态（`"OWFLT" !== "OWFLT"`）取 `alternate`、恒真取 `consequent`，**不要写反**；源文自述这是「所有步骤里最简单的一步」—— 难的不是逻辑而是边界，三个静默崩溃点见下一条（1473162） |
+| 598 | `52pojie-1341603-《JavaScript AST其实很简单》五、Step4-平坦化控制流.md` | `46779db064a0c109eaa3088a2d985d11` | 2026-09-24 | `ast-deobfuscation` | evolve | ★ S4 平坦化还原：判据**三个条件缺一不可** —— `BlockStatement` 的 `body[0]` 是 `VariableDeclaration`（**恰好 2 个 declarator**，且第 1 个 init 是 `CallExpression`）且 `body[1]` 是 `WhileStatement` （只判「body[0] 是 var」会命中遍地普通声明）；`"3\|4\|0\|5\|1\|2".split("\|")` 给出**执行顺序**、`cases` 数组是**书写顺序** ⇒ 按 split 顺序取 case 拼成新 block 替换整节点；★ 依赖 S3：假分支未剪时同形的 `"a\|b".split("\|")` 会干扰定位 ⇒ 取到顺序串后**先断言「split 出的每个元素都能在 `cases` 里找到」**，找不到就保留原样、**不要产出空 block**（同 `mba-and-dispatcher-reduction.md` §3 的守卫） |
+| 599 | `52pojie-1473162-AST - 并没有想象中那么神秘.md` | `5c2c081ca296dbf0601ba5f4371f81e6` | 2026-09-24 | `ast-deobfuscation` | evolve | ★★ ① **手写剪假分支的三个静默崩溃点**（源文实现与 1340194 的片段都缺）：`node.alternate` 在**无 else 时为 `null`** ⇒ 直接读 `.body` 抛 `TypeError`（应先判存在性，不存在就丢弃整个节点）；父节点若是 `consequent` / `alternate` / 循环体 / `try` 块则**没有 `body`** ⇒ `splice` 崩（只对 `Program` / `BlockStatement` 父节点 splice，其余**就地替换节点**）；用 `==` 比较字面量会把 `"0" == 0`、`"" == false` 判成恒真 ⇒ **删掉活代码**（必须 `===`）。② ★ **「解密函数离线模块化」范式**：把混淆里的解密函数**单独粘成 `de.js` 并 `module.exports`**、执行体单独 `en.js`、AST 脚本 `require("./de")` 同步求值 ⇒ 解密器自包含时成本最低（依赖 `window` / 反调试 / 定时器时才上沙箱）；③ `estraverse.replace` 的 `enter` 返回新节点即替换，**替换后 AST 已变、不能再按旧节点引用做遍历决策**；④ 全链终点 = 一份十几行的原码，可做端到端验收 |
+| 600 | `52pojie-1746432-油猴脚本hook不了指定名称的cookie.md` | `7e7ae3a4e0e6a654626cfa1f69603cf6` | 2026-09-24 | `web-reverse-hook` | evolve | ★ **cookie hook 的三个真实坑**（来源是一篇**没人解答的提问帖**，反而把三坑同时暴露在一段代码里）：① **`@match https://host` 只匹配根路径** ⇒ 要写 `/*` 才覆盖全站（match pattern 的 path 不可省）；② ★★ **覆盖 `document.cookie` 时用变量累加 ⇒ 「读回来的就是最后一次写入的原始串」** ⇒ 站点其余 cookie 在**读取侧**全部消失、页面行为异常（症状是「hook 装完页面就不正常」而不是「cookie 没了」）；正确姿势是**转发原生描述符、只做观测** —— 本技能 `dataflow` 预设即此实现（沿 `document` → 原型 → `Document.prototype` → `HTMLDocument.prototype` 找描述符，找不到就跳过；`get` 走 `Reflect.apply(d.get,…)`、`set` 走 `Reflect.apply(d.set,…)`）；判据一句话：**装完页面还正常才叫观测**；③ `debugger` 放 setter 里必须配条件（`--cookie-match`），否则一次刷新断十几次；另记 cookie 名匹配是**子串包含**（`PHPSESSION` 能命中 `PHPSESSID`，但关键词太短等于没条件） |
+| 601 | `52pojie-1900424-小白hook网站cookie步骤详解.md` | `ebe5a72d5edadfc511159f1d91410465` | 2026-09-24 | `web-reverse-hook` | evolve | ★ **「断点暂停」= 最可靠的注入时机**（第四个手段，专治「没有任何注入设施」或「`document-start` 还不够早」）：Network 勾 `Preserve log` + 清站点 cookie → 刷新 → 找**第一个请求**（**内联 `<script>` 也算**）→ *Open in Sources panel* → 在脚本**顶端**打断点 → 再刷新 ⇒ 页面被停住（此刻页面 JS 一行没跑）→ Console 粘 hook → 放行 ⇒ hook 在所有页面代码之前生效；**原理上比 `document-start` 更宽**（不是抢跑，是把时间轴停住，窗口宽度由你决定）；三条纪律：断点必须在**第一个**脚本、内联脚本也算、**只解决「装得早」不解决「装得对」**；复现前置 = **先清 cookie** 让写入从零开始（否则分不清首次写入与更新） |
+| 602 | `52pojie-742650-【转载】史上最短百度云盘直链油猴代码.md` | `2ea670fc5216f3c6f8563ccf60d3aaee` | 2026-09-24 | `cloud-drive-direct-link` | evolve | ★ **客户端平台伪装**（**整个脚本只有一行有效代码**）：`Object.defineProperty(navigator,"platform",{get:()=>'Maoger'})` + `@match http*://pan.baidu.com/*` + `@run-at document-start` —— 源文自述目的是「修改 `navigator.platform` 破解百度云下载限制」；三条要点：`http*` 是合法写法（等价 http + https 两条）、**`document-start` 是必须的**（站点在**页面脚本里**读该属性）、**必须用 `defineProperty` 覆盖 getter**（直接赋值在多数浏览器是只读、**静默失败**）；★★ **本条的长期价值是判据**：接口链路完全正确、直链也拿到了，但**行为仍被限制**（限速 / 要求装客户端 / 要求登录）**且 Network 无额外请求** ⇒ 限制在**前端环境判断**、不在协议里 ⇒ 去查「被读了但没影响请求」的属性；⚠️ 2018 年的手法（今天百度已换成服务端限速 + 客户端签名），**只登记判据与手法族**（与 host 替换 / 原型替换 / `video.pause=null` 同属「不改源码改运行时」） |
+| 603 | `52pojie-1096152-[开源]斗鱼 虎牙 B站直播源获取分析（内附零基础也能看得懂的实现思路以及成品下载）.md` | `7984188f05af9b28f4b3cb29fd54a0a2` | 2026-09-24 | `stream-drm-reverse` | evolve | ★★ 三站直播源**长期化**（新文档 `references/live-source-longevity.md`）：**判据**「地址里带 `wsAuth` / `token` / `expire` / `did` ⇒ 必然短效；长期化 = 切「不变段 + 时效段」，丢时效段、把不变段拼到稳定 CDN 上」；斗鱼三步（二级域名 `hdl1a` → `tx2play1`、**从 `.flv?` 整段截断**、清清晰度后缀；**必须 HTTP 不能 HTTPS**、部分房间需保留 `_4000p`）、虎牙（页面内联 `var hyPlayerConfig = …`，用 `stristr` 截到 `};` 补 `}` 再 `json_decode`；开播判据 = 页面 HTML 里暴力搜唯一的 `"state":"ON"`；★ **`str_replace("amp;","")` = HTML 实体残留的第三例**，三例已升格为通用判据「抄页面串 / 请求串先搜 `amp;` / `&#` / `×`」；**手机 UA 访问 `m.huya.com` + 一条正则 `hasvedio: '([\s\S]*.m3u8)`** 由两个独立开源项目互证）、B 站三接口（③ = ① + ②；**② 未开播也有 `durl`、③ 为 `null`** ⇒ 接近永久源）；★★ **机房 IP 黑名单**：同一时刻同一直播间「本地家宽能拿、腾讯云 / 阿里云拿不到（关键字段为 `null`）」，改 UA / 假装 Postman / 换来源全无效 ⇒ **判据「本地能跑、服务器跑不动且失败点是关键字段为空⇒ 先怀疑 IP 段黑名单，不要继续改请求头」**（迁移性：采集脚本本地全绿、上线就挂 ⇒ 先做本地 vs 线上 A/B）；asx 容器（特化 XML，`<entry>` / `<title>` / `<ref>`）是长期源的**交付形态**；8 行排错表 + 已知缺陷（下播后的轮播状态会被误判为正在直播） |
+| 604 | `52pojie-1985694-某某服务网逆向-小白讲解.md` | `8c1334c896db39305dccc5cedb1cc681` | 2026-09-24 | `web-reverse-algorithm` | evolve | ★ 跟栈定位的第一手记录（新文档 `references/15-call-site-locating-playbook.md` 的来源之一）：源文口径「找数据包 → 跟栈 → 扣代码 → 数据对比」；**J5 判据**：断在参数生成处后，控制台打印得**明文**、全选得**密文** ⇒ 该变量就是加密的输入；**「先定义后使用」+ 关键字搜索**：把整段代码丢进 Notepad++ 搜标识符（该样本搜出 5 处同名 ⇒ 只需回到模块开头找定义处）；**「缺什么补什么」**：报 `A 未定义` 就补 `A`、报小写 `a` 未定义再补 `a`（**大小写是两个不同的东西**）；★ 三段链 `i()` → `S().encrypt(...)` → `i()`（**同一个密文被加密两次**）⇒ 混合加密分层是**局部形态**而非特例；★ 总结第 2 条：**明文不一致 ⇒ 密文必然不一致** |
+| 605 | `52pojie-1998689-某某房产逆向-小白讲解04.md` | `eca2ed229b3609d98b274233bccca64c` | 2026-09-24 | `web-reverse-algorithm` | evolve | ★★ **J1「参数在某层消失」判据的最佳样本**：多次调试发现 `sign` 到某个栈就**消失** ⇒ 推断加密在该层附近完成 ⇒ 只保留那一个断点；配套纪律「**第一个栈断不下来也无所谓**，目的只是找到参数」；两个定位手法：① `n = this` 的 `this` 指向 `c`、值又存在 `c` 里 ⇒ 猜测在 `c.prototype.__processRequest` 生成，**但未证实 ⇒ 继续向上跟栈**；② **作用域唯一性** —— `p` 在该作用域内只有一个 ⇒ 「sign 用的就是这个 `p`」，再断在 `p` 尾部把返回值与最终包的 `sign` **逐字符对拍一致**即可确认；★ **`token` 来自 cookie 正则提取**（`a` 里是正则、`return t[1]`，再切分赋给 `e.token`）；★ 待签串 = `token` + 时间戳 + **固定串** + 表单数据 + 页码，用 `&` 连接；★★ **响应 Cookie 既是加密输入、又是请求头**（清 cookie 后出现一个「没关注过的包①」，目标包⑤ **必须带上包① 的 `Set-Cookie`**，否则「响应里令牌为空」）⇒ **不能只复制最终请求**；两条一致性纪律：**时间戳必须同源**（算签名的与请求里的必须是同一个值）、**表单数据格式必须与浏览器完全一致**（源文总结第 2 条） |
+| 606 | `52pojie-1999830-某某网站载荷逆向-小白讲解05.md` | `3e1600c70a4ae582942f0be6393384ba` | 2026-09-24 | `web-reverse-algorithm` | evolve | ★★ **J3 判据**「断在头部没有该参数、而尾部 `return` 出的对象里有 ⇒ 参数在本函数体内**逐步生成**」；★ **「参数在上一层还有、往上一层就丢了」⇒ 参数就在这个拦截器里生成**（源文的推断路径）；★ **一次性函数表**：该站拦截器每次执行后会**删掉执行过的函数** ⇒ 在**每个函数的 `return` 处**下断、分页发包看命中哪个（**没断住 = 不经过这里**）；★ **加载器头部的隐蔽坑（源文自评「过于隐蔽」）**：本地报「模块错误」但模块全在 ⇒ 加载器自执行、参数从尾部直达头部，若**头部没有形参**则参数进不来；若头部有一句 `e = {}`（**存模块表的那个对象**）且形参也叫 `e`，则参数进来也会被置空 ⇒ 处置 = **给头部补形参 `e` + 注释掉那句 `e = {}`**；★ **`o()(x)` 与 `o(x)` 等价**（柯里化包装，源文口径「控制台打印试试，一样的效果」）；★ 单模块扣取时环境缺失直接置空（该样本报 `self 未定义`） |
+| 607 | `52pojie-2010991-某某矿集团param逆向-小白讲解07.md` | `2fdc60dbd4ea8429cbc77f56d5184281` | 2026-09-24 | `web-reverse-algorithm` | evolve | ★★ **原型追加的方法必须补在 `new` 之前**（本批最隐蔽的坑）：扣全模块与加载器后业务代码报 `t.encryptLong 不是方法` ⇒ 它在浏览器里是**模块被使用之后**才挂到 `d["a"].prototype` 上的；`new` 拿到的是**实例**、对已创建实例再加原型成员没有意义 ⇒ **本地必须把这段原型赋值插到 `new` 之前**（迁移性同 `web-reverse-hook` 的「替换必须早于实例化」）；★ **两包链**：一次交互发两个包 —— 包① 体积小、载荷只有一条长密文 ⇒ 那是**取 RSA 公钥**的包（`case0`：`t = new d["a"]` + `A.sent = 4` + `Q.a.post("/open/homepage/public")`），**跟栈时第一次断住的往往是它 ⇒ 跳过**；★ **让加载器自己报缺哪个模块**：在取模块函数里加 `console.log(e)`；`r(r.s = 429)` 与 `r(429)` 等价；模块是**空对象** ⇒ 浏览器什么也没做 ⇒ 本地**直接删掉那行**；模块属性是 `window` ⇒ 本地 `r(38)` **替换成 `window`**；★ 该站可以**把自带模块表清空、只放需要的**；★ 平摊流里的定位法：`case2` 的 `param: t` 来自 `A.sent`、不清晰 ⇒ **先在附近下断看有没有生成**，没有就单步；`var l = d(e, t, n)` 处打印 `l.arg`（异步）出密文，**但那不是最终写出点**，继续单步到 `case4` 才见最终密文；边界：公钥源文写死、签名段是 MD5 |
+| 608 | `52pojie-2017218-某某猫投诉signature逆向-小白讲解08.md` | `ab462637298cf70fd1b3b91073e0ac54` | 2026-09-24 | `web-reverse-algorithm` | evolve | ★ **J4 判据**「函数**没有形参** ⇒ 不接受传值 ⇒ 密文必然在本函数体内生成，或来自模块作用域」；★ **参数可能写在 URL 而不是 body 里**（`url: "".concat(n,"?ts=").concat(c,"&rs=").concat(h,"&signature=").concat(r)`）⇒ 断点处先确认参数位置；★ 待签串形态 `o([c,h,d,l,this.tabType,f,this.pageNum].sort().join(""))` —— **先 `sort()` 再 `join("")` 再哈希**（顺序是**字典序**不是书写序，漏 `sort()` 会得到一个稳定的错值）；★ **「模块只给一半」**：直接选中 `r(215)` 跳进去内容少得可怜、另一半是在里面加载别的模块拼出来的 ⇒ 必须在 `o = r(215)` 处**单步调试**、按浏览器实际加载顺序（先 216 再 215）扣；源文原话「**浏览器加载的模块没错，而是跳转的位置会使我们扣取错误（少扣）**」⇒ **凡 webpack 模块都以单步观察到的加载序列为准**；★ 三个「拿到就能改」的模块形态：空对象模块**直接删**、属性是 `window` 的**替换成 `window`**、报 `429` 就去加载器尾部找 `r.s = 429`；★ `h`（页面上叫 `rs`）是**每次刷新都变**的（自执行 + 随机数 + 字符表）⇒ **必须刷新才能断住** |
+| 609 | `52pojie-2033662-某车辆对比信息X-sign-小白讲解10.md` | `70dfb6b2b77887d518d1777b8daca849` | 2026-09-24 | `web-reverse-algorithm` | evolve | ★★ **条件断点作为定位器**（本批最具操作性的单点）：同一个 axios 拦截器 / 加密函数被页面里**几十个请求共用** ⇒ 普通断点每次请求都断、根本走不动；做法 = 在可疑行 *Add conditional breakpoint*，条件写 `e.url.includes("param/get_param_details")`（**先看当前帧有哪些变量再写条件，别照抄变量名**）；三条配套：① 进入**异步**后断点失效 ⇒ **把条件断点改到异步那一帧里面**；② 用 `e.data` / `e.url` 判断「目标包有没有经过这里」来决定继续向上还是换栈；③ **跟到「看不见 `x-sign`」或出现 `"x-sign": a(或变量)` 这种赋值形态为止**；★ 加密点定位链：`headers: clientAxios.getHeaders(e, t)` ⇒ 进入 `getHeaders` 尾部 `r["x-sign"] = s(e, t)`；待签串 `n = "cid=" + t.cid + "&#182;m=" + i + o + t.timestamp` ⇒ ★ **`&#182;`（= `¶`）是「HTML 实体残留」的第二个实例**（第三个是虎牙的 `amp;`）⇒ 抄串一律先搜实体；`md5` 是标准 MD5（可在线工具或自扣）；边界：条件断点依赖**当前帧的局部变量名**、换帧就要重写 ⇒ 它只是**定位阶段**的工具，要持久化就落 `web-reverse-hook` |

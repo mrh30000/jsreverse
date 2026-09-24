@@ -120,6 +120,7 @@ description: 网盘 / 文件托管站的「分享链接 → 可用直链」解�
 | 阿里云盘直链过一会儿 403 | `url_expire_sec` 到期（源文传 1800 秒） | 解析与下载同批；直链不落库（§6.1） |
 | 阿里云盘团队版上传 400 | 分片用了 5MB | 团队版是 **10MB**（§6.3） |
 | 网盘视频"只能看 30 秒" | **不是解析失败**，直链是完整的 | 限制在播放器：`video.pause=null` + 隐藏站点控制条 + 换原生 controls（§8 来源 `1735138`） |
+| 直链拿到了，但**行为仍被限制**（限速 / 要求装客户端 / 要求登录），且 Network 无额外请求 | 限制在**前端环境判断**（典型 `navigator.platform`） | 环境伪装一族：`Object.defineProperty(navigator,'platform',{get})` + `@run-at document-start`；判据与时效见 `references/multi-vendor-protocols.md` §2.6 |
 
 ## 反例黑名单（不要做的事）
 
