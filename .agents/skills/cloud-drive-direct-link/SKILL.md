@@ -190,8 +190,9 @@ python $S/multi_vendor_parse.py pan123 --download-url 'https://x/y?params=<b64>'
 ## 资源
 
 - `references/lanzou-protocol-generations.md`：**蓝奏云系代际协议的唯一权威源** ——
-  代际判据表（2018 `file_id/t/k` → 2019 加 Cookie 与验证码 → 2022 `signs` + `down_p()` 双链 →
+  代际判据表（2017 手机 UA 页面直出参数 → 2018 `file_id/t/k` → 2019 加 Cookie 与验证码 → 2022 `signs` + `down_p()` 双链 →
   2024 `websign` / `websignkey` / `ves` → 2025 Cloudflare）、
+  移动端 UA 分流（换 UA 拿到「更简陋、暴露参数」的另一套页面）、
   无码链与有码链的逐步抓取顺序、有码/无码的三条区分法（`<title>` / `<style>` / 函数存在性）、
   文件夹分享的 `filemoreajax.php` 七字段与 T/K 同批约束、`ilanzou` 优享版 `encryptHex` 链接拼装、
   以及"每个结论来自哪一篇、取证时间是什么"的来源表。

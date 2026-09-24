@@ -58,6 +58,47 @@
 - `encryptVer=9.1` 与 `platform=10201` / `appVer=3.5.57` 是**伴随常量**，改版本号要一起改。
 - 见蓝图 `tencent-ckey`（wasm 之外的两条路：wasm2c 复现、或直接把 JS 侧包装层抄下来）。
 
+### §2.2b 腾讯旧版 `getinfo` / `getkey` 路线（2020 前）
+
+> ⚠️ **这是 2020-04 的旧路线**（源文 `52pojie-1163619`）。今天腾讯已改用 §2.2 的
+> `vd.l.qq.com/proxyhttp` + `cKey`。**引用本节必须连同「2020 年」一起引用**，
+> 不要把它当成当前可用链路。
+
+**链路（三步）**：
+
+```text
+① 播放页 URL → pathinfo()['filename'] 取 vid
+② http://vv.video.qq.com/getinfo?vids=<vid>&platform=101001&charge=0&otype=json&defn=s
+   → 基址 url + vkey(fvkey) + 文件名(fn)  ⇒ 普通画质地址 = url + fn + '?vkey=' + vkey
+③ http://vv.video.qq.com/getkey?format=2&otype=json&vt=150&vid=<vid>&ran=0%2E9477521511726081&charge=0&filename=<vid>.mp4&platform=11
+   → key + filename                      ⇒ 高清地址   = url + filename + '?vkey=' + key
+```
+
+| 步 | 取值字段（源文原样） | 说明 |
+| --- | --- | --- |
+| 提 id | `pathinfo($url)['filename']` | 从**播放页 URL** 的文件名段取 `vid` |
+| 基址 | `vl.vi[0].ul.ui[0].url` | **基址**，不是最终地址 |
+| vkey（普通） | `vl.vi[0].fvkey` | 普通画质的 `vkey` |
+| 文件名（普通） | `vl.vi[0].fn` | ⇒ `url + fn + '?vkey=' + vkey` |
+| key（高清） | `key`（`getkey` 响应） | 高清画质的 `key` |
+| 文件名（高清） | `filename`（`getkey` 响应） | ⇒ `url + filename + '?vkey=' + key` |
+
+**两个坑**：
+
+1. **JSONP / `变量名=` 剥壳（两个响应用同一处理）**：`getinfo` / `getkey` 返回的**不是裸 JSON**，
+   而是 `QZOutputJson={…};`。**必须先剥掉 `QZOutputJson=` 前缀与结尾的 `;`，再 `json.loads`**，
+   否则 parse 直接失败。源文 PHP 就是 `str_replace(['QZOutputJson=', ';'], ['', ''], $res)`。
+2. **高清地址不是换接口，是同一基址换 `filename` / `key`**：`getkey` 只补 `key + filename`，
+   真正可播地址仍是 `基址 url + filename + '?vkey=' + key`；**两个画质共用同一个 `url` 基址**。
+
+> ⚠️ 源文 PHP 里 `getkey` 那行写作 `…&ran=0\%2E9477521511726081\\&charge=0…` ——
+> 那两个 `\` 是 **PHP 双引号串里的转义残留**（`\%` 原样保留、`\\` 折叠成一个 `\`）。
+> 上表按「可读形态」去掉了这两个反斜杠；**若复现失败，先怀疑是源文的转义残留**，不要先怀疑参数值。
+
+> **通用判据（可跨族复用）**：**凡响应以 `<回调名>(` 或 `xx=` 开头 ⇒ 先剥壳再 parse。**
+> 视频 / HLS 接口这族里 JSONP（`cb(...)`）与「`变量名=` 赋值」两种形态都常见；
+> `QZOutputJson=` 是「`变量名=`」这一档的实例。
+
 ### §2.3 咪咕 `playurl/v3` + `ddCalcu`
 
 三级链，**每一级都只给下一级的 id**：

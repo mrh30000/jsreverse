@@ -4373,3 +4373,184 @@ B27 列的「网马时代线继续 evolve」与「小游戏线继续收」在新
 | 607 | `52pojie-2010991-某某矿集团param逆向-小白讲解07.md` | `2fdc60dbd4ea8429cbc77f56d5184281` | 2026-09-24 | `web-reverse-algorithm` | evolve | ★★ **原型追加的方法必须补在 `new` 之前**（本批最隐蔽的坑）：扣全模块与加载器后业务代码报 `t.encryptLong 不是方法` ⇒ 它在浏览器里是**模块被使用之后**才挂到 `d["a"].prototype` 上的；`new` 拿到的是**实例**、对已创建实例再加原型成员没有意义 ⇒ **本地必须把这段原型赋值插到 `new` 之前**（迁移性同 `web-reverse-hook` 的「替换必须早于实例化」）；★ **两包链**：一次交互发两个包 —— 包① 体积小、载荷只有一条长密文 ⇒ 那是**取 RSA 公钥**的包（`case0`：`t = new d["a"]` + `A.sent = 4` + `Q.a.post("/open/homepage/public")`），**跟栈时第一次断住的往往是它 ⇒ 跳过**；★ **让加载器自己报缺哪个模块**：在取模块函数里加 `console.log(e)`；`r(r.s = 429)` 与 `r(429)` 等价；模块是**空对象** ⇒ 浏览器什么也没做 ⇒ 本地**直接删掉那行**；模块属性是 `window` ⇒ 本地 `r(38)` **替换成 `window`**；★ 该站可以**把自带模块表清空、只放需要的**；★ 平摊流里的定位法：`case2` 的 `param: t` 来自 `A.sent`、不清晰 ⇒ **先在附近下断看有没有生成**，没有就单步；`var l = d(e, t, n)` 处打印 `l.arg`（异步）出密文，**但那不是最终写出点**，继续单步到 `case4` 才见最终密文；边界：公钥源文写死、签名段是 MD5 |
 | 608 | `52pojie-2017218-某某猫投诉signature逆向-小白讲解08.md` | `ab462637298cf70fd1b3b91073e0ac54` | 2026-09-24 | `web-reverse-algorithm` | evolve | ★ **J4 判据**「函数**没有形参** ⇒ 不接受传值 ⇒ 密文必然在本函数体内生成，或来自模块作用域」；★ **参数可能写在 URL 而不是 body 里**（`url: "".concat(n,"?ts=").concat(c,"&rs=").concat(h,"&signature=").concat(r)`）⇒ 断点处先确认参数位置；★ 待签串形态 `o([c,h,d,l,this.tabType,f,this.pageNum].sort().join(""))` —— **先 `sort()` 再 `join("")` 再哈希**（顺序是**字典序**不是书写序，漏 `sort()` 会得到一个稳定的错值）；★ **「模块只给一半」**：直接选中 `r(215)` 跳进去内容少得可怜、另一半是在里面加载别的模块拼出来的 ⇒ 必须在 `o = r(215)` 处**单步调试**、按浏览器实际加载顺序（先 216 再 215）扣；源文原话「**浏览器加载的模块没错，而是跳转的位置会使我们扣取错误（少扣）**」⇒ **凡 webpack 模块都以单步观察到的加载序列为准**；★ 三个「拿到就能改」的模块形态：空对象模块**直接删**、属性是 `window` 的**替换成 `window`**、报 `429` 就去加载器尾部找 `r.s = 429`；★ `h`（页面上叫 `rs`）是**每次刷新都变**的（自执行 + 随机数 + 字符表）⇒ **必须刷新才能断住** |
 | 609 | `52pojie-2033662-某车辆对比信息X-sign-小白讲解10.md` | `70dfb6b2b77887d518d1777b8daca849` | 2026-09-24 | `web-reverse-algorithm` | evolve | ★★ **条件断点作为定位器**（本批最具操作性的单点）：同一个 axios 拦截器 / 加密函数被页面里**几十个请求共用** ⇒ 普通断点每次请求都断、根本走不动；做法 = 在可疑行 *Add conditional breakpoint*，条件写 `e.url.includes("param/get_param_details")`（**先看当前帧有哪些变量再写条件，别照抄变量名**）；三条配套：① 进入**异步**后断点失效 ⇒ **把条件断点改到异步那一帧里面**；② 用 `e.data` / `e.url` 判断「目标包有没有经过这里」来决定继续向上还是换栈；③ **跟到「看不见 `x-sign`」或出现 `"x-sign": a(或变量)` 这种赋值形态为止**；★ 加密点定位链：`headers: clientAxios.getHeaders(e, t)` ⇒ 进入 `getHeaders` 尾部 `r["x-sign"] = s(e, t)`；待签串 `n = "cid=" + t.cid + "&#182;m=" + i + o + t.timestamp` ⇒ ★ **`&#182;`（= `¶`）是「HTML 实体残留」的第二个实例**（第三个是虎牙的 `amp;`）⇒ 抄串一律先搜实体；`md5` 是标准 MD5（可在线工具或自扣）；边界：条件断点依赖**当前帧的局部变量名**、换帧就要重写 ⇒ 它只是**定位阶段**的工具，要持久化就落 `web-reverse-hook` |
+
+## 批次 B32 · 2026-09-24（第三十三次执行）
+
+**开局状态**：台账 B31 后 **609** 条 / 目录 `.md` **1114**（文章 **1109**）/ 待处理 **500**。
+三方对齐（台账最后一节 = B31 × `git log` = `f521621`(B31) + `628a59a`(归档线第 32 轮) ×
+自动化记忆最后一条 = B31）**一致** ⇒ 上一轮已闭环。工作区的 `AGENTS.md` / `project/*` 是别会话在途改动，未纳入本批。
+
+**取材口径（严格按记忆里「遗留 / 下一批（B32 更新）」的优先级 ① + ②③ 补位）**：
+- **① 归档线第 31 轮剩下的 7 篇**（`f521621` 那轮刻意留下的）——**本批一次收完，7/7 命中**：
+  newSign（`1708851`）· 图床 sign（`1735455`）· C# 正则替换（`1746095`）· JS 加解密速查（`1820070`）·
+  小程序教程（`1237897`）· 某站 sign（`951589`）· 跟栈求助帖（`2046628`）。
+- **② T10 媒体链路族**按记忆口径「**只收带完整算式 / 完整链路的**」取 **2 篇**：
+  `2105967`（HLS AES-128 试看补齐，**从 10 秒到 143 片完整链路**）· `1163619`（腾讯旧版 `getinfo/getkey` 完整算式）。
+- **③ 网盘族**继续 evolve `cloud-drive-direct-link`，取蓝奏云 **G2017 最早两代**（`635800` / `636373`）。
+- **④ 新增第 4 簇（页面钩子与限制解除）3 篇**：`1650555`（反 hook 检测三指纹）· `1608506`（页面限制解除）·
+  `1814333`（SSR 直出载体 + XHR 截获）。
+
+> ⚠️ 本轮**未**新增任何技能 —— 14 篇全部有最近邻模块。候选新技能 `captcha-flow-orchestration`
+> B5–B32 **二十六次确认不新建**（本批的「反 hook 检测」面归入 `web-reverse-hook` 既有能力面，
+> 以 `references/anti-hook-detection-and-bypass.md` 落成独立权威源，**仍是 reference 不是新技能**）。
+
+**技能变更汇总（6 个技能全部 evolve，0 新建）**
+
+- `stream-drm-reverse`（evolve）：新增 `references/preview-gating-and-segment-enumeration.md` ——
+  **「预览门控层」是既有 references 里完全空缺的一层**（现有文件只讲层判据与 key/IV 派生，**没讲「索引被截断时怎么办」**）：
+  受控点二分判据（**URL 带 `_preview` 后缀 = 服务端侧**，且去掉后缀无效；试看 m3u8 里直接有 `#EXT-X-ENDLIST` ⇒ 列表本身被截断）、
+  处置分叉（前端截断 vs 服务端侧）、**分片名可预测 ⇒ 编号枚举补齐**（`<年-月-日>68.ts` 里的 `68` 就是序号）、
+  **枚举终止判据 = 连续 3 个 404**、key URI 相对路径的绝对化与 16 字节 `Content-Length`、
+  以及 5 条安全缺陷的 **L0→L3 分级**（口径严格写成「该案例实测」而非行业普查）。
+  另补 `playback-address-interfaces.md` §2.2b「腾讯旧版 `getinfo/getkey` 路线（2020 前）」——
+  `QZOutputJson=` 剥壳 + `vl.vi[0].ul.ui[0].url` / `fvkey` / `fn` 组装 + `getkey` 二段取高清，
+  并把「**响应以 `<回调名>(` 或 `xx=` 开头 ⇒ 先剥壳再 parse**」提炼为通用判据；
+  `SKILL.md` 分流行 +1、失败模式 +2。
+- `cloud-drive-direct-link`（evolve）：`lanzou-protocol-generations.md` 新增 **G2017 行**（手机 UA 打开分享页，
+  源码里**直接内联**直链参数；手机端地址形如 `官网域名 + "tp/" + 文件ID`；**无第二跳、无 `ajaxm.php`**）与
+  **§1.1「移动端 UA 分流」**（本族最早也最通用的定位技巧：**同一链接换手机 UA 会拿到另一套更简陋、暴露参数的页面**；
+  `636373` 强调请求手机页**必须模拟手机 UA**）；来源表 +2 行；`SKILL.md` 资源描述同步年份范围 **2018→2025 改为 2017→2025**。
+- `ast-deobfuscation`（evolve）：新增 `references/static-index-replacement-pitfalls.md` ——
+  **「字符串表旋转未还原」时的三个静默失败指纹**（既有 references 只写了「四步顺序依赖」，
+  **没写「漏做某一步之后产物长什么样」**）：① 自检算式退化成 `parseInt("active")` 这类把非数字串送进 `parseInt`；
+  ② 出现**语法合法但语义荒谬**的调用（`$("projectcreation_error")["filter"](…)`、`document["innerText"]("response")`）；
+  ③ **结构位**（`type:` / `url:` / `method:`）被替换成随机 token，或反之常量跑到了 URL/选择器位置。
+  根因三条：漏做旋转 IIFE、注入的 `_getName` 里 `var _index = _index - 0x1d4`（**形参遮蔽 + 未定义**）、
+  纯文本正则**无法区分「函数定义」与「函数调用」**（源文靠 `if (numberString == "index") return` 侥幸跳过）；
+  正确路线三条（AST 工具 / 先求旋转偏移 / **只做命名还原不碰索引**）；
+  ★ **验收判据：必须能跑通一个已知输入并对上浏览器里的同一输出 —— 「能 parse、能跑不报错」不是验收**（源文产物恰好能跑）。
+  `SKILL.md` 导航 +1；`obfuscation-detector.md` 分流表 +1。
+- `web-reverse-algorithm`（evolve）：新增 `references/16-ciphertext-structure-diagnostics.md` ——
+  **「只有一段密文（或原文根本没解出来）时先读什么」**：三类不需密钥的客观信息（长度判块大小与填充 / 字符集判编码链 /
+  **公共子串判「明文哪两段相同」**）、内置编解码函数的**形态指纹表**（`%uXXXX` 只有 `escape()` 会产生；
+  base64url 必须先替换 `-`/`_`）、「形态像 ≠ 就是它」四陷阱（32 位 hex 未必是 MD5、末尾 `==` 未必是 AES、
+  **前 16 字节乱是 IV 错不是算法错**），以及**求助帖式任务（原文无结论）的登记纪律**。
+  ★ **本文件最有价值的一条是本批自己实测出来的**：**公共段长度不是块大小整数倍 ⇒ 直接反证「整块加密」**
+  （`2046628` 的两个样本 base64 解码后**都是 40 字节**、公共尾 **12 字符 = 8 字节**、公共前缀 0 ⇒
+  **40 不是 16 的倍数 ⇒ 可以排除 16 字节块 AES-CBC**；40 = 5×8 与「8 字节块 DES」或「多段拼接 + 固定尾段」
+  两种读法都相容，**单凭长度无法二选一** ⇒ 只登记形态结论，不登记算法结论）。
+  另补 `02-algorithm-families.md` 三节：**得物 `newSign`**（字段字典序 `k+v` 无分隔拼接 → AES-128-**ECB** → base64 → **md5**；
+  ★ **so 导出函数名 `AES_128_ECB_PKCS5Padding_Encrypt` 直接写明了模式/填充/位宽 —— 先按名字直译**；
+  ★ **hook 入参 + hook 返回值一次拿到「明文/密文」这一对，拼接顺序就不用猜**；`key == iv` 是实测值；
+  **参与签名的字段集合随接口变化**（`scene` 换成 `source`））、**某图床 `sign`**（关键词搜不到 ≠ 没有 ⇒
+  改搜「实参名 / 对象名」；★ **不要在静态文本上替换混淆代码，要在运行时用 `toString` 逐层照出来** ——
+  与本批的 `static-index-replacement-pitfalls.md` 互为正反面）、
+  **「请求头 Token 先查来源再查算法」**（`Bearer eyJ...` 是 JWT 可直解 payload；跨接口不变的 token 是**别的响应下发**的）；
+  `SKILL.md` 导航 +1、description 补触发词（**压缩后仍 ≤ 1000**，本轮为此改了两稿）。
+- `web-reverse-hook`（evolve）：新增 `references/anti-hook-detection-and-bypass.md` ——
+  既有 `antidebug` 预设覆盖「无限 debugger / console / 尺寸 / 强退 / iframe」，**未覆盖「检测你 hook 了原生方法」**：
+  ① **`Function.prototype.toString` 白名单比对**（智慧树把原生函数逐个过正则判 `function` / `native code`；
+  检测入口还包括 `XMLHttpRequest.prototype.open`、`document.body.attachShadow` 存在性与 **`!window.OCS`（油猴管理器变量本身就是指纹）**）；
+  ② ★ **用 `new Error().stack` 做「调用方过滤」**（源文只掐掉来自上报函数的定时器注册、其余一律放行 ⇒ 提炼为通用范式
+  **「选择性劫持」**；代价：依赖**函数名**，压过混淆就失效）；
+  ③ 劫持 `RegExp.prototype.test`（源文自评「没啥意义」，照实写并说明为什么）；
+  ④ **closed shadow DOM 取证**：包装 `Element.prototype.attachShadow` 强制 `args[0].mode = "open"`；
+  ⑤ **框架句柄逃逸**（`…__vue__.shadowDom.innerHTML` —— 组件把 `attachShadow` 返回值挂在了实例自有属性上）；
+  ⑥ **页面限制解除**（行内 `user-select: text !important` 能压住作者样式表的 `!important`；
+  **但只改样式时按钮仍会弹窗 ⇒ 要重写站点自己的函数**，配 `Range.selectNode` + `execCommand("copy")` 可运行片段）。
+  `SKILL.md` 新增一小节（含选择性劫持 5 行片段）+ description 触发词 +9。
+- `miniprogram-reverse`（evolve）：`request-crypto-and-sign.md` §2 sign 族 +2 行 ——
+  **S6 整包 JSON 双校验**（内层：塞占位键 `t.s = "kunpo"` → `md5(JSON.stringify(t) + String.fromCharCode(100))` 回填；
+  外层：`sort()` 键 → `k + "=" + v + "&"` 拼接去尾 `&` → md5；★ 注意实现细节是**第二个参数**（布尔）用于区分两处 sign）、
+  **S7 固定 GUID 前缀 + 明文 JSON**（`md5("<固定 GUID 串>" + gamedata 序列化串)`，前缀是硬编码常量）；
+  §5 坑表 +4 行（服务端 `code 1000` 别急着重查参数 / **同一份数据在不同接口要用不同密钥** /
+  改到极限会被回滚成初始等级 / `json.dumps` 中文转义导致服务端不认 ⇒ `ensure_ascii=False`）；
+  §6 下方补「**下载 → 改 → 上传**」闭环（判据：**改了数据不改 sign 上传失败 ⇒ sign 确实参与校验**）。
+- `target-analysis`（evolve）：新增 `references/in-page-data-carriers.md` ——
+  「**网络面板没有接口但页面有数据**」这一侧的权威源（该技能此前只有会话编排规则，无采集侧载体判据）：
+  先分清「**没有接口**」还是「**没触发**」、直出载体清单（`RENDER_DATA` 要先 `decodeURIComponent` 再 parse /
+  `__NEXT_DATA__` / `__INITIAL_STATE__` / JSON-LD / `data-*`）、增量靠「截获 + 驱动」，
+  ★ 两个静默陷阱：**用 `this._url` 判断目标接口（该属性不存在 ⇒ 条件永不成立、一条都不收且不报错）** ⇒
+  必须 `this.responseURL`；**覆盖 `onreadystatechange` 会顶掉页面自己的回调** ⇒ 用 `addEventListener("load")`；
+  驱动性价比 **分页参数 > 点「加载更多」 > 滚屏**；CSV 导出的 BOM / 引号两条纪律。`SKILL.md` 新增 §D + description 补触发词。
+
+**验收（全部实跑）**
+
+- 技能完整性 `check_skill_integrity.js`（**全库 22 个技能**）：**0 阻断 0 告警**（含跨技能路径存在性、
+  `§` 章节号引用、description 长度、脚本 `--selftest`、`.agents`/`.claude` 双镜像一致）。
+- 本批新写的 `tools/b32-verify-docs.js`（**改动集从 `git status` 派生**）：**0 阻断** ——
+  ① 全库 SKILL.md frontmatter/description 契约 22/22 通过；② 改动文档 JS 代码块语法 **19 通过 / 9 跳过教学占位**
+  （**9 个跳过项已逐块人工看过**，见下「本批自曝缺陷」）；③ 编码体检（全库 248 文档 + 改动集 U+FFFD）；
+  ④ 改动文档路径引用 208 可解析 / 1 不可解析（`references/patterns/<site>.md`，**占位符模式，历史既有，非本批引入**）。
+- 台账登记 **609 → 623** 条 / `verify-ledger-md5.py` 逐条一致 / 幂等复跑。
+- 本批**未新增脚本**（无新 hook 预设、无新 Python 工具）⇒ 不涉及 `--selftest` 增量。
+
+**本批自曝缺陷（含 3 个由「机械门禁」而非人工发现的，是本批方法论的收获）**
+
+1. ★ **门禁自己抓出的第 1 个缺陷：`git status` 的「未跟踪新目录」只报一层目录名**。
+   我第一版 `b32-verify-docs.js` 按 `endsWith('.md')` 过滤，于是 `?? .agents/skills/web-reverse-hook/references/`
+   这种**整目录新增**被静默漏掉（改动集少了 2 个文档、却照样打印「0 阻断」）。
+   ⇒ 已修：未跟踪目录**展开成其下全部 `.md`**。**教训与 B31「门禁自身也会假阳性/假阴性」同型。**
+2. ★ **门禁抓出的第 2 个缺陷：`sed` 会把正则里的 `\u` / `\s` 反斜杠吃掉**。
+   我用 `sed -i` 改 `PLACEHOLDER` 常量后，`/\u2026/` 变成 `/2026/`，于是**两个本来就合法的"教学占位"块被误判为语法错误**。
+   ⇒ 改动校验器一律用编辑器/脚本写，不要用 `sed` 处理含反斜杠的正则字面量。
+3. ★ **子代理报告「0 阻断」不等于过门禁**：两个子代理分别跑 `check_skill_integrity.js` 并报 0/0，
+   但它在 `static-index-replacement-pitfalls.md` 里留下一个 `Unexpected token ':'` 的 ```js 代码块
+   （一段**对象字面量片段**被标成 js）。`check_skill_integrity.js` **不做代码块语法校验**，
+   是 `b32-verify-docs.js` 抓出来的。⇒ 已把该片段包成 `const broken = { … }` 恢复成合法 JS。
+4. `web-reverse-algorithm/SKILL.md` 的 description **两次超限**（1110 → 1025 → 991）——
+   B31 已记过同类教训（「description 有 1000 字上限」），本轮**又一次**踩到。
+   ⇒ 判定：**加触发词之前先跑一次长度断言**，已写进下方「可复用要点」。
+5. 一处**口径纠正由子代理主动提出**：我给它的 brief 里把 S6 的实现细节写成「第一个参数是布尔值」，
+   子代理回源核对后按**源文**改为「第二个参数」（源文原话「第二个参数 e，实际上就是 True 和 False 的判断」）。
+   ⇒ **子代理回源纠正上位指令时，以源文为准**（这条本身是流水线的正向收益）。
+6. 子代理的**交叉引用文件签名核对**抓出镜像不一致（`static-index-replacement-pitfalls.md`），
+   我复核后确认已由我自己同步 ⇒ **「镜像不一致」这类报告必须先自己 `cmp` 一次再改**（避免把刚同步好的又复制回去）。
+
+**评审**：本轮**未引入独立盲评审**（沿用 B31 的「机械校验 + 实测」两条门禁，B31 已把该变化标注为「下一批应复核其效果」）。
+**本轮对 B31 那次方法论变化的复核结论是：值得，但必须补一条** ——
+B31 的 `b31-verify-docs.js` 用的是**硬编码文件清单**，于是「清单外的新文档」不受保护；
+本批改为**从 `git status` 派生改动集**后立刻抓到上面第 1 条缺陷。
+⇒ **下一批起，文档门禁一律用「派生改动集」而不是硬编码清单**（已写进「可复用要点」）。
+
+**下一批建议**
+
+- **① 「归档线第 32 轮」剩下的 11 篇**（`628a59a` 新收 25 篇，本批只取了其中 7 篇）：
+  仍在既有能力面内，且**已能按簇归并** —— Fiddler 抓包教学系列 4 篇（`854434` / `858631` / `859813` / `962784`）、
+  小游戏改包族 5 篇（`1018808` / `1076393` / `893603` / `927582` / `1115363`，**按记忆口径「小游戏线继续不列」**）、
+  油猴杂项（`1598299` gitbookVIP / `1940437` Circle 阅读助手 / `2051222` flbook 导出 PDF）、
+  媒体解析（`1159049` 某手去水印 / `1611177` 壁纸与音乐爬虫集 / `986243` X音批量下载 / `1430708` 某直播 websocket /
+  `1379263` CCTV 手机电视直播源）。
+- **② T10 媒体链路族**继续按 `stream-drm-reverse` 分层表 + `reverse-knowledge` 蓝图收，**只收带完整算式的**。
+- **③ 网盘族** `cloud-drive-direct-link`（**只有「新形态」才动脚本**；百度 §A 的 `42 小时`、城通 / 奶牛仍未覆盖）。
+- **④ 新增候选簇「页面钩子与限制解除」**：本批开了头（反 hook 检测 / 限制解除 / 直出载体），
+  下一批可把 `web-reverse-hook` 的 `anti-hook-detect` **做成真的 `build-hook.js` 预设**
+  （本批只落了文档，文末已用「未实现项」标注）。
+- 验证码簇只取「新题型或带完整纯算交付」；网马时代线 **继续不列**。
+
+**遗留（本批登记的「单源 / 未复核」项，文内已显式标注，勿当结论用）**
+
+1. `2105967` 的 **5 条安全缺陷**（静态密钥长期不变 / key 接口无鉴权 / IV 跨视频复用 / 签名只保护索引 /
+   试看版与完整版同源同密钥）是**对一个具体站点的实测归纳**，不是行业普查 —— 引用必须连「该案例」一起说。
+2. `2105967` 的「**多个视频的 key 长期不变**」与「**其它视频试看版 IV 与该视频相同**」是源文自述的测试结论，
+   **样本量未知** ⇒ 只有当次复现才能升级。
+3. `1163619` 是 **2020 年**的腾讯旧路线，**今天站点已改用 `vd.l.qq.com/proxyhttp` + cKey**；
+   文内已强制标注「引用必须连同年份」。
+4. `951589` 明确自陈**校验方式不通用**（「不同渠道的游戏版本更迭不同……不通用的！！！」）⇒
+   该篇只登记**结构形态**（双 sign 的作用域、`String.fromCharCode(100)` 盐、`s:'kunpo'` 占位），**不登记常量**。
+5. `1237897` 的固定 GUID 前缀 `12D7D4DE-AEFA-4032-B796-EA80CD4A00EA` 是**该小程序当时的值**（2020）⇒ 抄结构不抄常量。
+6. `2046628` 是**无结论的求助帖** ⇒ 只登记形态结论（见上「技能变更汇总」的实测数字），
+   **不登记任何算法/明文结论**；其中「40 字节与 8 字节块 DES 相容」是**两种读法之一**，未二选一。
+7. `1708851` 的 `key == iv` 与 `uuid` 生成逻辑是**单源单版本**（得物 5.3.1，2022）⇒ 站点改版即可能失效。
+8. `1650555` 的 `checkoutNotTrustScript` / `window.OCS` / `ne` 正则都是**智慧树当时的内联实现细节**；
+   「选择性劫持」范式本身可迁移，但**具体函数名/变量名不可迁移**。
+9. `1814333` 的 `RENDER_DATA` 结构（`user.user.user` / `user.post.data`）是**抖音当时**的嵌套形态 ⇒ 取字段前先打第一层 key。
+10. **B31 登记的 5 条单源项**（斗鱼长期化来源单篇 / B 站固定 CDN 前缀是当时实测值 / 虎牙 `sCdnType == "AL"` 口径 /
+    B 站「接近永久」是源文推断 / 1998689 响应 Cookie 参与 sign 只单站观察）本轮**未碰**，继续挂着。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 610 | `52pojie-2105967-【网络逆向】TS到视频HLS加密简单逆向实录.md` | `9d11ad6a36f05aa1588dd3ad92fad3ce` | 2026-09-24 | `stream-drm-reverse` | evolve | ★★ **预览门控层**（既有 references 空缺的一层）：受控点二分判据 —— **URL 带 `_preview` 后缀 = 服务端侧**（去掉后缀无效，源文实测）、试看 m3u8 里**直接有 `#EXT-X-ENDLIST`** ⇒ 列表本身被截断；**分片名可预测**（`…/2024-08-0268.ts` 末尾 `68` = 第 68 片，改两位数字可下其它片）；★ **枚举终止判据 = 连续 3 个 404**（不是单个 404）；key URI 是**相对路径** `/keyhome/video.key` 要按 m3u8 目录拼绝对地址、响应 `Content-Length: 16` 且 body 就是 16 字节、IV 形如 `0x4ff43fb9…`（32 hex）；AES-128-**CBC** + PKCS7 的整片解密（解完 `unpad` 失败时手动按末字节去填充）；★ **5 条设计缺陷的 L0→L3 分级**（静态密钥长期不变 / key 接口可匿名下载 / IV 跨视频复用 / 签名只保护索引不保护分片与 key / 试看版与完整版同源同密钥 ⇒ 平台侧升级方向 = 静态密钥迁到动态鉴权 + 切片名换随机 UUID + 试看与完整版密钥隔离）；★ **纪律**：源文先用「套壳软件一般都…」的统计直觉猜「前端截断」，**实测落到服务端侧** ⇒ **判据必须用 URL / 索引证据，不能用统计直觉**；口径：该文是**一个站点的实测归纳**，引用要连年份 |
+| 611 | `52pojie-1163619-腾讯视频真实地址解析.md` | `b10e1e8d89cde87703ea4e3d54ebb168` | 2026-09-24 | `stream-drm-reverse` | evolve | **腾讯旧版 `getinfo`/`getkey` 路线（2020 前）**：`vid` = 播放页 URL 的 `pathinfo()['filename']`；`vv.video.qq.com/getinfo?vids=<vid>&platform=101001&charge=0&otype=json&defn=s`；★ **响应是 JSONP 形态 —— 必须先剥掉 `QZOutputJson=` 前缀与结尾 `;` 再 parse**（提炼为通用判据：响应以 `<回调名>(` 或 `xx=` 开头一律先剥壳）；组装 `vl.vi[0].ul.ui[0].url`（基址）+ `fvkey` + `fn` ⇒ `基址 + fn + "?vkey=" + key`；高清另走 `getkey?format=2&…&vid=<vid>&filename=<vid>.mp4&platform=11` 取 `key`/`filename`；⚠️ **已强制标注「2020 年的旧路线，今天站点已改用 `vd.l.qq.com/proxyhttp` + cKey（见 §2.2），引用必须连同年份」** |
+| 612 | `52pojie-635800-【带源码】新思路--蓝奏云直链解析.md` | `317830a1b750031d98f88d633d77ef5c` | 2026-09-24 | `cloud-drive-direct-link` | evolve | **蓝奏云 G2017 最早一代（比原表起点 G2018 更早）**：★ **换手机 UA 会拿到另一套页面** —— 手机端分享页源码里**直接内联**出直链参数（源文原话「网站的手机访问端的源代码竟然毫无保留的把下载链接的参数给贡献出来了」），按页面里 `submit.href` 那一串拼接即得下载链接；手机端地址形如 `蓝奏云官网网址 + "tp/" + 文件ID`；**无第二跳、无 `ajaxm.php`**；⇒ 提炼为 **§1.1「移动端 UA 分流」**（本族最早也最通用的定位技巧：PC 页找不到参数 ⇒ 换 UA 看另一套页面）；边界：2017 形态，今天已演化到 G2024/G2025，该判据只作**通用手法**保留 |
+| 613 | `52pojie-636373-【网页源码】简单实现蓝奏云直链解析.md` | `45c682bf04f6cfdddf4e2b6791ba6f21` | 2026-09-24 | `cloud-drive-direct-link` | evolve | 同代的 **PHP 工程实现**，给「移动端 UA 分流」补上工程纪律：★ 源文原话「因为需要访问获取源码的是手机的下载页面，所以要注意使用 `curl_post` 函数**必须模拟手机 UA !!!**」⇒ **换 UA 不是可选优化而是前置条件**；流程四步（取 `link` → 存在性检查 → `curl_post` 手机页 → 从源码里取参数拼接）；失败态区分（文件已被删除要单独报错，不能与参数缺失混在一起） |
+| 614 | `52pojie-1746095-解码 Javascript 文件之 C# 正则替换.md` | `d7b06d53ca8568daf6b5950b83a55d21` | 2026-09-24 | `ast-deobfuscation` | evolve | ★★ **「字符串表旋转未还原」的静默失败三指纹**（新增独立权威源）：① 自检算式退化成 `parseInt("active")` / `parseInt("6101864rlJFPI")` 这类**把非数字串送进 `parseInt``；② **语法合法但语义荒谬**的调用（`$("projectcreation_error")["filter"](…)` 选择器丢了 `#`、`document["innerText"]("response")` 把属性名当函数调）；③ **结构位**被换成随机 token（`type: "2774492jOaOCZ"`、`url: "435684KAJSHB"`）或反过来常量跑到 URL/选择器位置；根因三条：**漏做旋转 IIFE**（`array.push(array.shift())` 未执行 ⇒ 源码下标 ≠ 运行时下标）、注入的 `_getName` 里 `var _index = _index - 0x1d4`（形参遮蔽 + 未定义）、纯文本正则**无法区分定义与调用**（源文靠 `if (numberString == "index") return match.Value;` 侥幸跳过）；正确路线三条（AST 工具处理旋转 / 先求实际旋转偏移再替换 / **只做命名还原不碰索引**，零风险）；★ **验收判据 = 必须跑通一个已知输入并对上浏览器里的同一输出，「能 parse、能跑不报错」不算验收**（源文产物恰好能跑）；边界：与实现语言无关（C#/Python/Node 同样会踩） |
+| 615 | `52pojie-1820070-Javascript 加密解密方法.md` | `b2e305538b458f120272b3ce5e8140fd` | 2026-09-24 | `web-reverse-algorithm` | evolve | 内置编解码函数的**形态指纹表**（价值在于**能从产物形状反查用了哪个函数**）：`escape("始識")` ⇒ `%u59CB%u8B58`（★ **`decodeURIComponent` 解不了 `%uXXXX`**，只能用 `unescape`）、`encodeURI` ⇒ `%E5%A7%8B…`、`btoa` ⇒ 标准 base64、`String.fromCharCode(101,118,97,108)` ⇒ `eval`；CryptoJS 侧：`enc.Base64.stringify(enc.Utf8.parse(t))` 是「先 UTF-8 再 base64」、`Base64.parse` 后必须 `toString(Utf8)` 否则拿到 `WordArray`、`PBKDF2(text, salt, {keySize: 128/32, iterations: 10})`；★ 判据：**先按形态选解码器，选错不报错只会给乱码 ⇒ 「解出来是乱码」永远先怀疑选错解码器**；边界：该文是**速查表**，已有 `web-reverse-hook` 的 `crypto-libs` 预设覆盖运行时拦截，**本文只收「从产物反查」这一面** |
+| 616 | `52pojie-1708851-某物newSign分析.md` | `811a8e861a0c5784e15e14e98887e6e6` | 2026-09-24 | `web-reverse-algorithm` | evolve | ★★ 三段链（顺序不能反）：**字段字典序拼接（`k+v` 无分隔符，空值也参与）→ AES-128-ECB(PKCS5Padding) → base64 → md5 = newSign**；五条硬判据：① **`key == iv`** = `d245a0ba8d678a61`（16 个 ASCII 字符，不是 hex 解码）；② ★ **so 导出函数名 `AES_128_ECB_PKCS5Padding_Encrypt` 直接写明了模式/填充/位宽 ⇒ 先按名字直译，不要先做符号还原**（`Module.findExportByName` 一句挂上）；③ ★ **hook 入参 + hook 返回值一次拿到「明文/密文」这一对 ⇒ 拼接顺序不用猜**；④ **参与签名的字段集合随接口变化**（另一接口把 `scene` 换成 `source`）；⑤ `uuid` 是客户端随机生成（`random.sample("0123456789ABCDEF",2)` 拼段）⇒ **随机值不必复现，但同一请求内必须一致**；另 ★ **请求头 Token 先查来源再查算法** —— `X-Auth-Token` 每次请求都一样 ⇒ 先在抓包里找到 `POST /api/v1/app/user_core/users/getVisitorUserId` 的**响应头**里带着同一个 token ⇒ 「逆向 JWT 算法」这件事直接不存在；`Bearer eyJ...` 是 JWT，第二段 base64url 解 payload 即得签发/过期时间（不需签名密钥）；边界：Android 5.3.1 单版本（2022），常量与 key 站点改版即失效 |
+| 617 | `52pojie-1735455-某图床sign解密.md` | `3dae752d28f106a4e00db0db2aa31a81` | 2026-09-24 | `web-reverse-algorithm` | evolve | ★ **难度不在算法（最后就是一句 md5），在「关键词搜不到」**：① **第一步不是搜索而是 XHR 断点** —— 断下来的那行必定是 `send(...)`，**实参就是要发出去的东西，先有「发送点」再往回找**；② **改搜「实参名 / 对象名」**（源文搜 `_0x568870` 命中 12 处，靠 `new FormData()` 与连续 `.append(…)` 认出形态，`sign` 就藏在其中一次 `append` 里 ⇒ **关键词搜不到 ≠ 没有**）；③ ★ **不要在静态文本上替换混淆代码，要在运行时把函数「照出来」** —— 打印那个混淆成员（`_0x25869b["UFsia"]`）、**双击结果直接看 `toString`**、发现是「缩略/包装」函数后**逐层替换逐层验证**（★ 与同批的 `static-index-replacement-pitfalls.md` **互为正反面**）；④ 还原出的 `sign` 是 `md5(token + "_" + ts + "_" + nonce)` 形态，⚠️ **未登录时 `token` 是 `undefined` ⇒ 拼接后变成字面量 `"undefined"`，登录前后规则不同，两个状态都要测** |
+| 618 | `52pojie-2046628-寻一个会JS堆栈的大佬，帮我解密几个参数生成的代码.md` | `cde7b04ae36888f4fd0b739e7d462f46` | 2026-09-24 | `web-reverse-algorithm` | evolve | ★ **无结论的求助帖 ⇒ 只登记可判定的形态结论**（新文档 `16-ciphertext-structure-diagnostics.md` 的诚实登记范例）：① **跨请求参数依赖** —— `session_id` 由第 1 个接口 `uc-gateway.ykt.eduyun.cn/v1.1/sessions` 下发（响应同时给 `session_id` / `session_key`），随后作为登录请求的字段参与加密 ⇒ 归入「参数溯源三分类」的「上一次响应返回的」，**判据：同一个值在两次请求里重复出现 ⇒ 先找来处，别当纯算输入**；② ★ **密文公共子串判据（本批实跑复核）**：两个样本 base64 解码后**都是 40 字节**、公共尾 **12 个 base64 字符 = 8 字节**、公共前缀 **0 字节** ⇒（CBC 前向扩散）公共尾 ⇒ 明文尾相同；★ **40 不是 16 的倍数 ⇒ 直接排除 16 字节块的 AES-CBC**；而 40 = 5×8 + 公共段恰 1 个 8 字节块 ⇒ 与「8 字节块 DES」或「多段拼接 + 固定尾段」**两种读法都相容，单凭长度无法二选一**；⚠️ **只登记形态结论，不登记任何明文/算法结论**（源文无明文、无验证）；要升级成结论必须补「构造两个已知明文尾部 + 候选 key/IV 逐字节对拍」的实测 |
+| 619 | `52pojie-951589-XXXXXX sign算法分析.md` | `7be7c2854672b9986aae2ccba63bca5e` | 2026-09-24 | `miniprogram-reverse` | evolve | ★ **S6 整包 JSON 双校验**（两处 sign 的作用域不同）：内层给**单条记录**做校验 —— 塞占位键 `t.s = "kunpo"` → `md5(JSON.stringify(t) + String.fromCharCode(100))`（★ 末尾那个 `String.fromCharCode(100)` 就是字面量 `"d"`，**看起来像盐却不是盐**）→ 把结果填回 `s`；外层给**整个数据包**做校验 —— `for (var s in t) keys.push(s)` → `keys.sort()` → `k + "=" + t[k] + "&"` 拼接 → **去掉结尾 `&`** → md5（其它接口用这一处）；实现细节：第一处 sign 的**第二个参数是布尔值**，用来与第二处 sign 区分（源文原话「第二个参数 e，实际上就是 True 和 False 的判断」）；★ 三条工程纪律：**服务端返回 `code 1000`（非 0）⇒ 先确认 sign 是否算对，别急着怀疑参数**；**同一份数据在不同接口用不同密钥**（源文自陈「这个位置坑了我很长时间」）；**数值改到极限会被回滚成初始等级**（数据有上限且牵涉其它算法）；⚠️ 源文明确「**校验方式不通用**（不同渠道版本更迭不同）」⇒ **只登记结构形态，不登记常量** |
+| 620 | `52pojie-1237897-vx小程序《王富贵的垃圾站》详细教程.md` | `25ddac055af6c16c3526d7cce94f0aee` | 2026-09-24 | `miniprogram-reverse` | evolve | ★ **S7 固定 GUID 前缀 + 明文 JSON**：`sign = md5("<固定 GUID 串>" + gamedata 序列化串)`，源文里的固定串是 `12D7D4DE-AEFA-4032-B796-EA80CD4A00EA`；★ **要区分「前缀硬编码常量」与「gamedata 是整份存档 JSON 的序列化串」**（不是字段拼接）；★ **「下载 → 改 → 上传」闭环**：拉取存档 → 改字段 → 带 sign 回传，**判据「改了数据不改 sign 上传失败 ⇒ sign 确实参与校验」**（与本批 951589 是同一个验证动作）；坑：**`json.dumps` 中文会转成 `\uXXXX` 导致服务端不认 ⇒ 必须 `ensure_ascii=False`**；**注意要改的数值在 JSON 里是字符串类型**（`"money":"2589626"` 这种，改完仍要是字符串）；边界：定位手法是「搜主文件最大 js 里的 `sign` / `getsign` / `saveuserdata` 等关键词」；固定 GUID 是 2020 年该小程序的常量 ⇒ **抄结构不抄常量** |
+| 621 | `52pojie-1650555-[油猴脚本开发指南]实战智慧树shadowroot闭包问题.md` | `e621da63637494cb77fe0b0c4a971540` | 2026-09-24 | `web-reverse-hook` | evolve | ★★ **「反 hook 检测」这一类**（既有 `antidebug` 预设完全未覆盖）：① **`Function.prototype.toString` 白名单比对** —— 把若干原生函数逐个 `toString()` 过正则判含 `function` / `native code`，任一不匹配就异常上报；检测入口还包括 `window.XMLHttpRequest`、`XMLHttpRequest.prototype.open`、`document.body.attachShadow` 存在性，以及 ★ **`!window.OCS`（油猴管理器变量名本身就是指纹）**；② ★★ **用 `new Error().stack` 做「调用方过滤」** —— 在 `setInterval`/`setTimeout` 包装里 `new Error("大赦天下")` 后 `if (err.stack.indexOf("checkoutNotTrustScript") !== -1) return;` ⇒ **只掐掉来自上报函数的定时器注册、其余一律放行**（提炼为通用范式「**选择性劫持**」；代价：依赖**函数名**，压过混淆就失效）；③ 劫持 `RegExp.prototype.test` 让白名单正则一律返回 `true`（源文自评「那就没啥意义了」，照实写并说明为什么）；④ **closed shadow DOM 取证**：包装 `Element.prototype.attachShadow` 强制 `args[0].mode = "open"` 再 `old.call(this, ...args)`（判据：Elements 里看不到子节点 / `el.shadowRoot === null` / 有内容但 DOM 查不到）；⑤ **框架句柄逃逸**：`document.querySelector('.subject_describe > div > div').parentElement.__vue__.shadowDom.innerHTML` —— **组件把 `attachShadow` 的返回值挂在了 Vue 实例自有属性上** ⇒ DOM 层拦不到也能拿到；⚠️ 函数名/变量名/正则都是**智慧树当时的内联实现细节**，可迁移的是范式不是名字 |
+| 622 | `52pojie-1608506-【油猴脚本】去除csdn登录才能复制代码的限制.md` | `036a0652a27ffbb626386009811a6c52` | 2026-09-24 | `web-reverse-hook` | evolve | ★ **页面限制解除配方（先分清改样式还是改函数）**：① `user-select: none` 类限制 ⇒ 对目标节点设**行内** `user-select: text !important`（★ 源文用的是「把字符串拼到 `item.style` 上」的写法 ⇒ **行内 `!important` 能压住作者样式表里的 `!important`**，但也**只在行内生效**，`pointer-events` / `-webkit-touch-callout` 等其它限制词要逐个补）；② ★ **只改样式时按钮仍会弹窗 ⇒ 要重写站点自己的功能函数**（源文把 `window.hljs.signin` 从「弹登录框」改成「全选该 `<pre>` 并复制」），可运行片段走 `Range.selectNode` + `getSelection()` + `removeAllRanges`/`addRange` + `document.execCommand("copy", false, null)`；③ **判据：先看「点按钮时执行的是哪个函数」，再决定改样式还是改函数** |
+| 623 | `52pojie-1814333-【油猴脚本】抖音用户主页数据下载.md` | `cd0ab91e838ab76226528af1090aa132` | 2026-09-24 | `target-analysis` | evolve | ★ **「网络面板没有接口但页面有数据」这一侧**（新文档 `in-page-data-carriers.md`）：① 先分清「**没有接口**（SSR 直出）」还是「**没触发**」；② 直出载体 `<script id="RENDER_DATA">` 里是 **URL-encoded JSON** ⇒ **必须先 `decodeURIComponent` 再 `JSON.parse`**（直接 parse 会失败且**不告诉你需要 decode**）；字段路径要**先打第一层 key**（该站点混着 `_location` / `app` 这类非业务键，用户信息在 `user.user.user`、作品列表在 `user.post.data`）；③ ★★ **两个静默陷阱**：源文脚本用 **`self._url` 判断目标接口 —— `_url` 不是标准属性 ⇒ 条件永不成立、一条都不收且不报错**，必须用 **`this.responseURL`**；**覆盖 `this.onreadystatechange` 会顶掉页面自己的回调** ⇒ 用 `addEventListener("load")`；④ 无限滚动驱动（`scrollTo(0, document.body.scrollHeight)` + 到底判据 + 间隔），★ 驱动性价比 **分页参数 > 点「加载更多」 > 滚屏**（滚屏最不可控）；⑤ CSV 导出的两条纪律（`\ufeff` BOM 让 Excel 认 UTF-8、字段含逗号/换行必须加引号）；⚠️ 源文的 `self._url` 与字段嵌套路径是**站点当时的形态**，已在文档里显式标为「源文缺陷写法，不要照抄」 |

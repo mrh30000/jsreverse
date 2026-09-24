@@ -23,6 +23,7 @@ description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链�
 | --- | --- | --- |
 | **目标是「拿到一个能直接播的地址」，还没到解开密文** | **§0 地址还原层**（视频/直播/音频站的接口链路） | `references/playback-address-interfaces.md` §1 定层 → §2/§3/§4 按站型走 |
 | 地址里带 `authKey` / `vf` / `ckey` / `ddCalcu` / `sign` | **§0 + 签名参数** | 同上 §2；配方查 `../reverse-knowledge` 蓝图（`iqiyi-cmd5x` / `tencent-ckey` / `migu-playurl` / `douyu-live` / `qingting-fm`） |
+| **试看只有 N 秒 / m3u8 路径带 `_preview` / 拿不到完整 playlist** | **预览门控层**（§0 与 A 层之间） | `references/preview-gating-and-segment-enumeration.md` §1 二分判据 → §3 分片枚举补齐 |
 | m3u8 里有 `#EXT-X-KEY:METHOD=AES-128,URI="..."` | **A 容器层**：整片同一 key | `scripts/m3u8_probe.py <playlist.m3u8>` |
 | **拿到的 key 不是 16 字节**（32/47/64 位、或一长串 hex） | **W 包装层**：key 被二次构造过 | `scripts/key_wrapper.py alpha-check --enforce` → 再解 |
 | m3u8 里**没有** KEY，但 JS 里有 `decryptdata.key` / `this.decryptkey` / `qiniuDRMKey` | **B 播放器层**：key 由 JS 拼或由接口给 | 断点打 `decryptdata.key`；`license_parse.py mdcm` |
@@ -133,6 +134,8 @@ description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链�
 | ★ 直播源**看一会就断** | 地址里带 `wsAuth`/`token`/`expire`/`did` ⇒ 短效，不是解析失败 | 长期化三步：换稳定 CDN + 从 `.flv?` 截断 + 清清晰度后缀（`references/live-source-longevity.md` §0/§1） |
 | ★ **本地能取、服务器取不到**（关键字段为空） | **机房 IP 黑名单**，不是算法问题 | 先做本地 vs 线上同请求 A/B；处置走代理 IP 池（同上 §3） |
 | ★ 抄来的页面串里出现 `amp;` / `&#182;` / `×` | **HTML 实体残留**（三个已确认实例） | 一律先搜这三个模式再拼串（同上 §2） |
+| ★ m3u8 **只有很少几个分片、且路径含 `_preview`** | 服务端侧试看门控：`_preview` 后缀 = 服务端**只下发试看切片**（不是前端截断） | `references/preview-gating-and-segment-enumeration.md` §3 按分片序号枚举补齐（**连续 3×404** 停） |
+| ★ **去掉 `_preview` 后缀无效** | 受控点在服务端：改 URL 不改授权（源文实测此路无效） | 同上 §2 处置分叉 → §3 分片枚举；连可预测分片名也没有则属「放弃」档 |
 
 ## 反例黑名单（不要做的事）
 
@@ -282,6 +285,11 @@ python $S/key_wrapper.py noise-check --chars "-_! " --json
   `--selftest` 自带（断言数**以实跑输出为准**，勿手抄；含 1 个负对照「换口令签名必须不同」与 5 条拒绝路径）。
 - `references/hls-and-ts-structure.md`：HLS/m3u8 全字段语义与判层、TS→PES→ES/NALU 分层、
   **加密覆盖范围判据**、key/IV 四类来源与派生式、A/B/C/D 层实战配方、RPC 桥接、排错速查。
+- `references/preview-gating-and-segment-enumeration.md`：**试看门控 / 索引被截断的补齐（B32 新增）** ——
+  受控点二分判据（URL 带 `_preview` 后缀 ⇒ **服务端侧**，去掉后缀实测无效）、前端截断 vs 服务端侧的处置分叉、
+  **分片名可预测 ⇒ 按序号枚举**（从 `0` 起、**连续 3 个 404** 停、末尾升序两位数字）、
+  试看 m3u8 的 key/IV 相对路径拼法与 `Content-Length: 16` 判据、
+  该案例 5 条安全缺陷（**L0 静态密钥 → L3 动态鉴权**）与 Python 枚举骨架、排错表。
 - `references/key-wrapper-families.md`：**key 二次构造 / 包装层（W 族）唯一权威源** ——
   W1~W4 四族结构签名与还原、**W6 外部掩码异或（int32 / `DataView` 默认大端 vs `Uint32Array` 平台端序）**、
   W5 **字母表守卫**（覆盖性 / 单射性 / 越界下标）、

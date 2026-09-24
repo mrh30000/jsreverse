@@ -107,6 +107,10 @@ description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反�
   S3 **手写实现（Python / estraverse）的三个静默崩溃点**（`alternate === null`、父节点没有 `body`、`==` 当成 `===`），
   以及**最高性价比的一招：用同一份配置自己生成混淆样本、拿原码做端到端 diff**（原码在手 ⇒ 失败必然是 pass 错）。
   ⚠️ 判据只对**同一 shell** 有迁移性：先核对顶层结构（`_0x` 名 + 大数组 IIFE + 取值函数），不要按站点名套用。
+- **用正则 / 文本把 `_getName(0x…)` 直接替换成字面量、结果「能 parse、脚本不报错但字符串全错」时，
+  读 `references/static-index-replacement-pitfalls.md`**：这是「字符串表**旋转未还原**」的静默失败模式 ——
+  三个未运行即可判的指纹（自检算式里出现 `parseInt("非数字串")`、`$("选择器")` 丢了 `#`、`type: "2774492jOaOCZ"` 这类常量位变成乱码）、
+  替换脚本的三处根因（没做旋转 / 变量遮蔽 / 正则分不清「定义」与「调用」）、三条正确路线，以及「能 parse ≠ 对」的验收判据。
 - 需要理解 decodeObfuscator 兼容能力和 `eval` 安全边界时，读 `references/decode-obfuscator.md`。
 - 深入 BabelPack AST 变换与动态求值时，读 `references/babelpack-enhancer.md`。
 - 零宽字符与特殊编码清洗时，读 `references/invisible-unicode.md`。

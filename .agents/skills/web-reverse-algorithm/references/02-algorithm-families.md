@@ -36,6 +36,80 @@ request params
 - 典型链：`token&t&appKey&data -> MD5`
 - 真正难点：token 提取、`t` 一致性、紧凑 JSON
 
+#### 得物 `newSign`（so 层 AES-ECB + 字段字典序拼接 → md5）
+
+来源 `52pojie-1708851`（Android 客户端，**但下面的动作全部可迁移到任何需要 hook 原生函数的场景**）。
+
+链路三段，**顺序不能反**：
+
+```text
+① 字段按字典序拼接（k + v，无分隔符，空值也参与）
+   anchorReplyId0childNum2contentId91596960contentType0hotNum2loginTokennum6platformandroidscenesingletimestamp1667727230932uuid6fc3e295226f5612v5.3.1
+② AES_128_ECB(PKCS5Padding) 加密 → base64
+   lBYrp9G5PAMDk5gfqU13oxTskDjzkWz44n2W2n6czxMJBIhdpD4TQCkisyZqhVEBH01PYsJYC3pdehwfHSNgCdagiG7I8ulV+uaA70u0ZrK2BG6Rt6i3l61cZcI/tlHJwdqy/u/v2XKSlg2zj4tMx9yVILWX1j11NyFh0Yt+7I5NTeCUh5SovtToEQnfIB8EbuAM89Hab8mebNCzjqx1ew==
+③ md5(② 的 base64 字符串) → 32 位 hex，即 newSign
+```
+
+**五条硬判据**：
+
+1. **`key == iv` 是实测值，不是巧合猜的**：源文 hook 出来的 key 与 iv 都是
+   `d245a0ba8d678a61`（16 字符 ASCII）。AES-128 的 key 就是**16 个 ASCII 字符**，不是 16 字节 hex 解码结果。
+2. **so 导出函数名会直接告诉你「模式 + 填充 + 位宽」**：`AES_128_ECB_PKCS5Padding_Encrypt`
+   —— 128 / ECB / PKCS5Padding / Encrypt 四项齐全。**遇到这种自描述函数名，先按名字直译一遍再说**，
+   不要先去做符号还原。`Module.findExportByName("libJNIEncrypt.so", "AES_128_ECB_PKCS5Padding_Encrypt")`
+   一句话就能挂上。
+3. **「hook 入参 + hook 返回值」是定位拼接顺序的最省事手段**：一次 hook 同时打印 `args[0]`（明文串）
+   与 `onLeave` 的返回值（密文），**明文串拿到手，拼接顺序就不用猜了** —— 这比读反编译代码快得多。
+   注意 `Interceptor.attach` 里 `args[i].readUtf8String()` 只对 C 字符串有效；jstring 要先转。
+4. **参与签名的字段集合随接口变化**：同一 App 的另一个接口，明文里是
+   `contentId88443061loginTokenplatformandroidsourcetimestamp1667737802005uuid6fc3e295226f5612v5.3.1`
+   —— **`scene` 换成了 `source`**。⇒ 不要把一个接口的字段清单当全局常量。
+5. **`uuid` 这类字段是客户端随机生成的**：源文给的生成逻辑是
+   `random.sample("0123456789ABCDEF", 2)` 拼 `size-1` 段后小写 ⇒ **随机值不必复现，但必须保证
+   「同一请求内一致」**（它既进签名又被服务端记录）。
+
+> **与 `15-call-site-locating-playbook.md` 的关系**：那篇讲 Web 侧的「加密发生在哪一行」；
+> 本篇这条是**原生侧的同一动作** —— 目标都是**拿到「明文」与「密文」这一对**，
+> 剩下的事（对拍、复现）完全一样。
+
+#### 某图床 `sign`（XHR 断点 + 运行时读混淆函数的真实 `toString`）
+
+来源 `52pojie-1735455`。难度**不在算法**（最后是一句 md5），**在「关键词搜不到」**：
+
+- **第一步不是搜索，是 XHR 断点**：把上传接口填进 XHR/Fetch 断点，断下来的那一行必定是 `send(...)`，
+  **小括号里的实参就是要发出去的东西**（源文原话）。**先有「发送点」，再往回找**。
+- **第二步：从 `send` 的实参倒查**。源文是在同文件里搜 `_0x568870`（即 `send` 的实参名），
+  命中 12 处，其中 `new FormData()` 与连续的 `.append(...)` 让它确认这是个 FormData 对象；
+  而 `sign` 就藏在其中一次 `append` 里，**因为被混淆所以按 `sign` 关键词搜不到**。
+  ⇒ **通用判据：关键词搜不到 ≠ 没有；改成「搜实参名 / 搜对象名」再搜一次。**
+- **第三步（本文最值得抄的动作）：不要在静态文本上替换混淆代码，要在运行时把函数「照出来」**。
+  源文的做法是：在关键行下断点 → 在 Console 里**打印那个混淆成员**
+  （如 `_0x25869b["UFsia"]`）→ **双击结果直接看 `toString`** → 发现它是
+  `(a, b) => b ? ...` 的「缩略/包装」函数 → **逐层替换、逐层验证**。
+  - 这与 `../../ast-deobfuscation/references/static-index-replacement-pitfalls.md`（同批）**互为正反面**：
+    **同一类混淆，用静态正则替换会静默产出语义错误的合法 JS；用运行时 `toString` 逐层照抄则稳。**
+  - **一条捷径**：先在 Console 里 `console.log(fn.toString())` 看到**真实函数体**，
+    再决定「这个包装是不是可以整段删掉/替换成一行」——**能删就删，别去还原它的算法**。
+- 最终还原出的 `sign` 结构（源文末段）：`md5(token + "_" + ts + "_" + nonce)` 这种
+  **「若干参数 + 分隔符 + md5」**形态，其中 `token` 未登录时是 `undefined`
+  ⇒ **⚠️ `undefined` 参与字符串拼接会变成字面量 `"undefined"`**，登录前后 sign 规则不同，
+  复现时必须两个状态都测一遍。
+
+#### 通用：请求头里的 `Token` 先查「来源」再查「算法」
+
+来源 `52pojie-1708851`，但这条**每道 App / 小程序题都会踩**：
+
+| 现象 | 结论 | 动作 |
+| --- | --- | --- |
+| 某个头（如 `X-Auth-Token`）**每次请求都一样**、跨接口都在 | **不是算出来的**，是**别的响应下发**的 | 别反编译算法；**搜抓包列表**，找哪个响应头/响应体给了它 |
+| 头值形如 `Bearer eyJ...`（三段 `.` 分隔的 base64url） | 是 **JWT**，且 `alg` 在头部明文里 | `base64url` 解第二段（payload）就能看到签发/过期时间，**不需要签名密钥**（除非你要伪造） |
+| 头值随请求变化、且与时间戳相关 | 才是**需要还原**的签名 | 走本节前述流程 |
+| 头值来自 `com.xxx.ServiceManager.getJwtToken()` 之类 | 只是**读缓存**，不是生成点 | 继续找**谁写进了这个缓存** |
+
+> **顺序纪律**：源文就是在这一步省下了大量时间的 —— 先在抓包里找到
+> `POST /api/v1/app/user_core/users/getVisitorUserId` 的**响应头**里带着同一个 token，
+> 于是「逆向 JWT 算法」这件事**直接不存在了**。**先问「它从哪来」，再问「它怎么算」。**
+
 ## 二、混合加密题
 
 ### 统一结构

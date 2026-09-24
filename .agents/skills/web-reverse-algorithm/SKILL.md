@@ -1,6 +1,6 @@
 ---
 name: web-reverse-algorithm
-description: 面向 Web/JS 逆向中的纯算、验证码纯算、复杂 header/cookie 签名、混合加密、JSVMP/VMP、Wasm、PoW、响应解密、指纹与 challenge 参数还原工作流。用于需要从最终请求、最终 cookie、最终 verify 或最终 WebSocket 帧倒推 writer、builder、entry、source，设计浏览器与本地对齐检查点，判断何时做 AST 解混、何时插桩、何时做最小补环境、何时拆图像线与参数线、以及如何把研究结果落成 solver、SDK、脚本或服务的场景。用户明确提到纯算、验证码纯算、滑块、点选、旋转、PoW、collect、w、x-s、a_bogus、encSecKey、captchaBody、X-Bogus、Wasm、国密、补环境、指纹、challenge、verify、header 签名、cookie 签名、登录密码加密、登录提交参数、表单参数、单点登录、CAS、WebVPN、execution 令牌、RSA 公钥、JSEncrypt、密码 MD5 加盐、`publickey_mod`、DES 解密、`encoded` 隐藏字段时使用。当目标带无限 debugger / 反调试（打开 DevTools 就断住、document.write 覆写页面、eval 监管脚本）、JS 每次访问都变、响应体是加密的 JS、需要 mitmproxy/Fiddler 改写响应做在线补丁、或要判断某个参数属于「固定 / 上次返回 / JS 计算」时，同样使用本技能。当需要在 DevTools 里**跟栈定位加密发生在哪一行**（参数在某层「消失」、断在函数头部已带密文、函数没有形参却返回密文）、用**条件断点**在几十个共用同一拦截器的请求里筛出目标包、按「缺什么补什么」扣代码并让加载器自己报出缺失模块、排查**原型追加的方法必须在 `new` 之前补**或加载器头部「形参与 `e = {}` 冲突」时，也用本技能。
+description: 面向 Web/JS 逆向中的纯算、验证码纯算、复杂 header/cookie 签名、混合加密、JSVMP/VMP、Wasm、PoW、响应解密、指纹与 challenge 参数还原工作流。用于需要从最终请求、最终 cookie、最终 verify 或最终 WebSocket 帧倒推 writer、builder、entry、source，设计浏览器与本地对齐检查点，判断何时做 AST 解混、何时插桩、何时做最小补环境、何时拆图像线与参数线、以及如何把研究结果落成 solver、SDK、脚本或服务的场景。用户明确提到纯算、验证码纯算、滑块、点选、旋转、PoW、collect、w、x-s、a_bogus、encSecKey、captchaBody、X-Bogus、Wasm、国密、补环境、指纹、challenge、verify、header 签名、cookie 签名、登录密码加密、登录提交参数、表单参数、单点登录、CAS、WebVPN、execution 令牌、RSA 公钥、JSEncrypt、密码 MD5 加盐、`publickey_mod`、DES 解密、`encoded` 隐藏字段时使用。当目标带无限 debugger / 反调试（打开 DevTools 就断住、document.write 覆写页面、eval 监管脚本）、JS 每次访问都变、响应体是加密的 JS、需要 mitmproxy/Fiddler 改写响应做在线补丁、或要判断某个参数属于「固定 / 上次返回 / JS 计算」时，同样使用本技能。当需要在 DevTools 里**跟栈定位加密发生在哪一行**（参数在某层「消失」、断在函数头部已带密文、函数没有形参却返回密文）、用**条件断点**在几十个共用同一拦截器的请求里筛出目标包、按「缺什么补什么」扣代码并让加载器自己报出缺失模块、排查**原型追加的方法必须在 `new` 之前补**或加载器头部「形参与 `e = {}` 冲突」时，也用本技能。当**手上只有一段密文**时需要先读**长度 / 字符集 / 公共子串**判断块大小与编码链，当请求头 Token 其实来自**别的响应**（`Bearer eyJ...` 直接解 payload）无需逆向算法，或加密落在**原生 so 层**（自描述导出名、hook 入参返回值对拍）时也用本技能。
 ---
 
 # Web 逆向纯算
@@ -376,6 +376,14 @@ python scripts/waf_clearance_solver.py --selftest
   `public` 密钥包 → 目标密文包的两包链、扣代码四要点（报错驱动补全 / `console.log(e)` 让加载器报缺模块 /
   **原型方法必须补在 `new` 之前** / 加载器头部形参与 `e = {}` 冲突）、
   条件断点定位器（`e.url.includes(...)`，异步栈内要换帧）、八条静默陷阱（**抄串先搜 `&#` 实体** / 待签数组 `sort()` / 参数在 URL 而非 body）。
+- [references/16-ciphertext-structure-diagnostics.md](./references/16-ciphertext-structure-diagnostics.md)
+  用途：**「只有一段密文时先读什么」的唯一权威源** —— 三类不需密钥的客观信息（**长度**判块大小与填充 /
+  **字符集**判编码链，含 `%uXXXX` 只有 `escape()` 会产生、base64url 必须先替换 `-`/`_` /
+  **公共子串**判「明文哪两段相同」），以及 **★ 反向用法**：**公共段长度不是块大小整数倍就反证了「整块加密」**
+  （实测 40 字节 + 8 字节公共尾 ⇒ 直接排除 16 字节块 AES-CBC，省掉「用 AES 试一百遍再怀疑 key」的时间）；
+  内置编解码函数的**形态指纹表**（能从产物形状反查用了 `escape` / `encodeURI` / `btoa` / `fromCharCode` / `CryptoJS`）；
+  「形态像 ≠ 就是它」的四个陷阱（32 位 hex 未必是 MD5、末尾 `==` 未必是 AES、**前 16 字节乱是 IV 错不是算法错**）；
+  以及**求助帖式任务（原文没有结论）的登记纪律**——只登记可复现的结构观察，一条结论都不许往外推。
 - 媒体流 / DRM / ts 分片（判层、AES/SM4 内容解密、许可证体系、白盒 wasm）→ `../stream-drm-reverse/SKILL.md`：
   本技能不覆盖这条链路，遇到 `m3u8` / `EXT-X-KEY` / `GetLicense` / 花屏类现象请直接切过去。
 

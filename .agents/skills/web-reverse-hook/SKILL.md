@@ -1,6 +1,6 @@
 ---
 name: web-reverse-hook
-description: 生成并注入页面级运行时 Hook 脚本，用于拦截加密库（CryptoJS/JSEncrypt/SM-crypto）、JSVMP 虚拟机探针、反调试综合防御绕过（debugger/console/窗口尺寸/强退/iframe原生借用）、关键数据流追踪（Promise/Cookie/Storage/网络/时间）、SPA 动态路由深度提取（Vue/React 路由表与守卫清除）以及**Vue/Vuex 运行时状态固化与组件注册表替换**（油猴 / 篡改猴 / userscript 注入范式）。当用户提到“hook CryptoJS”“拦截 RSA 明文密文”“国密 hook”“JSVMP 探针”“绕过反调试”“无限 debugger”“阻止跳转/关闭”“SPA 隐藏路由提取”“拦截 cookie/storage/promise”“改 Vuex state”“$store.state 改不动”“__vue__ 取不到”“registerComponent 替换组件”“videojs Player 注入”“油猴脚本怎么注入”“无直链视频怎么下”“video 的 src 是 blob:”“网络面板只有分片没有可播地址”“hook addSourceBuffer”“MSE 缓存视频”“控制台反检测”“devtools 检测”“注入太晚拦截不到”“jQuery 事件定位”“Event Listener 只有 jQuery 闭包”“jQuery hook 拿不到真实回调”“$._data events”、以及“cookie hook 装完页面就不正常”“覆盖 document.cookie 后其它 cookie 丢了”“油猴 @match 不生效/只命中首页”“setter 里 debugger 断太多次”“没有任何注入设施时怎么抢在页面代码之前”时使用。
+description: 生成并注入页面级运行时 Hook 脚本，用于拦截加密库（CryptoJS/JSEncrypt/SM-crypto）、JSVMP 虚拟机探针、反调试综合防御绕过（debugger/console/窗口尺寸/强退/iframe原生借用）、关键数据流追踪（Promise/Cookie/Storage/网络/时间）、SPA 动态路由深度提取（Vue/React 路由表与守卫清除）以及**Vue/Vuex 运行时状态固化与组件注册表替换**（油猴 / 篡改猴 / userscript 注入范式）。当用户提到“hook CryptoJS”“拦截 RSA 明文密文”“国密 hook”“JSVMP 探针”“绕过反调试”“无限 debugger”“阻止跳转/关闭”“SPA 隐藏路由提取”“拦截 cookie/storage/promise”“改 Vuex state”“$store.state 改不动”“__vue__ 取不到”“registerComponent 替换组件”“videojs Player 注入”“油猴脚本怎么注入”“无直链视频怎么下”“video 的 src 是 blob:”“网络面板只有分片没有可播地址”“hook addSourceBuffer”“MSE 缓存视频”“控制台反检测”“devtools 检测”“注入太晚拦截不到”“jQuery 事件定位”“Event Listener 只有 jQuery 闭包”“jQuery hook 拿不到真实回调”“$._data events”、以及“cookie hook 装完页面就不正常”“覆盖 document.cookie 后其它 cookie 丢了”“油猴 @match 不生效/只命中首页”“setter 里 debugger 断太多次”“没有任何注入设施时怎么抢在页面代码之前”、反hook检测、Function.toString 检测、hook 被发现、closed shadow root、attachShadow 拿不到、shadowRoot 是 null、页面禁止复制、user-select none、去除登录弹窗时使用。
 ---
 
 # Web 运行时 Hook 脚本
@@ -125,6 +125,35 @@ node .agents/skills/web-reverse-hook/scripts/build-hook.js spa-state \
 
 **结论**：调试阶段用本技能注入（可控、可撤、日志全）；要"长期生效"才考虑落成油猴脚本，
 并且**落成前先按 `web-malware-forensics` 的清单审一遍自己的脚本**（别自己造一个回传面）。
+
+---
+
+## 反 hook 检测、closed shadow DOM 与页面限制解除（B32）
+
+详见 `references/anti-hook-detection-and-bypass.md`。四条判据：
+
+1. **页面报「异常脚本」但你的 hook 逻辑本身没错** ⇒ 先找 `Function.prototype.toString` 白名单比对
+   （站点把若干原生函数逐个 `fn.toString()` 过正则查 `native code`，任一不匹配就上报）。
+   **先短路「上报动作」（它往往只有一处），不要死磕 `toString`。**
+2. **选择性劫持**（★ 通用范式）：在 wrapper 里构造 `Error` 取 `stack`，
+   **只掐掉来自检测函数的调用，其它一律放行**：
+
+```js
+const _setTimeout = window.setTimeout;
+window.setTimeout = function (...args) {
+  if ((new Error('probe').stack || '').includes('checkoutNotTrustScript')) return;  // 只掐检测函数的注册
+  return _setTimeout.apply(this, args);
+};
+```
+
+3. **closed shadow DOM**：Elements 里查不到子节点 / `el.shadowRoot === null` ⇒ 包装 `Element.prototype.attachShadow`
+   把 `args[0].mode` 改成 `'open'`（**必须注入在页面代码之前**）；拦不到时还可走「框架句柄逃逸」——
+   读组件的自有属性（如 `el.__vue__.shadowDom.innerHTML`）。
+4. **页面禁止复制 / 弹登录框**：① 行内 `user-select: text !important` 能压住作者样式表里的 `!important`
+   （对 `::selection` / `pointer-events` 等不生效，要逐个补）；② **改函数**而不只改样式
+   （判据：先看「点按钮时执行的是哪个函数」）。
+5. **代价**：`stack` 过滤依赖函数名，**代码压过混淆后就失效**；
+   `Error.prepareStackTrace` / `Error.stackTraceLimit` 也会影响它。
 
 ---
 

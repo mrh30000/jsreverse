@@ -1,6 +1,6 @@
 ---
 name: target-analysis
-description: 目标级/会话级逆向分析工作流技能，替代已移除的 analyze_target、session_analyze_purified、session_generate_report 三个 MCP 工具。当需要一键式采集代码+Hook 时间线并给出行动方案、对抓包会话做场景推断/流量提纯/加密切片、或产出会话分析报告时使用。规则逻辑以参考实现形式保留，调用方 Agent 用现有工具（collect_code/create_hook/get_hook_data/list_network_requests 等）复现。
+description: 目标级/会话级逆向分析工作流技能，替代已移除的 analyze_target、session_analyze_purified、session_generate_report 三个 MCP 工具。当需要一键式采集代码+Hook 时间线并给出行动方案、对抓包会话做场景推断/流量提纯/加密切片、或产出会话分析报告时使用。规则逻辑以参考实现形式保留，调用方 Agent 用现有工具（collect_code/create_hook/get_hook_data/list_network_requests 等）复现。当出现「网络面板没有接口但页面有数据」「RENDER_DATA / __NEXT_DATA__ / __INITIAL_STATE__」「SSR 直出数据」「无限滚动加载不动」「XHR 截获拿不到响应」「列表数据导出 CSV」这类采集侧现象时，也用本技能（见 references/in-page-data-carriers.md）。
 ---
 
 # 目标与会话分析工作流（Agent 自行编排）
@@ -43,6 +43,25 @@ description: 目标级/会话级逆向分析工作流技能，替代已移除的
 2. 按模式（auto/api_reverse/security/perf/js_crypto）选系统提示词，分析提纯数据。
 3. 生成 Markdown 报告；本技能取代了原「离线降级报告」，Agent 未产出时的兜底结构见 `references/prompt-templates.md` 的 fallback 小节。
 4. 需要持久化时由 Agent 直接写 Markdown 到 `artifacts/tasks/<task-id>/session-report.md`（原 `ai_reports` 表与 `record_reverse_evidence` / `export_session_report` 工具均已移除）。
+
+## D. 页面直出数据载体与列表采集驱动（B32）
+
+**何时用**：网络面板里**没有数据接口**、但页面上明明有数据（SSR / 直出），
+或者数据接口要**滚动到底 / 点分页**才发出来（**驱动**问题，不是解密问题），
+或者你已拿到响应、要**批量落盘**。判据、载体清单与两个静默陷阱见
+`references/in-page-data-carriers.md`。
+
+三步骨架：
+
+1. **先分清「没有接口」还是「没触发」**（判据表在该文件 §1）——
+   把「没触发」当「没接口」去翻 DOM，会在一屏 20 条数据上耗掉一整轮；
+2. **直出载体按命中率取**：`<script id="RENDER_DATA">`（**URL-encoded JSON，必须先
+   `decodeURIComponent` 再 `JSON.parse`**）→ `__NEXT_DATA__` → `window.__INITIAL_STATE__` / `__NUXT__`
+   → JSON-LD → `data-*`；
+3. **增量靠「截获 + 驱动」**：XHR 截获**必须用 `this.responseURL`**（源文里的 `this._url`
+   不是标准属性 ⇒ 判断条件永远不成立、一条都不收，且**不报错**），
+   并在 `addEventListener("load")` 里做，**不要覆盖 `onreadystatechange`**（那是页面在用的属性）。
+   驱动优先级：**直接驱动分页参数 > 点「加载更多」 > 滚屏**。
 
 ## 相关工具
 
