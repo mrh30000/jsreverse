@@ -54,7 +54,9 @@ import io
 import json
 import os
 import re
+import shutil
 import sys
+import tempfile
 
 REF_DIR = "docs/references"
 
@@ -306,7 +308,10 @@ def run_selftest() -> int:
 
     # 6) 集成：一份「同题模板 + 未闭合代码块」的合成样本必须同时命中多项
     #    （正文按行重复——真实引流贴就是同一段模板反复出现，唯一行占比因此极低）
-    tmp = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_b21_csdn_selftest.md")
+    # ⚠️ 夹具必须落在**独立临时目录**：写在技能目录里时，自检一旦被打断就会留下
+    #    垃圾文件，把「镜像一致性」校验误报成缺陷（B27 实测）。
+    _tmpdir = tempfile.mkdtemp(prefix="b21-csdn-selftest-")
+    tmp = os.path.join(_tmpdir, "_b21_csdn_selftest.md")
     with open(tmp, "w", encoding="utf-8") as f:
         f.write("> 作者: 张三\n# Cloudflare 5秒盾逆向实战\n" +
                 "本文介绍五秒盾的破解思路，非常实用的教程内容。\n" * 30 +
@@ -324,7 +329,7 @@ def run_selftest() -> int:
 
     # 7) 阴性验证：判据必须能区分「完整且有工程价值」的文章
     #    （★ 若判据只看「截断率高」，这份好文章会被误杀 —— 阈值必须三条件同时成立）
-    good = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_b21_csdn_selftest_good.md")
+    good = os.path.join(_tmpdir, "_b21_csdn_selftest_good.md")
     body = []
     for i in range(1, 41):
         body.append("第%d步：读取 cf_clearance 与 jsl 的生成式，参数 i=%d，注意 sensor_data 的字段顺序。" % (i, i))
@@ -340,7 +345,7 @@ def run_selftest() -> int:
         T(len(g["symbols"]) >= 3, "完整文章应命中所列可复用符号")
         T(decide([g]) == "review", "完整文章不应被判 skip（判据的阴性方向）")
     finally:
-        os.remove(good)
+        shutil.rmtree(_tmpdir, ignore_errors=True)
 
     # 8) 阈值方向：正好等于阈值不得越界（判据写的是 ≥ / ≤，不是 > / <）
     mk = lambda tr, nb, uq: {"truncated": tr, "fences": nb, "uniq_ratio": uq}
@@ -368,8 +373,9 @@ def run_selftest() -> int:
 
     # 11) 聚簇归属口径：标题不命中、但「采集中转头」命中时也必须收进来
     #     （真实反例：csdn-100394056 标题写「某验验证码」，靠 utm_term=challenge-platform 自证同批）
-    tdir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '_b21_cluster_selftest')
-    os.makedirs(tdir, exist_ok=True)
+    # ⚠️ 同上一处：夹具必须落在独立临时目录（写在技能目录里被打断会留垃圾、
+    #    把「镜像一致性」误报成缺陷）。
+    tdir = tempfile.mkdtemp(prefix='b21-cluster-selftest-')
     try:
         with io.open(os.path.join(tdir, 'x-1-某验验证码综述.md'), 'w', encoding='utf-8') as fh:
             fh.write('# 某验验证码综述\n\n> **采集**: search（utm_term=challenge-platform 逆向）\n\n正文。\n')
@@ -388,9 +394,7 @@ def run_selftest() -> int:
         got3 = collect(tdir, 'x-*.md', '')
         T(len(got3) == 3, '空过滤器应返回全部 3 个文件')
     finally:
-        for f in os.listdir(tdir):
-            os.remove(os.path.join(tdir, f))
-        os.rmdir(tdir)
+        shutil.rmtree(tdir, ignore_errors=True)
 
     if fails:
         print("SELFTEST FAIL：")

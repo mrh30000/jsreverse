@@ -1,6 +1,6 @@
 ---
 name: wsam-reverse
-description: WebAssembly 模块逆向时使用，覆盖 捕获 → 反编译/反汇编 → 离线执行 → VMP 追踪 全链路。既包含依附活体浏览器的在线抓取与追踪（collect_wasm / wasm_dump / wasm_vmp_trace），也提供无需浏览器的 100% 离线 CLI 工具链（wasm-decompile / wasm-disassemble / wasm-inspect / wasm-run）。当用户在 wasm 里遇到读不懂的内存寻址（i32.load/i32.store、小端、offset 寻址、HEAPU8、131072 分块搬运）、C++ / Emscripten 修饰符号名（__ZN...Itanium mangling、c++filt）、想走 wasm2c + wasm-rt 把 wasm 翻译成 C 供任意语言调用、需要识别导出函数签名与内存分配约定（__wbindgen_malloc / passStringToWasm0），想先用内存 dump / 地址差法直接把写死的 key 与常量捞出来（HEAPU8、`Module.HEAPU8.subarray`、`_emscripten_run_script`、`$crypto/aes.NewCipher`、`$crypto/cipher.newCBC`、`$runtime.stringFromBytes`）、或目标页带 F12 反调试（debugger 循环、pushState 刷地址栏、DevTools 检测覆写页面）导致 worker 卡死时，也使用本技能。
+description: WebAssembly 模块逆向时使用，覆盖 捕获 → 反编译/反汇编 → 离线执行 → VMP 追踪 全链路。既包含依附活体浏览器的在线抓取与追踪（collect_wasm / wasm_dump / wasm_vmp_trace），也提供无需浏览器的 100% 离线 CLI 工具链（wasm-decompile / wasm-disassemble / wasm-inspect / wasm-run）。当用户在 wasm 里遇到读不懂的内存寻址（i32.load/i32.store、小端、offset 寻址、HEAPU8、131072 分块搬运）、C++ / Emscripten 修饰符号名（__ZN...Itanium mangling、c++filt）、想走 wasm2c + wasm-rt 把 wasm 翻译成 C 供任意语言调用、需要识别导出函数签名与内存分配约定（__wbindgen_malloc / passStringToWasm0），想先用内存 dump / 地址差法直接把写死的 key 与常量捞出来（HEAPU8、`Module.HEAPU8.subarray`、`_emscripten_run_script`、`$crypto/aes.NewCipher`、`$crypto/cipher.newCBC`、`$runtime.stringFromBytes`）、或目标页带 F12 反调试（debugger 循环、pushState 刷地址栏、DevTools 检测覆写页面）导致 worker 卡死时，也使用本技能，或目标产物是**拆分模块**（`wasm_split` / 函数名是一串 `j<数字>` / dump 工具给的地址搜不到函数）、来自 Unity IL2CPP 导出的 WebGL 或小游戏（`.unityweb` / `wasmcode` / `import.wasm` / brotli 压缩的 `.br`）时，也使用本技能。
 ---
 
 # Wasm 逆向
@@ -122,7 +122,7 @@ browsercli call wasm_vmp_trace --maxEvents 100 --filterModule <name>
 - **选了 wasm2c 后**：`wasm2c app.wasm -o app.c` → `gcc -shared -fPIC -O2 app.c wasm-rt-impl.c -o app.dll`。完整路线、`wasm-rt-impl.c` 位置、跨语言「分配→写入→调用→读出」四步、非 ASCII 传参被静默截断的坑，读 `references/wasm2c-and-memory-semantics.md`。
 - **选了 wasm2js 后**：使用 `binaryen.readBinary(...).emitAsmjs()` 将 `.wasm` 离线转译为纯 Asm.js / JavaScript。脱离 WebAssembly 运行时直接调用，完整 Node.js 脚本与浏览器实时转译配方，读 `references/wasm-to-js-transpilation.md`。
 
-#### 动手前先做三件事（做过一次能省半天）
+#### 动手前先做四件事（做过一次能省半天）
 
 1. **量三件事定路线**：`node .../wasm-inspect.js -i ./target.wasm --glue-family --crypto-constants --signatures`
    —— 一次拿到「有几个导入 / 属哪个胶水层家族 / 导出函数签名 / 内嵌标准加密常量」。
@@ -134,6 +134,11 @@ browsercli call wasm_vmp_trace --maxEvents 100 --filterModule <name>
 3. **能不能不反编译就把 wasm 跑起来**：`references/wasm-runtime-reproduction.md` 给了 Node（含
    `delete process/global` 的取舍、Go 的 `wasm_exec.js`、Proxy 环境探针）与 Python（wasmer / pywasm）
    两套骨架。**能跑通就别读算法**——这条在本族里成功的比例最高。
+4. **函数名是不是一串 `j<数字>` / dump 工具给的地址搜不到？**
+   ⇒ 这是**拆分产物**（如 Unity 小游戏的 `wasm_split`），符号名要**重算**：
+   `j${getRedirIndex(addr) & 0xFFFFFFF}`，索引函数在导出 `__wasm_split_getRedirIndex` 的那个模块里
+   （常是 `import.wasm`）。见 `references/wasm-toolchain-and-decompilation.md` §11。
+   **不重算就永远搜不到目标函数。**
 
 ### Wasm 内存语义（读 WAT 的唯一铁律）
 

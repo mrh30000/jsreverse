@@ -4,12 +4,37 @@
 from __future__ import annotations
 
 import argparse
-import imghdr
 import json
 import sys
 import wave
 from pathlib import Path
 from typing import Any
+
+
+def _img_type_by_magic(path: Path) -> str | None:
+    """按 magic bytes 判图片类型。
+
+    ⚠️ 原先用 `imghdr`：它在 Python 3.11 被弃用、**3.13 已移除** ⇒ 脚本在 Python 3.13 上
+    直接 `ModuleNotFoundError`（B27 实跑发现）。这里改成零依赖的自身嗅探，覆盖原先支持的类型。
+    判据只用**文件头**，与 `imghdr` 的行为一致（不解析元数据）。
+    """
+    try:
+        head = path.open("rb").read(16)
+    except OSError:
+        return None
+    if head.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "png"
+    if head.startswith(b"\xff\xd8\xff"):
+        return "jpeg"
+    if head.startswith((b"GIF87a", b"GIF89a")):
+        return "gif"
+    if head.startswith(b"BM"):
+        return "bmp"
+    if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
+        return "webp"
+    if head[:4] == b"II*\x00" or head[:4] == b"MM\x00*":
+        return "tiff"
+    return None
 
 
 def configure_utf8_stdio() -> None:
@@ -57,7 +82,7 @@ def inspect_file(path: Path) -> dict[str, Any]:
     if not item["is_file"]:
         return item
     item["size_bytes"] = path.stat().st_size
-    image_type = imghdr.what(path)
+    image_type = _img_type_by_magic(path)
     if image_type:
         item["kind"] = f"image/{image_type}"
     elif path.suffix.lower() in {".mp3", ".ogg", ".m4a", ".flac"}:

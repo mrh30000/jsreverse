@@ -415,9 +415,88 @@ trunc(sec/3) 口径不匹配的样本数（应为 0）: 0
 
 ---
 
+## 11. 拆分产物（`wasm_split`）：符号名要**重算**，不能照抄 dump 结果
+
+> **来源**：`52pojie-1936819`（Unity IL2CPP 导出的 vx 小游戏）。**单源**。
+> 小游戏侧的取件与栈判定见 `../../miniprogram-reverse/references/minigame-and-unity-wasm.md` §3；
+> 本节只留**通用 wasm 面**。
+
+### 11.1 三个模块的分工
+
+Unity WebGL 转小游戏后，产物被**拆成三个 wasm**（先经 brotli 解压 `.br`）：
+
+| 文件 | 内容 | 为什么重要 |
+| --- | --- | --- |
+| `import.wasm` | **动态调用偏移表**（`wasm_split` 运行时） | §11.2 的索引来源；**不看它就永远搜不到函数名** |
+| `main.wasm` | 主逻辑 | 目标函数在这里 |
+| `sub.wasm` | 分包逻辑 | 同上 |
+
+**推断/边界**：来源只给了这一例的三分结构与对应文件名映射
+（`xxx.code.import.unityweb.wasm`→`import.wasm`、`xxx.code.unityweb.wasm`→`main.wasm`）；
+其它 `wasm_split` 版本的文件命名**未验证**——应按"哪个模块导出 `__wasm_split_*`"来认，
+而不是按文件名认。
+
+### 11.2 🔴 核心判据：符号名 = `j${getRedirIndex(addr) & 0xFFFFFFF}`
+
+`Il2CppDumper` 给的 `script.json` 里的 `Address`，**不是** wasm 里的函数名。
+真正的名字要**回到 `import.wasm` 里算**：
+
+```js
+// 用 import.wasm 把 script.json 的 Address 换算成真正的 jXXXX 名
+const Scripts = JSON.parse(fs.readFileSync('./script.json', 'utf8'))
+const splitWasmBytes = fs.readFileSync('./import.wasm')
+
+const { instance } = await WebAssembly.instantiate(splitWasmBytes)
+// 0xFFFFFFF = 268435455：只取低 28 位（索引掩码）
+const getRedirIndex = a => instance.exports['wasm_split.__wasm_split_getRedirIndex'](a) & 268435455
+Scripts.ScriptMethod.forEach(item => { item.FuntionName = `j${getRedirIndex(item.Address)}` })
+```
+
+**排查顺序（按这个顺序试，别倒过来）**：
+
+1. 目标函数在 Ghidra 里叫 `j2174` 之类的短名 ⇒ 说明是**拆分产物**；
+2. 找导出 `__wasm_split_getRedirIndex` 的那个模块（本例是 `import.wasm`）；
+3. 用它重算名字，再拿重算后的名字去搜 ⇒ **不要**拿 `script.json` 的地址去搜（永远为空）。
+
+> **推广**：凡"函数名是一串 `j<数字>`"或"dump 工具给的地址在模块里搜不到"，
+> 先怀疑**间接寻址表**（`wasm_split` 只是其中一种实现），
+> 判据是**模块里存在一个把整数映射到索引的导出函数**。
+
+### 11.3 用重算后的名字做符号恢复
+
+`ghidra_wasm.py` 一类的脚本要按下面的口径改（来源实测"现成脚本不适合该产物"）：
+
+- **用 `jXXXX` 去找符号**：`ScriptMethod['FuntionName']` 才是 `symbolTable` 里存在的名字，
+  用它 `getSymbols()` 定位地址，再 `set_name()` 写回**真名**（如 `SkillCaster$$PlaySkill`）；
+- **幂等守卫**：`if getPlateComment(addr): continue` —— 已改过的跳过，避免重复执行时累加；
+- **签名与参数**：`setPlateComment(addr, addr + fn_name + name + signature)`，
+  再按 `Signature` 解析参数类型/名（参数名重复时**加数字后缀**）恢复；
+- **字符串/元数据**：`ScriptString` 写 EOL 注释、`ScriptMetadata` / `ScriptMetadataMethod` 建标签。
+
+来源评价："**不能完全正确，但是大致是没问题的，大大提升分析效率**"
+⇒ 这是**启发式恢复**，不是精确还原；交叉验证仍要靠 dummy dll（ILSpy）里的字段偏移。
+
+### 11.4 持久化补丁：`wasm2wat` → 改 → `wat2wasm`
+
+```bash
+wasm2wat test.wasm -o test.wat
+# 改 i32.const 0 → i32.const 1（示例：把"永假"改成"永真"）
+wat2wasm test.wat -o test.wasm
+```
+
+⚠️ **本条为"未证"**：来源原话是"**我还没测试，但是我感觉可行**"，
+且同一篇提醒**"他里面可能有 md5 校验"**（**未给出校验位置**）。
+⇒ 引用时必须带这两个限定；**不要**写成"改完即生效"。
+判据推导（本仓补充，可复跑）：改完先跑一次**原样校验路径**——
+若应用仍拒绝加载，才说明存在完整性校验。
+
+---
+
 ## 参见
 
 - 运行期复现（Node / Python 里把 wasm 跑起来、补胶水层、环境探针）：`references/wasm-runtime-reproduction.md`
 - 控制流平坦化还原：`references/wasm-cff-restoration.md`
 - 内存语义与地址推演、内存取证：`references/wasm2c-and-memory-semantics.md`
 - 转 Asm.js / 纯 JS：`references/wasm-to-js-transpilation.md`
+- 小游戏（wxapkg → Unity → wasm）的**入口层**判据：
+  `../../miniprogram-reverse/references/minigame-and-unity-wasm.md` §3

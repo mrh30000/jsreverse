@@ -3701,3 +3701,166 @@ python artifacts/skill-evolution/tools/append-b26-ledger.py
   **注**：B1-17 / B13-216 的「不建小程序技能」结论在 B22 已被推翻并取代，旧结论只保留可追溯性。
 - **B26 待办（评审带出、非本轮引入）**：`miniprogram-reverse` 排错表里的 `RadiumWMPF` 版本绑定条目
   在对应源文章里查不到（B25 已记，本批未碰该技能）⇒ 继续留到碰该技能的那一批回源复核。
+---
+
+## 批次 B27 · 2026-09-24（第二十七次执行）
+
+**开局状态**：台账 B26 后 525 条 / 目录 `.md` 1005（文章 1000）/ 待处理 **475**。
+三方对齐（台账最后一节 × `git log` × 自动化记忆最后一条）**均为 B26** ⇒ 上一轮已闭环。
+⚠️ 但工作区里发现**上一轮未收口的在制品**：`web-malware-forensics` 与 `desktop-client-reverse` 有
+**未提交、未登记、未评审**的改动（含两个新 references），最后修改时间 00:54–01:13。
+本轮**先复核再续做**（`check_skill_integrity` / 双镜像 / 脚本自检 / 幂等扫描），确认内容完整后
+**纳入本批一并收口**（这正是 B22「台账有、记忆无、git 无」的同一型问题）。
+
+**取材口径**：两条簇一次蒸馏，均为 B26「下一批建议」的优先级 ① 与 ④ 的落地：
+
+- **簇 A · 网马/钓鱼/劫持的收尾（10 篇）**：服务端宿主层后门 1（`2115802`）+ 钓鱼工具包与漏斗 5
+  （`1251567` / `1252548` / `2100101` / `2113952` / `928225`）+ 挖矿防护 1（`784562`）+
+  扩展劫持 1（`1066799`）+ 反调试绕过 1（`2044857`）+ 激活劫持 1（`2109138`）。
+- **簇 B · 小游戏与帧协议（8 篇）**：Cocos 小游戏反编译 1（`2081826`）+ Unity IL2CPP→wasm 1（`1936819`）
+  + WebSocket/MessagePack 帧 1（`1150098`）+ 小程序 sign/check 两族 2（`901994` / `965556`）
+  + 未证字段定位范式 1（`1775370`）+ 响应体改写边界 1（`2058459`）+ **Mozjs 字节码第三形态** 1（`814217`）。
+  选它的理由：`miniprogram-reverse` 自建库起（B22）只覆盖「小程序」这一入口形态，
+  而语料里**小游戏**（`game.json` / `wasmcode` / Unity）与**帧协议**是**零覆盖**的空白区。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 526 | `52pojie-2115802-简单分析下网站出现的挂马.md` | `c5054b527e653cead1ecca67c27e8fbc` | 2026-09-24 | `web-malware-forensics` | evolve | 服务端宿主层后门（L1 之下的第二层）：源文件哈希==响应体哈希时分水岭失效；四层注入点（vhost `_.conf` → `/etc/init.d/nginx` → `/etc/ld.so.preload` → Lua 模块 `ngxd`）；下载器四手法（`curl -fsSLk -m 5` / `touch -r /etc/passwd` / `chown www:www` / `chattr +i`）；`libusranalyse` 被精准点杀；`verify_command_request_signature`（RCE）与 `refresh_machine_id`（定向下发）；`pc_ratio=0` 的设备概率分流与「按 UA×20 次报命中率」的复现口径；按依赖倒序的清理顺序 |
+| 527 | `52pojie-1251567-【原创】记一次班级群的QQ钓鱼网站分析.md` | `22e32a1364b92738e87d85512c9efa36` | 2026-09-24 | `web-malware-forensics` | evolve | 钓鱼 kit 源码级指纹：`{DBQZ}_config/_url/_list` 表前缀、`21232f…` = `md5("admin")` 默认后台口令、`('syskey','1544422')`、`authcode("{user}\t{session}",'ENCODE',$SYS_KEY)` + `$ckey_length = 4`、`/wocaonima/` 后台目录、`/install/` 残留（同源批量发现）、`nvkp5.zgzmw.net/AcQuxM/loguce.ppt` 防红链接、`873` ⇒ rsync 实时迁移；**明确否定原文的"删库/刷垃圾数据"范式**（合规红线） |
+| 528 | `52pojie-1252548-钓鱼网站深入挖掘分析.md` | `392d1a3e5b0137585a5a251f9831777c` | 2026-09-24 | `web-malware-forensics` | evolve | kit 后台与上报面：`/wocaonima/login.php`、`/save.php`、`u=…&p=…&submit=` 上报形态、`143.92.45.190:888/pma` 未授权 phpMyAdmin、多站同源库名列表；**"以暴制暴"不是操作范式**（污染证据、可能使己方成为加害方） |
+| 529 | `52pojie-2113952-一个很低级的钓鱼网站分析报告.md` | `da81d9ce13bc3c906232185bcbc5880c` | 2026-09-24 | `web-malware-forensics` | evolve | 站点图与投诉链：随机三级子域 `4wz7709o03.g7k43v6.wzobn.cn`、共享 NS `a1.share-dns.com`/`b1.share-dns.net`（同族批量发现）、`/template/temp12/assets/index-pzAUEGSA.js` 模板指纹、`/checkbankcard`/`/notifytxt` 接口族、`HomeName` 类名族、RDAP `209.209.48.0/22` + `IIDCORP-GROUP-01`、abuse 邮箱；**只有 HTTP 443 失败**作为成本信号 |
+| 530 | `52pojie-2100101-零基础小白初次尝试逆向钓鱼网站，但是不知道接下来可以做什么.md` | `a65a0dbec8cdde44a6118680fd3eb229` | 2026-09-24 | `web-malware-forensics` | evolve | **`/step_*` 后缀即状态机状态名**（直接读出字段清单与分支条件，比逐页截图快）；`/step_laod/` 与 `/step_load/` **原文并存**（kit 自身错拼 ⇒ grep 两种都要覆盖）；`EcCensus v11` / `_EcCensus` 统计面板自证；双 base64 上报体（首 4 字符 `ZXlK` 是判据）；`Math.random()` 做缓存穿透 ⇒ 按**路径**聚合日志；`localStorage.cess_day` 本地去重 |
+| 531 | `52pojie-928225-发现一个很厉害的钓鱼，不知道怎么提交数据的大手子来分析一下.md` | `c5344adb515d63adf77eb8b5a5e0b36b` | 2026-09-24 | `web-malware-forensics` | evolve | **无 `input` 钓鱼页**（编辑框是 JS 画的、字体自制）⇒ 从**出网点**倒推，不从 DOM 找框；跨站回传要区分"攻击者自有域名"与"被利用的脆弱第三方接口"（`mboxzhaoge.kuwo.cn` 应作为"该接口无鉴权"提交给其运营方）；`atob` 载荷两级回传 `dt301.com/q.php` → `qq.php` |
+| 532 | `52pojie-784562-如何避免网页被挖矿.md` | `1bebfb6305c0b6f07a81dc12e64f10c4` | 2026-09-24 | `web-malware-forensics` | evolve | 挖矿参数面：`coinhive.min.js` + 钱包地址 + `throttle: 0.7`（占用率，非错误）+ `didOptOut(14400)` + 矿池 `wss://ws001/ws012.coinhive.com/proxy`（共 12 个）+ `adjustEvery:1e4` + `IF_EXCLUSIVE_TAB` + `isMobile()` 不挖 |
+| 533 | `52pojie-1066799-chrome插件gmail访问助手劫持主页.md` | `a74cf682dcf4b8d609967461d782a454` | 2026-09-24 | `web-malware-forensics` | evolve | 扩展劫持的**服务闸门判据**：`baidu.com!==-1`（检测到新标签页不是百度就停服）⇒ 解释了"为什么只有部分人受影响"；`transfer.html` + `Newtab` 触发点 |
+| 534 | `52pojie-2044857-油猴脚本-通过Hook来禁用disable-devtool插件.md` | `32c6fa23c010d8726c0459905297d28f` | 2026-09-24 | `web-malware-forensics` | evolve | `disable-devtool` 反调试库：`detectors: [0,1,3,4,5,6,7]`、`clearIntervalWhenDevOpenTrigger: !1`、`ondevtoolopen` → `about:blank`；Hook `loadjs.d`；**事件监听器断点**（`beforeunload`/`unload`）停在跳转前再按调用栈找写入点 |
+| 535 | `52pojie-2109138-代码整理【Typora激活劫持 支持到1.14.8】.md` | `95433b76d944b3a5c00401c7fcc767c4` | 2026-09-24 | `desktop-client-reverse` | evolve | 激活类请求**是一对端点**：`api/client/activate` + `api/client/renew`，只拦一个 ⇒ 当时成功、**下次续期又掉**；两端点**响应字段形状不同**（`{code,retry,msg}` vs `{success,code,retry,msg}`）⇒ 必须从消费方反推；**注入别碰业务状态文件**（删同目录 `id` 会导致激活失效）；要有回滚；依赖锁 `chalk@4` |
+| 536 | `52pojie-1150098-小程序《胡莱三国》----websocket分析.md` | `fab8e5beb01ec208008fe31395c98b74` | 2026-09-24 | `miniprogram-reverse` | evolve | WS 帧"不是 JSON"⇒ 先猜 **MessagePack**（`msgpack.loads/dumps`）；**收帧要先去掉 mask**；mitmproxy 实时改包；**纯操作码协议的死路判据**——客户端帧只有动作码、无业务数值 ⇒ 本地改包**改不出收益**（当场停） |
+| 537 | `52pojie-2081826-某wx小游戏反编译逆向分析.md` | `ca806d202b1ddeaea2ff156967a13789` | 2026-09-24 | `miniprogram-reverse` | evolve | 小游戏跑起来的 **6 个坑**（按顺序）：`app-config.json`→`game.json`、`gamePlugins`→`plugins`、补 `cocos2d-js-min.js`、**用报错里的 md5 覆盖 `signature.json`**、`ERROR 4930` 注释 `new Error`（权宜，会丢图）、登录 `openid` 走代理替换；搜**通用动词** `encrypt` 命中统一入口 `encryptStr`；AES-CBC + `this.ddd` 作 key |
+| 538 | `52pojie-1936819-浅谈逆向Unity导出的vx小游戏的思路.md` | `61ba104513c560311c95affe2cf7f883` | 2026-09-24 | `miniprogram-reverse` + `wsam-reverse` | evolve | Unity IL2CPP→小游戏→wasm 全链路：`.br` brotli、`import/main/sub.wasm` 分工、`global-metadata.dat` **不在包里**（远程下发 ⇒ 去缓存找 + `unityweb.exe`）、Il2CppDumper；**`wasm_split` 符号重算**（`j${getRedirIndex(addr) & 0xFFFFFFF}`，索引函数在 `import.wasm`）——不重算**永远搜不到函数**；魔改 `ghidra_wasm.py`（`FuntionName` 当符号 + `getPlateComment` 幂等）；Ghidra 搜 `类名$$方法`；**WAT 补丁持久化（来源自述未测 + 可能有 md5 校验）⇒ 登记为未证** |
+| 539 | `52pojie-901994-[教程]微信小程序【消灭病毒】相关修改算法说明.md` | `76713178d2653a243d307c16c257ed78` | 2026-09-24 | `miniprogram-reverse` | evolve | sign 族一：**参数名升序** `k=v&` 拼接去尾 `&` 后 MD5；**`wx_secret` 参与签名**（前端内置密钥，最易漏）；同站**两处签名**（`/api/archive/get` 与 `/api/archive/upload`）**键集合不同** ⇒ 必须按接口分别还原；`record` 自带**内层** `sign` 字段（改 `record` 时不要动它、外层要重算） |
+| 540 | `52pojie-965556-××电影小程序check算法分析.md` | `38abfcb34b3c7d88f52e8b846cec2ce9` | 2026-09-24 | `miniprogram-reverse` | evolve | sign 族二：`check = MD5(sCode+cCode+key+ts+**完整请求 URL**)`；**`_mi_` 不参与**（由"算出的 check 与调试值逐字符相同"反证）；**弯道超车法**——导入微信开发者工具（测试号、删 `app.json` 报错项、勾"不校验 https"）后**整文件全行断点**，看"即将被 MD5 的那个变量"；**输出纯小写字母数字、无 `==` ⇒ 是 hex 不是 base64**；AES-ECB+Pkcs7，key = `clientKey.substr(0,16)`（**密钥二次复用**）；安卓 7.0+ 自签 CA 不被信任 ⇒ `ssl handshake error` |
+| 541 | `52pojie-1775370-某商场微信小程序有效token构造问题.md` | `68b0506239af79027dc15104e44b7d40` | 2026-09-24 | `miniprogram-reverse` | evolve | **未证字段的登记范式**：token 结构与 `sign` 公式已确知（含固定盐 `bbd2b25e…`、`tenantId=13474`、`cid=…`、`v=20211030`），但 `t` **未解** ⇒ 登记为"未证"并写清**已排除的候选**（空值/1/0/20211030）与**下一步实验**（对 `app-service.js` 第 20733 行 `globalData` 定义处下断点）；定位手段 = **行号 + `globalData` 这类结构性关键字**（不要只搜被压成单字符的变量名） |
+| 542 | `52pojie-2058459-闲来无事抓包修改VX小程序《欢乐麻将》里的“谁是菜王”游戏数据.md` | `fdf5b1cde54a5a1060d8490c4c1066fa` | 2026-09-24 | `miniprogram-reverse` | evolve | **响应体改写的三步边界判据**：改完立刻生效且无服务端写操作 ⇒ 纯显示层；**做一次服务端写操作后被覆盖**（原文"买完豪车又会重置成真实余额"）⇒ 服务端权威，要把每个回写状态的响应都改；客户端帧只有动作码 ⇒ 客户端无解。这条把"小游戏改数值"从一句话结论变成可判定的三步 |
+| 543 | `52pojie-814217-JSC文件反编译及游戏小改.md` | `9072d55d02ee0e06e0af9addee4f10d1` | 2026-09-24 | `desktop-client-reverse` | evolve | `.jsc` **第三形态 Mozjs（SpiderMonkey 34）字节码**（Cocos 游戏里 xxtea 解不出东西 ⇒ 改判）；`jsc-decompile-mozjs-34`（PHP）+ **版本必须对齐**；**就地改字节码的指令表**（`3B..`取变量 / `D7`压 int8 / `58 10 10` int16 / `D8` int32 / `12`–`17` 比较族 / `44` 条件跳转 / `6E 00 00 00 CA 42\|43` 布尔 / `51` 弹栈）；`GAME_INFO_CHANNEL == 100` 的完整字节码对照；`43`→`42` 关掉 `IS_USE_HTTP_ENCRYPT` 的实例；**单源 + 来源未给样本 ⇒ 只作格式参考** |
+
+### 本批次技能变更汇总
+
+| 技能 | 变更类型 | 主要落点 |
+| --- | --- | --- |
+| `web-malware-forensics` | evolve | 新增 `references/server-host-backdoor.md`（服务端宿主层唯一权威源）、`references/phishing-kit-and-funnel.md`（钓鱼 kit 与漏斗唯一权威源）；`payload-and-obfuscation.md` 三联表 +3（双 base64 / `authcode` / `kit-hash`）与 §3.4；`injection-and-hijack-triage.md` 补 L1 之后的第二层分流指针；`SKILL.md` 分流判据 +6 / 工作流插入 🔴 CHECKPOINT（L1 之后先问"文件被改还是进程被劫持"）/ 失败模式 +10 / 反例 +7 / 命令入口 +2 组 / 资源 +2；`scripts/payload_unpack.py` 新增 `b64 --layers/--auto`、`authcode`、`kit-hash`（自检 **102 → 154 项**）；`scripts/ioc_extract.py` 新增"服务端""工具包"两类与 nginx Lua / 双 base64 / `disable-devtool` 特征（自检 **56 → 86 项**）；description **1008 → 990**（压缩同义堆叠，净增触发词） |
+| `miniprogram-reverse` | evolve | 新增 `references/minigame-and-unity-wasm.md`（小游戏入口层唯一权威源：栈分流 / 跑起来的 6 个坑 / Unity→wasm 全链路 / WS+MessagePack / sign 两族 / 弯道超车法 / 未证字段范式 / 响应体改写边界 / 排错 12 / 反例 11）；`SKILL.md` 分流判据 +4（含把"小游戏改数值"那条**降级为有前提**）/ 工作流补例外 / 失败模式 +4 / 反例 +6 / 命令入口 +1 组 / 资源 +1 / 边界 +2；description **993 → 991**（压缩 + 净增 `game.json`/`wasmcode`/`wasm_split`/`MessagePack` 触发词） |
+| `wsam-reverse` | evolve | `references/wasm-toolchain-and-decompilation.md` 新增 **§11 拆分产物（`wasm_split`）**：三模块分工 / **符号名重算判据**（`j${getRedirIndex(addr) & 0xFFFFFFF}`，`& 0xFFFFFFF` 是索引掩码）/ 排查顺序（先认短名 → 找索引函数 → 重算，**不要拿 dump 的地址去搜**）/ 启发式符号恢复的四个要点 / WAT 级补丁（**标注未证**）；`SKILL.md`「动手前先做三件事」→ **四件事**（第 4 件就是"函数名是不是一串 `j<数字>`"）；description **679 → 844**（净增 `wasm_split` / `.unityweb` / `wasmcode` / IL2CPP / brotli 触发词） |
+| `desktop-client-reverse` | evolve | `references/jsc-and-v8-bytecode.md`：标题与 §1 分类表由**两类改三类**，新增 **§10 Mozjs / SpiderMonkey 字节码**（判定动作 / `jsc-decompile-mozjs-34` / 就地改字节码指令表 / 完整对照 / 补丁实例 / **单源边界 5 条 + 反例 4 条**）；`references/electron-asar-and-fuses.md` 新增 **§5.2.1**（激活类请求是一对端点、字段形状按端点分别给、注入别碰业务状态文件、回滚与锁依赖），坑表 12 → **14 条**；`SKILL.md` 导航 +1 行判据 / 资源补 §10；description **943 → 984**（压缩 4 处 + 净增 Mozjs 触发词） |
+
+### 验收（全部实跑）
+
+| 项 | 结果 |
+| --- | --- |
+| `payload_unpack.py --selftest` | **154/154** |
+| `ioc_extract.py --selftest` | **86/86** |
+| 既有脚本回归（`wxapkg_tool` / `const_bruteforce` / `asar_offset_repair` / `jsc_xxtea_tool` / `byte_flag_patch` / 其它） | 全绿 |
+| 保真度（**双向**）`b27-verify-sources.py` | 表 A（源→断言）**176** 条 + 表 B（落点→断言）**100** 条 = **276 条，未命中 0** |
+| 故障注入 `b27-fault-injection.py` | **19/19 按要求变红**（含"只改 `.agents` 不改 `.claude` ⇒ 镜像不一致必须被抓"） |
+| 双源字段级守卫 `b27-audit-attribution.py` | **0 阻断**（E1 无悬空断言 / E2 无死源）；**故障注入 2/2 变红**、还原后回绿 |
+| description 规则阳性验证 `b27-verify-desc-len-rule.py` | **3/3**（1001 必报 / 恰好 1000 不报 / 还原后 0 阻断） |
+| `browsercli` 技能契约校验（**真实 JS 引擎**，`evaluate_script`） | **13/13 PASS**（`b27-skill-js-contract-check.js`：restore.js 片段语法、`& 0xFFFFFFF` 掩码语义、§10.3 字节码解码、比较族/布尔族常量、§5.1 升序拼接、§5.2 check 拼接顺序）｜**当场抓出 1 处真缺陷**：原稿把 32 位操作数写成「小端」，与源文 `3B 00 00 00 11` = 下标 `0x11` 矛盾（小端会读成 `0x11000000`）⇒ 已改为「**高位在前**」并加 4 条断言钉住 |
+| 机械校验 `check_skill_integrity.js` | **0 阻断 · 0 告警** |
+| 双镜像 `.agents` ↔ `.claude` | **0 mismatch**（逐字节一致） |
+| 全库 description 长度 | **21/21 ≤ 1000**（本批三处超限全部结项：`web-malware-forensics` 1008、`miniprogram-reverse` 993→991 净增触发词、`desktop-client-reverse` 943→984） |
+| 台账 | 编号连续 / md5 逐条一致 / 幂等复跑（打印「已登记，跳过」） |
+| 冻结 → 终态 | `b27-freeze-20260924-0951.tsv` 为基线，终态用 `b27-freeze.py --compare` 算出被改文件（评审生效证据） |
+
+### 独立评审（B27）
+
+**方式**：派 **2 名独立盲评审员**（约束：**只读、不许改文件**、不许采信文档自述、能跑就跑一遍），
+维度分工 —— Judge A（**事实保真度**）与 Judge B（**集成与一致性**）；
+要求每条结论带证据（文件 + 行号，或命令 + 实跑输出）。
+
+**结论**：
+
+| 评审员 | 总判 | 条数 | 处置 |
+| --- | --- | --- | --- |
+| Judge A（保真度） | **`needs-fix`** | 2 条（1 次要 + 1 低） | **两条均回源复核成立，当轮全部修完**（并据同类问题扩大排查，另发现 2 处，一并修完） |
+| Judge B（集成） | **未在预算内返回完整结论** | — | **如实记录，本轮不计作通过**；其职责范围内的机械面已由 `check_skill_integrity`（0 阻断）与镜像比对（0 mismatch）覆盖 |
+
+**Judge A 的 2 条（原文要点 + 我的复核）**：
+
+| # | 严重度 | 缺陷 | 评审给的证据 | 我的复核（实跑） | 处置 |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 次要 | `phishing-kit-and-funnel.md` §8 把「rsync 实时数据迁移（873）」整行标成 `1251567` / `1252548` 双源 | 评审指出 `1252548` 全文无 rsync / 873 / 同步 | `grep -nE "rsync\|873\|同步" 52pojie-1252548*.md` → **无输出**；`1251567` 第 **53 / 182** 行有 ⇒ **成立** | 收窄为 `1251567` 单源，并在行内写明「`1252548` 全文没有该字样」 |
+| 2 | 低 | `BxkeFB8H` 这一常量**不在本批 18 篇源里**（实出自 `52pojie-1381839`，属 **B25** 批次），但 `SKILL.md` 与 `payload-and-obfuscation.md` 都没写出来源 | 评审指出该常量查不到本批来源 | `grep -rl "BxkeFB8H" docs/references/` → 只命中 `52pojie-1381839-某网页js挖矿木马的简单分析.md` ⇒ **成立** | `payload-and-obfuscation.md` 加「来源标注」引用块；`SKILL.md` 命令入口与资源小节各补一次出处 |
+
+**据此扩大排查（同一类"整行贴多源"）—— 又发现 2 处，一并修完**：
+
+| # | 位置 | 问题 | 实跑证据 | 处置 |
+| --- | --- | --- | --- | --- |
+| 3 | `phishing-kit-and-funnel.md` §8「概率 / UA 分流」 | 整行贴 `2115802` / `784562` | `784562` 对 `概率\|UA\|分流` **0 命中**；`2115802` 有 `pc_ratio`/`android_ratio`/`iphone_ratio`；`2100101` 有 `Math.random()` 分支 | 改为 `2115802`（`pc_ratio` 等三分支）/ `2100101`（`Math.random()` 分支），**并就字段级就近标注** |
+| 4 | `phishing-kit-and-funnel.md` §2 指纹表「后台目录」 | 把 `/install/` 与 `/wocaonima/` 合在一行共挂 `1251567` / `1252548` | `grep -ci '/install/'` → `1251567`=**2**、`1252548`=**0**（`/wocaonima/` 两篇都有，故该行只对了一半） | **拆成两行**：`/wocaonima/` 保留双源；`/install/` 单列到 `1251567` |
+
+> 🔴 **本批最有价值的一条工程化处置**：把评审的这条意见**做成了可复跑的机械守卫**
+> `artifacts/skill-evolution/tools/b27-audit-attribution.py`（三条规则）：
+> **E1 悬空断言**（行内字段在被列出的所有源里都找不到）、**E2 死源**（某篇源一个字段都支撑不了 ⇒ 出处被高估）、
+> **W1 多源行未做字段级拆分或就近标注**。
+> 并对它做了**故障注入**（2/2 变红、还原后回到绿）—— 否则"新增的守卫"很可能只是恒绿噪声。
+> ⚠️ 该守卫**只认表格行**：第一版按整行扫，把「曾误挂 `784562`」这类**正文脚注**误判成死源（实测踩到后修正）。
+
+**评审如实声明的"未验证范围"**：Judge A 未在结论里给出完整的"未覆盖范围"声明
+（本轮只回了 2 条结论与证据）；**因此本批的保真度结论主要由可复跑门禁承担**：
+`b27-verify-sources.py` 双向 **280 条 0 未命中** + 故障注入 **19/19** + 双源守卫 **E1/E2 0 阻断**。
+
+**评审生效证据（冻结 → 终态）**：评审前冻结 `b27-freeze-20260924-0951.tsv`（34 个文件），
+终态用 `b27-freeze.py --compare` 算出**被改动文件清单**（含评审修复与 browsercli 带出的端序修正）。
+**Judge B（集成与一致性）→ `needs-fix`**：报 7 条（2 阻断 + 4 次要/低 + 1 信息）。
+逐条回源复核后：**2 条成立并当轮修完**、**1 条部分成立（根因已消除）**、**3 条不成立（附实证）**、1 条为信息。
+
+| # | 严重度 | Judge B 的缺陷 | 我的复核判定 | 处置 |
+| --- | --- | --- | --- | --- |
+| B1 | 阻断 | 校验器阻断数在 **0 / 5 / 7 / 9** 之间抖动；怀疑 `process.exit()` 截断 stdout | **部分成立**。抖动根因**不是**校验逻辑：是**自检夹具把临时文件写进了技能目录**（`__file__` 旁边），被打断即残留 ⇒ 镜像检查把"多出的临时文件"报成阻断；`process.exit()` 的截断风险也确实存在 | ① **根因修复**：`corpus-homogeneity-audit.py` 两处夹具改 `tempfile.mkdtemp()` + `shutil.rmtree()`，复跑后技能目录 **0 残留**；② `process.exit()` → **`process.exitCode`** |
+| B2 | 阻断 | 三类"虚假阻断"：镜像内容不一致 / 镜像缺失 / 「裸跨技能路径」误报 | **不成立**（前两类是**评审窗口内的真实中间态**：我先改 `.agents`、`mirror-sync` 在评审之后）。第三类**经实证不成立**：直接 `node` 测 `REF_BARE_CROSS_RE` —— `` `desktop-client-reverse/references/x.md` `` **命中**，而 `` `../../desktop-client-reverse/references/x.md` `` 与 `` `../desktop-client-reverse/references/x.md` `` **均不命中**（正则要求反引号后紧跟 `[A-Za-z0-9_-]+/`）⇒ 不会把带 `../` 的合法引用误报 | 正则**不改**；「评审会看到中间态」记入本批可复用要点 |
+| B3 | 次要 | **同一份知识写两处**：`getRedirIndex` 代码块在 `wsam` §11.2 与 `minigame` §3.3 **逐字重复** | **成立**（正是 B20 记下的反模式） | `minigame` 侧改为「**一行核心 + 指针**」，完整代码块与推导只在 `wsam` §11.2 保留 |
+| B4 | 次要 | 校验器**不检查 description 长度**（本批三处超限全靠人肉量） | **成立** | 已补规则，并做**阳性验证 3/3**（1001 必报 / **恰好 1000 不报** / 还原后全库 0 阻断）—— 见 `b27-verify-desc-len-rule.py` |
+| B5 | 低 | `web-malware-forensics/SKILL.md` 里大量**裸 `x.md`** 引用不被校验器覆盖，风格与其它技能不一致 | **成立但决定不改**：全库实测 **7 个技能**用这种裸名，其中大量指向**工作目录产物**（`todo.md` / `evidence.md` / `AGENTS.md` / `case-*.md` / `*.funcs.md`），加规则会产生**成片假阳性**（B21 教训：别把约定当 bug） | 登记为「**有意的技能本地约定**」，不建规则；实测数字写进校验器注释 |
+| B6 | 低 | 既有脚本内 `references/...` 引用"断链"（说从 `scripts/` 解析失败） | **不成立**：校验器口径是「`references/...` **相对 skill 根**解析」（`base = skillDir`），而脚本在 `scripts/` 下 ⇒ `references/x.md` 与 `../references/x.md` **解析到同一个文件**，两种写法都通过 | **回滚**我一度按该意见做的 `../references/` 改动，避免制造与全库不一致的写法 |
+| B7 | 信息 | `check_skill_integrity.js` 在其环境里 rc=0 | 与终态一致 | 无需处置 |
+
+> 🔴 **B4 的补丁自己先踩了一次坑（值得记档）**：给校验器加规则的补丁脚本用了**无计数** `str.replace`，
+> 被执行两遍 ⇒ 检查块**插了两遍** ⇒ JS 报 `Identifier 'dm' has already been declared`。
+> **抓住它的正是"阳性验证"**：若只看 `rc=1` 就以为"新规则生效了"，实际是**整个校验器根本没跑起来**。
+> ⇒ 结论：**"扩检查面"的阳性验证同时验证了"校验器自身可运行"**；且**给仓库文件打补丁的脚本一律要 `assert count==1`**。
+
+> ⚠️ **B1 的另一个启示（与 B25 同型）**：**自检/夹具不得把产物写进被校验的目录**。
+> 本轮它让"镜像一致性"这个本该最可靠的断言变成了**噪声源**。
+
+### 附带修复（本批实跑带出，均已修复并留证）
+
+| # | 文件 / 位置 | 问题（怎么发现的） | 处置 |
+| --- | --- | --- | --- |
+| 1 | `desktop-client-reverse/references/jsc-and-v8-bytecode.md` §10.3 | 原稿把 32 位操作数写成「**小端**」，与源文 `3B 00 00 00 11` = 下标 `0x11` 矛盾（小端会读成 `0x11000000`）。**由 `browsercli` 真实 JS 引擎实跑当场 FAIL 发现** | 改为「**高位在前**」+ 明写错误读法 + §10.5 增坑 1b + 4 条断言钉住 |
+| 2 | `web-verify-patcher/scripts/inspect_assets.py` | `import imghdr` —— 该模块 **Python 3.13 已移除** ⇒ 脚本直接 `ModuleNotFoundError`，`verify_recipe_eval.py --selftest` 连带失败 | 改为零依赖 magic 嗅探 `_img_type_by_magic()`；配 **9/9** 阳性/阴性对照（`b27-verify-img-sniff.py`：6 种图片格式 + JS 载荷 + 空文件 + 不存在路径） |
+| 3 | `forum-corpus-archival/scripts/corpus-homogeneity-audit.py` | 自检夹具写在**技能目录内**（`__file__` 旁边）⇒ 一旦被打断就留垃圾（本轮被并行评审的实际中断撞上），`check_skill_integrity.js` 立刻误报「镜像缺失」 | 两处夹具改到 `tempfile.mkdtemp()` + `shutil.rmtree()` 兜底；复跑后技能目录 **0 残留** |
+| 4 | 跨技能相对路径 6 处（`miniprogram-reverse` ↔ `wsam-reverse` ↔ `desktop-client-reverse`） | `../` 少退一级 / 写成「裸跨技能路径」⇒ `check_skill_integrity.js` **一次抓出 7 个阻断项**（与 B23 同类） | 全部改为 `../../<skill>/references/x.md`（SKILL.md 在技能根 ⇒ `../`）；复跑 **0 阻断** |
+| 5 | 三处技能 `description` 超限 | `web-malware-forensics` **1008**、`miniprogram-reverse` 待增词、`desktop-client-reverse` 待增词 | 压缩同义堆叠后：**990 / 991 / 984**（三处均**净增**触发词，删词前逐词 grep 确认仍活在正文里）；全库 21/21 ≤ 1000 |
+
+> ⚠️ 第 3 项的性质值得记档：它**不是技能内容错**，而是「**工具把自己的中间态留在了被校验的目录里**」——
+> 表现成"镜像不一致"这种"看起来像真缺陷"的阻断项。这与 B20「校验器自身成为自己的检查对象」同型。
+
+
+### 下一批（B28）取材建议
+
+- 待处理 **457** 篇（台账 525 → 543 条；本批登记 18 条）。
+- 优先级：
+  ① **网马时代线**：池里还剩 `32826`/`41909` 之外的 `shellcode` 变体与 `31115` 同族（PDF/SWF 更深利用侧）
+     ⇒ **一律 evolve `web-malware-forensics`，只有出现"新壳型"才动脚本**；
+  ② **小游戏线继续收**：本批只吃到 Cocos 与 Unity 两条；语料里还有 `JSC 反编译`（`814217` 的同类）、
+     小游戏协议与存档侧 ⇒ 落 `miniprogram-reverse/references/minigame-and-unity-wasm.md`（同类只 evolve）；
+  ③ **验证码簇只取"新题型或带完整纯算交付"**（B26 已论证单站协议链不再逐篇收）；
+  ④ **站前挑战厂商带**按 B24 的 6 处同改清单扩容（优先带可独立复算的 oracle）；
+  ⑤ **无感/行为验证**剩余并入 `behavior-verify-and-sign-headers.md`。
+- **B27 遗留**：
+  1. `52pojie-1775370` 的 `t` **未解**（已按范式登记"未证 + 已排除候选 + 下一步实验"），**不要**在后续批次里补一个猜测值；
+  2. `52pojie-1936819` 的 WAT 补丁持久化 + md5 校验**来源未测**，文档已带两处限定；
+  3. `52pojie-814217` 的 Mozjs 指令表**单源且来源未给样本** ⇒ §10.5 已列 5 条边界；
+  4. `miniprogram-reverse` 排错表的 `RadiumWMPF` 版本绑定条目仍待回源复核（B25 记，连续三轮未碰该行）。
+- 候选新技能 `captcha-flow-orchestration` —— B5–B27 **二十一次确认不新建**。
+- 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。

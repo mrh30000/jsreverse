@@ -1,6 +1,6 @@
 ---
 name: desktop-client-reverse
-description: 桌面客户端逆向技能（Electron / Tauri / WebView2 / Node.js 打包产物 / V8 字节码 / Cocos2d-JS）。当目标的"前端"不在浏览器里，而在装了壳的桌面程序或原生客户端里时使用：`app.asar`、`resources/app`、`OnlyLoadAppFromAsar`、`@electron/fuses`/`flipFuses`、`EnableEmbeddedAsarIntegrityValidation`、`launch.dist.js`、`package.json` 的 `main`、`ipcMain`/`ipcRenderer`、`electron.net.request`、`electron.protocol.handle`、`webContents.openDevTools`、`app.quit`、`--inspect`/`--debug`、`.jsc`、`bytenode`、`CodeSerializer`、`BytecodeArray`、`d8`、`loadjsc`、`0xC0DE0687`、`jsc2js`、`view8`、`Ignition`、`node:sea`/`Node.js pkg` 单文件 exe、`WebView2`、`EmbeddedBrowserWebView.dll`、`Cocos2d-JS`、`xxtea`、`assets/src`、`libcocos2djs.so`、`Can't decrypt code for %s`、`netease` 签名头、`.luac`、`asar extract/pack`、`netstat -na`、`declarativeNetRequest`、Typora、pkg `!1`/`!0` patch。用户说「Electron 逆向 / asar 解包报错 / 解压出来是乱码 / 打不开开发者工具 / 改了 JS 程序自动退出 / 完整性校验 / jsc 反编译 / 字节码看不懂 / V8 版本对不上 / 这个是 exe 不会逆 / 桌面程序抓包 / WebView2 资源提取 / 小游戏客户端 / PC 客户端协议」时都应使用本技能。
+description: 桌面客户端逆向技能（Electron / Tauri / WebView2 / Node.js 打包产物 / V8 字节码 / Cocos2d-JS）。当「前端」不在浏览器里、而在装了壳的桌面/原生客户端里时用：`app.asar`、`resources/app`、`OnlyLoadAppFromAsar`、`@electron/fuses`/`flipFuses`、`EnableEmbeddedAsarIntegrityValidation`、`launch.dist.js`、`package.json` 的 `main`、`ipcMain`/`ipcRenderer`、`electron.net.request`、`electron.protocol.handle`、`webContents.openDevTools`、`app.quit`、`--inspect`/`--debug`、`.jsc`、`bytenode`、`CodeSerializer`、`d8`、`loadjsc`、`0xC0DE0687`、`jsc2js`、`view8`、`node:sea`/`Node.js pkg` 单文件 exe、`WebView2`、`EmbeddedBrowserWebView.dll`、`Cocos2d-JS`、`xxtea`、`assets/src`、`Can't decrypt code for %s`、`netease` 签名头、`.luac`、`asar extract/pack`、`netstat -na`、`declarativeNetRequest`、Typora、pkg `!1`/`!0` patch。用户说「Electron 逆向 / asar 解包报错 / 打不开开发者工具 / 改了 JS 程序自动退出 / 完整性校验 / jsc 反编译 / 字节码看不懂 / V8 版本对不上 / 这个是 exe 不会逆 / 桌面程序抓包 / WebView2 资源提取 / 小游戏客户端 / PC 客户端协议」时都应使用本技能，或 `.jsc` 是 **Mozjs / SpiderMonkey 字节码**（xxtea 解不出东西、`jsc-decompile-mozjs-34`、`CA 42`/`CA 43` 就地补丁）时也用。
 ---
 
 # 桌面客户端逆向：壳 → 入口 → 运行时
@@ -14,7 +14,7 @@ description: 桌面客户端逆向技能（Electron / Tauri / WebView2 / Node.js
 ③ 改完 `app/` 目录程序起不来，却在 JS 里翻找原因（其实是 fuse / 完整性校验 / 加载优先级）。
 
 > 壳层判据、asar 结构与偏移修复、fuse 与完整性校验、IPC 与网络劫持 → `references/electron-asar-and-fuses.md`
-> `.jsc` 两类形态、Cocos xxtea 密钥取证、V8 字节码阅读、pkg/bytenode 字节补丁 → `references/jsc-and-v8-bytecode.md`
+> `.jsc` 三类形态、Cocos xxtea 密钥取证、V8 字节码阅读、**Mozjs 字节码就地补丁**、pkg/bytenode 字节补丁 → `references/jsc-and-v8-bytecode.md`
 > WebView2 / Cocos 资源目录 / 原生桥、反调试与插件覆盖、本地端口入口 → `references/desktop-runtime-surfaces.md`
 > 本文只给**分流判据、执行顺序、坑表与反例**。
 
@@ -31,6 +31,7 @@ description: 桌面客户端逆向技能（Electron / Tauri / WebView2 / Node.js
 | 有本地 `127.0.0.1:xxxxx` 监听端口 | Electron/本地服务 | 直接当网页调（`netstat -na` 找端口，`references/desktop-runtime-surfaces.md` §4） |
 | 文件后缀 `.jsc`，同在 `assets/src` | **Cocos2d-JS** | `jsc_xxtea_tool.py identify`（`references/jsc-and-v8-bytecode.md` §2） |
 | `.jsc` 被 `require` 进来（`launch.dist.js` 里） | **V8 字节码（Node 模块）** | **别解字节码**：劫持 Node/Electron API（`references/jsc-and-v8-bytecode.md` §5） |
+| Cocos 游戏的 `.jsc`，**xxtea 怎么也解不出像 JS 的东西** | **Mozjs（SpiderMonkey）字节码**（不是密文） | 先反编译拿到「地图」，再**就地改一个字节**（`references/jsc-and-v8-bytecode.md` §10） |
 | `.jsc` 首 4 字节以 `C0 DE` 开头（实测 `C0DE0687`） | **V8 code cache**（且没有额外加壳） | 先读 V8 版本；要**看懂**走 §5.3 的三条现成路线，要**拿逻辑**仍走 §5.2 |
 | 单个大 exe（几十 MB），内嵌 JS 常量仍是明文 | **Node.js pkg 打包** | `strings` 定位 → `byte_flag_patch.py`（`references/jsc-and-v8-bytecode.md` §6） |
 | HTTP 响应里带平台签名 / 客户端 ID | 协议层 | 套本仓库其它技能（见末尾边界） |
@@ -91,6 +92,8 @@ description: 桌面客户端逆向技能（Electron / Tauri / WebView2 / Node.js
 | `--inspect` 启动即退出 | 反调试检测启动参数 | 不碰启动参数，改走"解包 + 注入 + DevTools" |
 | `crypto.publicDecrypt` 返回未知结构 | 需要黑盒推导消费方 | 返回 `Proxy(Buffer)` 记录 `toString/get/length`，再 `Proxy(JSON.parse 结果)` 看读了哪些键 |
 | 激活成功但重启失效 | 还有**联网复核** | `electron.protocol.handle('https')` 里对该 URL 直接返回成功响应 |
+| 激活当时成功、**下次续期又掉** | 只拦了 `activate`，漏了配对的 `renew` | 两个端点都伪造，**字段形状按端点分别给**（`references/electron-asar-and-fuses.md` §5.2.1） |
+| 注入之后**原本正常的激活反而失效** | 注入代码在同目录写了/删了业务状态文件（如 `id`） | 调试日志写独立目录，**别碰业务状态**（§5.2.1） |
 | WebView2 无法右键检查 | 没暴露 DevTools 入口 | 虚表把 `Navigate` 指向 `OpenDevToolsWindow` |
 | Cocos `.jsc` 解出乱码 | key 或 xor_key 不对 | 回 so 里取证：搜 `decrypt` 符号 / 搜 `Can't decrypt code for %s` 的引用 |
 | `.jsc` 用 xxtea 解不出任何东西 | 它可能是 **V8 字节码** | 别再试算法；改走"环境内 require + 劫持 API" |
@@ -150,8 +153,9 @@ python $S/byte_flag_patch.py patch --in server.exe --pattern "activated:!1" \
   前缀与 `integrity` 处置、`@electron/fuses` 八个开关与 `OnlyLoadAppFromAsar`、
   完整性校验的四个被校验文件与 `fs.promises.readFile` 重定向骨架、入口注入顺序（quit 拦截 /
   `browser-window-created` + `openDevTools` / `ipcMain.handle` 日志 / `electron.protocol.handle` 伪造响应）、
-  `Proxy(Buffer)` + `Proxy(JSON.parse)` 黑盒推导激活码结构、本地端口与 `--debug` 反调试、12 条坑表。
-- `references/jsc-and-v8-bytecode.md`：**`.jsc` 两类形态的唯一权威源** ——
+  **§5.2.1 激活类请求"一对端点 + 字段形状按端点分别给 + 注入别碰业务状态文件"**、
+  `Proxy(Buffer)` + `Proxy(JSON.parse)` 黑盒推导激活码结构、本地端口与 `--debug` 反调试、14 条坑表。
+- `references/jsc-and-v8-bytecode.md`：**`.jsc` 三类形态的唯一权威源** ——
   Cocos 系（`ungzip(xxtea_decrypt())`、密钥取证三处落点、网易 `netease`+`01 01 01 EF` 签名头与
   重复密钥异或、`.luac` 类比）、V8 字节码系（bytenode、`CodeSerializer.Deserialize`、
   **首 4 字节 `C0 DE` 前缀判据**、d8 打补丁加 `Disassemble/LoadJSC` 的判据与代价、`SharedFunctionInfo` 递归反汇编的坑）、
