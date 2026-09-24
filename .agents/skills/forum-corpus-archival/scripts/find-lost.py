@@ -72,11 +72,11 @@ def load_blocked(artifacts):
     return blocked
 
 
-def load_bodies(artifacts):
+def load_bodies(artifacts, dir_glob="*"):
     """返回 {帖子ID: [目录...]}。ID 一律用文件名里第一个 ≥5 位数字串（坑 56），
     这样 `123456.md` 与 `csdn-123456.md` 都能归一。"""
     bodies = {}
-    for d in glob.glob(os.path.join(artifacts, "*", "bodies*")):
+    for d in glob.glob(os.path.join(artifacts, dir_glob, "bodies*")):
         if os.path.isdir(d):
             for f in os.listdir(d):
                 if not f.endswith(".md"):
@@ -107,6 +107,8 @@ def main():
     ap.add_argument("--corpus", required=True, help="语料目录（docs/references）")
     ap.add_argument("--artifacts", required=True, help="artifacts 根目录")
     ap.add_argument("--platform", default="52pojie")
+    ap.add_argument("--dir-glob", default="{platform}-*",
+                    help="限定正文目录前缀，避免多会话共用 artifacts/ 时跨平台污染（坑 86）")
     ap.add_argument("--min-score", type=int, default=0)
     ap.add_argument("--top", type=int, default=300)
     ap.add_argument("--dump", default="")
@@ -118,7 +120,7 @@ def main():
         if m:
             arch.add(m.group(1))
     blocked = load_blocked(a.artifacts)
-    bodies = load_bodies(a.artifacts)
+    bodies = load_bodies(a.artifacts, a.dir_glob.replace("{platform}", a.platform))
     pool = load_pool(a.artifacts, a.platform)
     lost = {k: v for k, v in bodies.items() if k not in arch and k not in blocked}
     print("bodies=%d | 已归档=%d | 噪声名单=%d | 失联=%d"
