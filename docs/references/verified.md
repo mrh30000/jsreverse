@@ -4473,7 +4473,32 @@ B27 列的「网马时代线继续 evolve」与「小游戏线继续收」在新
   （**9 个跳过项已逐块人工看过**，见下「本批自曝缺陷」）；③ 编码体检（全库 248 文档 + 改动集 U+FFFD）；
   ④ 改动文档路径引用 208 可解析 / 1 不可解析（`references/patterns/<site>.md`，**占位符模式，历史既有，非本批引入**）。
 - 台账登记 **609 → 623** 条 / `verify-ledger-md5.py` 逐条一致 / 幂等复跑。
-- 本批**未新增脚本**（无新 hook 预设、无新 Python 工具）⇒ 不涉及 `--selftest` 增量。
+- 本批**未新增技能脚本**（无新 `build-hook.js` 预设、无新 Python 工具）⇒ 不涉及新脚本的 `--selftest` 增量。
+- ★ **browsercli 真机 Chrome 逐条验证文档断言：19/19 全绿**（browsercli attach 模式 + `new_page about:blank`
+  + `evaluate_script --file`；产物 `artifacts/skill-evolution/b32-run/` = 1 个断言脚本 + 1 份结果 JSON）。
+  覆盖 7 组（**每条都是本批新文档里写下的「可执行断言」，不是复述**）：
+  - **① `escape` 形态**（`web-reverse-algorithm/16`）：`escape("始識")` = `%u59CB%u8B58`；
+    `decodeURIComponent` 对它**抛异常**（返回值 `null`）；`unescape` 往返正确 ⇒ 面板三段的「`%uXXXX` 专属」
+    判据成立。
+  - **② ★ 行内 `!important`**（`web-reverse-hook/anti-hook`）：作者样式表 `user-select:none !important` 的
+    对照组实测为 `none`（挡得住），目标节点拼上**行内** `user-select: text !important` 后实测为 `text`
+    ⇒ 「**行内 `!important` 能压住作者样式表的 `!important`**」成立（这正是源文那句拼接写法的原理）。
+  - **③ `attachShadow` 强制 `mode="open"`**（`web-reverse-hook/anti-hook`）：包装后对 `{mode:"closed"}`
+    仍能拿到 `shadowRoot` 且 `innerHTML` = `<span>secret</span>`；还原原型后 closed **仍是 `null`**
+    ⇒ 配方成立，且**不是环境残留造成的假阳性**。
+  - **④ ★★ `Error.stack` 调用方过滤**（`web-reverse-hook/anti-hook` 的核心范式）：
+    检测函数 `checkoutNotTrustScript` 内的 `setInterval` 注册**被抑制**（返回 `undefined`），
+    正常调用方 `legitCaller` 的注册**原样放行**（返回数字 id）⇒ `suppressed=1 / passed=1`。
+    **这是本批唯一一条「把源文的手法提炼成通用范式后再验证」的断言，真机成立。**
+  - **⑤ `RENDER_DATA` 是 URL-encoded JSON**（`target-analysis/in-page-data-carriers`）：
+    直接 `JSON.parse` **抛异常**，`decodeURIComponent` 之后再 parse **成功**
+    ⇒ 「必须先 decode 再 parse」成立。
+  - **⑥ ★ `xhr._url` 不是标准属性**（`target-analysis/in-page-data-carriers` 的静默陷阱）：
+    `"_url" in XMLHttpRequest.prototype` = **false**、实例上 `_url === undefined`、
+    而 `responseURL` 存在 ⇒ **源文脚本「一条都不收且不报错」的根因被真机证实**。
+  - **⑦ 对照结论**：`Object.getOwnPropertyDescriptor(Element.prototype, "attachShadow")` = **true**
+    （描述符**在**原型自身）—— 与 B31 实测的「`document.cookie` 描述符**不在** `document` 自身」形成**对照**
+    ⇒ ★ **不能一律假设「描述符在不在自身」**，必须**沿原型链逐层找**（这条正好给 B31 的 cookie hook 坑 2 补上了反面样本）。
 
 **本批自曝缺陷（含 3 个由「机械门禁」而非人工发现的，是本批方法论的收获）**
 
