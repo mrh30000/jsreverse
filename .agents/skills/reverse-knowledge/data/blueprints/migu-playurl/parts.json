@@ -1,0 +1,70 @@
+{
+  "parts": [
+    {
+      "name": "vomsID",
+      "role": "栏目/频道顶层 id（央视/卫视/体育…）",
+      "source": "program-sc.miguvideo.com/live/v2/tv-data/<topVomsID> 的 liveList[].vomsID",
+      "example": "a5f78af9d160418eb679a6dd0429c920"
+    },
+    {
+      "name": "pID",
+      "role": "具体频道的播放 id（下一级接口的入参）",
+      "source": "program-sc.miguvideo.com/live/v2/tv-data/<vomsID> 的 dataList[].pID",
+      "example": "608807420"
+    },
+    {
+      "name": "contId",
+      "role": "playurl 接口的内容 id（= pID）",
+      "source": "query 参数名逐字为 contId",
+      "example": "608807420"
+    },
+    {
+      "name": "rateType",
+      "role": "码率/清晰度档位",
+      "source": "源文只出现 rateType=3（注释写作「3高清」）",
+      "example": "3"
+    },
+    {
+      "name": "userid",
+      "role": "用户 id；**空值有默认串兜底**，ddCalcu 取它的 [2]",
+      "source": "playurl 返回的 h5 地址 query；空则用 'e'*9",
+      "example": "（空）"
+    },
+    {
+      "name": "timestamp",
+      "role": "播放地址时间戳；ddCalcu 取它的 [6]",
+      "source": "playurl 返回的 h5 地址 query；空则用 't'*14",
+      "example": "20231224140501"
+    },
+    {
+      "name": "ProgramID",
+      "role": "节目 id；ddCalcu 取它的 [2]",
+      "source": "playurl 返回的 h5 地址 query；空则用 'c'*9",
+      "example": "608807420"
+    },
+    {
+      "name": "Channel_ID",
+      "role": "频道 id；ddCalcu 取它的 **[len-4]**（从尾部数第 4 位）",
+      "source": "playurl 返回的 h5 地址 query；空则用 'n'*16",
+      "example": "0116_25000000-99000-100300010010001"
+    },
+    {
+      "name": "puData",
+      "role": "被交织的主体串（ddCalcu 的输入）；没有它就直接返回原 URL",
+      "source": "playurl 返回的 h5 地址 query",
+      "example": "3f841e2a0b365c2914ee68cd75073bdb"
+    },
+    {
+      "name": "ddCalcu",
+      "role": "交织产物，作为新 query 追加到 h5 地址尾部",
+      "source": "ddCalcu() 计算结果；**源文未给期望值**，此例为本批用 line 220 样例 URL（实体修正后）实算",
+      "example": "b3dfeb823487100e527ad0cb8366e5ec4219"
+    },
+    {
+      "name": "crossdomain",
+      "role": "调用方额外补的 query（源文固定补 www）",
+      "source": "源文调用处写死 '&crossdomain=www'",
+      "example": "www"
+    }
+  ]
+}

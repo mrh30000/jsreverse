@@ -1,0 +1,92 @@
+{
+  "id": "qingting-fm",
+  "title": "蜻蜓FM 电台播放地址（HMAC-MD5 签名，口令固定）",
+  "category": "platform-signature",
+  "status": "active",
+  "version": "1.0.0",
+  "summary": "蜻蜓FM 电台地址 = 主机 + path + 三段 query，其中 sign = hex_hmac_md5('Lwrpu$K5oP', 'app_id=web&path=<path>&ts=<十六进制时间戳>')，ts 取「当前时间 + 1 小时」。",
+  "aliases": [
+    "qingting",
+    "qtfm",
+    "蜻蜓FM",
+    "lhttp.qtfm.cn"
+  ],
+  "keywords": [
+    "蜻蜓FM",
+    "qingting",
+    "qtfm",
+    "lhttp.qtfm.cn",
+    "hmac_md5",
+    "app_id=web",
+    "64k.mp3",
+    "电台"
+  ],
+  "algorithm": {
+    "family": "hmac",
+    "detail": "sign = hex_hmac_md5(key, msg)，key = 'Lwrpu$K5oP'（固定口令），msg = 'app_id=' + i + '&path=' + t + '&ts=' + r，其中 i = 'web'、t = '/live/' + id + '/64k.mp3'、r = 十六进制文本(Unix时间戳(当前时间 + 1 小时))。最终返回 n + t + '?app_id=' + i + '&ts=' + r + '&sign=' + sign，n = 'https://lhttp.qtfm.cn'。待签串是**纯 k=v 按固定顺序直拼**，没有排序、没有 urlencode。",
+    "key_material": "固定口令 'Lwrpu$K5oP'",
+    "output_encoding": "hex（32 位，小写）",
+    "output_length": "32"
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-1942443-蜻蜓FM电台播放地址算法分享.md",
+      "line": 10,
+      "quote": "其实就是拼接了一下地址 hmac\\_md5 算法 密码：Lwrpu$K5oP",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1942443-蜻蜓FM电台播放地址算法分享.md",
+      "line": 13,
+      "quote": "t ＝ “/live/” ＋ id ＋ “/64k.mp3”",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1942443-蜻蜓FM电台播放地址算法分享.md",
+      "line": 14,
+      "quote": "n ＝ “https://lhttp.qtfm.cn”",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1942443-蜻蜓FM电台播放地址算法分享.md",
+      "line": 16,
+      "quote": "r ＝ 取十六进制文本 (Unix时间戳 (增减时间 (取现行时间 (), #小时, 1)))",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1942443-蜻蜓FM电台播放地址算法分享.md",
+      "line": 18,
+      "quote": "a ＝ “app_id=” ＋ i ＋ “&path=” ＋ t＋ “&ts=” ＋ r",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1942443-蜻蜓FM电台播放地址算法分享.md",
+      "line": 20,
+      "quote": "sign ＝ hex_hmac_md5 (“Lwrpu$K5oP”, a)",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1942443-蜻蜓FM电台播放地址算法分享.md",
+      "line": 22,
+      "quote": "返回 (n ＋ t ＋ “?app_id=” ＋ i ＋ “&ts=” ＋ r ＋ “&sign=” ＋ sign)",
+      "verified_in_article": true
+    }
+  ],
+  "entry": {
+    "location": "网页/客户端播放前的地址构造（源文给的是易语言实现的完整算式，未给 JS 定位信息）",
+    "trigger": "播放前现算（含 +1 小时的时间戳 ⇒ 有时效）",
+    "transport": "URL query（app_id / ts / sign）"
+  },
+  "gaps": [
+    "**十六进制的大小写源文未明确**（易语言 `取十六进制文本` 惯例输出大写）⇒ 已暴露成开关，默认 upper；未与真实响应做过对拍",
+    "源文**未给任何示例 URL / 示例 sign** ⇒ 本实现只能做结构断言（长度、字符集、字段顺序、URL 拼装），**没有外部对拍向量**",
+    "`+1 小时` 的偏移是否有其他取值（源文只给了 +1h）未说明",
+    "id 的取值范围与来源（电台 id 从哪个接口拿）源文未给"
+  ],
+  "self_check": [
+    "用 ts_unix=1758700000（+3600 ⇒ 1758703600 ⇒ 十六进制 68D3AFF0）实算：sign = 57f8fb7d1488e93140cb986498c28d8e（本批实算值；源文未给，故**不是**对拍，只是可复现基线）",
+    "断言 `qingting_sign(path, ts_hex, key='wrong') != 正常签名`（负对照：换口令必须变）",
+    "断言大小写开关真的改变签名（`upper` 与 `lower` 结果不同）—— 把源文的未知项变成**可见行为**而不是隐藏默认"
+  ],
+  "notes": "可复算实现：`skills/stream-drm-reverse/scripts/playback_address.py qingting --id <id>`。对应 `skills/stream-drm-reverse/references/playback-address-interfaces.md` §4.2。"
+}

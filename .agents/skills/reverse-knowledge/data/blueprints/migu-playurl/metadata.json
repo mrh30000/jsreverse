@@ -1,0 +1,128 @@
+{
+  "id": "migu-playurl",
+  "title": "咪咕视频 直播/点播播放地址（vomsID → pID → playurl → ddCalcu）",
+  "category": "platform-request-params",
+  "status": "active",
+  "version": "1.0.0",
+  "summary": "咪咕的三级链：节目表接口给 vomsID/pID，playurl 接口给带时效参数的 h5 地址，再由 ddCalcu 把 puData 交织成校验串拼回 URL。",
+  "aliases": [
+    "migu",
+    "vomsID",
+    "pID",
+    "puData",
+    "ddCalcu",
+    "playurl",
+    "miguvideo"
+  ],
+  "keywords": [
+    "咪咕",
+    "miguvideo",
+    "cmvideo",
+    "vomsID",
+    "pID",
+    "puData",
+    "ddCalcu",
+    "playurl",
+    "h5live",
+    "rateType"
+  ],
+  "algorithm": {
+    "family": "custom",
+    "detail": "ddCalcu(o) **不是加密**：没有任何密钥与算术，只是把 puData 反转后与原串交替配对，再在固定位置插入 4 个单字符。索引表 s = list(\"2624\") 决定每个字段取哪一位：u = t[int(s[0])] = userid[2]、l = r[int(s[1])] = timestamp[6]、c = n[int(s[2])] = ProgramID[2]、f = a[len(a)-int(s[3])] = Channel_ID[len-4]。循环 p*2 < len(d) 内：先 append 逆序字符 d[len-1-p]，再在满足 p < len-1-p 时 append 正序字符 o[p]，最后在 p==1/2/3/4 时分别 append u/l/c/f。最终 URL 追加 '&ddCalcu=' + v。",
+    "key_material": "无密钥；索引表常量 s = \"2624\"",
+    "output_encoding": "URL query 明文",
+    "output_length": "len(puData) + 4"
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-1899689-咪咕直播源获取.md",
+      "line": 28,
+      "quote": "url='https://program-sc.miguvideo.com/live/v2/tv-data/a5f78af9d160418eb679a6dd0429c920'",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1899689-咪咕直播源获取.md",
+      "line": 49,
+      "quote": "url=f'https://program-sc.miguvideo.com/live/v2/tv-data/{id}'",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1899689-咪咕直播源获取.md",
+      "line": 77,
+      "quote": "url=f'https://webapi.miguvideo.com/gateway/playurl/v3/play/playurl?contId={id}&rateType=3&startPlay=true'",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1899689-咪咕直播源获取.md",
+      "line": 105,
+      "quote": "puData = para.get(\"puData\",\"\")",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1899689-咪咕直播源获取.md",
+      "line": 111,
+      "quote": "if not o:",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1899689-咪咕直播源获取.md",
+      "line": 113,
+      "quote": "s = list(\"2624\")",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1899689-咪咕直播源获取.md",
+      "line": 114,
+      "quote": "u = list(t)[int(s[0])] or \"e\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1899689-咪咕直播源获取.md",
+      "line": 123,
+      "quote": "h.append(d[len(d)-p-1])",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1899689-咪咕直播源获取.md",
+      "line": 136,
+      "quote": "return url + \"&ddCalcu=\" + v",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1899689-咪咕直播源获取.md",
+      "line": 141,
+      "quote": "'Host':'h5live.gslb.cmvideo.cn',",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1899689-咪咕直播源获取.md",
+      "line": 205,
+      "quote": "m3u8=api(new_url+'&crossdomain=www')",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1899689-咪咕直播源获取.md",
+      "line": 7,
+      "quote": "#有时效性:大概4小时或更长，具体的自行测试",
+      "verified_in_article": true
+    }
+  ],
+  "entry": {
+    "location": "① target page: program-sc.miguvideo.com/live/v2/tv-data/<topVomsID>（liveList[].vomsID/name）② program-sc.miguvideo.com/live/v2/tv-data/<vomsID>（dataList[].pID/name）③ webapi.miguvideo.com/gateway/playurl/v3/play/playurl?contId=<pID>&rateType=3&startPlay=true ④ ddCalcu 拼串后请求 h5live.gslb.cmvideo.cn",
+    "trigger": "取源时（地址时效约 4 小时或更长，源文自述）",
+    "transport": "query（全部四级都是 GET query）"
+  },
+  "gaps": [
+    "ddCalcu 的**期望输出源文未给** ⇒ 只能做结构断言（长度 = len(puData)+4、四个插入位固定在 4/7/10/13、正序侧 v[2k+5]==o[k]、逆序侧 v[2k+4]==o[n-1-k]），未与任何真实响应对拍",
+    "四个占位默认串（'e'*9 / 't'*14 / 'c'*9 / 'n'*16）的长度**为何恰好是这些**源文没解释；本批只能推断为「要覆盖 2/6/2/len-4 这几个索引」，属推断",
+    "rateType 的取值表（源文只出现 3 = 高清）未给",
+    "`&crossdomain=www` 是否必需、去掉会怎样，源文未说明",
+    "403 / 版权限制房间（源文注释里出现『版权限制访问』）的判据源文只给了一处注释"
+  ],
+  "self_check": [
+    "用 52pojie-1899689 line 219/220 的完整样例 URL 实算：len(puData)=32 ⇒ len(ddCalcu)=36；u='e'（userid 空 ⇒ 默认串 [2]）、l='2'（timestamp[6]）、c='8'（ProgramID[2]）、f='0'（Channel_ID 末位）⇒ 四个插入位 4/7/10/13 全部命中",
+    "结构断言在真实长度上全为真：∀k∈[5,16)：v[2k+5]==o[k] 且 v[2k+4]==o[len(o)-1-k]",
+    "无 puData 时原样返回（源文 line 111 的 `if not o: return url`）已做成断言"
+  ],
+  "notes": "本蓝图对应 `skills/stream-drm-reverse/references/playback-address-interfaces.md` §2.3；可复算实现见 `skills/stream-drm-reverse/scripts/playback_address.py migu-ddcalcu`（自检里含上面三条结构断言）。"
+}

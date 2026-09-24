@@ -29,6 +29,21 @@
       "name": "字符串参数长度必须 +1",
       "rule": "wasm 只认字节流且字符串以 \\0 结尾：申请 malloc(strlen+1)、memcpy 时带上结尾 0",
       "symptom_if_wrong": "能跑但结果差一位（静默），极难发现"
+    },
+    {
+      "name": "cKey 是多行值，必须 replace(\"\\n\", \"&\")",
+      "rule": "源文 line 122：`ckey.replace(\"\\n\", \"&\")`",
+      "symptom_if_wrong": "少这一步会把换行带进 query ⇒ 请求被拒，但打印出来「看着有值」，属静默出错"
+    },
+    {
+      "name": "会话自举：先 auth_refresh 再取址",
+      "rule": "把 `auth_refresh` 的响应按 `main_login=qq; vqq_access_token=…; vqq_vuserid=…; vqq_vusession=…; vqq_next_refresh_time=…` 写回本地 cookie 文件",
+      "symptom_if_wrong": "不带登录态时接口仍可能 200，但只给到「高清」档（源文：只能解析出高清视频）"
+    },
+    {
+      "name": "伴随常量要成套改",
+      "rule": "`platform=10201` / `appVer=3.5.57` / `encryptVer=9.1` / `defnpayver=1` / `spwm=4` 同属一份客户端版本画像",
+      "symptom_if_wrong": "只改其中一个会得到空 vinfo 或降档，且不报错"
     }
   ]
 }

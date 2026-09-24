@@ -17,6 +17,7 @@
  * - dataflow: 数据流追踪（Promise resolve回调追踪、Cookie写入、Storage存储、网络请求、时间随机数固定）
  * - spa-vue: Vue 2/3 动态路由深度提取、导航守卫解除、强跳阻断
  * - spa-state: Vue/Vuex 运行时状态固化（含「挡回写」）+ 组件注册表探针与替换
+ * - mse-capture: MSE 流捕获（代理 addSourceBuffer/appendBuffer/endOfStream/createObjectURL），落盘 blob 视频
  * - spa-react: React Fiber 树与 Router 动态路由提取
  *
  * 用法：
@@ -26,6 +27,7 @@
  *   node build-hook.js cryptojs --algorithms AES,MD5 --out hook-cryptojs.js
   node build-hook.js spa-state --state-path vipInfo.isVip=true --state-path visitUserInfo.isTaskUser=true --out hook-vue-state.js
   node build-hook.js spa-state --registry-root window.videojs --registry-names Player --out hook-registry.js
+  node build-hook.js mse-capture --out hook-mse.js
  */
 
 import {writeFileSync} from 'node:fs';
@@ -48,6 +50,9 @@ import {
   installSpaReactHook,
   installSpaVueHook,
 } from './hooks/spa-router.js';
+import {
+  installMseCaptureHook,
+} from './hooks/mse-capture.js';
 import {
   installSpaStatePatchHook,
 } from './hooks/spa-state-patch.js';
@@ -96,6 +101,12 @@ const PRESETS = {
     hookId: 'spa_state_patch',
     install: installSpaStatePatchHook,
     description: 'Vue/Vuex 运行时状态固化（访问器挡回写）+ mutation 流水 + 组件注册表替换',
+  },
+  'mse-capture': {
+    hookId: 'mse_capture',
+    install: installMseCaptureHook,
+    description:
+      'MSE 流捕获：代理 addSourceBuffer/appendBuffer/endOfStream/URL.createObjectURL，把 blob 视频落盘',
   },
   'jsvmp-proxy': {
     hookId: 'jsvmp_probe',
@@ -224,6 +235,19 @@ function resolveConfig(preset, options) {
     };
   }
 
+  if (preset === 'mse-capture') {
+    // ⚠️ 这里**故意不给默认值**：四个开关的默认值只在 hooks/mse-capture.js 里定义一处。
+    //    两处各写一份默认值 = 「改一层不改另一层」的静默无效（B29 故障注入 INJ3 实测抓到）。
+    return {
+      autoDownload: options.autoDownload,
+      minBytes: options.minBytes,
+      maxTotalBytes: options.maxTotalBytes,
+      pauseOnFinish: options.pauseOnFinish,
+      trackObjectURL: options.trackObjectURL,
+      sinkVar: options.sinkVar,
+    };
+  }
+
   const scriptUrl = options.scriptUrl ?? '';
   const idSuffix = `:${scriptUrl || 'all'}`;
   if (preset === 'jsvmp-transparent') {
@@ -298,6 +322,14 @@ spa-vue / spa-react options:
   --block-redirects     spa-vue: 清空 router.push/replace/go 阻断页面跳转
   --max-tries <n>       扫描尝试次数 (默认 10)
 
+mse-capture options:
+  --auto-download        流结束时自动交付（默认 false，改成手动调 __mse_capture.save()）
+  --min-bytes <n>        单次 appendBuffer 小于该值不记录（默认 0）
+  --max-total-bytes <n>  累计上限（默认 268435456 = 256MB，超过后停止累积并告警）
+  --pause-on-finish      交付后暂停页面上的 <video>（默认 false）
+  --track-object-url=false  关闭 URL.createObjectURL 代理（默认开启）
+  --sink-var <name>      交付回调所在的全局变量名（默认 __mse_capture_sink）
+
 cryptojs / smcrypto:
   --algorithms <list>   逗号分隔，如 AES,MD5；默认 all
 
@@ -318,6 +350,7 @@ jsvmp-proxy 追踪开关（默认全开，用 =false 关闭）:
   node build-hook.js cryptojs --algorithms AES,MD5 --out hook-cryptojs.js
   node build-hook.js spa-state --state-path vipInfo.isVip=true --state-path visitUserInfo.isTaskUser=true --out hook-vue-state.js
   node build-hook.js spa-state --registry-root window.videojs --registry-names Player --out hook-registry.js
+  node build-hook.js mse-capture --out hook-mse.js
 `);
 }
 
@@ -336,6 +369,9 @@ const BOOL_FLAGS = [
   'log-at',
   'lock-state',
   'trace-mutations',
+  'auto-download',
+  'pause-on-finish',
+  'track-object-url',
 ];
 
 function extractBoolFlags(argv) {
@@ -393,6 +429,9 @@ function main() {
       'script-url': {type: 'string'},
       'max-entries': {type: 'string'},
       'proxy-objects': {type: 'string'},
+      'min-bytes': {type: 'string'},
+      'max-total-bytes': {type: 'string'},
+      'sink-var': {type: 'string'},
     },
     allowPositionals: true,
   });
@@ -428,6 +467,12 @@ function main() {
     windowDimensions: boolFlags.values['window-dimensions'],
     navGuard: boolFlags.values['nav-guard'],
     redirectTrap: boolFlags.values['redirect-trap'],
+    autoDownload: boolFlags.values['auto-download'],
+    pauseOnFinish: boolFlags.values['pause-on-finish'],
+    trackObjectURL: boolFlags.values['track-object-url'],
+    minBytes: values['min-bytes'] ? Number(values['min-bytes']) : undefined,
+    maxTotalBytes: values['max-total-bytes'] ? Number(values['max-total-bytes']) : undefined,
+    sinkVar: values['sink-var'],
     antiAntiHook: boolFlags.values['anti-anti-hook'],
     clearGuards: boolFlags.values['clear-guards'],
     blockRedirects: boolFlags.values['block-redirects'],

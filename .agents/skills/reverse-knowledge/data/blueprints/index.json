@@ -63,8 +63,8 @@
       "path": "baidu-fanyi-sign",
       "title": "百度翻译 v2transapi sign 参数",
       "category": "platform-signature",
-      "status": "unknown",
-      "summary": "百度翻译 v2transapi 的 sign：随待翻译词变化，由某 export 函数生成，内部依赖固定常量 r 与函数 n。",
+      "status": "partial",
+      "summary": "百度翻译 basetrans 的 sign：入口三步链（BAIDUID → page.common.token → sign）已明，但 sign 的算法本体仍未还原（随待译词变化，依赖固定常量 r 与函数 n）。",
       "aliases": [
         "sign",
         "百度翻译",
@@ -196,6 +196,54 @@
         "SM3",
         "RC4",
         "魔改base64"
+      ]
+    },
+    {
+      "id": "douyu-live",
+      "path": "douyu-live",
+      "title": "斗鱼直播源：免签 hlsH5Preview 与动态 JS 签名两条路线",
+      "category": "platform-request-params",
+      "status": "partial",
+      "summary": "lapi/live/hlsH5Preview 带 rid/time/auth 三头即可拿 rtmp_live；房间页 JS 每次不同、签名只活数秒 ⇒ 直接跑 JS。",
+      "aliases": [
+        "douyu",
+        "hlsH5Preview",
+        "rtmp_live",
+        "tx2play1",
+        "斗鱼直播源"
+      ],
+      "keywords": [
+        "斗鱼",
+        "douyu",
+        "douyucdn",
+        "playweb.douyucdn.cn",
+        "hlsH5Preview",
+        "rtmp_live",
+        "tx2play1.douyucdn.cn",
+        "直播源"
+      ]
+    },
+    {
+      "id": "iqiyi-cmd5x",
+      "path": "iqiyi-cmd5x",
+      "title": "爱奇艺 dash 接口 vf 参数（cmd5x，加盐 MD5）",
+      "category": "platform-signature",
+      "status": "partial",
+      "summary": "vf = cmd5x(视频地址串)，加盐 MD5 / 32 位 hex；实现被 Emscripten 编成 asm.js 内联在 pcweb.wonder.js（无 .wasm 文件）。盐常量源文章未给出。 另：同一 dash 接口的 authKey = md5(md5(\"\")+tm+tvid) 已可纯算（源文自带两条对拍向量）。",
+      "aliases": [
+        "cmd5x",
+        "vf",
+        "iqiyi-vf",
+        "authKey"
+      ],
+      "keywords": [
+        "爱奇艺",
+        "iqiyi",
+        "cmd5x",
+        "vf",
+        "asm.js",
+        "dash",
+        "authKey"
       ]
     },
     {
@@ -356,6 +404,35 @@
       ]
     },
     {
+      "id": "migu-playurl",
+      "path": "migu-playurl",
+      "title": "咪咕视频 直播/点播播放地址（vomsID → pID → playurl → ddCalcu）",
+      "category": "platform-request-params",
+      "status": "active",
+      "summary": "咪咕三级链取播放地址；ddCalcu 把 puData 反转后与原串交替配对并插入 4 个字符，非加密。",
+      "aliases": [
+        "migu",
+        "vomsID",
+        "pID",
+        "puData",
+        "ddCalcu",
+        "playurl",
+        "miguvideo"
+      ],
+      "keywords": [
+        "咪咕",
+        "miguvideo",
+        "cmvideo",
+        "vomsID",
+        "pID",
+        "puData",
+        "ddCalcu",
+        "playurl",
+        "h5live",
+        "rateType"
+      ]
+    },
+    {
       "id": "netease-weapi",
       "path": "netease-weapi",
       "title": "网易云音乐 weapi 请求加密（params / encSecKey）",
@@ -395,6 +472,30 @@
         "夕夕进宝",
         "crawlerInfo",
         "k()"
+      ]
+    },
+    {
+      "id": "qingting-fm",
+      "path": "qingting-fm",
+      "title": "蜻蜓FM 电台播放地址（HMAC-MD5 签名，口令固定）",
+      "category": "platform-signature",
+      "status": "active",
+      "summary": "sign = hex_hmac_md5('Lwrpu$K5oP', 'app_id=web&path=<path>&ts=<hex(unix+3600)>')，纯 k=v 直拼不排序。",
+      "aliases": [
+        "qingting",
+        "qtfm",
+        "蜻蜓FM",
+        "lhttp.qtfm.cn"
+      ],
+      "keywords": [
+        "蜻蜓FM",
+        "qingting",
+        "qtfm",
+        "lhttp.qtfm.cn",
+        "hmac_md5",
+        "app_id=web",
+        "64k.mp3",
+        "电台"
       ]
     },
     {
@@ -443,6 +544,26 @@
         "cna",
         "goldlog.Etag",
         "mmstat"
+      ]
+    },
+    {
+      "id": "tencent-ckey",
+      "path": "tencent-ckey",
+      "title": "腾讯视频 v.qq.com ckey 参数（wasm 导出函数生成）",
+      "category": "platform-signature",
+      "status": "partial",
+      "summary": "ckey 由 wasm 导出 getckey 生成；用 wasm2c → C → dll/exe → Python 免还原复现。含 _get_unicode_str 闭包补法与两个 dll 加载坑。",
+      "aliases": [
+        "ckey",
+        "txckey",
+        "txckey91"
+      ],
+      "keywords": [
+        "腾讯视频",
+        "v.qq.com",
+        "ckey",
+        "wasm",
+        "wasm2c"
       ]
     },
     {
@@ -591,47 +712,6 @@
         "魔改base64",
         "环境检测",
         "crc32"
-      ]
-    },
-    {
-      "id": "iqiyi-cmd5x",
-      "path": "iqiyi-cmd5x",
-      "title": "爱奇艺 dash 接口 vf 参数（cmd5x，加盐 MD5）",
-      "category": "platform-signature",
-      "status": "partial",
-      "summary": "vf = cmd5x(视频地址串)，加盐 MD5 / 32 位 hex；实现被 Emscripten 编成 asm.js 内联在 pcweb.wonder.js（无 .wasm 文件）。盐常量源文章未给出。",
-      "aliases": [
-        "cmd5x",
-        "vf",
-        "iqiyi-vf"
-      ],
-      "keywords": [
-        "爱奇艺",
-        "iqiyi",
-        "cmd5x",
-        "vf",
-        "asm.js",
-        "dash"
-      ]
-    },
-    {
-      "id": "tencent-ckey",
-      "path": "tencent-ckey",
-      "title": "腾讯视频 v.qq.com ckey 参数（wasm 导出函数生成）",
-      "category": "platform-signature",
-      "status": "partial",
-      "summary": "ckey 由 wasm 导出 getckey 生成；用 wasm2c → C → dll/exe → Python 免还原复现。含 _get_unicode_str 闭包补法与两个 dll 加载坑。",
-      "aliases": [
-        "ckey",
-        "txckey",
-        "txckey91"
-      ],
-      "keywords": [
-        "腾讯视频",
-        "v.qq.com",
-        "ckey",
-        "wasm",
-        "wasm2c"
       ]
     }
   ]

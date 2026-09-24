@@ -1,0 +1,39 @@
+{
+  "mutations": [
+    {
+      "name": "四个字段的默认串长度不能改短",
+      "rule": "userid 空 ⇒ 'e'*9（索引 2）；timestamp 空 ⇒ 't'*14（索引 6）；ProgramID 空 ⇒ 'c'*9（索引 2）；Channel_ID 空 ⇒ 'n'*16（索引 len-4）。这四个长度不是随手写的，必须覆盖各自的索引",
+      "symptom_if_wrong": "JS 侧 `list(t)[2]` 得到 undefined，拼出来是字符串 'undefined' 混进 URL（**不报错**）；Python 侧直接 IndexError"
+    },
+    {
+      "name": "★ 语料里的 `&timestamp=` 会被渲染成 `×tamp=`（HTML 实体）",
+      "rule": "抄样例 URL 时 `&times;` 被吃成 `×`。必须把 `×tamp=` 还原成 `&timestamp=` 再解析",
+      "symptom_if_wrong": "**不报错**：timestamp 取不到 ⇒ 走默认串 't'*14 ⇒ ddCalcu 第 7 位是 't' 而不是真实时间戳的 '2'，其余 35 个字符逐字符相同。表现是「地址算出来了、看着合理，但服务端不认」"
+    },
+    {
+      "name": "循环方向：逆序在前、正序在后",
+      "rule": "每轮先 append `d[len-1-p]`（从尾往前），再在 `p < len-1-p` 时 append `o[p]`（从头往后）；插入字符在 p==1..4 时追加",
+      "symptom_if_wrong": "两份字符都取到了但顺序反了 ⇒ 长度对、内容错，静默"
+    },
+    {
+      "name": "插入位固定在 4 / 7 / 10 / 13",
+      "rule": "u/l/c/f 分别在第 4、7、10、13 个字符位置（0 基）；稳定区（k ≥ 5）的规律是正序 v[2k+5]==o[k]、逆序 v[2k+4]==o[len-1-k]",
+      "symptom_if_wrong": "少插或插错位 ⇒ 长度不是 len(puData)+4，或第 7 位仍是时间戳字符"
+    },
+    {
+      "name": "无 puData ⇒ 原样返回，不要拼空串",
+      "rule": "源文 line 111 明确 `if not o: return url`",
+      "symptom_if_wrong": "会拼出一个 `&ddCalcu=` 结尾的空值，服务端行为未知（源文未测）"
+    },
+    {
+      "name": "rateType / 清晰度只有单一取值可参考",
+      "rule": "源文只出现 `rateType=3`（注释：3 高清）；不要照抄别的档位数字",
+      "symptom_if_wrong": "档位不对时通常不是报错，而是返回与预期不符的清晰度（源文未给取值表）"
+    },
+    {
+      "name": "pID 与 contId 是同一个值，但不是同一个字段名",
+      "rule": "tv-data 接口返回的字段叫 `pID`，playurl 接口的 query 参数叫 `contId`",
+      "symptom_if_wrong": "直接拼 pID= 会取不到地址（接口静默返回无 urlInfo）"
+    }
+  ]
+}

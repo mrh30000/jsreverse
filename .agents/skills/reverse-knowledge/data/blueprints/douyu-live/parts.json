@@ -1,0 +1,34 @@
+{
+  "parts": [
+    {
+      "name": "rid",
+      "role": "直播间房间号，同时出现在 URL 路径与 query，以及请求头里",
+      "source": "hlsH5Preview/<rid>?rid=<rid>；请求头 `rid` 为抓包原值",
+      "example": "11579"
+    },
+    {
+      "name": "did",
+      "role": "设备/会话标识（免签端点的 query 参数，测试值可直接照抄）",
+      "source": "query `did=`",
+      "example": "2dfd02149496030e407b1e3900031501"
+    },
+    {
+      "name": "time",
+      "role": "请求头时间戳（毫秒），源文口径是**照抄抓包值，不重算**",
+      "source": "请求头 `time`",
+      "example": "1582335104602"
+    },
+    {
+      "name": "auth",
+      "role": "请求头校验值，源文口径是**照抄抓包值，不重算**",
+      "source": "请求头 `auth`",
+      "example": "55e455300a056206949e12459524e81b"
+    },
+    {
+      "name": "rtmp_live",
+      "role": "响应里的流标识：`<房间号><9位随机字母>_…`，取 `_` 之前那段即可拼出 .flv 地址",
+      "source": "响应 JSON `data.rtmp_live`",
+      "example": "312212rvVNjjBLWk_…"
+    }
+  ]
+}

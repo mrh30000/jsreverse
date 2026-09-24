@@ -77,6 +77,40 @@
 
 ---
 
+## §1.6 另一条用途：扩展的「能力面」——请求头改写与门禁绕过三法
+
+§1.1–§1.5 讲的是**读扩展**（改它的许可证判断）。反过来，扩展本身也是一种**改页面行为的手段**：
+它跑在浏览器 API 层，能改的东西是网页 JS **改不了**的 —— 请求头、Cookie 策略、跨域设置。
+
+**三法分档（副作用从小到大）**：
+
+| 档 | 做法 | 为什么有效 | 代价 |
+| --- | --- | --- | --- |
+| ① 伪装来源站 | 在 `onBeforeSendHeaders` 里**删掉** `Referer` 再 `push` 一个三方站（如 `https://t.co/`） | 站点把「从社交平台点进来」判为潜在新用户，不收门禁 | 最小；登录/点赞/评论照常 |
+| ② 伪装搜索引擎爬虫 | 删掉 `User-Agent` 与 `X-Forwarded-For`，换成 `Googlebot/2.1` UA + `X-Forwarded-For: 66.249.66.1` | 站点要靠 SEO 流量，**不会**拦广告机器人 | 稍大；站点若做 UA 风控会露馅 |
+| ③ 禁用该站全部 Cookie | `chrome.contentSettings.cookies.set({primaryPattern: <站点>, setting: 'block'})` | 「每天免费 N 篇」类限额靠 Cookie 计数，禁掉就永远像第一次访问 | 最大：**登不了录、点不了赞** |
+
+**工程形态**：
+
+- 头改写走 `chrome.webRequest.onBeforeSendHeaders`：`details.requestHeaders.filter(h => h.name !== 'Referer')`
+  **再** `push` 新头，最后 `return {requestHeaders: details.requestHeaders}`。
+  ⚠️ 必须「先过滤再 push」——只 push 不过滤会**留下两个同名头**，服务端取哪个不确定。
+- 三种方法各自有一个**按站点开关的白名单字典**（源文里是 `paywallSMWhitelistDict` /
+  `paywallSpoofWhitelistDict` / `paywallCookieWhitelistDict`）。
+  ⇒ 判据：**三法是「按站点选一」，不是叠加**（源文明确「并不是所有的网站都需要使用上述 3 种方法」）。
+
+**坑**：
+
+1. **③ 改的是浏览器持久设置**，不是这次请求的临时头 —— 调试完必须还原，否则症状是
+   「昨天还能登录，今天莫名掉登录 / 点赞按钮点了没反应」，而你会去别处找原因。
+2. ② 的伪装**要成对改**：只换 UA 不换 `X-Forwarded-For`，站点按出口 IP 判定爬虫就穿帮。
+3. 这一族**在 `Dist` 目录里就能看到全部逻辑**（`bg_scripts/.../paywall_bypass.js`），
+   不需要脱壳、不需要调试器 —— 与 §1.2 的「关键词定位四步」是同一套动作。
+4. **边界**：这类"绕过门禁"只适用于**自己有权访问的内容**；源文自己也在开头放免责声明。
+   把它当技术理解（请求头/浏览器设置能被谁改），不要当推荐做法。
+
+---
+
 ## §2 nw.js（`nwjc` 二进制加密）
 
 ### §2.1 判据
@@ -203,3 +237,7 @@
 | 资源解密"能跑就不要逆" | `52pojie-1679769` | `decryptImg`、`compress_texture` |
 | Electron 埋点法 + Debugtron | `52pojie-1847258` | `console.log("1")…`、`asar extract/pack`、Debugtron |
 | 扣出来不对 ⇒ 还有一层 | `52pojie-1847258` | "可以看到不对" ⇒ "确实又进行了一次 base64" |
+| 扩展「门禁绕过三法」与白名单字典 | `52pojie-1768343` | `paywallSMWhitelistDict`、`paywallSpoofWhitelistDict`、`paywallCookieWhitelistDict`、`paywall_bypass.js` |
+| Referer 改写（删 + push `t.co`） | `52pojie-1768343` | `details.requestHeaders.filter(...)`、`"value": "https://t.co/"` |
+| Googlebot UA + `X-Forwarded-For` 成对伪装 | `52pojie-1768343` | `Googlebot/2.1`、`66.249.66.1` |
+| 用 `contentSettings.cookies` 禁站内 Cookie | `52pojie-1768343` | `chrome.contentSettings.cookies.set({... setting: 'block'})` |

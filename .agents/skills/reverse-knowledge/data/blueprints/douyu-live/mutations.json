@@ -1,0 +1,34 @@
+{
+  "mutations": [
+    {
+      "name": "先判「有没有免签端点」，不要一上来扣签名",
+      "rule": "斗鱼存在 lapi/live/hlsH5Preview 这条**完全免签**的端点；只有它返回「不支持」时，才去碰房间页的动态 JS",
+      "symptom_if_wrong": "直接去扣动态签名会陷入「扣完就过期」的循环 —— 源文明确说 JS 每次不同、签名只活几秒到十几秒"
+    },
+    {
+      "name": "rid / time / auth 三个请求头照抄，不重算",
+      "rule": "源文口径：`这三个数据很重要，记得一定要带上，不需要更改不需要重新计算`",
+      "symptom_if_wrong": "自行构造 `time`/`auth` 会得到与「不支持」不同的失败（通常是空 data 或报错），且很难与「房间不支持」区分开"
+    },
+    {
+      "name": "`rtmp_live` 要按 `_` 切开取第 0 段",
+      "rule": "`rtmp_live.split('_')[0]` 才是 `<房间号><9位随机字母>`",
+      "symptom_if_wrong": "整串拼进 URL 会得到一个 404 的 .flv 地址（不报错，只是播不了）"
+    },
+    {
+      "name": "地址前缀是 /live/ 还是直接拼主机",
+      "rule": "源文 line 15 写的是 `http://tx2play1.douyucdn.cn/live/`+房间号…，而 line 88 的实现是 `http://tx2play1.douyucdn.cn/`+`rtmp_live` 段 —— **两处写法不一致，以实现（line 88）为准**",
+      "symptom_if_wrong": "照 line 15 加 `/live/` 会 404；这条属源文内部不一致，已在 contradictions 标注"
+    },
+    {
+      "name": "flv 打不开 ≠ 地址错",
+      "rule": "浏览器对 `flv` 无原生支持，要用 mpv / VLC / 支持网络的播放器",
+      "symptom_if_wrong": "会把播放器限制误判成解析失败"
+    },
+    {
+      "name": "直播地址本来就短效",
+      "rule": "主播每次开播，`rtmp_live` 里的随机段都会变；地址只能现取现用",
+      "symptom_if_wrong": "把地址落库后隔天再用必然失效（不是签名算错）"
+    }
+  ]
+}

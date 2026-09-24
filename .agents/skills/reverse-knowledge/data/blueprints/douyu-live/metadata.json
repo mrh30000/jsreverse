@@ -1,0 +1,112 @@
+{
+  "id": "douyu-live",
+  "title": "斗鱼直播源：免签 hlsH5Preview 与动态 JS 签名两条路线",
+  "category": "platform-request-params",
+  "status": "partial",
+  "version": "1.0.0",
+  "summary": "斗鱼直播源有两条路线：① 免签端点 lapi/live/hlsH5Preview（带抓包来的 rid/time/auth 三个头即可）；② 房间页内联 JS 生成的动态签名（JS 每次不同、只活几秒到十几秒）。",
+  "aliases": [
+    "douyu",
+    "hlsH5Preview",
+    "rtmp_live",
+    "tx2play1",
+    "斗鱼直播源"
+  ],
+  "keywords": [
+    "斗鱼",
+    "douyu",
+    "douyucdn",
+    "playweb.douyucdn.cn",
+    "hlsH5Preview",
+    "rtmp_live",
+    "tx2play1.douyucdn.cn",
+    "直播源"
+  ],
+  "algorithm": {
+    "family": "none",
+    "detail": "**免签路线**：请求 `POST http://playweb.douyucdn.cn/lapi/live/hlsH5Preview/<rid>?rid=<rid>&did=<did>`，请求头带 `rid` / `time` / `auth` 三个字段（源文明确「不需要更改不需要重新计算」），响应 `data.rtmp_live` 形如 `<房间号><9位随机字母>_…`，按 `_` 切开取第 0 段再拼 `http://tx2play1.douyucdn.cn/<该段>.flv` 即为可播地址。**动态签名路线**：房间页每次返回的 JS 不同，签名只活几秒到十几秒 ⇒ 算法**未还原**，也不值得还原，直接用 JS 运行站点函数。",
+    "key_material": "免签路线无签名；动态签名路线的密钥/盐未在源文给出",
+    "output_encoding": "URL（.flv）",
+    "output_length": "n/a"
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-1112699-用python获取斗鱼直播真实地址的一个思路,另附java代码.md",
+      "line": 15,
+      "quote": "http://tx2play1.douyucdn.cn/live/”+房间号+9位随机字母+\".flv\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1112699-用python获取斗鱼直播真实地址的一个思路,另附java代码.md",
+      "line": 37,
+      "quote": "这三个数据很重要，记得一定要带上，不需要更改不需要重新计算",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1112699-用python获取斗鱼直播真实地址的一个思路,另附java代码.md",
+      "line": 59,
+      "quote": "requests.post(\"http://playweb.douyucdn.cn/lapi/live/hlsH5Preview/11579?rid=11579&did=2dfd02149496030e407b1e3900031501\",headers=headers)",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1112699-用python获取斗鱼直播真实地址的一个思路,另附java代码.md",
+      "line": 88,
+      "quote": "addr = \"http://tx2play1.douyucdn.cn/\" + ret.json()['data']['rtmp_live'].split(\"_\")[0] + \".flv\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1112699-用python获取斗鱼直播真实地址的一个思路,另附java代码.md",
+      "line": 62,
+      "quote": "rid后面的和问号之前的都是你想获取的直播间房间号，前提是这些房间号支持h5preview的功能，如果不支持就会返回不支持。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1577771-【Typescript】解析斗鱼直播源.md",
+      "line": 18,
+      "quote": "斗鱼的js代码是动态更新的，每次请求房间页面后生成的js代码可能都不同，每次生成的js代码都只能用几秒到十几秒的时间，过了这个时间就失效了，可能返回非法请求或返回403。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1577771-【Typescript】解析斗鱼直播源.md",
+      "line": 16,
+      "quote": "有人用 python 写了一个解析工具，但我扫了一眼，主要代码跟 python 无关，需要使用 pyexecjs 执行核心的构造请求参数的函数的代码。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1957129-[TypeScript]斗鱼、虎牙直播源解析.md",
+      "line": 12,
+      "quote": "很多源解析的项目我觉得都挺蛋疼的，要么用python、要么用go，但多个直播平台的混淆、加密完全是用 js 写的，所以实际上使用 js 或 ts 解析直播源才是最佳方式。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1957129-[TypeScript]斗鱼、虎牙直播源解析.md",
+      "line": 33,
+      "quote": "lasr douyu 100",
+      "verified_in_article": true
+    }
+  ],
+  "entry": {
+    "location": "免签：playweb.douyucdn.cn/lapi/live/hlsH5Preview/<rid>；动态签名：直播间页面内联 JS（每次请求页面重新生成）",
+    "trigger": "取直播源时",
+    "transport": "免签走 POST（参数在 query 上）；动态签名路线的传输方式源文未展开"
+  },
+  "gaps": [
+    "免签路线的 `auth` 与 `time` 之间是否有函数关系（源文只说「不需要重新计算」，即照抄抓包值），**未证**；`did` 的合法取值范围也未说明",
+    "动态签名路线的算法本体**未还原**（源文明确放弃：直接用 JS 跑）",
+    "虎牙 / B 站 / 抖音的多平台 CLI 只给了命令形态（`lsar huya -r 100` 等），各平台内部实现未在源文展开",
+    "`rtmp_live` 的完整形态（`_` 之后是什么）源文只用了第 0 段，未解释",
+    "斗鱼免签端点「哪些房间支持」的名单口径未给，只能逐个试（源文自述『不是所有直播都支持』）"
+  ],
+  "self_check": [
+    "源文 line 88 的切片口径可直接复算：`rtmp_live.split('_')[0]` 拼上 `http://tx2play1.douyucdn.cn/` 与 `.flv` ⇒ 与 line 15 的地址形态（房间号 + 9 位随机字母）一致",
+    "免签端点只依赖 3 个可照抄的请求头 —— 这条结论有 line 37 的直接原文支持，非推断"
+  ],
+  "contradictions": [
+    {
+      "a": "docs/references/52pojie-1112699-用python获取斗鱼直播真实地址的一个思路,另附java代码.md:15 —— `http://tx2play1.douyucdn.cn/live/`+房间号+9位随机字母+`.flv`",
+      "b": "docs/references/52pojie-1112699-用python获取斗鱼直播真实地址的一个思路,另附java代码.md:88 —— `http://tx2play1.douyucdn.cn/` + `rtmp_live.split('_')[0]` + `.flv`",
+      "judgement": "同一篇文内前后不一致（是否带 `/live/` 段）。**以实现（line 88，可运行代码）为准**：不加 `/live/`。此条按原样保留，不做「悄悄选一个」。"
+    }
+  ],
+  "notes": "本蓝图对应 `skills/stream-drm-reverse/references/playback-address-interfaces.md` §3.1。**判据优先**：先试免签端点；返回「不支持」才走动态签名，且动态签名不要跨语言重写。"
+}

@@ -41,6 +41,42 @@
       "role": "当前页面地址；**不在导出函数签名里**，而是通过导入函数 _get_unicode_str 的闭包取用",
       "source": "示例调用 set_url(url_str)",
       "example": "https://v.qq.com/x/cover/mzc00200mp8vo9b/x0041qq"
+    },
+    {
+      "name": "vappid",
+      "role": "auth_refresh 的应用 id（账号相关，源文脱敏）",
+      "source": "源文 line 34；需自备",
+      "example": "1105**94"
+    },
+    {
+      "name": "vsecret",
+      "role": "auth_refresh 的应用密钥（账号相关，源文脱敏）",
+      "source": "源文 line 35；需自备",
+      "example": "fdf61a6b…ac30145b6cd2c1470b0cfe"
+    },
+    {
+      "name": "g_vstk",
+      "role": "auth_refresh 的会话票据（抓包获取）",
+      "source": "源文 line 38；抓包原值",
+      "example": "2034***571"
+    },
+    {
+      "name": "g_actk",
+      "role": "auth_refresh 的访问票据（抓包获取）",
+      "source": "源文 line 39；抓包原值",
+      "example": "16374***17"
+    },
+    {
+      "name": "cKey",
+      "role": "ckey.wasm 导出函数的产物，**多行 k=v**，需 replace(\"\\n\",\"&\") 后再拼",
+      "source": "node tx.js <vid> <guid> 的 stdout",
+      "example": "（多行 k=v）"
+    },
+    {
+      "name": "vinfoparam",
+      "role": "proxyhttp 的取址参数串（内含 logintoken / vid / cKey / encryptVer 等）",
+      "source": "源文 line 120 的完整模板",
+      "example": "spsrt=1&charge=0&…&encryptVer=9.1&cKey=…"
     }
   ]
 }

@@ -98,7 +98,43 @@
       "line": 142,
       "quote": "返回值是32位很可能是md5，搜索一下关键字",
       "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1480475-爱奇艺视频m3u8地址解析来了，附成品和源码.md",
+      "line": 46,
+      "quote": "def authKey_md5(self, tm, tvid):",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1480475-爱奇艺视频m3u8地址解析来了，附成品和源码.md",
+      "line": 47,
+      "quote": "text = \"d41d8cd98f00b204e9800998ecf8427e\" + tm + tvid",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1480475-爱奇艺视频m3u8地址解析来了，附成品和源码.md",
+      "line": 111,
+      "quote": "md5(\"d41d8cd98f00b204e9800998ecf8427e\"+tm+tvid) 测试为真",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1480475-爱奇艺视频m3u8地址解析来了，附成品和源码.md",
+      "line": 92,
+      "quote": "url = \"https://cache.video.iqiyi.com/dash?tvid=8485811691506600&bid=300&vid=40c2bd99fbabed1d387da08362c406b6",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1480475-爱奇艺视频m3u8地址解析来了，附成品和源码.md",
+      "line": 95,
+      "quote": "\"bid\": \"600\",  # 1080P 600  超清值为500，  高清值为300",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1480475-爱奇艺视频m3u8地址解析来了，附成品和源码.md",
+      "line": 44,
+      "quote": "return result[-33:].strip()  # 运行js代码，里面有未知错误，但能正确解出vf值， 这里用切片，得到vf",
+      "verified_in_article": true
     }
   ],
-  "notes": "status=partial 是如实标注：三篇来源分别覆盖「算法族 + 黄金测试向量」（1013338）、「生成点与调用链 + asm.js 判据」（1549711）、「同平台第二个页面的独立复现 + 环境检测在导入函数」（1836908），但没有任何一篇给出盐常量或可独立复算的公式。跨源一致性：三篇都指认 vf/cmd5x + MD5 族；C 篇是 iqiyi 的另一个页面（v_1r1objti58.html），与 A/B 篇的 /dash 接口不是同一个接口，但同属 vf 家族。"
+  "notes": "status=partial 是如实标注：三篇来源分别覆盖「算法族 + 黄金测试向量」（1013338）、「生成点与调用链 + asm.js 判据」（1549711）、「同平台第二个页面的独立复现 + 环境检测在导入函数」（1836908），但没有任何一篇给出盐常量或可独立复算的公式。跨源一致性：三篇都指认 vf/cmd5x + MD5 族；C 篇是 iqiyi 的另一个页面（v_1r1objti58.html），与 A/B 篇的 /dash 接口不是同一个接口，但同属 vf 家族。 【B29 追加】**同一个 dash 接口上还有第二个参数 `authKey`，它才是可复算的那个**：`authKey = md5(\"d41d8cd98f00b204e9800998ecf8427e\" + tm + tvid)`（tm 为 13 位毫秒）。注意这个\"盐\"就是 `md5(\"\")`，不是保密常量。源文 line 92 与 line 136 各给了一条完整样例 URL，其中 `authKey` / `tm` / `tvid` 三值同时出现 ⇒ **两条源文自带的对拍向量**，B29 实算逐字符命中：`md5(salt+\"1625936950392\"+\"8485811691506600\")` = `c45e671cc7f74b52f477dc8fb32e27ba`，`md5(salt+\"1625847214729\"+\"4742103680293600\")` = `f39c6550d42daea8c13722e0351a789c`（`skills/stream-drm-reverse/scripts/playback_address.py iqiyi-authkey` 已把这两条钉成断言）。另：清晰度不是换接口而是**成套换参数**（`bid` 300/500/600 与 `ps` 1/0、`ost`/`ppt` undefined/0 必须一起改）；`vf` 的取用口径是「node 跑站点 JS 后取**尾部 33 字符**再 strip」（源文 line 44），因为那份 asm.js 会额外打印噪声。"
 }

@@ -2,7 +2,7 @@
   "id": "baidu-fanyi-sign",
   "title": "百度翻译 v2transapi sign 参数",
   "category": "platform-signature",
-  "status": "unknown",
+  "status": "partial",
   "version": "1.0.0",
   "summary": "百度翻译 v2transapi 的 sign：随待翻译词变化，由某 export 函数生成，内部依赖固定常量 r 与函数 n。",
   "aliases": [
@@ -60,20 +60,84 @@
       "line": 43,
       "quote": "重新请求一下发现，i是不变的，直接把i定义到代码里面去",
       "verified_in_article": false
+    },
+    {
+      "file": "docs/references/52pojie-1974598-百度翻译的免费接口.md",
+      "line": 76,
+      "quote": "* GET[主页](https://www.52pojie.cn/fanyi.baidu.com),从Set-Cookie获取BAIDUID",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1974598-百度翻译的免费接口.md",
+      "line": 77,
+      "quote": "* 通过GET[主页](https://www.52pojie.cn/fanyi.baidu.com) 携带BAIDUID获取token",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1974598-百度翻译的免费接口.md",
+      "line": 79,
+      "quote": "* 访问 `https://fanyi.baidu.com/basetrans` 携带BAIDUID,token,sign 返回结果",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1974598-百度翻译的免费接口.md",
+      "line": 85,
+      "quote": "* GET的时候注意一定要加**手机的UA**,手机和电脑端的不一样,估计是在路由层(如:nginx)做了处理",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1974598-百度翻译的免费接口.md",
+      "line": 86,
+      "quote": "经测试(逐条删除cookies数据看返回结果) cookie仅需保留 BAIDUID 和 UA",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1974598-百度翻译的免费接口.md",
+      "line": 90,
+      "quote": "* 注意要请求两遍,第一遍是获取BAIDUID，第二遍是通过BAIDUID获取token",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1974598-百度翻译的免费接口.md",
+      "line": 97,
+      "quote": "token: '3079487ebfc9fc012ef8dbcc18894a7d',",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1974598-百度翻译的免费接口.md",
+      "line": 115,
+      "quote": "if (!page.common.token) {",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1974598-百度翻译的免费接口.md",
+      "line": 116,
+      "quote": "location.reload();",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1974598-百度翻译的免费接口.md",
+      "line": 129,
+      "quote": "* 使用otto解析的时候会有问题,因为js中`translate.js`中会有一些逻辑永远用不到,在这些逻辑中会有未定义的函数,",
+      "verified_in_article": true
     }
   ],
   "entry": {
-    "location": "JS 中生成 sign 的 export 函数（1474990 称函数 L，1897565 未命名），另有函数 n 参与",
-    "trigger": "请求前（接口 https://fanyi.baidu.com/v2transapi?from=en&to=zh）",
-    "transport": "未明确（接口 query 中含 sign）"
+    "location": "① 主页 Set-Cookie 给 BAIDUID；② 带 BAIDUID 再 GET 主页，HTML 里 `page.common = { token: … }`；③ 请求时按 query 现算 sign",
+    "trigger": "每次翻译请求前（sign 随待译词变化）",
+    "transport": "`POST https://fanyi.baidu.com/basetrans`，body 为 `query=&from=&to=&token=&sign=`（form）"
   },
   "gaps": [
     "sign 的算法族（是否 MD5）文章未提及 → 团队要求的 md5(appid+query+salt+key) 口径在本批 8 篇中无任何依据，故不写",
-    "appid / salt / token 等参数名两篇文章均未出现",
     "sign 的输出编码与长度未知",
-    "1474990 关键步骤为截图，无正文可引（evidence: screenshot-only）"
+    "1474990 关键步骤为截图，无正文可引（evidence: screenshot-only）",
+    "**sign 的算法本体仍未还原**（本轮只拿到「三步入口链」，公式仍无）",
+    "`token` 的有效期与失效表现（除「返回空 token 触发 reload」外）源文未展开",
+    "`translate.js` 里被 js 引擎分歧卡住的是哪些「永远用不到的逻辑」源文未列",
+    "`appid` / `salt` 两个参数名在现有 3 篇里仍未出现（`token` 已在 1974598 出现并登记）"
   ],
   "self_check": [
     "两篇文章都未给出 sign 的算法公式（1474990 正文几乎全为截图，仅描述函数 L/i/n/r；1897565 只给固定常量 r 与函数名），故 family/detail 置 null/unknown"
-  ]
+  ],
+  "notes": " 【B29 追加】本轮补上了**入口三步链**（BAIDUID → token → sign），因此 status 由 unknown 升为 partial：① 不带 cookie GET 主页拿 `BAIDUID`（带上 cookie 就不会再 Set-Cookie）；② **必须用手机 UA**（手机与 PC 返回不同页面，源文推测在 nginx 路由层分流）；③ 带 `BAIDUID` 再 GET 主页，从 `page.common.token` 取值（不带 BAIDUID 时 token 是空串，页面自己会 `location.reload()`）；④ 实测 **cookie 只需保留 BAIDUID 与 UA** 两个。另外记一条**工具选型坑**：`translate.js` 里存在永远走不到的分支，其中调用了未定义函数 ——浏览器与 python-js2py 都能跑，**otto 会直接报错**（源文最终放弃 otto，改用原生 JS）。"
 }

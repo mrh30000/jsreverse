@@ -1,0 +1,40 @@
+{
+  "parts": [
+    {
+      "name": "id",
+      "role": "电台 id（拼进 path 的那一段）",
+      "source": "源文 `t ＝ “/live/” ＋ id ＋ “/64k.mp3”`；取值来源未给",
+      "example": "1234"
+    },
+    {
+      "name": "path",
+      "role": "资源路径，固定形态 `/live/<id>/64k.mp3`",
+      "source": "源文 line 13（注意 `/64k.mp3` 是写死的）",
+      "example": "/live/1234/64k.mp3"
+    },
+    {
+      "name": "app_id",
+      "role": "应用标识，源文固定 `web`",
+      "source": "源文 `i ＝ “web”`",
+      "example": "web"
+    },
+    {
+      "name": "ts",
+      "role": "**当前时间 + 1 小时**的十六进制文本（不是毫秒、不是现在）",
+      "source": "源文 line 16",
+      "example": "68D3AFF0"
+    },
+    {
+      "name": "sign",
+      "role": "hex_hmac_md5(固定口令, 'app_id=web&path=<path>&ts=<ts>')",
+      "source": "源文 line 18 / 20",
+      "example": "57f8fb7d1488e93140cb986498c28d8e"
+    },
+    {
+      "name": "口令",
+      "role": "HMAC 密钥（固定）",
+      "source": "源文 line 10 / 20",
+      "example": "Lwrpu$K5oP"
+    }
+  ]
+}

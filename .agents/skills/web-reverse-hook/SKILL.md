@@ -1,6 +1,6 @@
 ---
 name: web-reverse-hook
-description: 生成并注入页面级运行时 Hook 脚本，用于拦截加密库（CryptoJS/JSEncrypt/SM-crypto）、JSVMP 虚拟机探针、反调试综合防御绕过（debugger/console/窗口尺寸/强退/iframe原生借用）、关键数据流追踪（Promise/Cookie/Storage/网络/时间）、SPA 动态路由深度提取（Vue/React 路由表与守卫清除）以及**Vue/Vuex 运行时状态固化与组件注册表替换**（油猴 / 篡改猴 / userscript 注入范式）。当用户提到“hook CryptoJS”“拦截 RSA 明文密文”“国密 hook”“JSVMP 探针”“绕过反调试”“无限 debugger”“阻止跳转/关闭”“SPA 隐藏路由提取”“拦截 cookie/storage/promise”“改 Vuex state”“$store.state 改不动”“__vue__ 取不到”“registerComponent 替换组件”“videojs Player 注入”“油猴脚本怎么注入”时使用。
+description: 生成并注入页面级运行时 Hook 脚本，用于拦截加密库（CryptoJS/JSEncrypt/SM-crypto）、JSVMP 虚拟机探针、反调试综合防御绕过（debugger/console/窗口尺寸/强退/iframe原生借用）、关键数据流追踪（Promise/Cookie/Storage/网络/时间）、SPA 动态路由深度提取（Vue/React 路由表与守卫清除）以及**Vue/Vuex 运行时状态固化与组件注册表替换**（油猴 / 篡改猴 / userscript 注入范式）。当用户提到“hook CryptoJS”“拦截 RSA 明文密文”“国密 hook”“JSVMP 探针”“绕过反调试”“无限 debugger”“阻止跳转/关闭”“SPA 隐藏路由提取”“拦截 cookie/storage/promise”“改 Vuex state”“$store.state 改不动”“__vue__ 取不到”“registerComponent 替换组件”“videojs Player 注入”“油猴脚本怎么注入”“无直链视频怎么下”“video 的 src 是 blob:”“网络面板只有分片没有可播地址”“hook addSourceBuffer”“MSE 缓存视频”“控制台反检测”“devtools 检测”“注入太晚拦截不到”时使用。
 ---
 
 # Web 运行时 Hook 脚本
@@ -19,6 +19,7 @@ description: 生成并注入页面级运行时 Hook 脚本，用于拦截加密�
 | `spa-vue` | **Vue 2/3 动态路由与接口深度探测** | 1. DOM BFS 扫描自动定位 Vue 2 (`__vue__`) 与 Vue 3 (`__vue_app__`) 根实例并读取完整路由表<br>2. **解除导航守卫**：拦截 `Array.prototype.push` 自动剔除 `beforeEach` 与 `beforeResolve`<br>3. 可选阻断 `router.push/replace/go` 强退 |
 | `spa-react` | **React Fiber 树与路由扫描** | BFS 探测 React 根挂载点 (`__reactContainer$*`, `_reactRootContainer`)，深度扫描 Fiber 树属性，提取 Route 配置 |
 | `spa-state` | **Vue/Vuex 运行时状态固化 + 组件注册表替换**（B28 新增） | 1. 定位 Vue 2 (`__vue__`) / Vue 3 (`__vue_app__`) 根实例并解析 `$store`（Vuex 取 `.state`，Pinia 取自身）<br>2. 按 `a.b.c=值` 固化状态；**用访问器挡回写**（SPA 重挂载后仍被强制回目标值）<br>3. 包装 `store.subscribe` 打印每次 mutation 的 `type` / `payload`（定位"到底是谁改的"）<br>4. 组件注册表探针（如 `window.videojs.registerComponent`）+ `replaceComponent(name, fn)`：自动接原型链并**搬运你自己写在 prototype 上的成员** |
+| `mse-capture` | **MSE 流捕获（「无直链视频」落盘）**：代理 `MediaSource.prototype.addSourceBuffer` / `SourceBuffer.appendBuffer` / `endOfStream` / `URL.createObjectURL` | 1. 抓的是**播放器真正喂进去的字节流**，与分片走 fetch / XHR / 拼接都无关<br>2. 交付走 `window.__mse_capture_sink`（宿主接管）或 `<a download>`<br>3. `minBytes` 过滤小片、`maxTotalBytes`（默认 256MB）熔断防 OOM<br>4. 文件名与扩展名按 mime 派生（`video/mp4`⇒`.m4v`、`audio/mp4`⇒`.m4a`、`video/webm`⇒`.webm`）<br>5. 交付后**立刻释放**本地缓存；`pauseOnFinish` 可暂停 `<video>`<br>6. **blob 地址的顺序**：站点会先 `URL.createObjectURL(ms)` 再 `addSourceBuffer`，两者都要能记下（B29 真机跑出来的缺陷，Node 假环境测不出） |
 | `jsvmp-proxy` | JSVMP 虚拟机探针（全覆盖） | 代理全局对象、`Function.prototype` 与 `Reflect` |
 | `jsvmp-transparent` | JSVMP transparent 探针（无感） | 只替换原型 getter，痕迹更小，规避强指纹检测 |
 
@@ -166,6 +167,11 @@ node .agents/skills/web-reverse-hook/scripts/build-hook.js spa-state \
 # 12. 组件注册表探针（先看注册了什么，再决定替换谁）
 node .agents/skills/web-reverse-hook/scripts/build-hook.js spa-state \
   --registry-root window.videojs --registry-method registerComponent --out hook-registry.js
+
+# 13. MSE 流捕获（无直链视频：src 是 blob:、网络面板只有分片）
+node .agents/skills/web-reverse-hook/scripts/build-hook.js mse-capture --out hook-mse.js
+#     播一遍 ⇒ window.__mse_capture.streams() 看清单 ⇒ .save() 落盘；
+#     也可 --auto-download（流结束自动交付）或先设 window.__mse_capture_sink = (blob, name) => {...}
 ```
 
 支持管道直接传给 `inject_hook`：
@@ -191,6 +197,21 @@ node .agents/skills/web-reverse-hook/scripts/build-hook.js antidebug --json \
    browsercli call navigate_page --type reload
    ```
 
+3. **必须比页面更早**（B29 新增判据，来自「控制台反检测」油猴脚本的实战口径）：
+   有些拦截**只有在页面自身代码之前跑才有效** —— 典型是「检测控制台是否打开」这类探针，
+   以及任何会**替换原生方法**的 hook（MSE / 编解码 / 组件注册表）。
+   | 手段 | 什么时候用 | 关键点 |
+   | --- | --- | --- |
+   | `inject_hook`（本 CLI） | 本工具链内 | 注册后**必须 reload**；`addScriptToEvaluateOnNewDocument` 语义 = 每次新文档都先跑 |
+   | 油猴 `@run-at document-start` | 交付给人工复现 | 只写 `document-start` 还不够 |
+   | Tampermonkey *设置 → 安全 → Content Script API = `Userscript API Dynamic`* | 需要**最早**注入 | 这是唯一能稳定「早于页面一切代码」的开关；不设它会**偶发失效** |
+   - **注入晚了的症状**：脚本明明装上了、也没有报错，但检测照样命中（因为检测跑在你前面）。
+   - **判据**：在 Network 里勾 *Disable cache* + 把网速限到 3G/慢速 4G 再刷新 —— 页面变慢后你的脚本
+     相对更早，若这样就好了，那就是**注入时机**问题，不是逻辑问题。
+4. **反调试类脚本的边界**：用户脚本改不了页面**内联**的 `debugger` 语句；
+   只能过滤 `Function('debugger')()` / `new Function('debugger')()` / `function(){}.constructor('debugger')()` 这三种**动态构造**形态，
+   其余要靠「右键行号 → 永不在此处暂停」。
+
 ---
 
 ## 读取拦截与观测结果
@@ -207,6 +228,15 @@ node .agents/skills/web-reverse-hook/scripts/build-hook.js antidebug --json \
   browsercli call evaluate_script --function "() => window.__mcp_vue_hook__.apply()"
   # 看注册表里都有哪些组件（决定替换谁）
   browsercli call evaluate_script --function "() => JSON.stringify(Object.keys(window.__mcp_vue_hook__.registry))"
+  ```
+- **MSE 捕获结果**：写入 `window.__mse_capture`：
+  ```bash
+  # 看清单（mime / 字节数 / 分片数 / 是否结束 / blob 地址）
+  browsercli call evaluate_script --function "() => JSON.stringify(window.__mse_capture.streams())"
+  # 落盘（浏览器端走 <a download>；headless 场景先设 sink 再落盘）
+  browsercli call evaluate_script --function "() => { window.__mse_capture_sink = (b,n) => { const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=n; a.click(); }; return window.__mse_capture.save(); }"
+  # 释放内存（长视频很容易把标签页撑爆）
+  browsercli call evaluate_script --function "() => window.__mse_capture.clear()"
   ```
 - **控制台输出缓冲**（在 attach 模式下防止丢失 `console.log`）：
   ```bash

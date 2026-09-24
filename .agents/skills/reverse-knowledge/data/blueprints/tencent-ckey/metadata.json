@@ -80,7 +80,55 @@
       "line": 243,
       "quote": "可以看到，确实缺少了一个libgcc\\_s\\_sjlj-1.dll。这个dll可以在gcc目录下找到【D:\\MinGW64\\x86\\_64-w64-mingw32\\lib】，把缺少的dll复制到编译出来的dll同目录下。",
       "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1481462-腾讯视频m3u8地址解析终究还是来了，顺便再更新一下爱奇艺的解析代码.md",
+      "line": 31,
+      "quote": "def auth_refresh(self):",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1481462-腾讯视频m3u8地址解析终究还是来了，顺便再更新一下爱奇艺的解析代码.md",
+      "line": 32,
+      "quote": "url = 'https://access.video.qq.com/user/auth_refresh'",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1481462-腾讯视频m3u8地址解析终究还是来了，顺便再更新一下爱奇艺的解析代码.md",
+      "line": 34,
+      "quote": "\"vappid\": \"替换这里\",   # 我的\"1105**94\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1481462-腾讯视频m3u8地址解析终究还是来了，顺便再更新一下爱奇艺的解析代码.md",
+      "line": 65,
+      "quote": "set_cookie = \"main_login=qq; vqq_access_token={0}; vqq_appid=替换这里; vqq_openid=替换这里; vqq_vuserid={1}; vqq_vusession={2}; vqq_next_refresh_time={3};\".format(",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1481462-腾讯视频m3u8地址解析终究还是来了，顺便再更新一下爱奇艺的解析代码.md",
+      "line": 71,
+      "quote": "# get_ckey()这个方法用到了 当前程序所在文件夹下的  txsp.js  该js文件调用了 ckey.wasm 密钥",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1481462-腾讯视频m3u8地址解析终究还是来了，顺便再更新一下爱奇艺的解析代码.md",
+      "line": 95,
+      "quote": "url = \"https://vd.l.qq.com/proxyhttp\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1481462-腾讯视频m3u8地址解析终究还是来了，顺便再更新一下爱奇艺的解析代码.md",
+      "line": 120,
+      "quote": "vinfoparam = 'spsrt=1&charge=0&defaultfmt=auto&otype=ojson&guid=&flowid=&platform=10201&sdtfrom=v1010&defnpayver=1&appVer=3.5.57&host=v.qq.com",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1481462-腾讯视频m3u8地址解析终究还是来了，顺便再更新一下爱奇艺的解析代码.md",
+      "line": 122,
+      "quote": "userinfo[\"vuserid\"], userinfo[\"vusession\"], vid, ckey.replace(\"\\n\", \"&\"))",
+      "verified_in_article": true
     }
   ],
-  "notes": "本蓝图的用途是「**免还原地拿到参数**」：与 douyin-a-bogus / jd-h5st 那类「算法已还原」的蓝图不同，这里记录的是**可执行的复现路线 + 该路线的必踩坑**，因此 status=partial、algorithm.family=unknown。通用化后的 wasm2c 路线与命名规则见 skills/wsam-reverse/references/wasm-toolchain-and-decompilation.md。"
+  "notes": "本蓝图的用途是「**免还原地拿到参数**」：与 douyin-a-bogus / jd-h5st 那类「算法已还原」的蓝图不同，这里记录的是**可执行的复现路线 + 该路线的必踩坑**，因此 status=partial、algorithm.family=unknown。通用化后的 wasm2c 路线与命名规则见 skills/wsam-reverse/references/wasm-toolchain-and-decompilation.md。 【B29 追加】取 ckey 的**上游**还有一条可独立复用的链路：① `access.video.qq.com/user/auth_refresh`（参数 `vappid`/`vsecret`/`g_vstk`/`g_actk`/`callback`/`_`）→ 响应 `access_token`/`vuserid`/`vusession`/`next_refresh_time` → 回写本地 cookie 文件；源文自述这样配一次可以「间隔几天再用依旧有效」。② `cKey` 由 `node tx.js <vid> <guid>` 产出（内部加载 `ckey.wasm`），返回值是**多行 `k=v`**，拼进 `vinfoparam` 前必须 `replace(\"\\n\", \"&\")`。③ 取地址走 `vd.l.qq.com/proxyhttp`（`Content-Type: text/plain`，body 为 `{adparam, buid:\"vinfoad\", vinfoparam}`），`vinfoparam` 里 `platform=10201` / `appVer=3.5.57` / `encryptVer=9.1` 是伴随常量。"
 }

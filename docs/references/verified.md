@@ -4000,3 +4000,122 @@ B27 列的「网马时代线继续 evolve」与「小游戏线继续收」在新
 - 候选新技能 `captcha-flow-orchestration` —— B5–B27 **二十一次确认不新建**；B28 **未出现新的同族簇**，
   **二十二次确认不新建**（本批反而把"状态改写 / 注册表替换"归入了 `web-reverse-hook` 的既有能力面）。
 - 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
+
+## 批次 B29 · 2026-09-24（第二十九次执行）
+
+**开局状态**：台账 B28 后 **562** 条 / 目录 `.md` **1050**（文章 **1045**）/ 待处理 **483**。
+三方对齐（台账最后一节 = B28 × `git log` = `f142129`(B28) + `7694e3d`(归档线第 29 轮) ×
+自动化记忆最后一条 = B28）**一致** ⇒ 上一轮已闭环；工作区里的 `AGENTS.md` 与 `project/*` 是别会话在途改动，未纳入本批。
+
+**取材口径（先做了一次证伪）**：上一批（B28）给的三条优先级里，
+① **T10 媒体链路族**（B28 主动未取，理由是"与 `stream-drm-reverse` 高度重叠，需先证伪"）与
+③ **T9 扩展/油猴剩余** —— 正好是归档线第 29 轮（`7694e3d`）新收的 10 篇的主题。
+本轮先逐篇 grep 既有落点做证伪：**证伪结果是"值 evolve、不值新建"**，
+但其中**有三处是既有覆盖之外的硬增量**（可复算/可对拍）：
+爱奇艺 `authKey`（源文自带两条对拍向量）、蜻蜓FM HMAC-MD5（完整纯算）、
+咪咕 `ddCalcu`（结构可断言 + 语料实体陷阱可机器判定）。
+⇒ 按 B26 的口径「写不出新能力就不取」，把批次重组成**三个可交付能力块**，
+并**扩到 15 篇**（含本轮新收 10 篇 + 队列里同族 5 篇：斗鱼 2、听书网 1（第 27 轮误杀回收）、
+抖音直播 1、小红书直播回放 1）。
+
+**产出**：**新建蓝图 3**（`migu-playurl` / `douyu-live` / `qingting-fm`）、
+**更新蓝图 3**（`iqiyi-cmd5x` / `tencent-ckey` / `baidu-fanyi-sign`）、
+**演化技能 4**（`stream-drm-reverse` / `web-reverse-hook` / `desktop-client-reverse` / `web-reverse-algorithm`）、
+**新建技能 0**。
+
+### 为什么是「更新蓝图」而不是「新建技能」
+
+`reverse-knowledge` 的蓝图库本来就是「**平台配方**」的唯一权威源（见 `blueprint-schema.md`），
+本轮 6 篇平台向语料（爱奇艺 / 腾讯 / 咪咕 / 斗鱼 / 蜻蜓FM / 百度翻译）里，
+3 篇命中已有蓝图、3 篇建立新蓝图 —— 这正是蓝图库设计的**正常增长路径**，
+不需要在技能层再造一个"视频站配方"技能（那会与 `stream-drm-reverse` 的 §0 层直接打架）。
+
+### 本批三个「机器可判」的锚点（都不靠叙述）
+
+| 锚点 | 外部来源 | 结论 |
+| --- | --- | --- |
+| 爱奇艺 `authKey` | **源文自带**两条样例 URL（line 92 / 136）里 `authKey`+`tm`+`tvid` 同时出现 | 实算逐字符命中（`c45e671c…` / `f39c6550…`），**这是唯一一条"源文给出期望值"的对拍** |
+| 蜻蜓FM `sign` | 源文给出完整算式（易语言）但**未给示例 URL** | 只能做结构断言 + 负对照；十六进制大小写暴露成开关（**不悄悄选一个**） |
+| 咪咕 `ddCalcu` | 源文给出完整实现但**未给期望输出** | 断言**结构**（长度 = len(puData)+4、插入位 4/7/10/13、正序/逆序落位规律）+ 本批实算基线（护栏，非证据） |
+
+### 验收（全部实跑）
+
+- `playback_address.py --selftest` **45 项**（含 5 条拒绝路径 + 1 个负对照）；
+- `b29-check-mse-hook.js` **56/56**（真引擎：四个代理点 / 字节累计 / 扩展名派生 / 交付与释放 /
+  四个开关正负对照 / **默认值断言** / 幂等 / 非 MSE 降级 / **blob 地址顺序回归**）；
+- **browsercli 真机 Chrome 29/29**（真 `MediaSource` + 真 `Blob` + 真 URL 解析器 +
+  **跨实现 ddCalcu：JS 版与 Python 版逐字符相同**）；
+- 双向来源保真度 **表 A 106 条 / 表 B 107 条，0 未命中**；
+- 故障注入 **14/14 变红**（含 2 条以异常形式失败的"非静默"判定）；
+- **台账登记行规则做了阳性+阴性双验证**（`b29-verify-ledger-rule.py`：伪造 7 列行必须打红、
+  5 列顺带表格不得误报、还原后 md5 与备份逐字节一致）；
+- 机械校验 `check_skill_integrity.js` **0 阻断 0 告警**；双镜像 **0 mismatch**；
+- 台账 **577** 条 / md5 逐条一致 / 幂等复跑；三方计数口径一致（`scan-pending` = `verify-ledger-md5` = 校验器 = 577，
+  待处理 **468**）；全库 description **22/22 ≤1000**（本批改了 2 个：`stream-drm-reverse` 983→975、
+  `web-reverse-hook` 468→578，均净增触发词）。
+
+### 本批三条最有价值结论
+
+① **「源文自带对拍向量」是最便宜也最被忽视的验收资源**。`52pojie-1480475` 的代码注释里躺着一整条
+   样例 URL（`authKey`、`tm`、`tvid` 三值齐全），把公式实算一遍就完成了**端到端验收**——
+   而 B27 之前的做法往往只做"公式抄对了没有"的自我核对。⇒ **凡是"源文出现过完整请求串"的参数，
+   都要当成免费 oracle 去对拍一次。**
+
+② **真机跑的不是"再确认一遍"，它测的是另一类事实**。`mse-capture` 在 Node 假环境 51/51 全绿，
+   在真 Chrome 里立刻打红：站点顺序是 `URL.createObjectURL(ms)` **先于** `addSourceBuffer`，
+   而我只在后者建记录 ⇒ **blob 地址被静默丢掉**。⇒ 与 B28 同型：
+   **"顺序/时序"这一类事实，假环境天然测不出**（假环境总是按你写测试的顺序来）。
+
+③ **故障注入不仅能打假断言，还能暴露"两层各写一份默认值"**。INJ3（把 hook 的 `autoDownload ?? false`
+   改成 `?? true`）**不变红** —— 根因不是断言漏了，而是 `build-hook.js` 的 `resolveConfig` **也**写了一份默认值，
+   把 hook 的那份**遮蔽**了。处置是**去掉重复的那份**（默认值只在 hook 内定义一处），
+   然后 INJ3 立刻变红。⇒ 判据：**"改了默认值却不红"要先查"这个默认值是不是死的"**（承 B28 的同型结论）。
+
+### 附带修复（本批实跑带出）
+
+| # | 位置 | 问题（怎么发现的） | 处置 |
+| --- | --- | --- | --- |
+| 1 | `web-reverse-hook/scripts/hooks/mse-capture.js` | `URL.createObjectURL(ms)` 先于 `addSourceBuffer` 时 blob 地址被丢（**真机 Chrome 打红**） | 增加 `urlOfMedia` 映射（与 record 解耦），Node 侧补**顺序回归断言** |
+| 2 | `web-reverse-hook/scripts/build-hook.js` | `mse-capture` 的默认值在 `resolveConfig` 与 hook 内**各写一份** ⇒ 改一层是静默无效（**故障注入 INJ3 打红**） | 删掉 `resolveConfig` 里的那份，默认值只在 hook 内定义一处（并写进注释） |
+| 3 | `stream-drm-reverse/SKILL.md` | 新脚本的断言数被**手抄**成「41 项」（实为 45） | 按本仓既有约定改为「**以实跑输出为准**，勿手抄」（承 B28 的「断言对≠文档对」） |
+| 4 | `reverse-knowledge/.../tencent-ckey/metadata.json` | 源文文件名 `终究` 被写成 `最终` ⇒ lint 报 8 条 `来源文件不存在` | 逐条改正；**"来源标注错"与"事实错"一样是缺陷**（承 B27） |
+| 5 | `b29-verify-sources.py` 表 B | 直接与 JSON 原文比对必然误报（引号被转义） | 改为**解析 JSON 后拼接所有字符串值**再比对（口径写进脚本注释） |
+| 6 | `scan-pending.js` + `check_skill_integrity.js` | 「台账登记行」的正则只判「第 1 列是数字 + 第 2 列是反引号 .md」⇒ **被本批自己的「附带修复」表骗到**（`\| 3 \| \`stream-drm-reverse/SKILL.md\` \| …` 被当成登记行，台账多数 1 条 / 待处理少数 1 条）。**同一个坑 B26 在追加脚本里踩过一次** | 两处口径都加「**≥ 8 个未转义竖线（≥7 列）**」判据（不能要求 `== 8`：B28 之前的行有未转义的字面量竖线）；改完三方口径一致（`scan-pending` / `verify-ledger-md5` / 校验器 全为 **577**） |
+| 7 | `b29-append-ledger.py` | 「先落盘、后断言」⇒ 断言失败时文件**已经被改** | 改为**先断言再落盘**，并把计数抽成 `count_rows()`（含口径说明） |
+
+### 下一批（B30）取材建议
+
+- 待处理 **468** 篇。
+- 优先级：① **T10 媒体链路族的剩余部分**（B28 列的"需先证伪"本轮已完成了一半：结论是
+  `stream-drm-reverse` 的 §0 层 + `reverse-knowledge` 蓝图是正确落点，**继续按此收**，
+  但**只收"带完整算式/完整链路"的**，单站截图式 walkthrough 不再逐篇收）；
+  ② **T8 剩余**（城通/奶牛/123 云盘）落 `cloud-drive-direct-link`（**只有新形态才动脚本**）；
+  ③ **T9 剩余**（油猴/扩展变体）落 `web-reverse-hook` 与 `desktop-client-reverse`；
+  ④ 验证码簇只取"新题型或带完整纯算交付"；⑤ 网马时代线 + 小游戏线（新供给连续两轮 0 命中）**暂不再列**。
+- **B29 遗留**：
+  1. 蜻蜓FM 的**十六进制大小写**未证（源文无示例）⇒ 已有开关，但需一次真机抓包确认；
+  2. 咪咕 `rateType` 取值表未给（只出现 3）；`&crossdomain=www` 是否必需未说明；
+  3. 斗鱼 `time`/`auth` 是否有函数关系（源文说照抄、未证）；免签房间名单口径未给；
+  4. 腾讯 `auth_refresh` 的 `vappid`/`vsecret` 取值口径（源文脱敏）—— 生产上仍需自备；
+  5. `miniprogram-reverse` 排错表的 `RadiumWMPF` 版本绑定条目仍待回源复核（B25 记，**连续六轮未碰**）。
+- 候选新技能 `captcha-flow-orchestration` —— B5–B29 **二十三次确认不新建**
+  （本批的"接管播放器 / 改写请求头"同样归入既有能力面）。
+- 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 563 | `52pojie-1480475-爱奇艺视频m3u8地址解析来了，附成品和源码.md` | `14ed2ae41d52d9266092055f2d98ab02` | 2026-09-24 | `reverse-knowledge` | evolve | 爱奇艺 dash 的**第二个可纯算参数** `authKey = md5("d41d8cd98f00b204e9800998ecf8427e" + tm + tvid)`（tm 为 13 位毫秒）——那个"盐"就是 `md5("")`，不是保密常量；★ **源文自带两条对拍向量**（line 92 / line 136 的样例 URL 里 authKey 与 tm/tvid 同时出现），实算 `c45e671cc7f74b52f477dc8fb32e27ba` / `f39c6550d42daea8c13722e0351a789c` 逐字符命中；`vf` 的取用口径是「node 跑站点 JS 后取**尾部 33 字符**再 strip」（那份 asm.js 会额外打印噪声）；清晰度不是换接口而是**成套换参数**（`bid` 300/500/600 与 `ps` 1/0、`ost`/`ppt` undefined/0 必须一起改） |
+| 564 | `52pojie-1481462-腾讯视频m3u8地址解析终究还是来了，顺便再更新一下爱奇艺的解析代码.md` | `95bcc2c66731d9af9125533dc2b8d2a5` | 2026-09-24 | `reverse-knowledge` | evolve | 腾讯取址的**上游会话自举**：`access.video.qq.com/user/auth_refresh`（`vappid`/`vsecret`/`g_vstk`/`g_actk`/`callback`/`_`）→ 响应 `access_token`/`vuserid`/`vusession`/`next_refresh_time` → 回写本地 cookie 文件（源文自述「间隔几天再用依旧有效」）；`cKey` 由 `node tx.js <vid> <guid>`（内部加载 `ckey.wasm`）产出，是**多行 k=v**，拼进 `vinfoparam` 前必须 `replace("\n", "&")`；取址走 `vd.l.qq.com/proxyhttp`，`platform=10201` / `appVer=3.5.57` / `encryptVer=9.1` 是成套的伴随常量 |
+| 565 | `52pojie-1899689-咪咕直播源获取.md` | `7196b27591895e9105ba055f992f4a1f` | 2026-09-24 | `reverse-knowledge` | create | ★ 新建蓝图 `migu-playurl`：咪咕**三级链**（`tv-data/<topVomsID>` → `liveList[].vomsID` → `tv-data/<vomsID>` → `dataList[].pID` → `playurl/v3?contId=&rateType=3` → `body.urlInfo.url`）；`ddCalcu` **不是加密**：以 `s="2624"` 为索引表取 `userid[2]`/`timestamp[6]`/`ProgramID[2]`/`Channel_ID[len-4]`，把 puData 反转后与原串交替配对并在这 4 个位置插入单字符，结果长度恒为 `len(puData)+4`；★ 语料陷阱：源文样例 URL 里的 `&timestamp=` 被 Markdown 渲染成 `×tamp=`（`&times;` 实体），**不报错**、只让第 7 个字符由 `2` 退化成默认串的 `t`（已做成机器可判定的断言） |
+| 566 | `52pojie-1112699-用python获取斗鱼直播真实地址的一个思路,另附java代码.md` | `6486335eae3dd5da26eba1f18b66c561` | 2026-09-24 | `reverse-knowledge` | create | ★ 新建蓝图 `douyu-live`：斗鱼存在**完全免签**的端点 `playweb.douyucdn.cn/lapi/live/hlsH5Preview/<rid>?rid=&did=`，只需带抓包拿到的 `rid`/`time`/`auth` 三个头（源文口径「不需要更改不需要重新计算」）；响应 `data.rtmp_live` 按 `_` 切开取第 0 段即 `<房间号><9位随机字母>`；免签只在部分房间可用（返回「不支持」就是另一条路线）；★ 源文**文内自相矛盾**：line 15 写 `/live/` 段、line 88 的可运行实现不带 —— 按实现为准并显式登记 contradictions |
+| 567 | `52pojie-1577771-【Typescript】解析斗鱼直播源.md` | `3bf1c9b6a02b1185fee23f90d9bd85f5` | 2026-09-24 | `reverse-knowledge` | create | 斗鱼**动态签名路线**的判据与对策：房间页每次返回的 JS 都不同，签名只活「几秒到十几秒」，过期返回非法请求或 403 ⇒ **不要跨语言重写**（源文明确否定 pyexecjs 中转），正确工程形态是「用 Node/TS 直接执行站点函数」——与静态签名平台（酷狗/B站 wbi）的处置完全相反 |
+| 568 | `52pojie-1957129-[TypeScript]斗鱼、虎牙直播源解析.md` | `df05d80af15ed2281e148ea7f599911a` | 2026-09-24 | `reverse-knowledge` | create | 选型判据：多平台直播源的混淆/加密**本身就是 JS 写的** ⇒ 「用 js/ts 解析」最短；工程形态是一条命令 `平台 + 房间号`（斗鱼/虎牙/B站/抖音），B站路线要带 cookie、用链接入参时注意引号包裹（否则 shell 吃掉 `?&` 后面的 query） |
+| 569 | `52pojie-1942443-蜻蜓FM电台播放地址算法分享.md` | `e577959486ff812208973d32d23f8783` | 2026-09-24 | `reverse-knowledge` | create | ★ 新建蓝图 `qingting-fm`（**完整纯算**）：`sign = hex_hmac_md5("Lwrpu$K5oP", "app_id=web&path=/live/<id>/64k.mp3&ts=<hex(unix+3600)>")`，待签串是**纯 k=v 固定顺序直拼**（不排序、不 urlencode）；`ts` 是「当前时间 **+1 小时**」的十六进制（不是现在、不是毫秒）；源文**未给示例 URL** ⇒ 十六进制大小写未证，已暴露成 `--ts-case upper\|lower` 开关并做负对照 |
+| 570 | `52pojie-2017001-记一次某免费音频听书网音频地址解析全过程.md` | `206465b869cfb40d1947046e6507ff5d` | 2026-09-24 | `stream-drm-reverse` | evolve | 字符码表族（「不是加密」）：`split("*")` 后**从下标 1 开始**逐段 `String.fromCharCode`；三个静默坑 —— 前导 `*` 留下的空段、`fromCharCode` 按 **UTF-16 码元**取值（`233/189/160` 三个码点不是 UTF-8 三字节）、分隔符连写/非整数/越界码点必须报错；源文把目标站名写成 base64（`tingzh.com` 可解）；已落成 `playback_address.py charcodes`（该篇是第 27 轮被 `BLOCK_EXTRA27` 静默误杀的真阳性，本轮回收） |
+| 571 | `52pojie-1700831-Python 直接获取抖音直播的直播源.md` | `9c4c8f2516a57aabe7412b4bedc54f2b` | 2026-09-24 | `stream-drm-reverse` | evolve | 抖音直播间：一次 `webcast.amemv.com/webcast/room/reflow/info/?room_id=&verifyFp=&X-Bogus=` 就同时拿到 `rtmp_pull_url` 与 `hls_pull_url`；**`verifyFp` / `X-Bogus` 留空也能过**（先试空值，别一上来上 VMP）；`room_id` 是 19 位（短链要 `HEAD` 跟 302 取 Location 再正则）；cookie 只需一个 `_tea_utm_cache_1128` |
+| 572 | `52pojie-2072743-使用书签脚本获取到小红书直播回放的M3U8地址.md` | `0f33925237a867cfe889b927f442cfd1` | 2026-09-24 | `stream-drm-reverse` | evolve | 「书签脚本一出地址」的判据：数据**早就在页面状态树里**（`__INITIAL_STATE__.liveStream.roomData._rawValue.roomInfo.pullConfig`），不必抓包也不必扣 JS；`pullConfig` 是**字符串形式的 JSON**（要再 `JSON.parse` 一次）—— 最常踩空的一步 |
+| 573 | `52pojie-2103308-分享两个已上传到greasyfork上用来下载无直链视频的油猴脚本.md` | `366029536fde237e804fcaba08c6432b` | 2026-09-24 | `web-reverse-hook` | evolve | ★ `web-reverse-hook` 新增预设 `mse-capture`：代理 `MediaSource.prototype.addSourceBuffer` / `SourceBuffer.appendBuffer` / `endOfStream` / `URL.createObjectURL`（抓的是**播放器真正喂进去的字节流**，与分片走 fetch/XHR 无关）；mime⇒扩展名派生（`video/mp4`⇒`.m4v`、`audio/mp4`⇒`.m4a`）；`minBytes` 过滤 + `maxTotalBytes` 熔断防 OOM + 交付后立刻释放；★ 真机（Chrome）跑出一个假环境测不出的缺陷：站点顺序是 `URL.createObjectURL(ms)` **先于** `addSourceBuffer`，只在后者建记录会把 blob 地址丢掉 —— 已修并补顺序回归断言 |
+| 574 | `52pojie-1768343-【扩展插件】绕过网页订阅付费的屏障.md` | `95e3b0dfd248567e56c9d7781017bb1d` | 2026-09-24 | `desktop-client-reverse` | evolve | 扩展的**能力面**（网页 JS 改不了的那一层）：门禁绕过三法分档 —— ① 头改写伪装来源站（删 `Referer` 再 push `https://t.co/`）；② 伪装搜索引擎爬虫（`User-Agent`→`Googlebot/2.1` 与 `X-Forwarded-For`→`66.249.66.1` **成对改**）；③ `chrome.contentSettings.cookies.set({setting:"block"})` 禁站内 Cookie（最强，但掉登录）；头改写的正确写法是「**先 filter 再 push**」（否则留下两个同名头）；三法是**按站点选一**不是叠加；③ 改的是**浏览器持久设置**，调试完必须还原 |
+| 575 | `52pojie-2000514-[油猴脚本] 网页控制台反检测.md` | `6cb5efd0f53d46779994e6ecdb47cc03` | 2026-09-24 | `web-reverse-hook` | evolve | ★ **注入时机本身就是判据**：会替换原生方法的 hook（MSE / 编解码 / 组件注册表）与「检测控制台是否打开」这类探针，**必须早于页面自身代码**；手段分档 `inject_hook`（注册后必须 reload）< 油猴 `@run-at document-start` < Tampermonkey「安全 → Content Script API = Userscript API Dynamic」（唯一稳定最早）；排错判据：勾 Disable cache + 限速 3G 刷新后就好了 ⇒ 是时机问题不是逻辑问题；边界：用户脚本只过滤 `Function("debugger")()` / `new Function("debugger")()` / `function(){}.constructor("debugger")()` 三种**动态构造**，页面内联的 `debugger` 只能靠「永不在此处暂停」 |
+| 576 | `52pojie-1974598-百度翻译的免费接口.md` | `a35a14385e8774a399a3dcd24dfa0470` | 2026-09-24 | `reverse-knowledge` | evolve | `baidu-fanyi-sign` 由 `unknown` 升为 `partial`：补上**入口三步链** —— ① 不带 cookie GET 主页拿 `BAIDUID`（带上就不会再 Set-Cookie）；② **必须手机 UA**（手机与 PC 返回不同页面，源文推测在 nginx 路由层分流）；③ 带 `BAIDUID` 再 GET 一次，取 `page.common.token`（不带则空串，页面自己 `location.reload()`）；实测 cookie **只需保留 BAIDUID 与 UA**；**sign 的算法本体仍未还原**（不臆测）；另记工具选型坑：`translate.js` 里存在永远走不到的分支且调用未定义函数，浏览器与 python-js2py 都不报错而 **otto 直接报错** |
+| 577 | `52pojie-2075870-新人偶然逛到坛友的网页,顺便解一个加密练手.md` | `1f5001daaba3575c5fc2a50ea0f6c81a` | 2026-09-24 | `web-reverse-algorithm` | evolve | `response-decrypt` 的**入口捷径**：解密函数名常常就写在**消费密文的那一行**（`JSON.parse(r2(a.data.data))` ⇒ `r2` 就是解密函数，**不必跟栈、不必先找混淆入口**）；三连确认（下断点 / 入参是密文而返回值能 `JSON.parse` / 全局搜定义认算法族）；落地前**先用现成工具对一次**，把「算法认错了」与「代码写错了」分开；边界：若调用点是内联的 `JSON.parse(data)`，解密发生在更早（响应拦截器 / `responseText` getter） |

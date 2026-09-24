@@ -1,6 +1,6 @@
 ---
 name: stream-drm-reverse
-description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链路逆向技能：先定位「加密发生在哪一层」，再逐层解密。触发词：`m3u8`、`ts`、`EXT-X-KEY`、`METHOD=AES-128`、`SAMPLE-AES`、`AES-128-PES`、`AES-128-ECB`、`decryptdata.key`、`qiniuDRMKey`、`encrypt_info`、`protectedLicenses`、`GetLicense`、`GetProvision`、`service_name=mdcm`、`KID`、`CEK`、`CENC`、`cenc:pssh`、`cbcs`、`enca`、`cdm`、`widevine`、`playready`、`FairPlay`、`skd://`、`tokenVideoKey`、`h5e`、`liveLineUrl`、`streamName`、`bilidrm`、`data-keys`、`mp4decrypt`、`pywidevine`、`.wvd`、`KeyDive`、`wvdumper`、`MediaKeys.createSession`、`requestMediaKeySystemAccess`、`generateRequest`、`videojs-contrib-eme`、`SampleAesDecrypter`、`getAvcEncryptedData`、`funcNN_TEA`、`PES`、`NALU`、`HEAPU8`、`_emscripten_run_script`、`importObject`、`sekiro`、`ffmpeg -decryption_key`、`EPUB`。用户说「m3u8 解密 / ts 解密 / 视频解析 / 直播源 / 切片解密 / DRM / 数字版权 / 白盒密码 / 白盒 AES / 加密播放器 / ffmpeg 重封装 / 电子书章节解密 / 下载器提示 key 错误 / key 长度不是 16 字节 / 页面能播但网络面板看不到 m3u8 只能看到一堆 png / m3u8 地址解出来 403 / 播放器是 canvas 而不是 video / 录屏会被录上浮动水印 / 视频能下载但不能播放 / 花屏 / 只有前几帧正常」时都应使用本技能。
+description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链路逆向技能：先定位「加密发生在哪一层」，再逐层解密。触发词：`m3u8`、`ts`、`EXT-X-KEY`、`METHOD=AES-128`、`SAMPLE-AES`、`AES-128-PES`、`AES-128-ECB`、`decryptdata.key`、`qiniuDRMKey`、`encrypt_info`、`protectedLicenses`、`GetLicense`、`GetProvision`、`service_name=mdcm`、`KID`、`CEK`、`CENC`、`cenc:pssh`、`cbcs`、`enca`、`cdm`、`widevine`、`playready`、`FairPlay`、`skd://`、`tokenVideoKey`、`h5e`、`liveLineUrl`、`streamName`、`bilidrm`、`data-keys`、`mp4decrypt`、`pywidevine`、`.wvd`、`KeyDive`、`wvdumper`、`MediaKeys.createSession`、`requestMediaKeySystemAccess`、`generateRequest`、`videojs-contrib-eme`、`SampleAesDecrypter`、`getAvcEncryptedData`、`funcNN_TEA`、`PES`、`NALU`、`HEAPU8`、`_emscripten_run_script`、`importObject`、`sekiro`、`ffmpeg -decryption_key`、`EPUB`。用户说「m3u8 解密/ts 解密/视频解析/直播源/切片解密/DRM/数字版权/白盒密码/白盒 AES/加密播放器/ffmpeg 重封装/电子书章节解密/下载器提示 key 错误/key 长度不是 16 字节/页面能播但网络面板看不到 m3u8 只能看到一堆 png/m3u8 地址解出来 403/播放器是 canvas 而不是 video/录屏会被录上浮动水印/视频能下载但不能播放/花屏/只有前几帧正常/拿到播放地址/authKey/ddCalcu/蜻蜓FM/听书网」时都应使用本技能。
 ---
 
 # 流媒体 / 视频内容保护逆向
@@ -21,6 +21,8 @@ description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链�
 
 | 现象 | 层 | 先做什么 |
 | --- | --- | --- |
+| **目标是「拿到一个能直接播的地址」，还没到解开密文** | **§0 地址还原层**（视频/直播/音频站的接口链路） | `references/playback-address-interfaces.md` §1 定层 → §2/§3/§4 按站型走 |
+| 地址里带 `authKey` / `vf` / `ckey` / `ddCalcu` / `sign` | **§0 + 签名参数** | 同上 §2；配方查 `../reverse-knowledge` 蓝图（`iqiyi-cmd5x` / `tencent-ckey` / `migu-playurl` / `douyu-live` / `qingting-fm`） |
 | m3u8 里有 `#EXT-X-KEY:METHOD=AES-128,URI="..."` | **A 容器层**：整片同一 key | `scripts/m3u8_probe.py <playlist.m3u8>` |
 | **拿到的 key 不是 16 字节**（32/47/64 位、或一长串 hex） | **W 包装层**：key 被二次构造过 | `scripts/key_wrapper.py alpha-check --enforce` → 再解 |
 | m3u8 里**没有** KEY，但 JS 里有 `decryptdata.key` / `this.decryptkey` / `qiniuDRMKey` | **B 播放器层**：key 由 JS 拼或由接口给 | 断点打 `decryptdata.key`；`license_parse.py mdcm` |
@@ -172,6 +174,7 @@ description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链�
 S=.claude/skills/stream-drm-reverse/scripts
 
 # 0) 全脚本自检（AES/SM4 走 NIST 与国标测试向量，dcm 走往返，TS 走合成包）
+python $S/playback_address.py --selftest
 python $S/media_crypto.py --selftest
 python $S/ts_probe.py --selftest
 python $S/license_parse.py --selftest
@@ -228,6 +231,12 @@ python $S/m3u8_rewrite.py <播放列表.m3u8> --dump-urls segs.txt --pretty
 python $S/m3u8_rewrite.py --diff-url "<抓包A的URL>" "<抓包B的URL>"
 python $S/m3u8_rewrite.py --diff <A.m3u8> <B.m3u8>
 
+# 6.5) ★ §0 地址还原层：四个可复算 oracle（详见 references/playback-address-interfaces.md）
+python $S/playback_address.py charcodes --input "*104*116*116*112*115*58*47*47*97"     # 字符码表族
+python $S/playback_address.py qingting --id 1234 --ts-unix 1758700000                    # 蜻蜓FM HMAC-MD5
+python $S/playback_address.py migu-ddcalcu --url "<咪咕 h5 地址（带 puData）>" --json       # 咪咕字符交织
+python $S/playback_address.py iqiyi-authkey --tm 1625936950392 --tvid 8485811691506600   # 爱奇艺 authKey
+
 # 7) 解密后重新封装 TS（长度变了也照样能播）
 python $S/ts_repack.py <seg>.ts --pid 0x100 --extract-es <seg>.es
 python $S/ts_repack.py <seg>.ts --pid 0x100 --es <seg>.clear.es -o <seg>.clear.ts
@@ -250,6 +259,16 @@ python $S/key_wrapper.py noise-check --chars "-_! " --json
 
 ## 资源
 
+- `references/playback-address-interfaces.md`：**§0 地址还原层（视频 / 直播 / 音频站取地址）唯一权威源** ——
+  定层判据（§0 与 A–F 的分界）、长视频三段式链路（爱奇艺 `cache.video.iqiyi.com/dash` +
+  `authKey=md5(md5("")+tm+tvid)` 与清晰度成套参数 / 腾讯 `proxyhttp` + `auth_refresh` 会话自举 +
+  `cKey` 多行值 / 咪咕三级链 + `ddCalcu` 字符交织）、直播源两条路线（斗鱼免签 `hlsH5Preview` vs
+  动态签名、抖音 `reflow/info` 一次拿 rtmp+hls、小红书 `__INITIAL_STATE__` 书签脚本）、
+  音频站两族（字符码表 `*104*116*…` / 蜻蜓FM HMAC-MD5）、「拿到地址但播不了」总表与各级边界。
+- `scripts/playback_address.py`：**§0 层的四个可复算 oracle** —— `charcodes`（字符码表族，含前导空段 /
+  UTF-16 码元 / 越界码点三类守卫）、`qingting`（蜻蜓FM HMAC-MD5，`--ts-case` 暴露源文未证的大小写）、
+  `migu-ddcalcu`（字符交织，断言结构而非具体值）、`iqiyi-authkey`（含**源文自带的两条样例 URL 对拍向量**）。
+  `--selftest` 自带（断言数**以实跑输出为准**，勿手抄；含 1 个负对照「换口令签名必须不同」与 5 条拒绝路径）。
 - `references/hls-and-ts-structure.md`：HLS/m3u8 全字段语义与判层、TS→PES→ES/NALU 分层、
   **加密覆盖范围判据**、key/IV 四类来源与派生式、A/B/C/D 层实战配方、RPC 桥接、排错速查。
 - `references/key-wrapper-families.md`：**key 二次构造 / 包装层（W 族）唯一权威源** ——
