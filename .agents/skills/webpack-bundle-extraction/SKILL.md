@@ -1,6 +1,6 @@
 ---
 name: webpack-bundle-extraction
-description: 打包产物（webpack 4/5、browserify、vite/rollup 直出）的目标模块抠取与在 node 里复用技能。当目标站的加密/签名函数被 webpack 打包、扣函数要一路跟下去或"缺哪个补哪个"补不完，或页面与产物里出现 `webpackJsonp`、`webpackChunk`、`self["webpackChunkapp"]`、`__webpack_require__`、`__webpack_module_cache__`、`__webpack_modules__`、`__webpack_require__.d/.e/.t`、`n("3452")` 这类「一元加载器 + 模块表」结构，或出现 `app.f24d08e9.js` / `chunk-vendors.bb13f90f.js` / `runtime.62249a5.js` 这类文件名、或报错 `Cannot read property 'call' of undefined` / `Cannot read properties of undefined (reading 'call')`、或想在 nodejs 里 require 浏览器打包结果、或要判断"这个文件到底是打包产物还是混淆产物"时使用。覆盖打包器家族识别、加载器/缓存表/模块表三对象定位、静态闭包计算、运行时半自动模块采集（条件断点与记录器）、`__exposedWebpackRequire` 全局导出、push 注册形态重建、动态导出（`.d()` getter）语义、异步 chunk（`.e()`）处置、node 复用 prelude 与最小环境自吐、以及 RPC/无头/WASM 三条免抠路线与"该不该抠"决策。用户提到 webpack 扣代码、webpack 改写、半自动抠 webpack、AST 自动扣 webpack、扣加载器、补模块、`loader-export`、jsdom 复用打包代码、`Cannot read property 'call' of undefined`、webpack 补环境时都应使用本技能。
+description: 打包产物（webpack 4/5、browserify、vite/rollup 直出）的目标模块抠取与在 node 里复用技能。当目标站的加密/签名函数被 webpack 打包、扣函数要一路跟下去或"缺哪个补哪个"补不完，或页面与产物里出现 `webpackJsonp`、`webpackChunk`、`self["webpackChunkapp"]`、`__webpack_require__`、`__webpack_module_cache__`、`__webpack_modules__`、`__webpack_require__.d/.e/.t`、`n("3452")` 这类「一元加载器 + 模块表」结构，或出现 `app.f24d08e9.js` / `chunk-vendors.bb13f90f.js` / `runtime.62249a5.js` 这类文件名、或报错 `Cannot read property 'call' of undefined` / `Cannot read properties of undefined (reading 'call')`、或想在 nodejs 里 require 浏览器打包结果、或要判断"这个文件到底是打包产物还是混淆产物"时使用。覆盖打包器家族识别、加载器/缓存表/模块表三对象定位、静态闭包计算、运行时半自动模块采集（条件断点与记录器）、`__exposedWebpackRequire` 全局导出、push 注册形态重建、动态导出（`.d()` getter）语义、异步 chunk（`.e()`）处置、node 复用 prelude 与最小环境自吐、以及 RPC/无头/WASM 三条免抠路线与"该不该抠"决策。用户提到 webpack 扣代码、webpack 改写、半自动抠 webpack、AST 自动扣 webpack、扣加载器、补模块、`loader-export`、jsdom 复用打包代码、`Cannot read property 'call' of undefined`、webpack 补环境时都应使用本技能。用户提到「缓存表里有 id 但字段 undefined」「循环依赖只拿到空 exports」「模块初始化顺序不对」「__webpack_module_cache__ 何时写入」时也应使用本技能。
 ---
 
 # 打包产物抠取与 node 复用
@@ -72,6 +72,34 @@ node .claude/skills/webpack-bundle-extraction/scripts/detect-bundler.js <bundle.
 | **模块表**（`__webpack_modules__`） | `{moduleId: 模块函数}` 或 `[模块函数,…]` | 简称与「字符串表 / 字典」区分，见 `references/bundler-identification.md` |
 | **push 形态 / call 形态** | 注册语句的两种写法：`.push([[...],{…}])` / `LOADER(["chunk"],{…})` | 它们的**重建方式不同**，不能互相改写 |
 | **闭包** | 从入口模块出发沿 require 可达的模块集合 | 不是 JS 语言意义上的闭包 |
+
+**缓存表的语义：为什么「缓存里有这个 id」不等于「模块跑完了」**
+
+加载器的形状是「查缓存 → 取模块表 → `.call` → 返回 exports」，而**缓存条目在模块体执行之前**就被写入：
+
+```js
+function require(id) {
+  if (cache[id]) return cache[id].exports;              // ① 先查
+  const module = cache[id] = {exports: {}};             // ② 立刻登记（此时 exports 还是空的）
+  modules[id].call(module.exports, module, module.exports, require);  // ③ 再执行模块体
+  return module.exports;
+}
+```
+
+（源文里这个变量叫 `exportsInfo`，产物里叫 `__webpack_module_cache__` —— 同一套语义的两个名字。）
+
+⇒ **循环依赖时，先拿到的那一方看到的 exports 是「对象地址正确、属性还没填」**
+（对象是同一个引用，所以后续填上的属性也会出现在它身上 —— 这正是"记忆化搜索"能解开循环依赖的原因）。
+
+三条与抠取直接相关的结论：
+
+1. **不能用「缓存表里有这个 id」判断模块已执行完** —— 它在执行前就存在了。
+   要判断"跑完了"只能自己打标记（在模块体末尾赋值一个哨兵）。
+2. **模块初始化顺序决定字段可见性**：从入口 BFS 得到的到达顺序 **≠** 运行时执行顺序
+   （循环边会让两者分叉）。在 Node 里复用产物时，字段是 `undefined` 常常是**顺序问题**，
+   而不是"没抠到"—— 先怀疑顺序，再怀疑抠取。
+3. **静态抠取可以安全忽略这一层**：依赖图（可达模块 + 依赖边）与执行顺序**无关**；
+   只有**动态复用**（`references/node-reuse-and-env-handoff.md`）时才需要关心初始化顺序。
 
 **唯一权威源**：家族判据与结构常量以 `references/bundler-identification.md` 为准；
 本文的表格是速查版，两者冲突时改本文。

@@ -1,6 +1,6 @@
 ---
 name: cloud-drive-direct-link
-description: 网盘 / 文件托管站的「分享链接 → 可用直链」解析技能。覆盖蓝奏云系（lanzou / lanzoui / lanzoue / lanzouf / lanzoux / lanzouj / ww*.lanzou*.com）、优享版 ilanzou、城通 / 奶牛 / 123 云盘 / 百度盘 / 阿里云盘，以及网盘直链下载助手与解析站。涉及：分享页套娃 iframe（`ifr2`）、`/ajaxm.php`、`action=downprocess`、`signs=?ctdf`、`websignkey=bL27`、`ves`、`sign` / `skdklds` / `down_p()` 的代际字段差异、`dom + "/file/" + url` 拼接、`Referer` 与 `down_ip=1` 门禁、`st` / `e` / `ip` / `fi` / `up` 时效参数、302 `Location` 取最终直链、T/K 与 `filemoreajax.php` 文件夹分页、网页三分钟缓存、提取码与分享密码、优享版 `encryptHex` / `downloadId` / `auth` / `timestamp`、阿里云盘 `x-device-id` / `x-signature`（ECDSA secp256k1 + `01` 后缀）/ `get_public_key` / nonce、油猴助手本地校验（改 `if(true)`）、Cloudflare `acw_sc__v2` 反爬。用户说「蓝奏云直链」「网盘直链解析」「取真实下载地址」「分享链接转直链」「直链 400 / 失效」「解析站」「downprocess」时用本技能。
+description: 网盘 / 文件托管站的「分享链接 → 可用直链」解析技能。覆盖蓝奏云系（lanzou / ww*.lanzou*.com 域名族）、优享版 ilanzou、城通 / 奶牛 / 123 云盘（`/b/api/share/`、`S3keyFlag`、`params=<base64>`、`auto_redirect`）/ 百度盘（`bdstoken`、`logid`、`sharedownload`、`api/streaming`、群分享转存 `mbox/msg/transfer`）/ 夸克（`drive.quark.cn` + `fids`）/ 文叔叔（`x-token`、秒传 `cm1`/`cs1`/`cm`）/ 阿里云盘（上传 `v2/file/create`、409 秒传、三取样点 `user_meta.hash`、`url_expire_sec`、团队版 Teambition），以及网盘直链下载助手与解析站。涉及：分享页套娃 iframe（`ifr2`）、`/ajaxm.php`、`action=downprocess`、`signs` / `websignkey` / `ves` / `skdklds` / `down_p()` 的代际字段差异、`dom + "/file/" + url` 拼接、`Referer` 与 `down_ip=1` 门禁、`st` / `e` / `ip` / `fi` / `up` 时效参数、302 `Location`、T/K 与 `filemoreajax.php` 文件夹分页、网页三分钟缓存、提取码与分享密码、阿里云盘 `x-device-id` / `x-signature`（ECDSA secp256k1 + `01` 后缀）/ `get_public_key` / nonce、油猴助手本地校验、Cloudflare `acw_sc__v2`。用户说「蓝奏云直链」「网盘直链解析」「取真实下载地址」「分享链接转直链」「直链 400 / 失效」「解析站」「downprocess」「百度网盘直链」「123 云盘解析」「夸克网盘直链」「文叔叔秒传」「阿里云盘上传协议」「bdstoken」「logid」「dlink」「S3keyFlag」「DownloadURL params」时用本技能。
 ---
 
 # 网盘 / 文件托管站直链解析：分享链接 → 可用直链
@@ -44,6 +44,14 @@ description: 网盘 / 文件托管站的「分享链接 → 可用直链」解�
 | 业务方说"昨天还好，今天全挂" | **站点改代际 / 上反爬** | 先按代际表重新判据（2025 代际加了 Cloudflare `acw_sc__v2`） |
 | 页面里出现 `acw_sc__v2` / `_0x4818` / `arg1` / `posList` | **Cloudflare JS 挑战** | 不在本技能范围内，转 `web-js-env-patcher`（`../web-js-env-patcher/references/edge-waf-cookie-challenge.md`） |
 | 目标是一次性签名 URL（`downloadId` / `auth` / `x-signature`） | **签名型网盘** | 走 `references/signed-api-and-helper-scripts.md`；先判"算法型"还是"协议型" |
+| 分享页里有 `fs_id` / `yunData.SHARE_UK` | **百度 §A 分享直链（2015）** | `POST /api/sharedownload`（`sign`+`timestamp`+`uk`+`shareid`），**必带 `Referer` 与 `X-Requested-With`**（`references/multi-vendor-protocols.md` §2.1） |
+| 播放页请求里有 `api/streaming?path=` | **百度 §B 云端转码 m3u8（2017）** | 一个 GET 就拿到 m3u8；`errno:-6` = 缺 cookie（§2.2） |
+| 分享页里有 `bdstoken`，接口走 `mbox/` | **百度 §C 群分享转存（2020）** | 四跳 `historysession → listshare → shareinfo → transfer`；**判重别用 MD5**（§2.3） |
+| 域名是 `123pan.com`，参数里有 `S3keyFlag` | **123 云盘** | 三步；终点藏在 `DownloadURL` 的 `params=<base64>` 里（§3） |
+| 域名是 `drive.quark.cn`，body 是 `{"fids":[…]}` | **夸克网盘** | 必须先转存到自己网盘；文件夹不支持（§4） |
+| 域名是 `wenshushu.cn` / `wss1.cn`，要 `x-token` | **文叔叔** | 先 `/ap/login/anonymous` 拿 token；**URL 尾段 16 位判 token、11 位判 tid**（§5） |
+| 域名是 `api.aliyundrive.com` / `pan.teambition.com` | **阿里云盘（主站 / 团队版）** | `drive_id`+`authorization` 只能抓包；直链 `url_expire_sec`（源文传 1800 秒）（§6） |
+| 百度直链 host 是 `d.pcs.baidu.com` 且速度不理想 | **带宽调优**（不是修复） | 可替换成 `yqall02.baidupcs.com` 对比；原 host 本来就能下（§2.1.1） |
 | 报 `invalid X-Device-Id` | **设备身份校验**（阿里云盘族） | 补 `x-device-id`（UUID）与 `x-signature`（`references/signed-api-and-helper-scripts.md` §2） |
 | 油猴 / 篡改猴助手要求"关注公众号后输入验证码" | **本地校验**（不发请求） | 先看有没有网络请求；没有就是纯前端判断（`references/signed-api-and-helper-scripts.md` §3.1） |
 | 直链拿到后过一会儿再下报 403 / 过期 | **时效**（正常现象） | 别改参数硬猜；把"解析 → 下载"合成一次执行 |
@@ -51,7 +59,10 @@ description: 网盘 / 文件托管站的「分享链接 → 可用直链」解�
 ## 工作流
 
 1. **🔴 CHECKPOINT · 先判"这是哪一种网盘 + 哪一代"。**
-   打开分享页，只看三处：① 有没有 `iframe class="ifr2"`；② 有没有 `function down_p(){`；
+   **第 0 步先判厂商**（域名 + 特征字段，一张表在 `references/multi-vendor-protocols.md` §1）：
+   非蓝奏云系（百度 / 123 / 夸克 / 文叔叔 / 阿里云盘）**走 `multi-vendor-protocols.md`**，
+   它们的字段名、接口路径、鉴权方式与蓝奏云**毫无重叠**，混用只会浪费时间。
+   确认是蓝奏云系后，打开分享页，只看三处：① 有没有 `iframe class="ifr2"`；② 有没有 `function down_p(){`；
    ③ 内联脚本里出现的是 `signs` / `websignkey` / `skdklds` / `file_id` 中的哪一组。
    这三处直接决定后面取哪几个字段（`references/lanzou-protocol-generations.md` §1 判据表）。
    **不要**先写正则再回头看页面 —— 代际不同，字段名完全不同。
@@ -95,6 +106,20 @@ description: 网盘 / 文件托管站的「分享链接 → 可用直链」解�
 | 油猴助手点"确定"没反应 | 校验在本地（无网络请求） | 改判据为 `true`（`references/signed-api-and-helper-scripts.md` §3.1） |
 | 想"顺手把整个文件夹都下下来" | 越权风险 | 只处理分享者公开的分享；不做递归遍历 |
 | 直链下回来是 HTML 而不是文件 | 打到了错误页（多半是门禁或时效） | 检查 `Content-Type` 与 `Content-Disposition`，再看 `Location` 是否二次跳转 |
+| 百度 `sharedownload` 返回 `error=-20` | 该分享需要验证码 | 换路线或上完整登录态；**不要原地重试** |
+| 百度 `api/streaming` 返回 `errno:-6` | 缺 cookie | 补 `PANWEB=1; bdshare_firstime=…`（`multi-vendor-protocols.md` §2.2） |
+| 百度转存"明明有却重复转" | 用 MD5 判重（**转存后 MD5 会变**） | 改用 `server_filename` + `size`（§2.3.2） |
+| 抄来的请求串参数名少一截（`×tamp=`） | `&times;` 实体残留 | 搜 `×`（U+00D7），补回 `&tim`（§2.1.2） |
+| 123 的 `DownloadURL` 直接请求失败 | 忘了 `base64_decode(params)` | 先解 `params` 再请求（§3.1） |
+| 123 解出地址后响应里没有 `redirect_url` | 忘了补 `auto_redirect=0` | 按**解码后**的串判是否已有，再补（§3.1） |
+| 123 的 `shareKey` 里带空格 | 源正则 `[^/.]+` 不排除空白 | 加 `\s`；拿到后 assert 不含空格（§3） |
+| 夸克返回的 `data` 为空 | 没先转存到自己网盘 / 选中的是文件夹 | 先转存；排除文件夹（§4） |
+| 文叔叔秒传永远 `isCan:false` | `cm` 算成了 `sha1(原始字节)` | `cm = sha1(md5 的 hex 字符串)`（§5.3） |
+| 文叔叔下载走错分支 | 没按 URL 尾段长度判 `token`/`tid` | 16 位 ⇒ token，11 位 ⇒ tid（§5.2） |
+| 阿里云盘 `create` 不报 409 但也不秒传 | `user_meta.hash` 用了全文件 sha1 | 用三取样点 + 长度字符串（§6.2.1） |
+| 阿里云盘直链过一会儿 403 | `url_expire_sec` 到期（源文传 1800 秒） | 解析与下载同批；直链不落库（§6.1） |
+| 阿里云盘团队版上传 400 | 分片用了 5MB | 团队版是 **10MB**（§6.3） |
+| 网盘视频"只能看 30 秒" | **不是解析失败**，直链是完整的 | 限制在播放器：`video.pause=null` + 隐藏站点控制条 + 换原生 controls（§8 来源 `1735138`） |
 
 ## 反例黑名单（不要做的事）
 
@@ -110,6 +135,12 @@ description: 网盘 / 文件托管站的「分享链接 → 可用直链」解�
 - **不要把 Cloudflare / 风控挑战解在本技能里。** 那是 `web-js-env-patcher` 的活；本技能只负责**判出来并转交**。
 - **不要相信"新的 API 地址"能长期有效。** 这一族平均一到两年换一次代际（2018 → 2019 → 2022 → 2024 → 2025 都有记录），
   任何写死的地址都要在文档里注明**取证时间**。
+- **不要用 MD5 判"转存去重"。** 百度转存后同一文件的 MD5 会变（`52pojie-1208082` 实测）⇒ 判重键用 `server_filename` + `size`。
+- **不要把 123 的 `DownloadURL` 当可直接请求的 URL。** 它的 `params` 是 base64，要解一层（还要补 `auto_redirect=0`）。
+- **不要以为 `logid` 需要 `baiduid`。** 源码里 `m()` 是零形参，`baiduid` 被丢弃；
+  `logid` == 标准 `base64(毫秒时间戳 + Math.random())`（`scripts/multi_vendor_parse.py logid` 已做成断言）。
+- **不要把"自定义字母表"当加密。** 那个 73 字符表里**前 64 个就是标准 base64 表**，尾部 9 个因 `& 63` 永不取用。
+- **不要把"只能看 30 秒"当解析失败。** 预览拿到的直链是完整的，限制在播放器侧（`video.pause=null`）。
 - **不要把油猴 / 第三方助手脚本当可信实现。** 它们的"验证码"可能只是本地判断，
   也可能把你的 Cookie 带出去；先审 `@match` / `@grant` / `@connect`。
 
@@ -139,10 +170,20 @@ python $S/lanzou_parse.py folder --in folder-page.html --pwd <提取码>
 
 # 6) 阿里云盘：纯标准库推导 secp256k1 公钥、构造签名体、校验 04/01 格式
 python $S/aliyun_ecc_sign.py pubkey --priv 175,87,171,214,222,196,127,36,25,50,237,179,71,81,49,196,250,103,115,203,138,179,192,182,43,175,233,72,200,14,64,254
-python $S/aliyun_ecc_sign.py signbody --app-id <appId> --device-id <uuid> --user-id <userId> --nonce 0
+python $S/aliyun_ecc_sign.py signbody --app-id <appId> --device-id <uuid> --user-id <userId> --nonce 0 \
+    --priv 175,87,171,214,222,196,127,36,25,50,237,179,71,81,49,196,250,103,115,203,138,179,192,182,43,175,233,72,200,14,64,254
 
 # 7) 门禁自查：把最终地址该带的头打出来（对照抓包逐项核对）
 python $S/lanzou_parse.py gating --referer 'https://wwt.lanzouu.com/fn?f=…' --full 'https://down-load.lanrar.com/file/?…'
+
+# 8) 多厂商（百度 / 123 / 夸克 / 文叔叔 / 阿里云盘）—— 可离线复算的那部分
+python $S/multi_vendor_parse.py --selftest
+python $S/multi_vendor_parse.py vendor --url 'https://pan.baidu.com/s/1abc'      # 先判厂商
+python $S/multi_vendor_parse.py logid --audit                                   # logid 字母表审计（死区证明）
+python $S/multi_vendor_parse.py logid --input '16990000000000.842315623456789'
+python $S/multi_vendor_parse.py aliyun-hash --fixture 5000000                   # 三取样点 hash
+python $S/multi_vendor_parse.py ws-hash --fixture 3000000                       # 文叔叔秒传三件套
+python $S/multi_vendor_parse.py pan123 --download-url 'https://x/y?params=<b64>' --share 'https://www.123pan.com/s/AbCd-1234 提取码:xyz9'
 ```
 
 ## 资源
@@ -165,6 +206,17 @@ python $S/lanzou_parse.py gating --referer 'https://wwt.lanzouu.com/fn?f=…' --
   "列目录接口顺带返回下载链接"这一旁路与它的风险、
   以及油猴 / 篡改猴助手的判型法（先看有没有网络请求 ⇒ 没有就是本地校验）、
   解析站（服务端代取）与本地解析的边界与合规红线。
+- `references/multi-vendor-protocols.md`：**蓝奏云系之外的五个厂商的唯一权威源** ——
+  三十秒判厂商表；百度三代链路（2015 分享直链五字段 / 2017 `api/streaming` / 2020 群分享四跳 /
+  `d.pcs.baidu.com → yqall02.baidupcs.com` host 替换 / `createLinkShare.js` 原型替换 / **`logid` 三条机器可判结论**）；
+  123 云盘三步与 `params=<base64>` + `auto_redirect=0`；夸克 `file/download` 与 `cloneNode` 去监听手法；
+  文叔叔全链与秒传三件套（`cm1`/`cs1`/`cm`）；阿里云盘上传协议、409 秒传、
+  **三取样点 `user_meta.hash`** 与团队版五步链；排错 14 条；来源表（含单源标注）。
+- `scripts/multi_vendor_parse.py`：多厂商**可离线复算**部分的零依赖实现，
+  `logid`（含"73 字符表 == 标准 base64"与"尾部死区"两条证明）、
+  `aliyun-hash`（三取样点 + `pre_hash` + 全文件 sha1，带 20480 边界）、
+  `ws-hash`（秒传三件套，整块/分块两分支）、`pan123`（`params` 解包 + `auto_redirect` 补全 + 分享输入抽取）、
+  `vendor`（厂商判据）；`--selftest` **65 项**，每条 oracle 都带阴性对照。
 - `scripts/lanzou_parse.py`：代际判据 + 参数抽取 + 最终地址组装 + 302 解析 + 门禁自查，**零依赖**，
   `--selftest` **96 项**（真实样本 oracle：2018 六字段（含"注释那行不许命中"的对照）、
   2024 五字段与 2022 三字段两版、有码 `skdklds`、文件夹七字段与 t/k 两跳、`dom + /file/ + url` 组装

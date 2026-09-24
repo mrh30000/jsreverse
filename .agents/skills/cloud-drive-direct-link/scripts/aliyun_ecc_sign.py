@@ -21,7 +21,7 @@
 
 用法：
     python aliyun_ecc_sign.py pubkey   --priv 175,87,171,...
-    python aliyun_ecc_sign.py signbody --app-id <appId> --device-id <uuid> --user-id <userId> --nonce 0
+    python aliyun_ecc_sign.py signbody --app-id <appId> --device-id <uuid> --user-id <userId> --nonce 0 --priv 175,87,171,214,222,196,127,36,25,50,237,179,71,81,49,196,250,103,115,203,138,179,192,182,43,175,233,72,200,14,64,254
     python aliyun_ecc_sign.py sign     --priv 1 --digest <64hex>
     python aliyun_ecc_sign.py verify   --pub <130hex> --digest <64hex> --sig <r><s>
     python aliyun_ecc_sign.py --selftest
@@ -179,7 +179,11 @@ def sign_body(app_id: str, device_id: str, user_id: str, nonce: int, priv: int) 
 
 
 def parse_priv(text: str) -> int:
-    text = text.strip()
+    text = (text or "").strip()
+    if not text:
+        # ⚠️ 不能让它走到下面那句 hex 长度检查：那条报错会把"忘了传 --priv"
+        #    误报成"device-id / user-id 传成了 UUID"，对使用者是误导（B30 盲评审 m5）。
+        raise ValueError("缺少 --priv（32 字节私钥：逗号分隔的 32 个 0..255，或 64 位 hex）")
     if "," in text:
         parts = [int(x) for x in text.replace(" ", "").split(",") if x != ""]
         if len(parts) != 32 or any(not (0 <= x <= 255) for x in parts):

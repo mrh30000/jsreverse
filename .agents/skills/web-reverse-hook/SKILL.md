@@ -1,6 +1,6 @@
 ---
 name: web-reverse-hook
-description: 生成并注入页面级运行时 Hook 脚本，用于拦截加密库（CryptoJS/JSEncrypt/SM-crypto）、JSVMP 虚拟机探针、反调试综合防御绕过（debugger/console/窗口尺寸/强退/iframe原生借用）、关键数据流追踪（Promise/Cookie/Storage/网络/时间）、SPA 动态路由深度提取（Vue/React 路由表与守卫清除）以及**Vue/Vuex 运行时状态固化与组件注册表替换**（油猴 / 篡改猴 / userscript 注入范式）。当用户提到“hook CryptoJS”“拦截 RSA 明文密文”“国密 hook”“JSVMP 探针”“绕过反调试”“无限 debugger”“阻止跳转/关闭”“SPA 隐藏路由提取”“拦截 cookie/storage/promise”“改 Vuex state”“$store.state 改不动”“__vue__ 取不到”“registerComponent 替换组件”“videojs Player 注入”“油猴脚本怎么注入”“无直链视频怎么下”“video 的 src 是 blob:”“网络面板只有分片没有可播地址”“hook addSourceBuffer”“MSE 缓存视频”“控制台反检测”“devtools 检测”“注入太晚拦截不到”时使用。
+description: 生成并注入页面级运行时 Hook 脚本，用于拦截加密库（CryptoJS/JSEncrypt/SM-crypto）、JSVMP 虚拟机探针、反调试综合防御绕过（debugger/console/窗口尺寸/强退/iframe原生借用）、关键数据流追踪（Promise/Cookie/Storage/网络/时间）、SPA 动态路由深度提取（Vue/React 路由表与守卫清除）以及**Vue/Vuex 运行时状态固化与组件注册表替换**（油猴 / 篡改猴 / userscript 注入范式）。当用户提到“hook CryptoJS”“拦截 RSA 明文密文”“国密 hook”“JSVMP 探针”“绕过反调试”“无限 debugger”“阻止跳转/关闭”“SPA 隐藏路由提取”“拦截 cookie/storage/promise”“改 Vuex state”“$store.state 改不动”“__vue__ 取不到”“registerComponent 替换组件”“videojs Player 注入”“油猴脚本怎么注入”“无直链视频怎么下”“video 的 src 是 blob:”“网络面板只有分片没有可播地址”“hook addSourceBuffer”“MSE 缓存视频”“控制台反检测”“devtools 检测”“注入太晚拦截不到”“jQuery 事件定位”“Event Listener 只有 jQuery 闭包”“jQuery hook 拿不到真实回调”“$._data events”时使用。
 ---
 
 # Web 运行时 Hook 脚本
@@ -20,6 +20,7 @@ description: 生成并注入页面级运行时 Hook 脚本，用于拦截加密�
 | `spa-react` | **React Fiber 树与路由扫描** | BFS 探测 React 根挂载点 (`__reactContainer$*`, `_reactRootContainer`)，深度扫描 Fiber 树属性，提取 Route 配置 |
 | `spa-state` | **Vue/Vuex 运行时状态固化 + 组件注册表替换**（B28 新增） | 1. 定位 Vue 2 (`__vue__`) / Vue 3 (`__vue_app__`) 根实例并解析 `$store`（Vuex 取 `.state`，Pinia 取自身）<br>2. 按 `a.b.c=值` 固化状态；**用访问器挡回写**（SPA 重挂载后仍被强制回目标值）<br>3. 包装 `store.subscribe` 打印每次 mutation 的 `type` / `payload`（定位"到底是谁改的"）<br>4. 组件注册表探针（如 `window.videojs.registerComponent`）+ `replaceComponent(name, fn)`：自动接原型链并**搬运你自己写在 prototype 上的成员** |
 | `mse-capture` | **MSE 流捕获（「无直链视频」落盘）**：代理 `MediaSource.prototype.addSourceBuffer` / `SourceBuffer.appendBuffer` / `endOfStream` / `URL.createObjectURL` | 1. 抓的是**播放器真正喂进去的字节流**，与分片走 fetch / XHR / 拼接都无关<br>2. 交付走 `window.__mse_capture_sink`（宿主接管）或 `<a download>`<br>3. `minBytes` 过滤小片、`maxTotalBytes`（默认 256MB）熔断防 OOM<br>4. 文件名与扩展名按 mime 派生（`video/mp4`⇒`.m4v`、`audio/mp4`⇒`.m4a`、`video/webm`⇒`.webm`）<br>5. 交付后**立刻释放**本地缓存；`pauseOnFinish` 可暂停 `<video>`<br>6. **blob 地址的顺序**：站点会先 `URL.createObjectURL(ms)` 再 `addSourceBuffer`，两者都要能记下（B29 真机跑出来的缺陷，Node 假环境测不出） |
+| `jquery-handler` | **jQuery 事件定位**：包住 `$.fn` 上的事件方法，把每次注册的**回调**挂到全局变量并在元素上打属性 | 1. 绕开 jQuery 自建的事件机制 —— DevTools 的 Event Listener 面板只能定位到 jQuery 内部闭包，本预设把真实回调**直接暴露成全局变量**<br>2. 元素属性 `data-rjq-jquery-<事件>-event-function`，Elements 面板里即「该元素有哪些 jQuery 事件」<br>3. Console 里粘贴属性值 → 打印函数内存地址 → 点进去就是真实代码位置<br>4. 支持简写（`.click(fn)`）/ 通用（`.on('submit', fn)`）/ 事件映射对象（`.on({click: fn})`）/ 多事件串（`'click mouseover'`）/ 命名空间（`'submit.myNS'`）<br>5. **同一回调 + 同一事件只登记一个变量名**（真 jQuery 的 `.click` 内部转调 `.on`，不去重会登记两次）<br>6. `window.__jquery_handler_report()` 列出全部登记项（变量名 / 函数名 / 源码片段） |
 | `jsvmp-proxy` | JSVMP 虚拟机探针（全覆盖） | 代理全局对象、`Function.prototype` 与 `Reflect` |
 | `jsvmp-transparent` | JSVMP transparent 探针（无感） | 只替换原型 getter，痕迹更小，规避强指纹检测 |
 
@@ -127,6 +128,61 @@ node .agents/skills/web-reverse-hook/scripts/build-hook.js spa-state \
 
 ---
 
+## 定位「绑在元素上的真实代码」：jQuery 事件（B30）
+
+**问题**：老系统大量使用 jQuery。它在原生 DOM 事件机制之上自建了一套事件管理
+（`$.fn.on` 把回调存进内部数据表），于是 DevTools 的 *Event Listener* 面板只能把你带到
+**jQuery 自己的闭包**里 —— 跟进去就是「无法自拔」，看不到真正处理这个点击的业务代码。
+
+**判据（30 秒确认是这条路）**：
+
+| 现象 | 判断 |
+| --- | --- |
+| Event Listener 面板里事件的链接指向 `jquery.min.js` 内部 | jQuery 托管事件 |
+| Console 里 `typeof window.jQuery === 'function'`，`jQuery.fn.jquery` 有版本号 | 页面确实引了 jQuery |
+| `$._data(el, 'events')` 能列出事件（`_data` 是 jQuery 私有 API） | 同上；**只适用于 jQuery 2/3** |
+
+**做法**：包住 `$.fn` 上的事件方法，把回调暴露出来。
+（本预设把源工具（`JSREI/jQuery-hook`）的属性前缀 `cc11001100-jquery-<事件>-event-function`
+泛化成了 `data-rjq-…` —— 前缀可配，不影响用法。）
+
+```bash
+node .agents/skills/web-reverse-hook/scripts/build-hook.js jquery-handler --out hook-jq.js
+node .agents/skills/web-reverse-hook/scripts/build-hook.js jquery-handler --events click,on --out hook-jq-click.js
+browsercli call evaluate_script --file hook-jq.js
+```
+
+注入后：
+
+1. **Elements 面板**选中元素，看属性 `data-rjq-jquery-click-event-function`，
+   值形如 `rjq_click_2` —— 属性名即事件名，属性值即「该回调所在的全局变量」；
+2. **Console** 粘贴 `rjq_click_2` 回车 → 打印函数 → 点内存地址 → **直达业务代码**；
+3. 或者一次性列表：
+
+```bash
+browsercli call evaluate_script --function "() => JSON.stringify(window.__jquery_handler_report())"
+```
+
+**三个真机才暴露的坑**（Node 假环境测不出，本批在 Chrome + jQuery 3.6.0 上实测）：
+
+1. **真 jQuery 的简写方法内部就是转调 `.on()`**：
+   `$.fn.click = function(data, fn) { return arguments.length > 0 ? this.on('click', null, data, fn) : this.trigger('click') }`。
+   所以一次 `$(el).click(fn)` 会先后穿过包装后的 `click` 与 `on` 两层 ⇒ **登记两次**、
+   元素属性被后写的那个变量名覆盖。本预设按「回调 + 事件名」做幂等去重（实测 6 次绑定恰好 6 个变量）。
+2. **事件名要从参数里读，不能取方法名**：`.on('submit', fn)` 的事件是 `submit` 而不是 `on`。
+   按方法名命名会打出 `…-jquery-on-event-function` 这种没有信息量的属性。
+3. **`$.fn` 必须是集合对象的原型** —— 写测试替身时 `Object.create($.fn)` 才是对的形态；
+   把方法挂在集合自身上，`$(el).click` 根本走不到原型链（我第一次的替身就是这么错的）。
+
+**边界**：
+
+- jQuery 被 **Webpack 闭包持有**（`window.jQuery` 不存在）时本预设不适用，
+  它会明确打印「仍未拿到 window.jQuery」并给出替代路线（`dataflow` 预设按选择器 / 关键字追）；
+- 现代框架（Vue/React）的合成事件不走 jQuery，走 `spa-vue` / `spa-react` 或直接看组件注册表；
+- 本预设**不代理请求**：只解决「这段代码在哪」，不解决「它发了什么」。
+
+---
+
 ## 常用生成命令
 
 ```bash
@@ -168,6 +224,13 @@ node .agents/skills/web-reverse-hook/scripts/build-hook.js spa-state \
 node .agents/skills/web-reverse-hook/scripts/build-hook.js spa-state \
   --registry-root window.videojs --registry-method registerComponent --out hook-registry.js
 
+# 13b. jQuery 事件定位（老系统：Event Listener 只能定位到 jQuery 闭包）
+node .agents/skills/web-reverse-hook/scripts/build-hook.js jquery-handler --out hook-jq.js
+node .agents/skills/web-reverse-hook/scripts/build-hook.js jquery-handler --events click,on,submit --out hook-jq-click.js
+#     注入后：Elements 面板看属性 data-rjq-jquery-<事件>-event-function
+#             Console 粘贴属性值 ⇒ 打印函数 ⇒ 点内存地址直达业务代码
+#             或 __jquery_handler_report() 一次性列表
+
 # 13. MSE 流捕获（无直链视频：src 是 blob:、网络面板只有分片）
 node .agents/skills/web-reverse-hook/scripts/build-hook.js mse-capture --out hook-mse.js
 #     播一遍 ⇒ window.__mse_capture.streams() 看清单 ⇒ .save() 落盘；
@@ -208,7 +271,20 @@ node .agents/skills/web-reverse-hook/scripts/build-hook.js antidebug --json \
    - **注入晚了的症状**：脚本明明装上了、也没有报错，但检测照样命中（因为检测跑在你前面）。
    - **判据**：在 Network 里勾 *Disable cache* + 把网速限到 3G/慢速 4G 再刷新 —— 页面变慢后你的脚本
      相对更早，若这样就好了，那就是**注入时机**问题，不是逻辑问题。
-4. **反调试类脚本的边界**：用户脚本改不了页面**内联**的 `debugger` 语句；
+4. **绕过无限 `debugger` 的三档手段（从弱到强，先试便宜的那档）**：
+
+   | 档 | 手段 | 适用与代价 |
+   | --- | --- | --- |
+   | ① 最便宜 | **条件断点**：在 `debugger` 那一行右键 *Add conditional breakpoint*，条件填 `false` | 不动页面、不装脚本；**放行一次后重进页面即生效**。代价：只对付被断点命中的那一处，源码换行就失效，刷新后条件可能丢 |
+   | ② 常规 | `antidebug` 预设（清空 `eval`/`Function`/`constructor` 里的 `debugger` + `bypass_debugger`） | 覆盖面最广、可持久；代价：只治**动态构造**形态 |
+   | ③ 兜底 | *右键行号 → Never pause here* | 对付**内联**的 `debugger`（脚本改不了的那种） |
+
+   **判据**：先看 `debugger` 是**内联写死**的还是**动态构造**的。
+   内联 ⇒ 只能 ① 或 ③；动态构造 ⇒ ② 最省事。
+   （`52pojie-1909547` 用的就是 ①：在文心一言的 `debugger` 行加条件断点 `false`，
+   放行后重进站点，无限 debugger 消失 —— 与 hook 法是**两条不同的路**，不是替代关系。）
+
+5. **反调试类脚本的边界**：用户脚本改不了页面**内联**的 `debugger` 语句；
    只能过滤 `Function('debugger')()` / `new Function('debugger')()` / `function(){}.constructor('debugger')()` 这三种**动态构造**形态，
    其余要靠「右键行号 → 永不在此处暂停」。
 
@@ -229,6 +305,24 @@ node .agents/skills/web-reverse-hook/scripts/build-hook.js antidebug --json \
   # 看注册表里都有哪些组件（决定替换谁）
   browsercli call evaluate_script --function "() => JSON.stringify(Object.keys(window.__mcp_vue_hook__.registry))"
   ```
+### MSE 捕获：**数据要「喂」够才能落盘**（B30 补充）
+
+MSE 是流式的：**播放器喂进来的字节流 = 你能拿到的全部**。
+只播了开头就保存 ⇒ 保存下来的文件只有开头那段
+（`52pojie-2115438` 原话：要播放完才能下载）。
+
+推进进度的三个技巧（按性价比排序）：
+
+| 技巧 | 做法 | 为什么有效 |
+| --- | --- | --- |
+| **智能跳播到缓冲区前沿** | 把 `currentTime` 设到 `buffered.end(buffered.length - 1)` 附近 | 播放器为了保持前方有缓冲会**继续拉流**；相当于「缓冲到哪就跳到哪」，比匀速播放快得多 |
+| **倍速播放** | `video.playbackRate = 10` | 直接加速消耗缓冲。⚠️ 部分站点会报错或从头播（原文明示「我试过有些网站会报错」） |
+| **先 `play()` 再等** | 有些播放器**不播就不拉** | 静音 + `play()` 是最低成本的「催流」 |
+
+**判据**：`window.__mse_capture.streams()` 里 `bytes` 不再增长 ⇒ 流喂完了（或播放器停了）。
+**边界**：三个技巧都是「催」，不是「保证」—— 卡在广告 / 付费墙 / DRM 前面时，
+再怎么跳播也拿不到后面的数据（那属于 `stream-drm-reverse` 的题）。
+
 - **MSE 捕获结果**：写入 `window.__mse_capture`：
   ```bash
   # 看清单（mime / 字节数 / 分片数 / 是否结束 / blob 地址）

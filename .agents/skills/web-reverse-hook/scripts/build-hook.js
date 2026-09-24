@@ -19,6 +19,7 @@
  * - spa-state: Vue/Vuex 运行时状态固化（含「挡回写」）+ 组件注册表探针与替换
  * - mse-capture: MSE 流捕获（代理 addSourceBuffer/appendBuffer/endOfStream/createObjectURL），落盘 blob 视频
  * - spa-react: React Fiber 树与 Router 动态路由提取
+ * - jquery-handler: jQuery 事件定位（把 $.fn 上的回调挂到全局变量并打元素属性）
  *
  * 用法：
  *   node build-hook.js antidebug --out hook-antidebug.js
@@ -28,6 +29,7 @@
   node build-hook.js spa-state --state-path vipInfo.isVip=true --state-path visitUserInfo.isTaskUser=true --out hook-vue-state.js
   node build-hook.js spa-state --registry-root window.videojs --registry-names Player --out hook-registry.js
   node build-hook.js mse-capture --out hook-mse.js
+  node build-hook.js jquery-handler --out hook-jq.js
  */
 
 import {writeFileSync} from 'node:fs';
@@ -56,6 +58,9 @@ import {
 import {
   installSpaStatePatchHook,
 } from './hooks/spa-state-patch.js';
+import {
+  installJqueryHandlerHook,
+} from './hooks/jquery-handler.js';
 import {
   installJsvmpProxyHook,
   installJsvmpTransparentHook,
@@ -107,6 +112,12 @@ const PRESETS = {
     install: installMseCaptureHook,
     description:
       'MSE 流捕获：代理 addSourceBuffer/appendBuffer/endOfStream/URL.createObjectURL，把 blob 视频落盘',
+  },
+  'jquery-handler': {
+    hookId: 'jquery_handler',
+    install: installJqueryHandlerHook,
+    description:
+      'jQuery 事件定位：包住 $.fn 事件方法，回调挂全局变量 + 元素属性，绕开 jQuery 内部闭包',
   },
   'jsvmp-proxy': {
     hookId: 'jsvmp_probe',
@@ -248,6 +259,18 @@ function resolveConfig(preset, options) {
     };
   }
 
+  if (preset === 'jquery-handler') {
+    // ⚠️ 同 mse-capture：默认值只在 hooks/jquery-handler.js 里定义一处，这里不重复给。
+    return {
+      events: options.events ?? [],
+      attrPrefix: options.attrPrefix,
+      globalPrefix: options.globalPrefix,
+      pollInterval: options.pollInterval,
+      maxTries: options.maxTries,
+      maxEntries: options.maxEntries,
+    };
+  }
+
   const scriptUrl = options.scriptUrl ?? '';
   const idSuffix = `:${scriptUrl || 'all'}`;
   if (preset === 'jsvmp-transparent') {
@@ -330,6 +353,13 @@ mse-capture options:
   --track-object-url=false  关闭 URL.createObjectURL 代理（默认开启）
   --sink-var <name>      交付回调所在的全局变量名（默认 __mse_capture_sink）
 
+jquery-handler options:
+  --events <list>       只挂这些事件方法，逗号分隔（如 click,on,submit）；默认全部
+  --poll-interval <ms>  等待 window.jQuery 出现的轮询间隔（默认 200）
+  --attr-prefix <str>   元素属性前缀（默认 data-rjq）
+  --global-prefix <str> 全局变量前缀（默认 rjq_）
+  --max-entries <n>     全局变量上限，默认 2000
+
 cryptojs / smcrypto:
   --algorithms <list>   逗号分隔，如 AES,MD5；默认 all
 
@@ -351,6 +381,8 @@ jsvmp-proxy 追踪开关（默认全开，用 =false 关闭）:
   node build-hook.js spa-state --state-path vipInfo.isVip=true --state-path visitUserInfo.isTaskUser=true --out hook-vue-state.js
   node build-hook.js spa-state --registry-root window.videojs --registry-names Player --out hook-registry.js
   node build-hook.js mse-capture --out hook-mse.js
+  node build-hook.js jquery-handler --out hook-jq.js
+  node build-hook.js jquery-handler --events click,on --out hook-jq-click.js
 `);
 }
 
@@ -432,6 +464,10 @@ function main() {
       'min-bytes': {type: 'string'},
       'max-total-bytes': {type: 'string'},
       'sink-var': {type: 'string'},
+      events: {type: 'string'},
+      'poll-interval': {type: 'string'},
+      'attr-prefix': {type: 'string'},
+      'global-prefix': {type: 'string'},
     },
     allowPositionals: true,
   });
@@ -473,6 +509,10 @@ function main() {
     minBytes: values['min-bytes'] ? Number(values['min-bytes']) : undefined,
     maxTotalBytes: values['max-total-bytes'] ? Number(values['max-total-bytes']) : undefined,
     sinkVar: values['sink-var'],
+    events: values.events ? parseList(values.events) : undefined,
+    pollInterval: values['poll-interval'] ? Number(values['poll-interval']) : undefined,
+    attrPrefix: values['attr-prefix'],
+    globalPrefix: values['global-prefix'],
     antiAntiHook: boolFlags.values['anti-anti-hook'],
     clearGuards: boolFlags.values['clear-guards'],
     blockRedirects: boolFlags.values['block-redirects'],

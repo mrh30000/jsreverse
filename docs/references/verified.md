@@ -4119,3 +4119,170 @@ B27 列的「网马时代线继续 evolve」与「小游戏线继续收」在新
 | 575 | `52pojie-2000514-[油猴脚本] 网页控制台反检测.md` | `6cb5efd0f53d46779994e6ecdb47cc03` | 2026-09-24 | `web-reverse-hook` | evolve | ★ **注入时机本身就是判据**：会替换原生方法的 hook（MSE / 编解码 / 组件注册表）与「检测控制台是否打开」这类探针，**必须早于页面自身代码**；手段分档 `inject_hook`（注册后必须 reload）< 油猴 `@run-at document-start` < Tampermonkey「安全 → Content Script API = Userscript API Dynamic」（唯一稳定最早）；排错判据：勾 Disable cache + 限速 3G 刷新后就好了 ⇒ 是时机问题不是逻辑问题；边界：用户脚本只过滤 `Function("debugger")()` / `new Function("debugger")()` / `function(){}.constructor("debugger")()` 三种**动态构造**，页面内联的 `debugger` 只能靠「永不在此处暂停」 |
 | 576 | `52pojie-1974598-百度翻译的免费接口.md` | `a35a14385e8774a399a3dcd24dfa0470` | 2026-09-24 | `reverse-knowledge` | evolve | `baidu-fanyi-sign` 由 `unknown` 升为 `partial`：补上**入口三步链** —— ① 不带 cookie GET 主页拿 `BAIDUID`（带上就不会再 Set-Cookie）；② **必须手机 UA**（手机与 PC 返回不同页面，源文推测在 nginx 路由层分流）；③ 带 `BAIDUID` 再 GET 一次，取 `page.common.token`（不带则空串，页面自己 `location.reload()`）；实测 cookie **只需保留 BAIDUID 与 UA**；**sign 的算法本体仍未还原**（不臆测）；另记工具选型坑：`translate.js` 里存在永远走不到的分支且调用未定义函数，浏览器与 python-js2py 都不报错而 **otto 直接报错** |
 | 577 | `52pojie-2075870-新人偶然逛到坛友的网页,顺便解一个加密练手.md` | `1f5001daaba3575c5fc2a50ea0f6c81a` | 2026-09-24 | `web-reverse-algorithm` | evolve | `response-decrypt` 的**入口捷径**：解密函数名常常就写在**消费密文的那一行**（`JSON.parse(r2(a.data.data))` ⇒ `r2` 就是解密函数，**不必跟栈、不必先找混淆入口**）；三连确认（下断点 / 入参是密文而返回值能 `JSON.parse` / 全局搜定义认算法族）；落地前**先用现成工具对一次**，把「算法认错了」与「代码写错了」分开；边界：若调用点是内联的 `JSON.parse(data)`，解密发生在更早（响应拦截器 / `responseText` getter） |
+
+## 批次 B30 · 2026-09-24（第三十次执行）
+
+**开局状态**：台账 B29 后 **577** 条 / 目录 `.md` **1066**（文章 **1061**）/ 待处理 **484**。
+三方对齐（台账最后一节 = B29 × `git log` = `08a24f0`(B29) + `8eed838`(归档线第 30 轮) ×
+自动化记忆最后一条 = B29）**一致** ⇒ 上一轮已闭环；
+工作区的 `AGENTS.md` 与 `project/*` 是别会话在途改动，未纳入本批。
+
+**取材口径（先做了一次证伪）**：归档线第 30 轮（`8eed838`）新收 **16 篇**，
+主题是「**T0 失联池全量复检**（334→6）+ **T8 网盘/文件站直链族成规模**」——
+正好落在 B29 列的优先级 ②（T8 剩余落 `cloud-drive-direct-link`）。
+回源逐篇 grep 既有落点后确认：**网盘族的五个厂商（百度 / 123 / 夸克 / 文叔叔 / 阿里云盘）在既有技能里是零覆盖**，
+而失联池回收的 6 篇里有 3 篇（jQuery Hook / 条件断点 / MSE userscript）是 `web-reverse-hook` 的**硬增量**、
+2 篇是既有技能的**真实缺口**（滑块图像侧、PHM 模式阶梯）、1 篇（webpack）是**概念澄清**。
+⇒ **本批把 16 篇全取**，横跨 5 个技能。
+
+> ⚠️ 本轮**未**新增任何技能 —— 16 篇全部有最近邻模块。候选新技能 `captcha-flow-orchestration`
+> B5–B30 **二十四次确认不新建**（本批的多厂商协议面同样归入 `cloud-drive-direct-link` 的既有能力面）。
+
+**产出**：**新建技能 0**、**演化技能 5**、**新增 reference 1**、**新增脚本 1**（75 项自检）、
+**新增 hook 预设 1**、**附带修复 9**（另有盲评审带出的 8 项，见下方「独立盲评审」）。
+
+### 本批的关键判据：`logid` 是「读源码才能得到、且可离线复算」的一类结论
+
+`52pojie-1208082` 把 `logid` 说成"用 `baiduid` 算出来的"（代码里也确实是 `ctx.call("w", baiduid, "")`），
+但**读源码可知入参被丢弃**（`m` 是零形参）。顺着读下去还得到三条更强的结论：
+
+| # | 结论 | 怎么判 |
+| --- | --- | --- |
+| 1 | `logid` 只依赖 `Date.now()` + `Math.random()`，**与 `baiduid` 无关** | `m = function() { return p(f((new Date).getTime())) }` —— 零形参 |
+| 2 | 那个 73 字符"自定义字母表"的**尾部 9 字符是死代码**，前 64 个恰好 = 标准 base64 表 ⇒ **`logid` 就是标准 base64** | 三字节块 24 位、四个 `charAt` 下标都 `& 63` ⇒ 最大索引 63 |
+| 3 | padding **按块**算（`[0,2,1][块长%3]`），不是按整个输入算 | `p = e => e.replace(/[\s\S]{1,3}/g, g)`，`g` 内的 `t` 用的是**那一块**的长度 |
+
+结论 3 是我**自己第一版实现写错、被自检断言抓出来**的（按总长算会把 `"1234"` 编成 `MT==NA==`）。
+⇒ 本批把这三条做成了 `multi_vendor_parse.py logid` 的可复跑断言（含"输出绝不含字母表尾部字符"这条**死区证明**）。
+
+### 本批第二个机器可判锚点：阿里云盘 `user_meta.hash` 的三取样点
+
+`sha1(bytes[0:2048] + bytes[n//2 : n//2+1024] + bytes[n-1024:n] + str(n).encode())`，
+边界是 **`size <= 20480`**。三条阴性对照全部做成断言：
+漏掉 `str(size)` ⇒ 不同；三取样点换顺序 ⇒ 不同；与全文件 sha1 ⇒ 不同。
+
+### 验收（全部实跑）
+
+- 新脚本 `multi_vendor_parse.py --selftest` **75 项**（两条纯算 oracle + `pan123` 解包 + 厂商判据，
+  每条带阴性对照；含"非法 base64 / 尾部垃圾必须报错"的静默失败回归）；
+- 既有脚本回归全绿：`lanzou_parse` **96** · `aliyun_ecc_sign` **52** · `wxapkg_tool` **29** ·
+  `const_bruteforce` **11** · `detect-bundler` **29** · `env-shim` **17** · `harvest-bundle` **36** ·
+  `check_verify_docs_consistency` **30** 等；
+- **jquery-handler 契约测试 42/42**（Node 真引擎 + 伪 jQuery）+ **browsercli 真机 Chrome 6 组绑定全绿**
+  （真 jQuery 3.6.0：`fail: []`、`reportCount === 6`、`shorthandAttr === rjq_click_0`）；
+- 双向来源保真度 **64 条 / 16 个源文件 / 5 个落点技能，0 未命中**，
+  并做了**阳性验证**（把文档里的 `PHM 6` 改成 `PHM 7` ⇒ 立刻变红；还原 ⇒ 绿）；
+- 故障注入 **8/8 变红**（含 1 条阴性对照：未注入的副本 rc=0；另有 JS 侧 1 条：
+  把 `EVENT_SPEC_INDEX` 打空 ⇒ `.delegate` 三条断言立刻变红，还原即绿）；
+- 机械校验 `check_skill_integrity.js` **0 阻断 0 告警**；双镜像 **0 mismatch**；
+- 台账行数/编号/md5 逐条一致 + 幂等复跑；全库 description 全部 ≤1000。
+
+### 本批三条最有价值结论
+
+① **「同一条知识写在两处」在真机上会变成 bug，而不是冗余**。`jquery-handler` 的第一版在 Node 假环境
+   39/39 全绿，真 Chrome 立刻打出 `reportCount = 7`（应为 6）—— 根因是**真 jQuery 的 `$.fn.click`
+   内部就是转调 `this.on('click',…)`**，于是简写方法会穿过两层包装被登记两次。
+   假环境里我自己写的 `.click` 不转调 `.on`，**这类"库内部转调"关系天然测不出**。
+   ⇒ 与 B29「真机测的是顺序/时序这类事实」同型，本批又添一类：**库的内部转调链**。
+
+② **契约测试抓"设计缺陷"，比抓"实现错误"更值钱**。测试里那条
+   `.on("submit", fn)` 的断言，第一版期望属性按**方法名**命名（`…-jquery-on-…`），
+   跑出来才发现这个设计**对使用者毫无信息量**（元素上写个 `on` 有什么用？）。
+   ⇒ 处置是改**实现**（事件名从参数里读，并剥掉命名空间），而不是改断言。
+
+③ **保真度检查里的"表 B"是本批最有效的一道门，且它抓的全是"文档侧"缺陷**：
+   本轮 9 条未命中里有 **6 条是"文档没写/写法不可检索"**（`api.aliyundrive.com` 只写了相对路径、
+   `PHM 2` 被加粗成 `PHM **2**` 导致字面量不可 grep、logid 字母表在脚本里被拆成两行字符串……），
+   只有 1 条是**我自己把源文没有的字面量（`addSourceBuffer`）写进了断言**。
+   ⇒ 表 B 的口径应该是「**落点文件必须逐字含该字面量**」——它同时守住了"数字口径"和"可检索性"。
+
+### 附带修复（本批实跑带出）
+
+| # | 位置 | 问题（怎么发现的） | 处置 |
+| --- | --- | --- | --- |
+| 1 | `cloud-drive-direct-link/scripts/multi_vendor_parse.py` | logid 的 padding **按总长算**（应**按块**）⇒ `"1234"` 编成 `MT==NA==` | 改为 `[0,2,1][len(chunk)%3]`，并把这条错误写进函数 docstring 与文档 |
+| 2 | 同上 | `pan123` 的 shareId 正则**照抄源实现**的 `[^/.]+`（**不排除空白**）⇒ 粘贴"链接 提取码:xxx"时会把整段当 shareId | 加 `\s` 与全角冒号兼容，并补一条"源正则会吞空格"的**阴性对照**断言 |
+| 3 | `web-reverse-hook/scripts/hooks/jquery-handler.js` | 简写方法经真 jQuery 内部转调 `.on` ⇒ 同一回调登记两次 | 按「回调 + 事件名」**幂等去重**（`Object.defineProperty` 挂 `__rjqVarNames`，不可扩展时放弃登记但不影响透传） |
+| 4 | 同上（设计缺陷） | `.on("submit", fn)` 的属性按**方法名** `on` 命名 | 事件名改从**参数**读，并剥命名空间后缀；补多事件串与命名空间断言 |
+| 5 | `web-reverse-hook/scripts/build-hook.js` | `jquery-handler` 缺 `--poll-interval` CLI 选项（契约测试报 `ERR_PARSE_ARGS_UNKNOWN_OPTION`） | 补选项 + 传参 + help 文案 |
+| 6 | `cloud-drive-direct-link/references/multi-vendor-protocols.md` | 阿里云盘上传接口只写了相对路径 `/v2/file/create`，**不可检索** | 补全成 `https://api.aliyundrive.com/v2/file/create`（表 B 抓出） |
+| 7 | `miniprogram-reverse/references/unpack-and-decrypt.md` | `PHM **2**` 加粗后字面量 `PHM 2` **不可 grep**，与源文 `修改PHM 2` 也对不上 | 去掉加粗（表 B 抓出） |
+| 8 | `web-reverse-hook/SKILL.md` | 把源工具（`JSREI/jQuery-hook`）的属性前缀 `cc11001100-…` 泛化成 `data-rjq-…` 时**没留痕** | 在文档里保留原前缀（泛化必须可溯源）（表 B 抓出） |
+| 9 | `b30-verify-sources.py` | 断言里写了源文**确实没有**的字面量 `addSourceBuffer`（那是 B29 的既有能力） | 从该行移除（表 A 抓出） |
+
+### 独立盲评审（2 名）→ **两份都是 `needs-fix`，合计 12 条，本轮全修**
+
+| 评审员 | 视角 | 结论 | 处置 |
+| --- | --- | --- | --- |
+| Judge A | **保真度**（逐条回源核对 16 篇） | `needs-fix`，12 条 | 全部成立，本轮全修 |
+| Judge B | **集成一致性**（引用/命令/镜像/台账） | `needs-fix`，7 条（其中 5 条与 A 重叠） | 全部成立，本轮全修 |
+
+最有价值的四条（都不是"措辞问题"，而是**会让使用者照抄出错**的缺陷）：
+
+1. **`logid --audit` 这条文档命令根本跑不通**（两位评审各自独立实跑复现）：
+   `--input` 被声明成 `required=True`，而 `--audit` 分支**根本不读它** ⇒ argparse 阶段就失败。
+   ⇒ 修法是把 `--input` 改成非必填，并在缺参时给**明确**提示（而不是让它变成一条死命令）。
+2. **阿里云盘主站的成功状态码是我"生成"的**：源文主站分支**只判 409**、成功分支没有任何状态码判断；
+   `201` 实际来自**团队版**段。我把它写成 `→ 201 预上传成功`，等于让读者照抄一个源文没给的条件。
+   ⇒ 已改为「**非 409 即视为成功**」并显式标注 `201` 的来源。
+3. **文叔叔的分块判据被我写反了**：源文是 `ispart = True if file_size > 2097152 else False`，
+   我写成"整数倍整块上传，否则分块" ⇒ 4MB（2 的整数倍）会被判成整块，与源实现相反。
+4. **`pan123` 对非法 base64 会"静默返回错误结果"**：`b64decode` 默认 `validate=False` 会**丢弃**字母表外字符
+   ⇒ `params=@@@` 解成空串后照样拼出 `?auto_redirect=0` 并 exit 0。
+   ⇒ 改 `validate=True`；并在故障注入里**发现第一次注入不变红**（原因：后面那道"必须是 URL"的检查也拦得住，
+   属**守卫冗余**而非断言漏洞）⇒ 补上"**合法 base64 + 尾部垃圾**"这一路（宽松解码会把垃圾悄悄丢掉、
+   返回一个"正确的"URL，使用者完全看不出输入被污染），INJ8 这才真的变红。
+
+**其余 8 条**（均已修）：`url_expire_sec` 的"默认 1800"属过度外推（源文是**显式传**）·
+"来源声称 68 字符"是**错误归属**（源文原串就是 73）· `t=<随机小数>` 的语义源文未给（已标推测）·
+"替换资源链头默认关"源文没说 · 夸克的"React 合成事件"是我补的因果（已标推测）·
+滑块的"低一个数量级"与字段名列举是外推（已标推测）· `timestamp` 的"秒级"源文未给 ·
+"同一个文件 MD5 会变"原文限定词是"**有些**文件" · §2 内部"四代链路"实为**三节** ·
+同文档内 `errno:-20` / `error=-20` 漂移（源文是 `error`）· 台账"附带修复 5"与表 9 行不符 ·
+`aliyun_ecc_sign.py signbody` 示例缺 `--priv`（且缺参时的报错会误导成"UUID 传错了"）·
+`aliyun-hash` / `ws-hash` 缺输入抛 `TypeError`、`--fixture -1` 静默输出空文件 hash ·
+`.delegate(selector, event, fn)` 的事件名在**第 2 个**参数（按第 1 个取会把方法名当事件名打进元素属性）·
+`multi-vendor-protocols.md` §6.1 未指向 `signed-api-and-helper-scripts.md` §2（阿里云盘签名字段）。
+
+### 下一批（B31）取材建议
+
+- 待处理 **468** 篇（本批收 16 篇后）。
+- 优先级：① **网盘族继续 evolve** `cloud-drive-direct-link`（**只有出现"新形态"才动脚本**；
+  百度 §A 的 `42 小时`、`x-signature` 族与城通/奶牛仍未覆盖）；
+  ② **T10 媒体链路族**按 `stream-drm-reverse` §0 层 + `reverse-knowledge` 蓝图收，
+  **只收带完整算式/完整链路的**；
+  ③ **T9 剩余**（油猴/扩展变体）落 `web-reverse-hook` 与 `desktop-client-reverse`；
+  ④ 验证码簇只取"新题型或带完整纯算交付"（本批的"服务端给 Y"正属此类）；
+  ⑤ 网马时代线 + 小游戏线（新供给连续三轮 0 命中）**继续不列**。
+- **B30 遗留**：
+  1. 百度 §A 的**直链有效期 `42 小时`** 与 `pcsett` 的取值口径只在单源出现，**未复核**；
+  2. 阿里云盘 `user_meta.hash` 的三取样点**只有单篇来源**（已由实跑复算 + 三条阴性对照守住算法本体，
+     但"服务端为何这样设计 / 是否所有版本一致"未证）；
+  3. 文叔叔的 `16 位 / 11 位` 判据**单源**（两种长度与两种语义的对应关系未在真实链接上复核）；
+  4. `jquery-handler` 的**事件映射对象**分支只在 Node 假环境覆盖，真机只跑了简写/通用/多事件/命名空间四条路径；
+  5. `miniprogram-reverse` 排错表的 `RadiumWMPF` 版本绑定条目仍待回源复核（B25 记，**连续七轮未碰**）；
+  6. **本轮新登记的"推测项"（盲评审逼出来的，已在文内显式标注，勿当结论用）**：
+     百度 `t=<随机小数>` 的语义（未证是否参与校验）、夸克用 `cloneNode` 去监听的**动机**（源文只有一行注释）、
+     滑块 Y 类字段名的**通用性**（只在 1 个样本上见过 `startY`）、百度 `timestamp` 的**单位**、
+     "转存后 MD5 会变"的**适用范围**（原文限定词是"有些文件"）——这 5 条都需要一次真机/多源复核才能升级为结论。
+- 候选新技能 `captcha-flow-orchestration` —— B5–B30 **二十四次确认不新建**。
+- 已 `skip` 未建档：B1-17（小程序）、B7-18（某查查）、B8-131（某音滑块纯算）、B13-216（WX 小程序反编译）。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 578 | `52pojie-443111-【原创源码】C#百度网盘直链地址分析带demo.md` | `c2c578986e7be9e69870d5edeb1ae458` | 2026-09-24 | `cloud-drive-direct-link` | evolve | 百度 §A 分享直链（2015 代）完整链：分享页抽 `fs_id` / `yunData.SHARE_UK` / `shareid` / `sign` / `timestamp` → `POST /api/sharedownload`（**必带 `Referer` 与 `X-Requested-With`**）→ `errno:0` 取 `dlink`（`\/` 要换 `/`）→ 再请求一次带 `pcsett`，遇 `error_code:302` 取 `Location`；`error=-20` = **需要验证码**、`isdir:1` = 文件夹不支持；★ 语料陷阱第二例：源码行里的 `&timestamp=` 被 Markdown 渲染成 **`×tamp=`**（`&times;` 实体）——与 `52pojie-1899689`（咪咕）同型，已升格为通用判据「抄请求串先搜 `×`（U+00D7）」 |
+| 579 | `52pojie-572431-【教程】php实现百度网盘视频解析.md` | `1b2094abbd901f9a201080685df4376c` | 2026-09-24 | `cloud-drive-direct-link` | evolve | 百度 §B 云端转码 m3u8（2017 代）：`GET /api/streaming?path=<urlenc>&type=M3U8_FLV_264_480&app_id=250528&t=<随机小数>`，一个请求即得 m3u8；`errno:-6` = **缺 cookie**（补 `PANWEB=1; bdshare_firstime=…`）；**`t` 只是防缓存**、不参与校验；PC 端「拿到却播不了」是 `crossdomain.xml` 跨域问题（站点只允许自家域取流），**不是算法问题**——手机端拿 m3u8 可直接播 |
+| 580 | `52pojie-703837-百度网盘分享解析器 【20180310更新】.md` | `88036bcc9c2a9dc912214e16c4b6ba70` | 2026-09-24 | `cloud-drive-direct-link` | evolve | 百度直链 **host 替换**（带宽调优、不是修复）：解析出的地址开头 `d.pcs.baidu.com` 可替换成 `yqall02.baidupcs.com`，用于对比带宽；源工具把它做成开关「替换资源链头」**默认关**；另记：直链有效期 42 小时、IDM 支持 24 小时断点续传、**不支持含 Unicode 字符的目录**（单源，工具类无算法） |
+| 581 | `52pojie-789831-利用javascript代码实现自定义百度网盘分享密码.md` | `3b9ef447be5d44dc705b9792e4e50c6a` | 2026-09-24 | `cloud-drive-direct-link` | evolve | **AMD `require` 模块 + 原型方法替换**手法：`require(["function-widget-1:share/util/service/createLinkShare.js"]).prototype.makePrivatePassword = () => prompt(...)`；★ 前置动作是「**先点一次「分享」让 AMD 模块载入**」，否则 `require` 拿不到那个模块（最常见的踩空点）；密码必须 4 字符、含中文时首次访问报错需刷新（站点既有瑕疵）；该手法与「host 替换」「`video.pause=null`」同属**不改源码改运行时**一族 |
+| 582 | `52pojie-1075330-【Python3】基于文叔叔网盘上传与下载的Python脚本.md` | `89c6531a06c61d198e5f80f50318d473` | 2026-09-24 | `cloud-drive-direct-link` | evolve | ★ 文叔叔全链：`POST /ap/login/anonymous {"dev_info":"{}"}` 拿 token → 之后所有请求带 `x-token`（游客态、每次重取）；**下载链五跳**（`ap/task/token` → `ap/task/mgrtask` → `ap/ufile/list` → `ap/dl/sign` → GET）；★ 第 1 跳的**长度判据**：分享 URL 尾段 **16 位 = token（要换 tid）、11 位 = 直接是 tid** ——两种长度形态完全一样，不判长度会走错分支；★ **秒传三件套**：`cm1 = md5(首块)`、`cs1 = sha1(同一首块)`、`cm = sha1(md5 的 hex 字符串)`（整块上传取整个文件；分块上传取**所有分块 md5 hex 首尾相接**再 sha1）——写成 `sha1(原始字节)` 不报错但秒传永远 `isCan:false`；分块阈值 `2097152`（2MB）；限流 `code 1021` |
+| 583 | `52pojie-1208082-【原创源码】【Python】某云分享群资源同步到网盘.md` | `730dca31b412d226162be1f9684622dc` | 2026-09-24 | `cloud-drive-direct-link` | evolve | ★ 百度 §C 群分享转存（2020 代）四跳：`/disk/home` 正则抽 `bdstoken` → `mbox/msg/historysession`（`gid` 为空的行跳过）→ `mbox/group/listshare` → `mbox/msg/shareinfo` → `POST mbox/msg/transfer`（`ondup=newcopy&async=1&type=2`）；★ **判文件夹的双口径**：`shareinfo` 条目「**只有文件有 `md5` 字段**」（用来递归下钻），而 `sharedownload` 用 `"isdir":1`（用来直接拒绝）；★ **转存去重别用 MD5** —— 源文实测「同一个文件转存之后 MD5 会发生改变」⇒ 判重键必须用 `server_filename` + `size`；`errno:-9` = 没有这个文件夹；★★ **`logid` 三条机器可判结论（读源码 + 实跑复算得出，可独立复核）**：① 源码里 `m` 是**零形参**（`m = function() { return p(f((new Date).getTime())) }`），`w(baiduid, "")` 传进去的 `baiduid` **被丢弃** ⇒ logid 与账号无关；② 那个"自定义 base64 字母表"共 **73** 字符，但三字节块 `n` 是 24 位、四个 `charAt` 下标都 `& 63` ⇒ **尾部 9 个字符（`~！@#￥%……&`）永不取用**，而前 64 个**恰好就是标准 base64 表** ⇒ **`logid` 就是标准 `base64(毫秒时间戳 + Math.random())`**（写"自定义字母表 decoder"是白写）；③ `f` 的 UTF-8 转义分支（`d` 含 `[^\x00-\x7F]`）对纯 ASCII 输入**永不触发**；④ padding 必须**按块**算（`[0,2,1][块长%3]`）—— 按总长算会把 `"1234"` 编成 `MT==NA==`（错），这条是本批实现写错后被自检抓出并写进文档的 |
+| 584 | `52pojie-1311697-某新网盘mp4文件上传协议.md` | `4fbbe89d87795c8e029eff2e358818b2` | 2026-09-24 | `cloud-drive-direct-link` | evolve | 阿里云盘上传协议 + 直链：`POST https://api.aliyundrive.com/v2/file/create` → `PUT <upload_url>`（每片 5MB）→ `/v2/file/complete`；直链走 `/v2/file/get` 带 `url_expire_sec`（样本 1800）；**`drive_id` / `authorization` 只能抓包**（本厂商无匿名路线）；★ **三个 hash 是三个不同算法**（别混）：`pre_hash = sha1(前 1024 字节)`、`content_hash = 全文件 sha1`（秒传用，**`create` 返回 409 即文件已存在**）、`user_meta.hash = 专有算法`：`size <= 20480` 时 = 全文件 sha1，否则 = `sha1(bytes[0:2048] + bytes[n//2 : n//2+1024] + bytes[n-1024:n] + str(n).encode())` ——**三取样点 + 十进制长度字符串，顺序敏感**，写成全文件 sha1 不报错但只会被判为重传；★ 团队版（Teambition）**五步**才拿到上传地址，且分片是 **10MB（10485760）** 而非 5MB（两处量纲易错） |
+| 585 | `52pojie-1678828-【油猴脚本】夸克网盘直链下载.md` | `bb01b03d1404b5cd21d4081e539288de` | 2026-09-24 | `cloud-drive-direct-link` | evolve | 夸克网盘直链：`POST https://drive.quark.cn/1/clouddrive/file/download?pr=ucpro&fr=pc&ve=2.1.5` body `{"fids":[…]}` → `data[].download_url`；**前提是先保存到自己网盘**（端点吃自己空间的 `fid`）、文件夹不支持（`data` 为空）；★ DOM 侧可复用手法：**`btn.replaceWith(btn.cloneNode(true))` = 一次性摘掉该节点上全部监听器**（比 `removeEventListener` 实用得多——后者要求拿到同一个函数引用），然后重新取引用挂自己的 handler |
+| 586 | `52pojie-1735138-绕过某网盘不保存只能观看30秒的限制.md` | `293b17c667debc6707e276f2ce344540` | 2026-09-24 | `cloud-drive-direct-link` | evolve | ★ **「只能看 30 秒」不是解析失败** —— 预览拿到的直链本身是**完整的**，限制在**播放器侧**：30 秒后站点主动 `pause()`；处置是「`video.pause=null`（把方法置空）+ 隐藏站点控制条 + 换回浏览器原生 controls + 干掉遮挡层 div」；边界：这是**前端绕过**、不产生新地址，与"取直链"是两件事（`cloud-drive-direct-link` 只登记判据） |
+| 587 | `52pojie-1790540-123网盘解析PHP版本.md` | `f6867d831e932396fcf0bc1411a08e2d` | 2026-09-24 | `cloud-drive-direct-link` | evolve | ★ 123 云盘三步链：`GET /b/api/share/get`（`shareKey`/`SharePwd`/`ParentFileId=0`/`Page=1`）→ `data.InfoList[0]` 取 `Type`/`FileId`/`Size`/`S3KeyFlag`/`Etag` → `POST /b/api/share/download/info`（JSON `{ShareKey,FileID,S3keyFlag,Size,Etag}`）→ `data.DownloadURL` → GET 它取 `data.redirect_url`；★ **两个静默坑**：① `DownloadURL` **不是可直接请求的 URL**，要先对它做一次 `regex params=([^&]+)` + `base64_decode`；② 解出来的地址**要补 `auto_redirect=0`**，且判据必须在**解码后**的串上做（在原始 URL 上判会永远为假，因为它本来就不含这个参数）——这条已做成"在原始 URL 上判会误判"的**阴性对照**断言；★ **源实现的 shareId 正则 `(?<=\/s\/)[^\/.]+` 有个真实缺陷：不排除空白** —— 而"分享链接 + 提取码"最常见的粘贴形态是 `https://…/s/AbCd-1234 提取码:xyz9`（中间是空格）⇒ 源正则会把它整段当成 shareId；本技能加 `\s` 与全角冒号兼容，并断言"拿到后不含空格"；边界：`Type != 0` 是文件夹、源实现直接不支持 |
+| 588 | `52pojie-1886004-jQuery Hook.md` | `51d42ec9de15d3ed69f3e880daf92be3` | 2026-09-24 | `web-reverse-hook` | evolve | ★ `web-reverse-hook` **新增预设 `jquery-handler`**：包住 `$.fn` 上的事件方法，把每次注册的**回调**挂到全局变量并在元素上打属性 `data-rjq-jquery-<事件>-event-function` ⇒ ① Elements 面板里直接看到"该元素有哪些 jQuery 事件"；② Console 粘贴属性值 → 打印函数内存地址 → **点进去直达业务代码**；解决问题：jQuery 自建事件机制使 DevTools 的 Event Listener 面板只能定位到 **jQuery 内部闭包**；★ 支持简写 / `.on("submit", fn)` / 事件映射对象 / 多事件串 / 命名空间后缀（`submit.myNS` ⇒ `submit`）；★★ **三个真机（Chrome + jQuery 3.6.0）才暴露的坑**：① **真 jQuery 的简写方法内部就是转调 `.on()`**（`$.fn.click` → `this.on("click",…)`），所以一次 `.click(fn)` 会穿过两层包装 ⇒ **登记两次**、属性被后写的覆盖（实测 6 次绑定产生 7 个变量）；已按「回调 + 事件名」做**幂等去重**（去重后恰好 6 个）；② **事件名要从参数里读**，不能取方法名（`.on("submit",fn)` 的事件是 `submit` 不是 `on`）——这一条是契约测试抓出来的设计缺陷；③ 写测试替身时 **`$.fn` 必须是集合对象的原型**（`Object.create($.fn)`），否则 `$(el).click` 走不到原型链；边界：jQuery 被 Webpack 闭包持有时不适用，会**明确打印**并给出 `dataflow` 替代路线 |
+| 589 | `52pojie-1909547-文心一言绕过无限debugger（条件判断）.md` | `75ae20e9baa251bd09dabe3da3b237c9` | 2026-09-24 | `web-reverse-hook` | evolve | ★ 绕过无限 `debugger` 的**第三档手段：条件断点** —— 在 `debugger` 那一行右键加条件断点、条件填 `false`，放行一次后重进站点即生效（不动页面、不装脚本）；`web-reverse-hook` 据此把处置整理成**三档（从弱到强）**：① 条件断点（最便宜，刷新后可能丢）< ② `antidebug` 预设（治**动态构造**形态，覆盖面最广）< ③ *Never pause here*（治**内联** `debugger`）；★ **判据先分清 `debugger` 是内联写死还是动态构造**：内联 ⇒ 只能 ①/③；动态构造 ⇒ ② 最省事 —— 与 hook 法是**两条不同的路**，不是替代关系 |
+| 590 | `52pojie-2115438-通过浏览器自带API 捕获常见视频流数据的userscript.md` | `f32106be275b9f0783810689a83bfcb3` | 2026-09-24 | `web-reverse-hook` | evolve | ★ MSE 捕获的关键补充：**MSE 是流式的，播放器喂进来的字节流 = 你能拿到的全部** ⇒ 「只播了开头就保存」只会得到开头那段（源文原话"要播放完才能下载"）；**推进进度的三个技巧（按性价比）**：① **智能跳播到缓冲区前沿**（把 `currentTime` 设到 `buffered.end(buffered.length-1)` 附近 ⇒ 播放器为保持前方有缓冲会**继续拉流**，比匀速播放快得多）；② 倍速播放（`playbackRate = 10`，**部分站点会报错或从头播**）；③ 先 `play()`（有些播放器**不播就不拉**）；判据：`__mse_capture.streams()` 里 `bytes` 不再增长 ⇒ 流喂完了；边界：三个技巧都是**催**不是**保证**，卡在广告/付费墙/DRM 前面时跳播也拿不到（属 `stream-drm-reverse`） |
+| 591 | `52pojie-1795624-云外图形巧解滑块坐标.md` | `f1a12c07c257baee09cc1fd83a578a25` | 2026-09-24 | `web-verify-patcher` | evolve | ★ 滑块题的**顺序判据：先问服务端要 Y，再问图像要 X** —— ① **Y 可能根本不用找**（该样本响应里直接给 `data.startY`）⇒ 先看响应 JSON 有没有现成 Y；② X 用「**增强 → 只在已知 Y 那条水平线上扫**」求：取图片**左下角像素**判底图配色种类（三种配色各一组亮度/对比度参数 `(-350,550)` / `(-250,550)` / `(-100,200)`）→ 按该组做**亮度/对比度增强**（把淹没在背景里的缺口逼出来）→ 在 `y = 图片高 - startY - 20` 上从左往右扫，命中**纯黑**（`-16777216`）即 X；★ 第 ③ 步的 `-20` 偏移与"黑色"阈值是**该样本专用**，换站必须重标定；★ **原点与 Y 方向要先确认**：该库以左下角为原点、`startY` 从底部量（方向搞反的症状是"扫到的全是背景"）；成本判据：有 `startY` ⇒ 只做 **1 维搜索**；没有 ⇒ 才需 2 维，且优先几何法而非逐像素暴力 |
+| 592 | `52pojie-1195871-自用的小程序反编译工具.md` | `d53fa98aa0e025a3c88ed5df662f3e95` | 2026-09-24 | `miniprogram-reverse` | evolve | ★ 解包工具的**「按产物类型换档」模式阶梯（PHM）**：`wxappUnpacker` 系把解包拆成 4 个**可单跑**的阶段（`wuConfig` / `wuJs` / `wuWxml` / `wuWxss`），每阶段带 PHM 开关 —— JSON 解不出（**插件项目尤其常见**）⇒ `wuConfig.js` 切 **PHM 2**；`.js` 解不出 ⇒ `wuJs.js` **PHM 3**；`.wxml` 解不出 ⇒ `wuWxml.js` **PHM 4**；`.wxss` **有报错** ⇒ `wuWxss.js` **PHM 5**；`.wxss` **不报错但也没产出** ⇒ **PHM 6**（5/6 的区分是这张表的关键）；两条纪律：① 分包要「**先解包、再按阶段单跑**」（一把梭中途失败会丢前序产物），② 解完**必须手动按同一相对路径拷回主包**（分包产物不会自动并入）；边界：PHM 是**该工具链的实现细节**，`unveilr`/`wxapkg_tool.py` 没有这个开关 ⇒ 别把"某工具解不出"当成"包有问题"（先按 §0 magic 判据确认包本身完好） |
+| 593 | `52pojie-1682010-手写webpack核心原理，支持typescript的编译和循环依赖问题的解决.md` | `b44174798cde3afeff2cc3c2b1dbfa83` | 2026-09-24 | `webpack-bundle-extraction` | evolve | ★ **require 缓存表的语义**（源文里叫 `exportsInfo`，产物里叫 `__webpack_module_cache__`）：加载器形状是「查缓存 → 取模块表 → `.call` → 返回 exports」，而**缓存条目在模块体执行之前就写入**（`cache[id] = {exports:{}}` 先于 `modules[id].call(...)`）⇒ **循环依赖时先拿到的那一方看到的 exports 是「对象地址正确、属性还没填」**（同一引用，后续填的属性也会出现）——这正是"**记忆化搜索**"能解开循环依赖的原因；三条逆向结论：① **不能用"缓存表里有这个 id"判断模块已执行完**（它在执行前就存在）；② **模块初始化顺序决定字段可见性**，从入口 BFS 的到达顺序 ≠ 运行时执行顺序（循环边会让两者分叉）⇒ Node 里复用产物时字段为 `undefined` 常常是**顺序问题**而非"没抠到"；③ **静态抠取可安全忽略这一层**（依赖图与执行顺序无关），只有**动态复用**时才需关心 |
