@@ -109,6 +109,48 @@
 4. **边界**：这类"绕过门禁"只适用于**自己有权访问的内容**；源文自己也在开头放免责声明。
    把它当技术理解（请求头/浏览器设置能被谁改），不要当推荐做法。
 
+### §1.7 第三种用途：直接改本地已安装扩展的 JS（注入伪造权限对象）
+
+§1.1–§1.5 是**读扩展 / 改扩展的判断**，§1.6 是**用扩展改页面**；本节是第三种 ——
+**直接改扩展自己的前端 JS 文件**（**不重打包、不签名**），路子是「把前端权限对象伪造出来」。
+
+案例（`52pojie-1940437`，Circle 阅读助手；该篇是**转述**，源文首行点名了另一篇逆向笔记原作者
+**like御坂美琴**「`[javascript][chrome插件]Circle 阅读助手 v3.1.2 逆向笔记`」`52pojie-1940297` ⇒
+引用时**连出处一起写**）：
+
+1. `chrome://extensions/` → 找到 **Circle 阅读助手** → 点击**详情** → 复制 ID：`dhpfcgilccfkodnhbllpiaabofjbjcbg`；
+2. 找文件存储位置（源文用 `Everything` 按 ID 搜到扩展目录）；
+3. 打开 `controller/setting.js`；
+4. `Ctrl+H` 替换（源文原文）：
+
+```js
+// 原：
+return (0, t.useContext)(i);
+```
+
+```js
+// 改为：
+let temp = (0, t.useContext)(i);
+        temp.app.user = {
+          roles: ["premium", "member"],
+        };
+        return temp;
+```
+
+即：**先取 `useContext` 的返回值到 `temp`，往上面注入伪造的权限对象**
+（`temp.app.user = { roles: ["premium", "member"] }`），**再 `return temp`**；
+5. 保存 ⇒ **刷新页面即解锁付费功能**。
+
+**判据与纪律**：
+
+1. 这是**改本地已安装扩展文件**，**不碰服务器** ⇒ 只在该扩展**把权限判断放在前端**时有效
+   （与 §4 的「改判断不改字符串」、以及本技能反复强调的「校验在服务端就别在前端使劲」是同一件事）；
+2. 改完要**刷新页面** —— 源文原话「如果已经缓存页面了的，重新刷新页面即可」，已缓存的页面不会生效；
+3. 该篇是**转述**（见上），引用/复现时保留原出处。
+
+> 与 §1.3 的差别：§1.3 改的是**许可校验的判断**（状态机 / 令牌 / 校验函数），本节改的是
+> **消费权限的那个对象**（直接给 `app.user` 塞一个 `roles`）—— 前者要找到赋值处，后者只需找到取用处。
+
 ---
 
 ## §2 nw.js（`nwjc` 二进制加密）
@@ -237,6 +279,7 @@
 | 资源解密"能跑就不要逆" | `52pojie-1679769` | `decryptImg`、`compress_texture` |
 | Electron 埋点法 + Debugtron | `52pojie-1847258` | `console.log("1")…`、`asar extract/pack`、Debugtron |
 | 扣出来不对 ⇒ 还有一层 | `52pojie-1847258` | "可以看到不对" ⇒ "确实又进行了一次 base64" |
+| 扩展本地 JS 替换（注入伪造权限对象） | `52pojie-1940437`（转述自 `52pojie-1940297`） | 扩展 ID `dhpfcgilccfkodnhbllpiaabofjbjcbg`、`controller/setting.js`、`(0, t.useContext)(i)`、`temp.app.user`、`roles: ["premium", "member"]` |
 | 扩展「门禁绕过三法」与白名单字典 | `52pojie-1768343` | `paywallSMWhitelistDict`、`paywallSpoofWhitelistDict`、`paywallCookieWhitelistDict`、`paywall_bypass.js` |
 | Referer 改写（删 + push `t.co`） | `52pojie-1768343` | `details.requestHeaders.filter(...)`、`"value": "https://t.co/"` |
 | Googlebot UA + `X-Forwarded-For` 成对伪装 | `52pojie-1768343` | `Googlebot/2.1`、`66.249.66.1` |

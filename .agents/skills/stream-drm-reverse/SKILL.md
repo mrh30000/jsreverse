@@ -1,6 +1,6 @@
 ---
 name: stream-drm-reverse
-description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链路逆向技能：先定位「加密发生在哪一层」，再逐层解密。触发词：`m3u8`、`ts`、`EXT-X-KEY`、`METHOD=AES-128`、`SAMPLE-AES`、`AES-128-PES`、`AES-128-ECB`、`decryptdata.key`、`qiniuDRMKey`、`encrypt_info`、`protectedLicenses`、`GetLicense`、`GetProvision`、`service_name=mdcm`、`KID`、`CEK`、`CENC`、`cenc:pssh`、`cbcs`、`enca`、`cdm`、`widevine`、`playready`、`FairPlay`、`skd://`、`tokenVideoKey`、`h5e`、`liveLineUrl`、`streamName`、`bilidrm`、`data-keys`、`mp4decrypt`、`pywidevine`、`.wvd`、`KeyDive`、`wvdumper`、`MediaKeys.createSession`、`requestMediaKeySystemAccess`、`generateRequest`、`videojs-contrib-eme`、`SampleAesDecrypter`、`getAvcEncryptedData`、`funcNN_TEA`、`PES`、`NALU`、`HEAPU8`、`_emscripten_run_script`、`importObject`、`sekiro`、`ffmpeg -decryption_key`、`EPUB`。用户说「m3u8 解密/ts 解密/视频解析/直播源/切片解密/DRM/数字版权/白盒密码/白盒 AES/加密播放器/ffmpeg 重封装/电子书章节解密/下载器提示 key 错误/key 长度不是 16 字节/页面能播但网络面板看不到 m3u8 只能看到一堆 png/m3u8 地址解出来 403/播放器是 canvas 而不是 video/录屏会被录上浮动水印/视频能下载但不能播放/花屏/只有前几帧正常/拿到播放地址/authKey/ddCalcu/蜻蜓FM/听书网」时都应使用本技能。
+description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链路逆向技能：先定位「加密发生在哪一层」，再逐层解密。触发词：`m3u8`、`ts`、`EXT-X-KEY`、`METHOD=AES-128`、`SAMPLE-AES`、`AES-128-PES`、`AES-128-ECB`、`decryptdata.key`、`qiniuDRMKey`、`encrypt_info`、`protectedLicenses`、`GetLicense`、`GetProvision`、`service_name=mdcm`、`KID`、`CEK`、`CENC`、`cenc:pssh`、`cbcs`、`enca`、`cdm`、`widevine`、`playready`、`FairPlay`、`skd://`、`tokenVideoKey`、`h5e`、`liveLineUrl`、`streamName`、`bilidrm`、`data-keys`、`mp4decrypt`、`pywidevine`、`.wvd`、`KeyDive`、`wvdumper`、`MediaKeys.createSession`、`requestMediaKeySystemAccess`、`generateRequest`、`videojs-contrib-eme`、`SampleAesDecrypter`、`getAvcEncryptedData`、`funcNN_TEA`、`PES`、`NALU`、`HEAPU8`、`_emscripten_run_script`、`importObject`、`sekiro`、`ffmpeg -decryption_key`、`EPUB`。用户说「m3u8 解密/ts 解密/视频解析/去水印/无水印/直播源/切片解密/DRM/数字版权/白盒密码/白盒 AES/加密播放器/ffmpeg 重封装/电子书章节解密/下载器提示 key 错误/key 长度不是 16 字节/页面能播但网络面板看不到 m3u8 只能看到一堆 png/m3u8 地址解出来 403/播放器是 canvas 而不是 video/录屏会被录上浮动水印/视频能下载但不能播放/花屏/只有前几帧正常/拿到播放地址/authKey/ddCalcu/蜻蜓FM/听书网」时都应使用本技能。
 ---
 
 # 流媒体 / 视频内容保护逆向
@@ -21,8 +21,12 @@ description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链�
 
 | 现象 | 层 | 先做什么 |
 | --- | --- | --- |
-| **目标是「拿到一个能直接播的地址」，还没到解开密文** | **§0 地址还原层**（视频/直播/音频站的接口链路） | `references/playback-address-interfaces.md` §1 定层 → §2/§3/§4 按站型走 |
+| **目标是「拿到一个能直接播的地址」，还没到解开密文** | **§0 地址还原层**（视频/直播/音频站的接口链路） | `references/playback-address-interfaces.md` §1 定层 → §2/§3/§3A/§3B/§4 按站型走 |
 | 地址里带 `authKey` / `vf` / `ckey` / `ddCalcu` / `sign` | **§0 + 签名参数** | 同上 §2；配方查 `../reverse-knowledge` 蓝图（`iqiyi-cmd5x` / `tencent-ckey` / `migu-playurl` / `douyu-live` / `qingting-fm`） |
+| **APP 端取直播源**：请求头有 `Play-Ua` / 请求体有 `secretToken`，密钥是「前缀 + 资源 + native」拼出来的 | **§0 · APP 接口层** | 同上 §3A（三段拼接密钥 + 双端参数差异 + native 只做校验） |
+| **接口 200，但响应里的 `playUrl` / `playurl` 仍是密文** | **§0 之后还差一层（D 接口层）** | 同上 §3A：**HTTP 200 ≠ 拿到可播地址**；源文未公开算法时**不许编** |
+| **分享短链（`v.kuaishou.com/s/…` 一类）要 mp4「无水印直链」** | **§0 地址还原层（直链）** | 同上 §3B（落点是 `srcNoMark` / `origin_video_download` 这类**另一个字段**） |
+| **播放页 HTML 里捞到好几条 m3u8，不知哪条在播** | **A 层前置：挑选** | `references/hls-and-ts-structure.md` §1.5（「重复出现次数最多」只当第一猜想） |
 | **试看只有 N 秒 / m3u8 路径带 `_preview` / 拿不到完整 playlist** | **预览门控层**（§0 与 A 层之间） | `references/preview-gating-and-segment-enumeration.md` §1 二分判据 → §3 分片枚举补齐 |
 | m3u8 里有 `#EXT-X-KEY:METHOD=AES-128,URI="..."` | **A 容器层**：整片同一 key | `scripts/m3u8_probe.py <playlist.m3u8>` |
 | **拿到的 key 不是 16 字节**（32/47/64 位、或一长串 hex） | **W 包装层**：key 被二次构造过 | `scripts/key_wrapper.py alpha-check --enforce` → 再解 |
@@ -136,6 +140,10 @@ description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链�
 | ★ 抄来的页面串里出现 `amp;` / `&#182;` / `×` | **HTML 实体残留**（三个已确认实例） | 一律先搜这三个模式再拼串（同上 §2） |
 | ★ m3u8 **只有很少几个分片、且路径含 `_preview`** | 服务端侧试看门控：`_preview` 后缀 = 服务端**只下发试看切片**（不是前端截断） | `references/preview-gating-and-segment-enumeration.md` §3 按分片序号枚举补齐（**连续 3×404** 停） |
 | ★ **去掉 `_preview` 后缀无效** | 受控点在服务端：改 URL 不改授权（源文实测此路无效） | 同上 §2 处置分叉 → §3 分片枚举；连可预测分片名也没有则属「放弃」档 |
+| ★ **接口 200、`playUrl` 仍是密文**（base64、尾部 `==`） | 判据：**HTTP 200 ≠ 拿到可播地址**，先看响应字段是不是密文 | `references/playback-address-interfaces.md` §3A；源文未公开算法时**不许编** |
+| ★ APP 里 native 方法「点进去没算法」 | 先看 `return` 形态：**只做 APP 签名校验**的方法不用逆 | 同上 §3A.3（判「参与计算 vs 只做校验」） |
+| ★ 想「去水印」却去找水印字段删 | 落点是**另一个字段**（`srcNoMark` / `origin_video_download`） | 同上 §3B；随机 `did` 只需同会话内一致，不必复现 |
+| ★ `ffmpeg -f concat` 报 `Unsafe file name` | 清单里是相对 / 特殊协议路径，默认安全策略拒绝 | 加 `-safe 0`（`hls-and-ts-structure.md` §5.1） |
 
 ## 反例黑名单（不要做的事）
 
@@ -276,15 +284,22 @@ python $S/key_wrapper.py noise-check --chars "-_! " --json
 - `references/playback-address-interfaces.md`：**§0 地址还原层（视频 / 直播 / 音频站取地址）唯一权威源** ——
   定层判据（§0 与 A–F 的分界）、长视频三段式链路（爱奇艺 `cache.video.iqiyi.com/dash` +
   `authKey=md5(md5("")+tm+tvid)` 与清晰度成套参数 / 腾讯 `proxyhttp` + `auth_refresh` 会话自举 +
-  `cKey` 多行值 / 咪咕三级链 + `ddCalcu` 字符交织）、直播源两条路线（斗鱼免签 `hlsH5Preview` vs
+  `cKey` 多行值、**腾讯旧版 `getinfo` 变体二**（§2.2c：`keyid` 重建文件名 + `ul.ui[3]` 基址）/
+  咪咕三级链 + `ddCalcu` 字符交织）、直播源两条路线（斗鱼免签 `hlsH5Preview` vs
   动态签名、抖音 `reflow/info` 一次拿 rtmp+hls、小红书 `__INITIAL_STATE__` 书签脚本）、
+  **§3A 移动 APP 直播源**（`Play-Ua` DESede + `secretToken` HMacMD5 + 「前缀+资源+native」三段拼接密钥 +
+  native 只做校验的审计判据 + iOS/Android 参数差异；HTTP 200 ≠ 拿到可播地址）、
+  **§3B 短视频去水印直链三形态**（`srcNoMark` / `origin_video_download` / 易语言 COM 对照）、
   音频站两族（字符码表 `*104*116*…` / 蜻蜓FM HMAC-MD5）、「拿到地址但播不了」总表与各级边界。
 - `scripts/playback_address.py`：**§0 层的四个可复算 oracle** —— `charcodes`（字符码表族，含前导空段 /
   UTF-16 码元 / 越界码点三类守卫）、`qingting`（蜻蜓FM HMAC-MD5，`--ts-case` 暴露源文未证的大小写）、
   `migu-ddcalcu`（字符交织，断言结构而非具体值）、`iqiyi-authkey`（含**源文自带的两条样例 URL 对拍向量**）。
   `--selftest` 自带（断言数**以实跑输出为准**，勿手抄；含 1 个负对照「换口令签名必须不同」与 5 条拒绝路径）。
-- `references/hls-and-ts-structure.md`：HLS/m3u8 全字段语义与判层、TS→PES→ES/NALU 分层、
-  **加密覆盖范围判据**、key/IV 四类来源与派生式、A/B/C/D 层实战配方、RPC 桥接、排错速查。
+- `references/hls-and-ts-structure.md`：HLS/m3u8 全字段语义与判层、**多候选 m3u8 的挑选判据（§1.5）**、
+  TS→PES→ES/NALU 分层、
+  **加密覆盖范围判据**、key/IV 四类来源与派生式、A/B/C/D 层实战配方、
+  **整片 AES 的工程骨架（§5.1：`key==IV` + `zfill(5)` 序号 + gevent 并发 + `ffmpeg -safe 0` 合成）**、
+  RPC 桥接、排错速查。
 - `references/preview-gating-and-segment-enumeration.md`：**试看门控 / 索引被截断的补齐（B32 新增）** ——
   受控点二分判据（URL 带 `_preview` 后缀 ⇒ **服务端侧**，去掉后缀实测无效）、前端截断 vs 服务端侧的处置分叉、
   **分片名可预测 ⇒ 按序号枚举**（从 `0` 起、**连续 3 个 404** 停、末尾升序两位数字）、

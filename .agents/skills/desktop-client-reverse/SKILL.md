@@ -37,6 +37,7 @@ description: 桌面 / 打包型前端逆向技能（Electron / Tauri / WebView2 
 | 单个大 exe（几十 MB），内嵌 JS 常量仍是明文 | **Node.js pkg 打包** | `strings` 定位 → `byte_flag_patch.py`（`references/jsc-and-v8-bytecode.md` §6） |
 | 目录里有 `manifest.json` + `_locales/` + `background.js`（或 `service_worker`） | **浏览器扩展（CRX / 解压目录）** | 按 `references/extension-and-nwjs.md` §1：先找 `Extensions/<ID>/<版本号>` |
 | 有个扩展点开就弹「试用到期 / 解锁高级功能」 | **扩展的许可校验** | 文案 → 语言文件 → 变量名 → 逻辑文件（`references/extension-and-nwjs.md` §1.2），改**判断**不改字符串 |
+| 目标扩展的付费判断就写在它自己的前端 JS 里（如 `controller/setting.js` 的 `useContext` 返回值） | 扩展的**前端权限对象** | 直接改本地扩展文件、注入伪造 `roles`，**改完刷新页面**（`references/extension-and-nwjs.md` §1.7） |
 | 启动器是 `nw.exe` / `index.html` 里有 `is_nwjc` / 加载 `*.min.bin` | **nw.js + `nwjc` 二进制** | 换回源码再谈（`references/extension-and-nwjs.md` §2）—— **它是编译不是加密** |
 | nw.js：换回源码后**闪退** | **文件校验**（不是算法问题） | 把 MD5 摘要判断改 `false`，**同时恢复「加载完成」检测**（`references/extension-and-nwjs.md` §2.3） |
 | asar 已解包、代码压缩、格式化后无法重打包 | — | `console.log` **顺序埋点法** + Debugtron（`references/extension-and-nwjs.md` §3） |
@@ -196,6 +197,8 @@ python $S/byte_flag_patch.py patch --in server.exe --pattern "activated:!1" \
 - `references/extension-and-nwjs.md`：**第四类壳（浏览器扩展 / nw.js / Electron 埋点法）的唯一权威源** ——
   扩展目录定位与 CRX 解包、Chrome 74+ 的离线安装限制与开发者模式、
   **「文案 → 语言文件 → 变量名 → 逻辑文件」定位四步**、三种许可校验形态（状态枚举 / 令牌解码 / 校验函数）与改法、
+  **§1.7 另一条路：直接改本地已安装扩展的 JS、注入伪造权限对象**（`controller/setting.js` 的
+  `(0, t.useContext)(i)` 改成先取 `temp`、塞 `temp.app.user = { roles: ["premium","member"] }` 再返回；改完刷新页面）、
   三个调试面（popup / content script / service worker）与 MV2→MV3 差异、「异常前下断点」技巧、
   打包私钥即身份与「新旧版本共存」的坑；
   nw.js 的 `is_nwjc` / `*.min.bin` 判据、**「文件校验才是拦路虎、MD5 不是加密」**、资源解密「能跑就不要逆」；

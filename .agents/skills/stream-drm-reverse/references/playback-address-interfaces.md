@@ -99,6 +99,43 @@
 > 视频 / HLS 接口这族里 JSONP（`cb(...)`）与「`变量名=` 赋值」两种形态都常见；
 > `QZOutputJson=` 是「`变量名=`」这一档的实例。
 
+### §2.2c 腾讯旧版 `getinfo` **变体二**（2019 · 另一篇源文，同一接口的另一种取参数写法）
+
+> ⚠️ **同为 2019/2020 前后的旧路线**（源文 `52pojie-1032509`，2019-10）。与 §2.2b 是**同一个接口的两种写法**，
+> 差异集中在「vid 怎么取」「文件名怎么拼」「CDN 取哪个下标」。**引用必须带年份**；
+> 今天腾讯已改用 §2.2 的 `vd.l.qq.com/proxyhttp` + `cKey`。
+
+**请求（★ 这是 2019 年该文的参数组合，不是通用配方）**：
+
+```text
+http://vv.video.qq.com/getinfo?otype=json&platform=11&defnpayver=1&appver=3.2.19.333&defn=fhd&vid=<vid>
+```
+
+**与 §2.2b（变体一）的差异 —— 本节最有价值处**：
+
+| 项 | §2.2b 变体一 | 本节 变体二 | 是否同一判据 |
+| --- | --- | --- | --- |
+| vid 取法 | `pathinfo(url)['filename']` | `url.split('/')[-1].split('.')[0]` | ✅ **同一判据**（都从播放页 URL 的文件名段取），仅写法不同 |
+| 文件名 | 取响应字段 `fn` | **由 `cl.ci[0].keyid` 重建**（见下） | ❌ 不同 |
+| CDN 基址 | `vl.vi[0].ul.ui[0].url` | `vl.vi[0].ul.ui[3].url` | ❌ **下标是 3，不是 0** |
+| 最终地址 | `url + fn + '?vkey=' + vkey` | `cdn + filename + "?vkey=" + fvkey + "?type=mp4"` | 形态同、尾部多一段 |
+
+- **文件名重建（变体二的指纹）**：`keyid = json_data['vl']['vi'][0]['cl']['ci'][0]['keyid'].split(".")`
+  拿到三段后
+  `filename = keyid[0] + ".p" + keyid[1][2:] + "." + keyid[2] + ".mp4"`
+  —— 即**第二段要去掉前 2 个字符**再拼回去（源文原样）。
+- **★ 最终地址里那个可疑的第二个 `?`**：源文写的是
+  `downloadurl = cdn + filename + "?vkey=" + fvkey + "?type=mp4"`（`?type=mp4` 前面是 **`?` 而不是 `&`**）。
+  **源文如此，未做修正** —— 复现时先按原样打；若播放器 / 下载器只认 `&`，再把它改掉，
+  **不要一上来就「顺手修好」**（先按源文跑一遍，把「跑不通」与「源文笔误」区分开）。
+- **剥壳判据同 §2.2b**：`jsonstr = re.findall('QZOutputJson=(.+);$', html_text, re.S)[0]` 剥掉前缀与结尾 `;`
+  后再 `json.loads` —— 与变体一「先剥 `QZOutputJson=` 与结尾 `;`」**同一判据**，见 §2.2b 坑 1（交叉引用，不重复）。
+- 清晰度：`defn=fhd`；源文口径「**有高清获取高清、有蓝光取蓝光，简单粗暴**」。
+- **页面形态判据**（源文补充，与变体一无关）：
+  - `v.qq.com/x/page/<vid>.html` ⇒ 解析出的是**完整视频**；
+  - `v.qq.com/x/cover/<cid>/<vid>.html` ⇒ **需要拿到 vid 逐个下载再合并**才是完整视频；
+  - 列表页需**另行获取 vid**（源文只说「有能力的自己来」，**未给取法**）。
+
 ### §2.3 咪咕 `playurl/v3` + `ddCalcu`
 
 三级链，**每一级都只给下一级的 id**：
@@ -181,6 +218,203 @@ JSON.parse(__INITIAL_STATE__.liveStream.roomData._rawValue.roomInfo.pullConfig).
 | 同一房间偶尔成功偶尔 403 | 走了动态签名路线且命中了「JS 已换」的窗口 |
 | `flv` 浏览器打不开 | 不是错误：浏览器对 `flv` 无原生支持，用 mpv/VLC/支持网络的播放器 |
 | 拿到的地址是 `blob:` | 见 `player-and-live-capture.md` §2（MSE 源码注入） |
+
+---
+
+## §3A 移动 APP 直播源：请求体签名 + 「三段拼接」密钥（CCTV 手机电视 · 2021）
+
+> **放哪一层**：本节归 **§0 地址还原层**（APP 接口链路）。其中「密钥由**多段拼接**而成」是**构造**（拼），
+> 与 `key-wrapper-families.md` 的 W 族（拿到的是包装、要做**还原/解包**）方向相反 —— 别把两者混为一谈。
+> 源文 `52pojie-1379263`；APP 是**爱加密加固**，源文**不分析脱壳**，**只做请求体构造分析**（边界照实写）。
+
+**入口与形态**：
+
+```text
+POST http://m.cctv4g.com/cntv/clt/programAuthAndGetPlayUrl.msp
+请求头 5 个；请求体 20 多个参数
+```
+
+- ★ **判据：HTTP 200 ≠ 拿到可播地址**。源文明确「**即使接口请求成功，响应里的 `playUrl` 仍是加密的**」。
+  响应结构（源文示例，`playurl` 已被作者改动几个字母）：
+
+  ```json
+  { "resultMsg": "处理成功", "systemTime": "0001112223334",
+    "vedioPlayUrls": [], "status": "01", "audioPlayUrls": [],
+    "resultCode": "0000",
+    "playUrls": [ { "definition": "", "errorinfo": "", "isvideo": "", "overstep": "",
+                    "playurl": "vUMlVPNVGWHT0CCRmQWNYbQcrWP1ONBBvRTiPVtFWE4p72i0Es4G8wbSPBt/56nUYO0MbsMDGe9zZxxxxxQT0xz5Bxxom0OeNsH9c0WnckNcnNzxGqtY6Il+qVRzqf7WMRM5FRR3naiHva5egdBs8w==",
+                    "resultcode": "0" } ],
+    "isMemberProgram": "false" }
+  ```
+
+  ⇒ **先看响应字段是不是密文**（这里是 base64 形态、尾部 `==`），再看状态码。
+  ⚠️ 源文响应里的 `vedioPlayUrls` / `playurl` / `resultcode` 都是**源文原样的拼写**（`vedio` 不是笔误，照抄）。
+
+### §3A.1 「三段拼接」密钥：硬编码前缀 + `strings.xml` + native 返回值
+
+`SecretUtils` 每个方法都是同一形状：**`硬编码前缀` + `appContext.getString(R.string.…)` + `JNIUtils.NFromJNI(appContext)`**。
+源文给出的常量（**逐个回源核对**）：
+
+| 常量（源文原样） | 值 |
+| --- | --- |
+| `UA_DES_KEY` | `&*UJyu` |
+| `BuildConfig.UADES_KEY` | `$#SD&*` |
+| `VIDEO_HTTP_PARMAS_PRIVATE_KEY` | `72116A` |
+| `VIDEO_HTTP_PARMAS_PUBLIC_KEY` | `cn` |
+| `VIDEO_HTTP_URL_AES_KEY` | `yich` |
+| `strings.xml` `…easy_private_key` | `4*4F89` |
+| `strings.xml` `…easy_public_key` | `20` |
+| `strings.xml` `…header_des_key` | `i23DR%` |
+| `strings.xml` `…video_url_aes_key` | `ianx` |
+
+方法里的**硬编码前缀**另有三个：`72116AcB!94C`、`cntv`、`yichengt`。
+`JNIUtils` 侧四个 native 方法：`oneFromJNI` / `twoFromJNI` / `threeFromJNI` / `fourFromJNI`。
+
+> ⚠️ **别把「声明的常量」都当成已确认的算法输入**：源文给出的四个方法里，
+> 只有 `UA_DES_KEY` 与 `BuildConfig.UADES_KEY` 被真正引用（在 `getUaDesUaKey()` 里）；
+> `VIDEO_HTTP_PARMAS_PRIVATE_KEY` / `VIDEO_HTTP_PARMAS_PUBLIC_KEY` / `VIDEO_HTTP_URL_AES_KEY`
+> 三个**声明了但在这四个方法里未被引用**（方法里用的是字面量前缀）—— **源文如此**。
+
+**源文给出的四个「结果」（拼接产物）**：
+
+```text
+getParmasEasyPrivateKey() = 72116AcB!94C4*4F89#k76BdB
+getParmasEasyPublicKey()  = cntv201812
+getUaDesUaKey()           = &*UJyui23DR%$#SD&*56HJ3!
+getHeaderAesKey()         = yichengtianxia12
+```
+
+> ⚠️ **源文自身有两处渲染不一致，必须逐字核对，不要照抄某一处**：
+> 1. `DES3` 类里同时出现 `DES_KEY = "&*UJyui23DR%$#SD&*56HJ2!"`（尾 `2!`）与
+>    `UA_DES_KEY = "&*UJyui23DR%$#SD&*56HJ3!"`（尾 `3!`）——**两个常量只差 1 个字符**；
+>    而正文里又把 `getUaDesUaKey()` 写成 `&*UJyui23DR%56HJ3!`（**丢了 `$#SD&*`**）。
+>    以**反编译源码块里的完整串**为准，并保留这处矛盾（源文未澄清）。
+> 2. 0x05 正文把 `publickey` 写成 `"cntv2018"`，而 0x01 结果与 `getSecretToken()` 用的是 `cntv201812`。
+>    **两处不一致，源文未澄清**；按 `cntv201812` 走，但复现失败时先回头查这一位。
+>
+> ★ **源文明确「不会公开所有的加密」** ⇒ 本节只到「结构」层；**缺的部分一律标「源文未公开」**，不补编。
+
+### §3A.2 请求侧两条签名：`Play-Ua`（DESede+base64）与 `secretToken`（HMacMD5）
+
+- **`secretToken` 原文串（字段顺序逐字）**：
+
+  ```text
+  timestamp=<ms>&wdVersionName=<ver>&wdChannelName=<market>&wdClientType=1&wdAppId=3&publickey=<pub>&wdNumber=<0..999>&uuid=<uuid>&userId=<uid>
+  ```
+
+  源文示例值：
+
+  ```text
+  timestamp=1614387718000&wdVersionName=3.5.3&wdChannelName=xiaomi&wdClientType=1&wdAppId=3&publickey=cntv201812&wdNumber=115&uuid=3709dd1f-1560-3745-896d-8503f7560487&userId=
+  ```
+
+- **`Play-Ua` 头** = `DES3.encryptMode(secretToken)`（`DESede` + base64）；密钥就是 `getUaDesUaKey()`。
+  源文示例（**抄结构不抄值**，每次请求都变）：`V/1c7v9PQ8qM8jymc7FNCHPxXeXETxsw6qMvF617qTeLpBqWArVQp+a+CYAcR7FIjN4/SivHIvjjJXr56s6mwZCHENT5G0OddovSf/ZhGzPg3HV0/oiLJ9TL/Isi5GM4V+BNssZjY/GQJSPoifyo0hsRbFeuzKw5j1g/uJVDIA/TFQ8KnVC0wa96LVlI0JPRHUYNk/zrkBAYlpllvdK6xnguTWkgoW2WkNtlxgNbKHg=`
+- **`secretToken` 字段（请求体里的那个）** = `HMacMD5(getParmasEasyPrivateKey(), secretToken原文串)`，**结果转大写**。
+  源文示例：`2B918F2C881C7DD2F314B7D6B9DB5382`。
+- `Content-Type: application/x-www-form-urlencoded`（`HttpRequest.CONTENT_TYPE` 静态变量）。
+- **请求体（POST params）** 分两批：
+  1. `RequestParameter.PostParams` 基础 7 项，字段名与值（源文示例）：
+     `wdChannelName=xiaomi` / `wdVersionName=3.5.3` / `wdClientType=1` / `wdAppId=3` /
+     `wdNetType=WiFi` / `uuid=3709dd1f-1560-3745-896d-8503f7560487` / `channel=cctv`；
+     同序拼成 `PARAMS`（以 `?` 起）与 `OTHER_PARAMS`（以 `&` 起）——**两者只差首个分隔符**。
+  2. `addSecretParmas` 再追加 6 项：`secretToken` / `publickey` / `timestamp` / `wdNumber` / `uuid` / `userId`。
+- 频道信息字段：`nodeId` / `programId` / `contId`；**源文注明 `nodeId=9000000000` 代表 cctv1**。
+- **`PostParameter` 接口的 20 个参数名（源文原样，来源即「请求体 20 多个参数」）**：
+  `wdAppId`(`APPID`) / `appointmentTime` / `aptid` / `channel` / `wdChannelName` /
+  `clientId` / `wdClientInfo` / `wdClientType` / `contName` / `createTime` / `endTime` /
+  `imageurl` / `InfoList` / `wdNetType` / `objectId` / `objectType` / `pushProvider` /
+  `wdToken` / `uuid` / `wdVersionName`。
+  ⚠️ 源文明说这个接口类「**仅仅是变量声明**」⇒ 它**列出的是全量可能性**，
+  本次直播取址链路**实际只用上面那两批字段**（其余属预约 / 推送 / 内容类，别当成必填）。
+- `getUUID()` = `UUID.nameUUIDFromBytes((System.currentTimeMillis() + getRandom()).getBytes("UTF-8"))`，
+  存 SP 字段 `userid`；`getRandom()` = `new Random().nextInt(1000)`。
+- `getMarketId()`：读 meta-data `UMENG_CHANNEL`，缺省 `none`（小米商店为 `xiaomi`）；`channel` = 资源里写死的 `cctv`。
+
+### §3A.3 ★ 可迁移的审计判据与边界
+
+- ★ **native 方法先判它是「参与计算」还是「只做校验」**：源文点开 `j_a` / `j_b` 发现它们
+  **只起校验 APP 签名的作用**（「其实看到 `return` 也会发现，`j_a`、`j_b` 根本不需要分析」），
+  起初白花了时间 ⇒ **先看 `return` 形态再决定要不要逆，别急着上 IDA**。
+- **同一 APP 的双端参数差异**（源文注明，以 Android 为例、部分参数有 iOS 对比）：
+
+  | 项 | Android | iOS |
+  | --- | --- | --- |
+  | `wdClientType` | `1` | `2` |
+  | `uuid` 字母 | 小写 | **全大写** |
+  | `wdNumber` 随机范围 | `[0,1000)` | **可能是 `[0,1000000)`**（源文用「可能」） |
+  | `channel` | `cctv` | `cctv`（同样写死） |
+- **源文未公开的部分**（照实记录，不补编）：
+  1. 请求头里的 **`Afas` 与 `Filter` 两个字段的算法**——源文明确「为了 APP 的安全起见，我不会公开这俩字段的算法」；
+  2. **`playUrl` 的最终解密方法**——源文明确不公开，且给出三条理由：
+     ① `Afas`/`Filter` 脱壳后容易算出；② **解密 `PlayUrl` 的方法被爱加密抽走了，即使脱壳反编译成功也找不到源码**；
+     ③ **「文章中列举的加解密方法依然不能解密 `PlayUrl`，`PlayUrl` 是用另外的算法加密的」**。
+- 边界：APP 为**爱加密加固**，源文**不分析脱壳**；本文只做请求体构造分析。
+
+---
+
+## §3B 短视频「去水印 / 无水印直链」的三种形态
+
+> **放哪一层**：本节归 **§0 地址还原层**（目标是「拿到一个能直接播的 mp4 直链」）。
+> 源文 `52pojie-1159049`（易语言 + Python 双实现）。
+
+### §3B.1 分享短链：请求一次、从 HTML 里截字段（某手 `v.kuaishou.com/s/<id>`）
+
+```python
+did = ''.join(random.sample(string.ascii_lowercase + string.digits, 32))
+headers = {
+    'Cookie': 'did=web_' + did,
+    'User-Agent': "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1",
+}
+html = requests.get(url, headers=headers, allow_redirects=True)   # url 例：https://v.kuaishou.com/s/zeKwaYfN
+mp4 = html.text.split('"srcNoMark":"')[1].split('"},"user')[0]
+```
+
+- **iPhone UA 串原样抄**（上面那条）；`allow_redirects=True`（短链要跟 302）。
+- ★ **判据：去水印的落点是响应里的另一个字段，不是把水印字段删掉**。
+  这里是无水印直链字段 `srcNoMark`；同族还有 `origin_video_download`（见 §3B.2）。
+  ⇒ 找「**另一个字段名**」，不要去找「水印字段再抠掉」。
+- ★ **`did` 是客户端随机生成的伪设备标识**：判据 —— 这类「随机 `did`」与签名里的随机值一样，
+  **同一次会话内一致即可，不必复现某个具体值**。
+  （源文两版生成方式不同：Python 版是 32 位随机小写字母数字；易语言版是 `取数据摘要(ToBin(rnd(1,50)))` ——
+  **都只是「随机」，不构成算法**。）
+- **易语言版用自定义子程序做同一件事**（`rightxm(起止串截取)`）：
+  ```text
+  fi = InStr(srt, ft) + len(ft) ; bi = InStr(srt, bt, fi) ; return mid(srt, fi, bi - fi)
+  ```
+  即「**找起始串 → 跳过它 → 找结束串 → 取中间**」。源文另有一行被注释掉的备用路线
+  （`GetAllResponseHeaders` 里读 `Location`），说明**短链也可直接读跳转头**。
+
+### §3B.2 id 直取接口（皮皮虾 / 抖音系）
+
+```python
+url = 'https://is.snssdk.com/bds/cell/detail/?cell_type=1&aid=1319&app_name=super&cell_id=' + id
+r = requests.get(url, headers={'User-Agent': <同上 iPhone UA>}, allow_redirects=False)
+mp4 = json.loads(r.text)['data']['data']['item']['origin_video_download']['url_list'][0]['url']
+```
+
+- 源文示例 id：`6757615695728482574`。
+- `allow_redirects=False`（直接吃 JSON）。
+- ★ `cell_type=1` / `aid=1319` / `app_name=super` 是**当时**的取值 ⇒ **站点改版即失效**，抄结构不抄常量。
+- 无痕直链字段是 `origin_video_download.url_list[0].url` —— 与 §3B.1 的 `srcNoMark` 是**同一类「另一个字段」**。
+
+### §3B.3 易语言（COM / WinHttp）写法 —— 换语言只是语法翻译
+
+```text
+CoInitialize (0)                                       ' ★ COM 线程初始化，必须先调
+http.CreateObject ("WinHttp.WinHttpRequest.5.1", )
+http.RunMethod ("open", "GET", Text1.context, 假)      ' 假 = 不异步
+http.RunMethod ("SetRequestHeader", "Cookie", "did=web_" + 取数据摘要 (ToBin (rnd (1, 50))))
+http.RunMethod ("SetRequestHeader", "User-Agent", <同上 iPhone UA>)
+http.RunMethod ("send", )
+mp4 = rightxm (http.GetProperty ("ResponseText", ).取文本 (), 'srcNoMark":"', '"},"user":')
+http.Clear ()
+```
+
+- ★ 提炼：**只要拿到「请求头 + 参数变换」，换语言只是语法翻译** —— 源文正是用
+  「**易语言源码 + 附 Python 对照实现**」的方式给出双语言等价，与本技能的工程化目标一致。
+- `CoInitialize(0)` **必须先调**（COM 线程初始化）；`GetProperty("ResponseText")` 取文本，
+  响应头走 `文本方法("GetAllResponseHeaders")`。
 
 ---
 

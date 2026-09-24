@@ -1,6 +1,6 @@
 ---
 name: web-reverse-hook
-description: 生成并注入页面级运行时 Hook 脚本，用于拦截加密库（CryptoJS/JSEncrypt/SM-crypto）、JSVMP 虚拟机探针、反调试综合防御绕过（debugger/console/窗口尺寸/强退/iframe原生借用）、关键数据流追踪（Promise/Cookie/Storage/网络/时间）、SPA 动态路由深度提取（Vue/React 路由表与守卫清除）以及**Vue/Vuex 运行时状态固化与组件注册表替换**（油猴 / 篡改猴 / userscript 注入范式）。当用户提到“hook CryptoJS”“拦截 RSA 明文密文”“国密 hook”“JSVMP 探针”“绕过反调试”“无限 debugger”“阻止跳转/关闭”“SPA 隐藏路由提取”“拦截 cookie/storage/promise”“改 Vuex state”“$store.state 改不动”“__vue__ 取不到”“registerComponent 替换组件”“videojs Player 注入”“油猴脚本怎么注入”“无直链视频怎么下”“video 的 src 是 blob:”“网络面板只有分片没有可播地址”“hook addSourceBuffer”“MSE 缓存视频”“控制台反检测”“devtools 检测”“注入太晚拦截不到”“jQuery 事件定位”“Event Listener 只有 jQuery 闭包”“jQuery hook 拿不到真实回调”“$._data events”、以及“cookie hook 装完页面就不正常”“覆盖 document.cookie 后其它 cookie 丢了”“油猴 @match 不生效/只命中首页”“setter 里 debugger 断太多次”“没有任何注入设施时怎么抢在页面代码之前”、反hook检测、Function.toString 检测、hook 被发现、closed shadow root、attachShadow 拿不到、shadowRoot 是 null、页面禁止复制、user-select none、去除登录弹窗时使用。
+description: 生成并注入页面级运行时 Hook 脚本，用于拦截加密库（CryptoJS/JSEncrypt/SM-crypto）、JSVMP 虚拟机探针、反调试综合防御绕过（debugger/console/窗口尺寸/强退/iframe原生借用）、关键数据流追踪（Promise/Cookie/Storage/网络/时间）、SPA 动态路由深度提取（Vue/React 路由表与守卫清除）以及**Vue/Vuex 运行时状态固化与组件注册表替换**（油猴 / 篡改猴 / userscript 注入范式）。当用户提到“hook CryptoJS”“拦截 RSA 明文密文”“国密 hook”“JSVMP 探针”“绕过反调试”“无限 debugger”“阻止跳转/关闭”“SPA 隐藏路由提取”“拦截 cookie/storage/promise”“改 Vuex state”“$store.state 改不动”“__vue__ 取不到”“registerComponent 替换组件”“videojs Player 注入”“油猴脚本怎么注入”“无直链视频怎么下”“video 的 src 是 blob:”“网络面板只有分片没有可播地址”“hook addSourceBuffer”“MSE 缓存视频”“控制台反检测”“devtools 检测”“注入太晚拦截不到”“jQuery 事件定位”“Event Listener 只有 jQuery 闭包”“jQuery hook 拿不到真实回调”“$._data events”、以及“cookie hook 装完页面就不正常”“覆盖 document.cookie 后其它 cookie 丢了”“油猴 @match 不生效/只命中首页”“setter 里 debugger 断太多次”“没有任何注入设施时怎么抢在页面代码之前”、反hook检测、Function.toString 检测、hook 被发现、closed shadow root、attachShadow 拿不到、shadowRoot 是 null、页面禁止复制、user-select none、去除登录弹窗、页面解锁配方、油猴去水印、倍速被重置、切屏即暂停、blob 图片导出 PDF 时使用。
 ---
 
 # Web 运行时 Hook 脚本
@@ -154,6 +154,43 @@ window.setTimeout = function (...args) {
    （判据：先看「点按钮时执行的是哪个函数」）。
 5. **代价**：`stack` 过滤依赖函数名，**代码压过混淆后就失效**；
    `Error.prepareStackTrace` / `Error.stackTraceLimit` 也会影响它。
+
+---
+
+## 页面功能解锁与资源捕获配方（B33）
+
+详见 `references/page-unlock-and-userscript-recipes.md`（`anti-hook-detection-and-bypass.md` 的同族扩展：
+那篇讲「怎么不被发现」，本文讲「**怎么把页面自己的限制按下去、把页面自己的资源捞出来**」）。
+六条判据：
+
+1. **★ 控制台条件断点注入**（临时验证，刷新失效）：条件写 `d[s]===false&&(d[s]=true),false` ——
+   **逗号表达式前半段改值、最后一项恒 `false` ⇒ 永不停下但每次经过都改**。
+   正式产物走第 2 条。
+2. **★ 原型/内置方法重写**：判断写在 `Array.prototype.find` 之下 ⇒ 重写 `find`，
+   用**数组内容特征**（源文 `JSON.stringify(this).includes('github-sync')`）区分「该管的那次调用」。
+   **纪律：先备份再重写**（`[].constructor.prototype._find = [].constructor.prototype._find || [].constructor.prototype.find`，
+   不备份就把原生 `find` 永久覆盖掉；`||` 防二次注入覆盖备份）。
+3. **★ Vue 路由监听两条路**：① 原生层（hash 听 `hashchange`/`popstate`，history 拦 `history.pushState`）**只有字符串**；
+   ② 框架层 `document.querySelector('#app').__vue__.$router.afterHooks.push(fn)` **能拿 `to`/`from` 结构化对象**
+   （原理链：`this.afterHooks = []` → `afterEach` = `registerHook` = `list.push(fn)`；
+   `Vue.prototype.$router` getter 返回 `this._routerRoot._router`）。
+4. **★ 去水印三路线选型**：删标签 / 劫持生成都「改一下特征值就失效」；
+   **在「获取时」改水印内容「除非改接口，理论上通杀」**（源文选它）。
+5. **★★ 媒体播放解锁**（失焦秒暂停 / 倍速被轮询重置 / `currentTime` 直改崩）：
+   从**源头**屏蔽失焦检测（`document-start` 重写 `addEventListener` + `killSetter` + 顶掉 `hidden`/`visibilityState`，
+   **别把全局 `addEventListener` 打死**）；倍速用 `Object.getOwnPropertyDescriptor` 取原 setter 后**劫持 set + 锁定开关**；
+   **MSE 播放器直改 `currentTime` 会抛 `DOMException: aborted`**（且 webpack 隔离拿不到内部 API）
+   ⇒ 改为**按进度条 DOM 物理尺寸算绝对坐标、派发 `mousedown→mouseup→click`**；**400ms 防抖**只做唯一一次 seek；
+   快捷键要 `preventDefault`+`stopImmediatePropagation`、用 `e.code`、**先判焦点不在 input/textarea/contentEditable**。
+   **边界：服务端强制校验会让进度无效。**
+6. **★★ 资源捕获型脚本**：F12 网络面板**能看到完整 `https` 图片 URL ⇒ URL 截取版；只见 `blob:https://` ⇒ 图片捕获版**。
+   URL 截取版三通道（`fetch` + `XHR.prototype.open` + `PerformanceObserver`）；
+   图片捕获版 `MutationObserver`（`childList`+`subtree`，命中 `div.pdfimg.move.rendered`）+ **生产者-消费者队列**
+   （`fetchQueue` / `processingUrls` / `isWorkerRunning`）、**页码取元素 `data-page`**；
+   **必须完整翻页、下载必须队列化**。
+
+**收束判据（与 §「反 hook 检测」同层）**：动手前先分清「**限制在前端**」还是「**校验在服务端**」——
+前端解锁**只在服务端不复核时有效**（源文金句「几乎没有什么是油猴做不到的。。。如果有，那就是服务器功能了」）。
 
 ---
 

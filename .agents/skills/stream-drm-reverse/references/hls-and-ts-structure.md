@@ -84,6 +84,33 @@ IV = 16 字节大端整数，值 = EXT-X-MEDIA-SEQUENCE + 分片在该列表中�
 2. 同一响应里既有明文地址又有加密地址时，**以加密地址为准做判层**——两者可能连
    分片命名都不同（`/asp/hls/` vs `/asp/h5e/hls/`），拿明文的分片去套加密的 key 是空转。
 
+### 1.5 多候选 m3u8 的挑选判据（播放页里捞到好几条时挑哪条）
+
+播放页 HTML 里**经常同时出现多条 m3u8**（同一份被写进多段 JS / 多个标签 / 多个清晰度入口）。
+2019 年某站样本（源文 `52pojie-1056398`）给的是一个**朴素启发式**：
+
+```python
+m3u8_url = Counter(re.findall("http.*?index\.m3u8", r.text)).most_common(1)[0][0]
+# 源文注释原话：找到提取内容重复次数最多的链接
+```
+
+- **判据**：**取「重复出现次数最多」的那一条**。理由：真正被播放器加载的那条，常在播放页的
+  多段 JS / 多个标签里被重复引用；只出现一次的往往是模板、注释、备用清晰度或死链。
+- ⚠️ **这是 2019 年源文的朴素启发式，不是硬判据**：① 它是站点特定写法，换站未必成立；
+  ② 「出现次数最多」与「真正被加载」**没有因果关系**，只是统计相关；
+  ③ 更稳的判据仍是**从播放器实际的网络请求 / master 的 `#EXT-X-STREAM-INF` 指向**去拿。
+  把它当**第一猜想**，不要当结论。
+- **路径归一（站点特定，不可迁移）**：源文在捞到的 URL **不含 `hls`** 时，把 `index.m3u8`
+  替换成 `1000kb/hls/index.m3u8`：
+
+  ```python
+  if not "hls" in m3u8_url:
+      m3u8_url = re.sub("index.m3u8", "1000kb/hls/index.m3u8", m3u8_url)
+  ```
+
+  ⇒ `1000kb/hls/` 是**该站点的目录形态**（码率目录 + `hls` 子目录），**抄结构不抄常量**，
+  换站必须重新判断目录层级（不要把这个字符串当通用规律）。
+
 ---
 
 ## 2. TS → PES → ES/NALU 三层结构与解密边界
@@ -282,6 +309,65 @@ ffmpeg -v error -i seg0.clear.ts -f null -     # 0 error 才算过
 
 - 若 m3u8 未给 IV：`m3u8_probe.py` 会按媒体序列号算出 IV 并打印，直接用它。
 - 分片用 `--strip-crc16`（尾部 2 字节校验，见 C 层）。
+
+### 5.1 整片 AES 解密的工程实现（2019 年某站样本）
+
+> 源文 `52pojie-1056398`。这条链路的价值在**工程骨架**：从「挑 m3u8」到「并发下分片」到「ffmpeg 合成」
+> 一次串完，且**失败单独计数**。挑选判据见 §1.5。
+
+**加密判据（★ `key == IV`）**：
+
+```python
+if 'URI="key.key"' in r.text:
+    key_url = re.sub("index.m3u8", "key.key", m3u8_url)   # 分片名换成 key.key 即密钥地址
+    key = requests.get(key_url, headers=headers).text
+    cryptor = AES.new(key, AES.MODE_CBC, key)             # ★ 第三参数是 IV，这里直接传 key
+```
+
+- **`AES.new(key, AES.MODE_CBC, key)` ⇒ `key == IV`**：IV 直接用 key 本身，**没有单独的 IV 值**。
+  这是「**站点把 IV 偷懒取成 key**」的一类实现，见到 `AES.new(k, MODE_CBC, k)` 直接照抄，别再找 IV。
+- **判据写法**：m3u8 文本里含 `URI="key.key"` ⇒ 密钥就在**同目录的 `key.key`** 下，把分片名替换掉即可。
+  ⚠️ `key.key` 是该站点约定的**文件名**（站点特定，改版即失效），不是规范；
+  这里的替换同时体现了「**相对分片名 / 相对密钥名按 m3u8 目录拼绝对地址**」这条通用判据。
+- **与 W 族的边界**：`key-wrapper-families.md` 里「同一串既当 key 又当 IV」是**切片式**（前 16 / 后 16）；
+  本条是**整串复用**（`key` 与 `iv` 同一个值），**属同族另一样本**，不要与切片式混为一谈。
+
+**分片收集（★ 序号补齐 5 位）**：
+
+```python
+ts_list = []
+for index, ts in enumerate(re.findall('(\w*?\.ts)', r.text)):
+    ts_list.append((str(index).zfill(5), m3u8_url.replace("index.m3u8", ts)))
+```
+
+- `str(index).zfill(5)`：**序号补到 5 位**，既保证合成顺序（`00000` < `00001` < …），也便于排序 / 断点续传。
+- URL 拼接 `m3u8_url.replace("index.m3u8", ts)` —— **相对分片名按 m3u8 目录拼绝对地址**（同一判据）。
+
+**下载（`gevent` 协程池 + 失败单独计数）**：
+
+```python
+pool = gevent.pool.Pool(50)
+# 每个分片中 try/except：成功解密写盘，失败 c += 1（★ 不静默吞掉）
+print(f"下载完成 失败:{c}/{b}")
+```
+
+- ★ **失败计数单独统计**（`c`），不要 `except: pass` 静默吞掉 —— 否则「缺了几片」要到 `ffmpeg` 合成时才暴露。
+
+**合成（Windows CMD + ffmpeg concat）**：
+
+```bat
+(for %a in (*.ts) do @echo file '%a') > list.txt
+ffmpeg -f concat -safe 0 -i list.txt -c copy 学习资料.mp4
+del /Q *.ts
+del /Q list.txt
+```
+
+- `(for %a in (*.ts) do @echo file '%a') > list.txt`：**Windows CMD 语法**（`%a` / `>` / `@echo`），
+  生成 `ffmpeg concat` 用的文件清单（每行 `file 'xxx.ts'`）。
+- **`-c copy` = 不重编码**（流直接拷贝，合成本身不解码，快且无损）。
+- **`-safe 0` 的必要性**：`concat` 默认走「安全」协议白名单，清单里出现**相对路径 / 特殊协议路径**时
+  会被拒绝（报 `Unsafe file name`）⇒ 传 `-safe 0` 才允许。
+- 合成后 `del /Q *.ts` / `del /Q list.txt` 清理中间产物（源文还会 `exit`）。
 
 ---
 

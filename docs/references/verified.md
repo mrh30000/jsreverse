@@ -4579,3 +4579,208 @@ B31 的 `b31-verify-docs.js` 用的是**硬编码文件清单**，于是「清�
 | 621 | `52pojie-1650555-[油猴脚本开发指南]实战智慧树shadowroot闭包问题.md` | `e621da63637494cb77fe0b0c4a971540` | 2026-09-24 | `web-reverse-hook` | evolve | ★★ **「反 hook 检测」这一类**（既有 `antidebug` 预设完全未覆盖）：① **`Function.prototype.toString` 白名单比对** —— 把若干原生函数逐个 `toString()` 过正则判含 `function` / `native code`，任一不匹配就异常上报；检测入口还包括 `window.XMLHttpRequest`、`XMLHttpRequest.prototype.open`、`document.body.attachShadow` 存在性，以及 ★ **`!window.OCS`（油猴管理器变量名本身就是指纹）**；② ★★ **用 `new Error().stack` 做「调用方过滤」** —— 在 `setInterval`/`setTimeout` 包装里 `new Error("大赦天下")` 后 `if (err.stack.indexOf("checkoutNotTrustScript") !== -1) return;` ⇒ **只掐掉来自上报函数的定时器注册、其余一律放行**（提炼为通用范式「**选择性劫持**」；代价：依赖**函数名**，压过混淆就失效）；③ 劫持 `RegExp.prototype.test` 让白名单正则一律返回 `true`（源文自评「那就没啥意义了」，照实写并说明为什么）；④ **closed shadow DOM 取证**：包装 `Element.prototype.attachShadow` 强制 `args[0].mode = "open"` 再 `old.call(this, ...args)`（判据：Elements 里看不到子节点 / `el.shadowRoot === null` / 有内容但 DOM 查不到）；⑤ **框架句柄逃逸**：`document.querySelector('.subject_describe > div > div').parentElement.__vue__.shadowDom.innerHTML` —— **组件把 `attachShadow` 的返回值挂在了 Vue 实例自有属性上** ⇒ DOM 层拦不到也能拿到；⚠️ 函数名/变量名/正则都是**智慧树当时的内联实现细节**，可迁移的是范式不是名字 |
 | 622 | `52pojie-1608506-【油猴脚本】去除csdn登录才能复制代码的限制.md` | `036a0652a27ffbb626386009811a6c52` | 2026-09-24 | `web-reverse-hook` | evolve | ★ **页面限制解除配方（先分清改样式还是改函数）**：① `user-select: none` 类限制 ⇒ 对目标节点设**行内** `user-select: text !important`（★ 源文用的是「把字符串拼到 `item.style` 上」的写法 ⇒ **行内 `!important` 能压住作者样式表里的 `!important`**，但也**只在行内生效**，`pointer-events` / `-webkit-touch-callout` 等其它限制词要逐个补）；② ★ **只改样式时按钮仍会弹窗 ⇒ 要重写站点自己的功能函数**（源文把 `window.hljs.signin` 从「弹登录框」改成「全选该 `<pre>` 并复制」），可运行片段走 `Range.selectNode` + `getSelection()` + `removeAllRanges`/`addRange` + `document.execCommand("copy", false, null)`；③ **判据：先看「点按钮时执行的是哪个函数」，再决定改样式还是改函数** |
 | 623 | `52pojie-1814333-【油猴脚本】抖音用户主页数据下载.md` | `cd0ab91e838ab76226528af1090aa132` | 2026-09-24 | `target-analysis` | evolve | ★ **「网络面板没有接口但页面有数据」这一侧**（新文档 `in-page-data-carriers.md`）：① 先分清「**没有接口**（SSR 直出）」还是「**没触发**」；② 直出载体 `<script id="RENDER_DATA">` 里是 **URL-encoded JSON** ⇒ **必须先 `decodeURIComponent` 再 `JSON.parse`**（直接 parse 会失败且**不告诉你需要 decode**）；字段路径要**先打第一层 key**（该站点混着 `_location` / `app` 这类非业务键，用户信息在 `user.user.user`、作品列表在 `user.post.data`）；③ ★★ **两个静默陷阱**：源文脚本用 **`self._url` 判断目标接口 —— `_url` 不是标准属性 ⇒ 条件永不成立、一条都不收且不报错**，必须用 **`this.responseURL`**；**覆盖 `this.onreadystatechange` 会顶掉页面自己的回调** ⇒ 用 `addEventListener("load")`；④ 无限滚动驱动（`scrollTo(0, document.body.scrollHeight)` + 到底判据 + 间隔），★ 驱动性价比 **分页参数 > 点「加载更多」 > 滚屏**（滚屏最不可控）；⑤ CSV 导出的两条纪律（`\ufeff` BOM 让 Excel 认 UTF-8、字段含逗号/换行必须加引号）；⚠️ 源文的 `self._url` 与字段嵌套路径是**站点当时的形态**，已在文档里显式标为「源文缺陷写法，不要照抄」 |
+
+## 批次 B33 · 2026-09-24（第三十四次执行）
+
+**开局状态**：台账 B32 后 **623** 条 / 目录 `.md` **1128**（文章 **1123**）/ 待处理 **500**。
+三方对齐（台账最后一节 = B32 × `git log` 最新 = `b3e2d98`（归档线第 33 轮）+ `827366c`（B32 收尾）×
+自动化记忆最后一条 = B32）**一致** ⇒ 上一轮已闭环。工作区的 `AGENTS.md` / `project/*` 是别会话在途改动，未纳入本批。
+
+**取材口径（严格按记忆里「遗留 / 下一批（B33 更新）」的优先级 ①）**：
+
+- **① 归档线第 32 轮剩下的 11 篇 —— 本批 16 篇里收掉 11 篇（11/11 命中）**：
+  抓包方法论系列 4（`854434` / `858631` / `859813` / `962784`）· 油猴杂项 3（`1598299` / `1940437` / `2051222`）
+  · 媒体解析 4（`1032509` / `1056398` / `1379263` / `1159049`）。
+- **② 归档线第 33 轮（`b3e2d98` 新收 14 篇）里顺手收掉 5 篇「同簇补位」**：
+  Windows 抓包指南 ① ②（`976016` / `976142`，与 ① 的 Fiddler 系列同簇）
+  · 油猴 3（`1625744` / `1774430` / `2099142`，与 ① 的油猴杂项同簇）。
+- **未取**：小游戏改包族 5（**按既定口径继续不列**）；网马时代线（继续不列）；
+  验证码簇（本轮无「新题型 / 完整纯算交付」供给）；网盘族（本批无新形态供给）。
+
+> ⚠️ 本轮**未**新增任何技能 —— 16 篇全部有最近邻模块。候选新技能 `captcha-flow-orchestration`
+> B5–B33 **二十七次确认不新建**。本批「页面解锁 / 油猴配方」面归入 `web-reverse-hook` 既有能力面
+> （以 `references/page-unlock-and-userscript-recipes.md` 落成独立权威源），**仍是 reference 不是新技能**。
+
+**技能变更汇总（4 个技能全部 evolve，0 新建）**
+
+- `target-analysis`（evolve）：新增 `references/capture-layer-tooling.md`（347 行）——
+  **「捕获层」是既有 references 完全空缺的一层**（`traffic-purifier.md` 只讲「已抓到的流量怎么提纯」，
+  **没人回答「流量凭什么能被抓到、抓不到时是哪一层断的」**）：代理式抓包模型（`127.0.0.1:8888` + 中间人 + 信任根证书）、
+  **FiddlerScript 5 类自动改包**（改响应体 / 改请求体 / 改 Cookie / `ui-color` 高亮 / `ActiveXObject` 落盘）、
+  AutoResponder（两个勾必须同时具备，少勾 `Unmatched requests passthrough` 会把整站拦死且**极易被误判成反爬**）、
+  命令调试（`urlreplace` / `bpu` / `bpafter` / `bps` / `bpv` / `bpm` / `select` / **`allbut` 的真实语义是「删掉非该类型」
+  ⇒ 是一条不可逆的「手滑清空」路径** / `>size` / `=status` / `@host`）、
+  ★ **两种欺骗路线对照表**（改 Request 骗服务器 vs 改 Response 骗客户端，优缺点逐条照抄源文；
+  收束判据 = **「一次性加密的 key 无法靠改 Response 欺骗客户端」**）、
+  强制代理（Proxifier 走 **WinSock LSP** 是正规军；SocksCap64 走 **API HOOK + DLL 注入**，
+  **腾讯 TP 保护下注入不进去** ⇒ 判据「注入不进去先想到自保护，而不是配错」）、
+  **抓不到三形态**：① 自带 HTTP 栈直连 socket（全局代理只对 IE/Chrome、WinInet、内嵌 WebBrowser 三类有效；
+  VC/libcurl、Java/URLConnection/OkHttp、C#/System.Net.Http 都绕开系统代理；**例外是 Python `requests` 默认走系统代理**
+  —— 源文自己强调「没法一一测试、需要大家反馈」⇒ **不许把这条例外推广成通则**）、
+  ② **自带 CA bundle 的证书盲区**（`Tunnel to` 443 后没有下文 + `certificate verify failed` 的组合判据）、
+  ③ **本地服务器中转**（源文只给方向、**未展开无验证** ⇒ 只登记形态，**不许补编方法**）、
+  ★ **最容易漏的那一项设置 `Resolve hostnames through proxy`**（不勾 ⇒ 代理只收到 `CONNECT 180.97.33.108:443`，
+  Fiddler 只能为 IP 颁伪造证书 ⇒ 做校验的客户端就报错；勾上才是 `CONNECT www.baidu.com:443`），
+  以及封包字段 / 头部速查（含 **`Process` 列 = 进程 ID ⇒ 把包归因到目标进程的第一判据**、
+  **304 响应体为空是逆向高频假象**、**401 + `WWW-Authenticate` 是认证握手第一跳而不是失败**）。`SKILL.md` 新增 §E。
+- `web-reverse-hook`（evolve）：新增 `references/page-unlock-and-userscript-recipes.md`（590 行）——
+  `anti-hook-detection-and-bypass.md`（B32）的**同族另一面**（那篇讲「怎么不被发现」，本文讲
+  「**怎么把页面自己的限制按下去、把页面自己的资源捞出来**」）：★ **控制台断点条件注入法的「逗号表达式 + 恒假尾项」**
+  （`d[s]===false&&(d[s]=true),false` ⇒ 永不停下但每次经过都改）、★ **原型/内置方法重写**（判断写在
+  `Array.prototype.find` 之下就重写 `find`；**先备份再重写**，`||` 做幂等防二次覆盖）、
+  ★ **Vue 路由钩子注入**（`#app.__vue__.$router.afterHooks.push(fn)` 的完整原理链 =
+  `this.afterHooks = []` → `afterEach` = `registerHook` = `list.push(fn)` → `Vue.prototype.$router` getter 返回
+  `this._routerRoot._router`；**原生层只有字符串、框架层才有 `to`/`from` 结构化对象**）、
+  ★ **去水印三条路线的选型**（删标签 / 劫持生成都「改一下特征值就失效」；**在「获取时」改内容才「除非改接口，理论上通杀」**）、
+  ★★ **媒体播放解锁完整套路**（**别拦 `pause()`** —— 会让播放器状态机错乱抛 `stalled`/`error.loader`；
+  改从源头屏蔽失焦检测；倍速用「取原描述符 + 劫持 set + 锁定开关」丢弃平台轮询重置；
+  **MSE 播放器直改 `currentTime` ⇒ `DOMException: aborted`，且 webpack 作用域隔离拿不到内部 API
+  ⇒ 改为按进度条 DOM 物理尺寸算绝对坐标、派发 `mousedown→mouseup→click`、400ms 防抖**）、
+  ★★ **资源捕获型油猴脚本**（F12 看 `https` 还是有 `blob:https://` 决定用哪个版本；
+  三通道监控 vs `MutationObserver` + 生产者-消费者队列；**页码取元素 `data-page`**）、
+  以及收束判据「**先分清限制在前端还是校验在服务端，前端解锁只在服务端不复核时有效**」。`SKILL.md` 新增一节。
+  ★ 本批真机还实测到一条**源文没写的坑**并已回写：Vue 2 的 `$mount('#app')` 会**替换宿主元素**，
+  自建最小复现时根元素不带 `id` 会让 `querySelector('#app')` 返回 `null`（表现为「文档那行明明对却报 null」）。
+- `desktop-client-reverse`（evolve）：`references/extension-and-nwjs.md` 新增 **§1.7「直接改本地已安装扩展的 JS」**
+  —— 扩展 ID → `Everything` 定位扩展目录 → 改 `controller/setting.js`：把 `return (0, t.useContext)(i);`
+  改成先取 `temp`、塞 `temp.app.user = { roles: ["premium","member"] }` 再返回 ⇒ **改完刷新页面即解锁**。
+  ★ 与 §1.3 的差别写清楚了：**§1.3 改的是「许可校验的判断」，§1.7 改的是「消费权限的那个对象」**
+  （前者要找到赋值处，后者只需找到取用处）。`SKILL.md` 分流表 +1、参考描述同步。
+- `stream-drm-reverse`（evolve）：三处增量 ——
+  ① `references/playback-address-interfaces.md` 新增 **§2.2c 腾讯旧版 `getinfo` 变体二**（2019）：
+  与既有 §2.2b **同一接口的另一种取参数写法**，差异集中在「文件名由 `cl.ci[0].keyid` **重建**」
+  （`keyid[0] + ".p" + keyid[1][2:] + "." + keyid[2] + ".mp4"`）与「**CDN 基址取 `ul.ui[3]` 而不是 `[0]`**」；
+  ★ 源文那句可疑的 `... + "?vkey=" + fvkey + "?type=mp4"`（第二个 `?`）**照原样保留并标注「源文如此，未做修正」**
+  —— 并提炼出纪律「**先按源文跑一遍，把『跑不通』与『源文笔误』区分开，不要一上来就顺手修好**」。
+  ② 新增 **§3A 移动 APP 直播源：CCTV 手机电视（2021）** ——
+  ★ **判据：HTTP 200 ≠ 拿到可播地址**（`resultCode: "0000"` 而 `playurl` 仍是 base64 密文）；
+  「**三段拼接**」密钥（`硬编码前缀 + strings.xml 资源 + JNI native 返回值`）与四个方法的拼接产物；
+  `Play-Ua` = **DESede + base64**、`secretToken` = **HMacMD5 后转大写**；
+  源文四处**自相矛盾**（`DES_KEY` 尾 `2!` vs `UA_DES_KEY` 尾 `3!`；正文 `cntv2018` vs 结果 `cntv201812`；
+  `getUaDesUaKey()` 正文写法丢了 `$#SD&*`）**逐条登记为「源文未澄清」**，并给出「以反编译源码块完整串为准」的口径；
+  ★ **审计判据：native 方法先判「参与计算」还是「只做校验」**（源文点开 `j_a`/`j_b` 发现只是 APP 签名校验，
+  白花了时间）；**同 APP 双端参数差异**（`wdClientType` 1/2、iOS 的 uuid 全大写、`wdNumber` 范围）；
+  **源文明确不公开的两处**（`Afas`/`Filter` 算法、`playUrl` 最终解密 —— 且自陈「本文列举的加解密方法
+  依然不能解密 `PlayUrl`」）一律标「源文未公开」，**不补编**。
+  ③ 新增 **§3B 短视频「去水印 / 无水印直链」三形态**（`srcNoMark` / `origin_video_download.url_list[0].url` /
+  易语言 COM+WinHttp 对照）—— ★ 判据「**去水印的落点是响应里的另一个字段，不是把水印字段删掉**」；
+  `did` 是客户端随机伪设备标识 ⇒ **同会话内一致即可，不必复现具体值**。
+  ④ `references/hls-and-ts-structure.md` 新增 **§1.5 多候选 m3u8 的挑选判据**
+  （`Counter(...).most_common(1)[0][0]` 取「重复出现次数最多」——★ **只当第一猜想、不当结论**：
+  「出现次数最多」与「真正被加载」**没有因果关系**）与 **§5.1 整片 AES 的工程骨架**
+  （`AES.new(key, MODE_CBC, key)` ⇒ **`key == IV` 整串复用**，与 W 族的「切片式」区分开；
+  `zfill(5)` 序号；gevent 并发 **失败单独计数不静默吞掉**；`ffmpeg -f concat -safe 0 -i list.txt -c copy`
+  并解释 `-safe 0` 为什么必要）。`SKILL.md` 分流行 +4、失败模式 +4、description 触发词 +3（去水印 / 无水印）。
+
+**★ 本批「自己实跑出来的」增量（两条，都成了通用判据）**
+
+1. **CCTV 两条签名链被独立复算对上**：`DESede + ECB + PKCS5 + base64` 复算源文 `secretToken`
+   ⇒ 与源文密文**逐字节相同**；`HMacMD5(getParmasEasyPrivateKey(), secretToken)` 大写 hex
+   ⇒ 与源文 `2B918F2C881C7DD2F314B7D6B9DB5382` **完全相同**。
+   ⇒ **判据：源文同时给出「明文串 + 中间值 + 产物」时，一定要做一次异语言交叉复算** ——
+   这是把「转述可信」升级为「算法可信」的最低成本动作，也让 DESede 的 `ECB`（无 IV）与「24 字节密钥」两件事
+   从「源文没写」变成「复算必然如此」。
+2. **HTTP 层的 304 / 401 判据被真实往返坐实**（本地临时服务器）：**304 的响应体长度确实为 0**
+   （对照：`If-None-Match` 为陈旧值则回到 200 且有 body）；**401 确实带 `WWW-Authenticate`**，
+   `Basic base64("alice:s3cr3t") == "YWxpY2U6czNjcjN0"` 可逆 ⇒ 「Basic 就是 base64(用户名:密码)」不再只是转述。
+
+**验收（全部实跑）**
+
+- `check_skill_integrity.js` **全库 0 阻断 0 告警**（台账 623 篇 / 候选 1123 / 待处理 500）。
+- `tools/b33-verify-docs.js`（**改动集从 `git status` 派生**，工作区干净时沿 `git log` 回落到
+  「最近一次改动了技能文档的提交」以保证提交后可复跑）**0 阻断**：
+  完整脚本 **26** 通过 · **函数体片段 4**（包壳通过） · 教学占位 3 跳过 · 路径引用可解析 142 / 不可解析 0。
+- ★ **browsercli 真机 Chrome 逐条验证本批文档里写下的「可执行断言」：33 项全绿**
+  （`artifacts/skill-evolution/b33-run/`：断言脚本 + `RESULTS.md`）。10 组：逗号表达式恒假尾项 /
+  `Array.prototype.find` 重写（含 `||` 幂等与「未命中不动」）/ 失焦事件拦截的**作用域**
+  （`document` 丢、元素上同名仍生效）/ `hidden`·`visibilityState`·`hasFocus` 顶掉 /
+  `playbackRate` accessor 劫持（平台重置被丢弃）/ 进度条坐标三连 `MouseEvent`（顺序 + `clientX`）/
+  `\d{5,}` 命名 / `MutationObserver` **异步**送达（两步法：同步读 0 ⇒ 下一轮 1）/
+  ★ **真 Vue 2.7.16 + vue-router 3.6.5 上的 `afterHooks` 注入**（`el.__vue__.$router === router` 同实例、
+  `push` 后长度 1、`router.push('/b')` 后钩子**真的被调用**并拿到 `to=/b, from=/`）。
+- ★ **Node 独立实跑 13 项全绿**：CCTV 加密链路交叉复算（`verify-cctv-crypto.js`）+
+  捕获层 HTTP 判据真实往返（`verify-http-semantics.js`）。
+- 台账 **623 → 639** 条 / `verify-ledger-md5.py` 逐条一致 / 幂等复跑 · 待处理 **500 → 484** ·
+  双镜像 **9/9 逐字节一致**。
+
+**遗留（本批登记的「单源 / 未复核 / 源文未公开」项，文内已显式标注，勿当结论用）**
+
+1. `976016` 的「**Python `requests` 默认走系统代理**」是**源文明说的待汇集项**（原话「由于没法一一去测试，
+   还需要大家的反馈」）⇒ **不许推广成通则**。
+2. `976142` 的「反编译判定 HTTP Client 库 → 反编译/重编译、APIHook、Dll 注入、Shellcode」是**源文预告、
+   无实例**；`854434` 的「本地服务器中转抓法」是**源文刻意只透露方向**（「只能透露几点」）
+   ⇒ 两处都只登记方向，**不许补编步骤**。
+3. `859813` 是**二手整理**（源文自述「部分转载」「部分收集于网络」）⇒ 只当**命名对照表**用，不作权威规范；
+   其中「`if-Modified-since` ↔ `Last-Modified` 配对」是**源文推断**（源文只分别定义、未明说配对）。
+4. `1940437` 是**转述**（源文首行点名原作者 `like御坂美琴` 的 `52pojie-1940297`）⇒ 引用必须连出处一起写。
+5. `1774430` 的「**CSS 伪元素 `::part` 直接隐藏不好用**」是**源文未解现象**（源文自陈「不知道是什么原因」）
+   ⇒ 照实转述，**不替它编原因**。
+6. `2051222` 的两条边界是**源文自己列的**：**不覆盖「前端组装型」电子书**、
+   **排序逻辑（截前 5 位以上数字）对部分书不适用**（源文给的手工解法是「手动调整顺序后再导出」）。
+7. `1056398` 的「**取重复出现次数最多的 m3u8**」是 **2019 年源文的朴素启发式** ⇒ 只当第一猜想；
+   `1000kb/hls/` 与 `key.key` 都是**该站点的目录/文件名形态**，**抄结构不抄常量**。
+8. `1032509` 是 **2019 年**腾讯旧路线（今天已改用 `vd.l.qq.com/proxyhttp` + `cKey`）⇒ **引用必须连同年份**；
+   列表页 vid 取法源文只说「有能力的自己来」⇒ **未给取法**。
+9. `1379263` 的密钥常量与「双端差异」是**该 APP 3.5.3 单版本**的实测；源文**明确不公开** `Afas`/`Filter`
+   与 `playUrl` 解密（且自陈「本文列举的加解密方法依然不能解密 `PlayUrl`」）⇒ 只登记结构，
+   **缺的部分一律标「源文未公开」**。其中 `cntv2018` / `cntv201812` 等**源文自相矛盾处**已逐条登记。
+10. `1159049` 的 `aid=1319` / `cell_type=1` / `app_name=super` 是**当时**取值 ⇒ 站点改版即失效；
+    某手那条只给了「换 iPhone UA + 随机 `did` + 从 HTML 截字段」的形态。
+11. **B32 遗留继续挂着**（本轮未碰）：`2105967` 的 5 条安全缺陷是单站实测归纳、
+    `1163619` 是 2020 年旧路线、`951589` 源文自陈校验方式不通用、`1237897` 的固定 GUID 是 2020 年值、
+    `2046628` 是无结论求助帖、`1708851` 的 `key == iv` 单源单版本、`1650555` 的内联实现细节不可迁移、
+    `1814333` 的 `RENDER_DATA` 嵌套路径是当时形态。
+12. **B31 / B30 遗留继续挂着**（本轮未碰）：斗鱼长期化来源单篇、B 站固定 CDN 前缀是当时实测值、
+    虎牙 `sCdnType == "AL"` 口径、B 站「接近永久」是源文推断、`1998689` 响应 Cookie 参与 sign 单站观察；
+    百度 §A 的 `42 小时`、阿里云盘三取样点 hash 单源、文叔叔 `16/11` 位单源、
+    `jquery-handler` 事件映射对象分支只在 Node 假环境覆盖、`miniprogram-reverse` 排错表的 `RadiumWMPF` 行
+    （**连续十轮未碰**）、B30 登记的 5 条「推测项」。
+13. 候选新技能 `captcha-flow-orchestration` —— B5–B33 **二十七次确认不新建**；
+    候选元技能「本流水线自身的批次作业」**仍待评估**（本批未建）。
+
+**独立复核（如实记录）**
+
+本轮采用**子代理并行蒸馏 + 主控逐条回源复核**的两段式，而非单一的「主控自产自审」：
+
+1. **3 个子代理分工蒸馏**（`capture` / `userscript` / `media`），每份 brief 都带硬性纪律
+   「严禁编造 · 常量逐字一致 · 源文推断处标注 · 源文未解处只登记不补解释 · 跨技能引用必须写 `../../`」。
+   产出质量稳定：**0 编造**，并主动指出源文缺陷 2 处
+   （`1379263` 的 `DES_KEY` 尾 `2!` vs `UA_DES_KEY` 尾 `3!`、正文 `cntv2018` vs 结果 `cntv201812`；
+   `859813` 的二手转载属性）。
+2. **主控逐条回源复核**：把子代理自报的「逐字引用常量清单」与源文逐条对照；
+   发现并修掉 **5 处悬空跨技能引用**（3 处在 `capture-layer-tooling.md`、2 处在
+   `page-unlock-and-userscript-recipes.md`：子代理写了 `../<skill>/…`，从 `references/` 目录内
+   必须退两级 `../../<skill>/…`，否则会被 `check_skill_integrity.js` 判 BLOCK）——
+   这三处若不自查，会以「子代理报 0 阻断」的姿态静默通过。
+3. **机器侧独立证据（不是自证）**：33 项 browsercli 真机 Chrome 断言 + 13 项 Node 独立实跑
+   （CCTV 加密链路异语言复算 2 条 + 捕获层 HTTP 判据真实往返 11 条）——
+   其中 **CCTV 的两条签名链（DESede+base64 / HMacMD5）已被独立实现逐字节复现**，
+   这是本批对源文可信度的**最强提升**。
+4. **门禁不自证**：`b33-verify-docs.js` 的改动集从 `git status` 派生（工作区干净时沿 `git log` 回落），
+   确保提交后仍可复跑；本批它**立刻抓到 4 处代码块语法问题**（3 新 + 1 历史遗留），
+   随后把门禁升级为「完整脚本 / 函数体片段（包壳复验）/ 真错误」三态 ——
+   **不是放宽标准，是把「片段」这一类从静默跳过改成可见通过**。
+
+**残留不确定性（已在上方「遗留」逐条列出，不重复）**：源文未公开 2 处（`Afas`/`Filter`、`playUrl` 解密）、
+源文未解 1 处（`::part` 隐藏水印不好用）、源文自相矛盾 3 处（DES 常量尾位、`cntv2018`/`cntv201812`、
+`getUaDesUaKey()` 正文写法）、单源未复核 4 处（`requests` 走系统代理、`976142` 攻方落点无实例、
+`854434` 本地中转无步骤、`1032509` 列表页 vid 取法未给）。
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 核心萃取 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 624 | `52pojie-854434-Fiddler大解析！抱歉，抓包抓得好真的可以为所欲为。.md` | `14f95f37f6a5f90fbe4c3a6d95785ad7` | 2026-09-24 | `target-analysis` | evolve | ★★ **「抓包 = 让流量经过代理」这条根**：Fiddler 以 web 代理形式工作（`127.0.0.1:8888`），HTTPS 解密 = **中间人**、前提是客户端信任根证书（`Actions → Trust Root Certificate`）；★ **FiddlerScript（`CustomRules.js`，JScript.NET）5 类自动改包**：`GetResponseBodyAsString()` + `Fiddler.WebFormats.JSON.JsonDecode` → 改 `responseJSON.JSONObject['付费']` → `JsonEncode` → `utilSetResponseBody`；`GetRequestBodyAsString()` → `replace` → `utilSetRequestBody`；`oSession.oRequest["Cookie"]`；`oSession["ui-color"]="red"`；`utilDecodeResponse()` + `ActiveXObject("Scripting.FileSystemObject")` 落盘 `D:\Sessions.txt`；★ 动机判据原话「每次下完断点，修改完再提交，总会网络超时或者 APP 超时。这该怎么办？难道只能靠手速？」⇒ **脚本化改包解决的是「抢手速」问题**；入口判断三种写法别混用语义（`fullUrl.Contains` / `uriContains` / `HostnameIs` **只比主机名**）；★ 两个**盲区形态**：① APP **检测 wifi 代理**（一开代理就无法正常使用 ⇒ 判据「一开代理就断网先怀疑代理检测，而不是"包没走到代理"」）；② **本地服务器中转**（点名麻花影视、电视家）—— **源文刻意只透露方向**（「这边只能透露几点，不能正大光明地公布」）⇒ 只登记形态、不补编方法 |
+| 625 | `52pojie-858631-【Fiddler为所欲为第二篇】像OD一样调试.md` | `879c5600474c7a6e7de6eb17f05f3508` | 2026-09-24 | `target-analysis` | evolve | **Fiddler 的「调试器」面**（源文定位「可以说是抓包界的 OllyDbg 并不为过」）：★ **AutoResponder** 全流程（`Enable automatic responses` + `Unmatched requests passthrough` **两个勾必须同时具备** —— 少勾后者会把整站资源拦死、页面像坏了，**极易被误判成反爬**；`regex:` 是**首行前缀标记**；替换目标支持本地文件与另一线上地址）；★ **命令调试**：`urlreplace A B`（等价 `oSession.hostname='...'`，不带参数即复位）、断点 `bpu`（请求前）/ `bpafter`（响应后）/ `bps`（按状态码）/ `bpv`·`bpm`（按 method）；★ **过滤器命令的语义坑**：`allbut`（别名 `keeponly`）**真实语义是「删掉非该类型」** ⇒ `allbut <不存在的类型>` 等同 `cls` **清空全部会话**（不可逆，**用前先导出**）；另有 `select <type>` / `?text` / `>size` `<size` / `=status` / `@host`；★ 限速 `Rules → Performances → Simulate Modem Speeds`（由 `m_SimulateModem` 与 `request-trickle-delay=500` / `response-trickle-delay=150` 毫秒/KB 控制）；★ **「逆向」最小闭环**：用 `ctrl+F` 搜「下断点的那个网址」⇒ **反向定位是哪个接口/响应产生了这个地址** |
+| 626 | `52pojie-859813-【Fiddler为所欲为第三篇】封包逆向必备知识.md` | `6c871a16b2e550aa8b88c4ab04083296` | 2026-09-24 | `target-analysis` | evolve | **读包时的命名对照表**（口径：源文自述「部分转载」「部分收集于网络」⇒ **二手整理，不作权威规范**）：Fiddler 列表十列（Result / Protocol / HOST / URL / Body / Caching / Content-Type / **Process = 发送此请求的进程 ID** ⇒ **把包归因到目标进程的第一判据** / Comments / Custom）；Request 头域六分组（Cache / Client / Cookies / Entity / Security / Transport / Miscellaneous）与 Response 头域分组；★ 三处**可迁移判据**：① `if-None-Match` ↔ `ETag` 配对（源文明示）且**命中缓存返回 304 ⇒ 响应体是空的** ⇒ 「接口明明正常过、现在响应体是空的」是高频假象，**先看 `Result` 是不是 304**；② `if-Modified-since` ↔ `Last-Modified` 的配对是**源文推断**（源文只分别定义、未明说配对）；③ **HTTP 认证四步**（无 `Authorization` ⇒ 401 + `www-Authenticate` ⇒ 客户端 `base64(用户名:密码)` 放 `Authorization` ⇒ 服务端校验），**OAuth 相对 HTTP 的差别就是 `Authorization` 里放 token 而不是用户名密码** ⇒ 判据「401 不是失败，是认证握手的第一跳；这一跳之后的那条请求里的 `Authorization` 才是要复现的凭据」 |
+| 627 | `52pojie-962784-【Fiddler为所欲为第五篇】破解必备思路.md` | `f4d30f8bd19920bdf37b6777ecefe22b` | 2026-09-24 | `target-analysis` | evolve | ★★ **本簇迁移价值最高的判据表 —— 两种欺骗路线**（场景：A 已付费绑定设备 `123456`，B 想用同一 APP）：**欺骗服务器 = 改 Request**（下断点把 `udid:654321` 改成 `udid:123456` 再提交）vs **欺骗客户端 = 改 Response**（把 `staus:1` / `endtime:2019-05-23` 改成自己的值）；**优点/缺点逐条照抄源文** —— 欺骗服务器「后台只会显示小米 9 一直在换着地方登陆，而不会有过多的猜想」但「**必须已经有一台付费的设备**」；欺骗客户端「**无需付费的设备**、只看最后结果」但「**若为加密算法、绑定了其他的信息，则会破解失败**」；★ **收束判据（源文原话）：「若服务器返回的 key 是一次性加密的，则无法做到欺骗客户端」** ⇒ **一次性加密的 key 改 Response 也过不了校验**；两条路线落地位置：脚本侧（`utilSetRequestBody` / `oRequest["Cookie"]` vs `utilSetResponseBody`）与断点侧（`bpu` vs `bpafter`） |
+| 628 | `52pojie-976016-Windows抓包指南①：Proxifier+Fiddler对第三方程序强制抓包.md` | `08d709848a313d6460011f22d7638f42` | 2026-09-24 | `target-analysis` | evolve | ★★ **「全局代理只对哪些程序有效」的条件表**（源文逐字三条）：IE/Chrome 等浏览器、程序使用 **WinInet** 库、程序**内嵌 WebBrowser 控件**；**反面根因**：VC/libcurl、Java/URLConnection/OkHttp、C#/`System.Net.Http` 这些库**自带 HTTP 封装与拆解 ⇒ 最终直接调 socket API**，操作系统给不了它代理；★ **例外最容易记反**：**Python `requests`** 不显式设代理时会**走系统全局代理**因此能抓到 —— 但源文明说「没法一一去测试，还需要大家的反馈」⇒ **不许推广成通则**；★ 两条判定动作：`Depends` 看是否依赖 **`WININET.DLL`**（源文例：招商银行专业版 PC 网银客户端）、`spy++` 看是否内嵌 WebBrowser；★ **强制代理两工具对照**：**Proxifier**（「正规军，使用了 Windows 提供的正规接口，通过安装 **WinSock LSP 模块**过滤/转发 TCP/UDP 包」，「稳定性和兼容性更好」）vs **SocksCap64**（「**API HOOK** + **DLL 注入**」，「但不是所有程序都随便给你注入的，比如**腾讯 TP 保护下的游戏客户端**」）⇒ 判据「**注入不进去先想到自保护，而不是配错**」；★ **最容易漏的那一项设置**：`Profile → Name Resolution → Resolve hostnames through proxy` —— 不勾时 Proxifier 自己解析域名，向 Fiddler 发 `CONNECT 180.97.33.108:443`，**Fiddler 只能为 IP 颁发伪造证书 ⇒ 做校验的客户端就报错**；勾上后发 `CONNECT www.baidu.com:443`，才能为正确域名颁证 |
+| 629 | `52pojie-976142-Windows抓包指南②：Fiddler抓不到的包是怎么回事？.md` | `bc477103270282a525097abb3813a779` | 2026-09-24 | `target-analysis` | evolve | ★★ **证书盲区的组合判据**：现象 = Fiddler 里**只有 `Tunnel to` 443、之后没有下文** + 目标程序**表现为无法联网/功能异常**；根因 = 该程序所用 HTTP 库**自带一套可信任的 SSL 根证书、不读操作系统的**（Python `requests` 自证：官方文档原话「Requests bundled a set of root CAs that it trusted, **sourced from the Mozilla trust store**」），自然不信任我们装进系统的 Fiddler 根证书 ⇒ `OpenSSL.SSL.Error: … 'certificate verify failed'`；**两条解法**：① 客户端**禁用证书校验**（`requests.get(..., verify=False)`）；② 让客户端**信任 Fiddler 根证书**（`http://127.0.0.1:8888` 下载 `FiddlerRoot.cer` → `openssl x509 -inform der -in FiddlerRoot.cer -out fiddler.pem` → `verify="./fiddler.pem"`）；★ 源文的**复现方法论**值得单列：**自己写一个程序、自己抓自己的包**把「哪个环节出错」钉死；★ **攻方落点**（**源文只给方向、预告后续文章、无实例**）：先反编译判定目标用的是哪个 HTTP Client 库（「一般很少有程序会自行实现一个 HTTP Client」），再按该库的公开 API 用「反编译/重编译、APIHook、Dll 注入、Shellcode」让它禁用校验或信任证书 |
+| 630 | `52pojie-1598299-【油猴脚本】gitbookVIP解锁.md` | `0a34c69853a53750955aabefb82d15b6` | 2026-09-24 | `web-reverse-hook` | evolve | ★★ **控制台断点条件注入法**（源文自述自创手法）：条件断点写 `d[s]===false&&(d[s]=true),false` —— **逗号表达式从左到右求值、返回最后一项**：前半段执行副作用（把 `false` 改成 `true`），**最后一项恒 `false` ⇒ 断点判定永假、永不停下，但每次经过都自动改值**；判据：手改一次内存**刷新即失效**，条件断点的价值正是「每次执行到这一行都改」；**边界：临时验证手段，正式产物走原型重写**。★ **原型/内置方法重写（从 native 层入手）**：判断写在 `let d = DDe.find(f=>f.key === e)` 之下 ⇒ 重写 `Array.prototype.find`，用**数组内容特征**（`JSON.stringify(this).includes('github-sync')`，源文原话「理论来说任意一个不会在数组里重复定义的都可以」）区分「该管的那次调用」，命中就把所有 `false` 改 `true` 再委托原函数；★ **纪律「先备份再重写」**：`[].constructor.prototype._find = [].constructor.prototype._find \|\| [].constructor.prototype.find;` —— **不备份就把原生 `find` 永久覆盖掉**，`\|\|` 做**幂等写入**防止二次注入把备份也换成自己的版本；`[].constructor` 与 `Array` 等价（源文原话「你要是愿意，直接用 `Array` 也行」）；★ 定位链条：从**界面文案**（`Upgrade!`）入手 → 向上找关键变量赋值 → 顺藤摸瓜找唯一定义（勾区分大小写）→ 看不懂就函数首行下断点动态调 |
+| 631 | `52pojie-1940437-【教程】Circle 阅读助手付费功能解锁.md` | `f05045b5fe3dae18b54d9895b3a69f0b` | 2026-09-24 | `desktop-client-reverse` | evolve | ★ **浏览器扩展的第三条用途：直接改本地已安装扩展的 JS（不重打包、不签名）**：`chrome://extensions/` 找到目标扩展 → 详情 → 复制 ID（源文例 `dhpfcgilccfkodnhbllpiaabofjbjcbg`）→ 用 `Everything` 按 ID 搜到扩展目录 → 打开 `controller/setting.js` → `Ctrl+H` 把 `return (0, t.useContext)(i);` 改成「先取 `let temp = (0, t.useContext)(i);`，往上面**注入伪造的权限对象** `temp.app.user = { roles: ["premium","member"] }`，再 `return temp;`」⇒ **保存后刷新页面即解锁**；★ **与既有 §1.3 的分工写清楚了**：§1.3 改的是**许可校验的判断**（状态机 / 令牌 / 校验函数），本节改的是**消费权限的那个对象**（直接给 `app.user` 塞 `roles`）—— **前者要找到赋值处，后者只需找到取用处**；★ 三条纪律：① 这是**改本地文件、不碰服务器** ⇒ **只在扩展把权限判断放在前端时有效**；② 改完**必须刷新页面**（源文原话「如果已经缓存页面了的，重新刷新页面即可」，已缓存的页面不会生效）；③ 该篇是**转述**（源文首行点名原作者 `like御坂美琴` 的 `52pojie-1940297`「Circle 阅读助手 v3.1.2 逆向笔记」）⇒ **引用必须连出处一起写** |
+| 632 | `52pojie-2051222-【油猴脚本】flbook 导出PDF插件.md` | `5ba560bf5a9ccab9bc3a53b30b5e3e5f` | 2026-09-24 | `web-reverse-hook` | evolve | ★★ **资源捕获型油猴脚本的两版本选型判据**：F12 网络面板刷新并翻页 —— **能看到完整 `https` 图片 URL 且含长数字 ⇒ 用「URL 截取版」**；**只能看到 `blob:https://…` ⇒ 必须用「图片捕获版」**（`blob:` = 数据经动态处理后才显示）。**URL 截取版**：三通道同时监控 `fetch` + `XMLHttpRequest.prototype.open` + `PerformanceObserver`（后者补 `<img>` 直接加载的资源）；文件名用 `url.match(/\d{5,}/g)` 提 **≥5 位连续数字**、`join('-')`，后缀从 `contentType.split('/')[1]` 取并 `jpeg→jpg`；URL 匹配模式可持久化。**图片捕获版**：`MutationObserver` 盯 `document.body` 的 `childList`（`subtree:true`），命中 `div.pdfimg.move.rendered` 才入队；★ **生产者-消费者下载队列**（`fetchQueue` + `processingUrls:Set` 去重 + `isWorkerRunning` 单飞，一次只下一个、`setTimeout(processFetchQueue,50)` 续跑）；**启动先扫一遍已存在节点**；★ **页码从元素的 `data-page` 属性取**（比按 URL 数字排序可靠 —— 数字可能只是资源 ID）；**两条工程纪律**：必须**完整翻页**（懒加载不翻就抓不全）、下载必须**队列化**（并发大批量会把浏览器卡死）；边界（源文自列）：**不覆盖「前端组装型」电子书**、排序逻辑对部分书不适用（手动调序） |
+| 633 | `52pojie-1625744-[油猴脚本开发]监听Vue路由改变.md` | `6fe75a6f23ac9cb5ef8c6cdc50dbed8d` | 2026-09-24 | `web-reverse-hook` | evolve | ★★ **Vue 路由钩子注入的完整原理链**（源文逐条给出）：① vue-router 在**实例初始化**时建 `this.beforeHooks = []` / `this.resolveHooks = []` / `this.afterHooks = []`；② `VueRouter.prototype.afterEach` 的实现就是 `return registerHook(this.afterHooks, fn)`，而 `registerHook(list, fn)` 的实质是 **`list.push(fn)`**（返回一个「取消注册」闭包）；③ `Object.defineProperty(Vue.prototype, '$router', { get: function get () { return this._routerRoot._router } })` ⇒ **任何 vue 实例都能拿到 router**（一路向上取根实例的 `_router`）；④ 而 `#app` 上**通常就有 `__vue__`** ⇒ 源文一行 `document.querySelector('#app').__vue__.$router.afterHooks.push(()=>{console.log('路由发生改变')})`。★ **判据：监听路由的两条路，先选对层** —— **原生层**（history 模式拦 `history.pushState`；hash 模式听 `popstate`/`hashchange`）**只有字符串地址**；**框架层**（注入 `afterHooks`）**能拿 `to`/`from` 结构化路由对象**。三种模式：`history`（无 `#`）/ `hash`（带 `#`）/ `abstract`（源文原话「普通开发还不怎么常用」） |
+| 634 | `52pojie-1774430-【油猴脚本】温馨遗言去水印——支持自定义水印文本.md` | `23212ca07035df8fad342ea077e9ed0e` | 2026-09-24 | `web-reverse-hook` | evolve | ★ **去水印三条路线与选型**（源文原话逐条）：①「识别对应的标签，删掉」——「**但是只要改一下特征值就直接失效**」；②「修改水印生成时的代码，劫持掉不让他生成」——「**问题同上**」；③「**在获取时修改水印内容**」——「**除非改接口，理论上通杀**」。**源文选 ③**：①②都挂在「水印的模样」上（删标签依赖标签特征、劫持生成依赖生成代码位置），站点一改特征或换生成路径即失效；③挂在**数据流**上。源文自嘲「肯定选择最简单的办法：通过 MITM 实现供应链攻击（不是，其实就是第三个方案。。老劫持了）」；★ 交付形态：双击右上角头像输入框填内容即为自定义水印；★ 附带经验：「顺便还实现了自定义水印，还顺便去了图片的水印」「（为了分析顺便还去掉了断点检测）」；★ **源文未解现象（登记，不补解释）**：「尝试使用 css 伪元素 part 去直接隐藏的话好像不好用，**不知道是什么原因**」 |
+| 635 | `52pojie-2099142-【油猴脚本】视频播放优化：B站 学堂在线 中国大学MOOC.md` | `ebe676c17249e197d0baa4bbcf26de68` | 2026-09-24 | `web-reverse-hook` | evolve | ★★ **媒体播放解锁的完整套路（本批技术密度最高）**：① **切屏/失焦秒暂停** —— **别拦 `pause()`**：源文实测拦底层 `HTMLVideoElement.prototype.pause` 或 jQuery `trigger('pause')` 会**导致播放器内部状态机错乱**、引发 `stalled` / `error.loader` 节流假死；正确做法是 `@run-at document-start` **从源头屏蔽失焦检测**（重写 `EventTarget.prototype.addEventListener`，对 `['visibilitychange','webkitvisibilitychange','blur','focusout','pagehide','mouseleave']` 且 **`this` 为 `document`/`window`** 的注册直接丢弃 —— **别把全局 `addEventListener` 打死**；`killSetter` 安置空 setter；`Object.defineProperties(document,{hidden/visibilityState/webkitHidden})`；`Document.prototype.hasFocus = () => true`）。② **倍速被轮询重置** —— 平台定时器轮询 `playbackRate` 比对 UI 后强制重置 ⇒ **先用 `Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'playbackRate')` 取原 setter**，再劫持 `set: function(v){ orig.set.call(this, isLocked ? mySpeed : v) }`，用 `isLocked` 开关**丢弃平台写入**。③ ★★ **`currentTime` 直改 ⇒ `DOMException: aborted`** —— 平台是 **MSE 播放器**，直改会**绕过内部缓冲管理器**导致状态机崩溃；且**webpack 作用域隔离**使外部拿不到其内部封装的 jQuery API ⇒ **解法：按进度条 DOM 物理尺寸算绝对坐标、派发原生 `MouseEvent`**，让播放器自己的缓冲逻辑跑。④ ★ **事件链路要派全**：中国大学 MOOC 的进度条监听的是 **`mousedown` 而非 `click`** ⇒ 依次派发 `mousedown → mouseup → click`（选择器：学堂在线 `.xt_video_player_progress`、中国大学 MOOC `progresswrap`，**是当时的类名**）。⑤ ★ **400ms 防抖**：高频连按会瞬间产生大量请求再次搞崩 MSE ⇒ 连按期间**只更新 OSD**，停手 400ms 后才做**唯一一次**坐标点击。⑥ 快捷键用 `e.code`、`preventDefault` + `stopImmediatePropagation`，且**先判焦点不在 `input`/`textarea`/`contentEditable`**（否则做笔记时按键全被吃）。★ **边界（源文自述）**：「有服务端强制校验的课程，过高倍速/拖拽可能**进度无效**」 |
+| 636 | `52pojie-1032509-腾讯视频真实视频地址解析.md` | `c52171bbc08adadbcc0a5d2c02143515` | 2026-09-24 | `stream-drm-reverse` | evolve | 腾讯 `vv.video.qq.com/getinfo` 的**第二种取参数写法**（2019，与既有「2020 前旧路线」**同接口不同写法**）：`vid` = 播放页 URL 最后一段去扩展名；请求 `…?otype=json&platform=11&defnpayver=1&appver=3.2.19.333&defn=fhd&vid=<vid>`；★ 响应是 `QZOutputJson=…;` 形态 ⇒ `re.findall('QZOutputJson=(.+);$', …)[0]` **剥壳后再 `json.loads`**（与既有判据同一档，交叉引用不重复）；★ **本变体二的两个指纹**：① 文件名**由 `cl.ci[0].keyid` 重建**（`keyid` 按 `.` 分三段 ⇒ `keyid[0] + ".p" + keyid[1][2:] + "." + keyid[2] + ".mp4"`，**第二段要去掉前 2 个字符**）；② CDN 基址取 **`vl.vi[0].ul.ui[3].url`（下标 3，不是 0）**；★ **源文那句可疑的第二个 `?`**（`cdn + filename + "?vkey=" + fvkey + "?type=mp4"`）**照原样保留**并标注「源文如此，未做修正」⇒ **纪律：先按源文跑一遍，把「跑不通」与「源文笔误」区分开，不要一上来就顺手修好**；页面形态判据：`/x/page/<vid>.html` ⇒ 完整视频，`/x/cover/<cid>/<vid>.html` ⇒ **需逐个下载再合并**（列表页 vid 取法源文**未给**） |
+| 637 | `52pojie-1056398-m3u8视频下载分享.md` | `d0440a4d002b9c4fe3e6816f0221fbd0` | 2026-09-24 | `stream-drm-reverse` | evolve | ★ **多候选 m3u8 的挑选判据**：`Counter(re.findall("http.*?index\.m3u8", r.text)).most_common(1)[0][0]` —— **取「重复出现次数最多」的那一条**（源文原话「找到提取内容重复次数最多的链接」）；★ **口径必须收紧**：这是 **2019 年源文的朴素启发式**，「出现次数最多」与「真正被加载」**没有因果关系**，只当**第一猜想**；路径归一 `index.m3u8 → 1000kb/hls/index.m3u8` 是**该站点目录形态，抄结构不抄常量**。★ **加密判据**：m3u8 文本含 `URI="key.key"` ⇒ 把 `index.m3u8` 替换成 `key.key` 取密钥；**`AES.new(key, AES.MODE_CBC, key)` ⇒ `key == IV` 整串复用**（与 W 族的「切片式（前 16/后 16）」区分开，同族另一样本）。★ **工程骨架**：`re.findall('(\w*?\.ts)', r.text)` + **序号 `str(index).zfill(5)` 补齐 5 位**（保顺序、便于排序与续传）；URL 用 `m3u8_url.replace("index.m3u8", ts)` ⇒ **相对分片名按 m3u8 目录拼绝对地址**；`gevent.pool.Pool(50)` 并发且**失败单独计数不静默吞掉**（否则「缺了几片」要到合成时才暴露）；合成 `(for %a in (*.ts) do @echo file '%a') > list.txt` + **`ffmpeg -f concat -safe 0 -i list.txt -c copy`**（`-c copy` 不重编码；★ **`-safe 0` 的必要性**：concat 默认走安全协议白名单，清单里是相对/特殊协议路径时会被拒（`Unsafe file name`）） |
+| 638 | `52pojie-1379263-【吾爱首发】“CCTV手机电视” APP请求直播源地址分析.md` | `73db23cecb11cdec7fcd99633543aeb4` | 2026-09-24 | `stream-drm-reverse` | evolve | ★★ **APP 端直播源构造的完整解剖（本批最重的一篇）**：入口 **POST `http://m.cctv4g.com/cntv/clt/programAuthAndGetPlayUrl.msp`**（请求头 5 个、请求体 20 多个参数）；★ **判据：HTTP 200 ≠ 拿到可播地址** —— `resultCode: "0000"` 而 **`playUrls[0].playurl` 仍是 base64 密文**（源文原话「即使接口请求成功，发现 playUrl 也被加密了」）；★ **「三段拼接」密钥** = `硬编码前缀 + strings.xml 资源 + JNIUtils.NFromJNI 返回值`，四个方法产物：`getParmasEasyPrivateKey() = 72116AcB!94C4*4F89#k76BdB`、`getParmasEasyPublicKey() = cntv201812`、`getUaDesUaKey() = &*UJyui23DR%$#SD&*56HJ3!`、`getHeaderAesKey() = yichengtianxia12`；★ **两条签名链消费同一个明文串**：`secretToken 原文串` = `timestamp=…&wdVersionName=…&wdChannelName=…&wdClientType=1&wdAppId=3&publickey=…&wdNumber=<0..999>&uuid=…&userId=` ⇒ `Play-Ua` 头 = **`DES3.encryptMode(secretToken)`（`DESede` + base64，可逆）**，请求体 `secretToken` 字段 = **`HMacMD5(getParmasEasyPrivateKey(), secretToken)` 转大写（不可逆校验）**——★ **本批已用 Node 独立复算把两条链逐字节对上**（见批次小结）；★ **源文四处自相矛盾逐条登记**：`DES_KEY` 尾 `2!` vs `UA_DES_KEY` 尾 `3!`（只差 1 字符）、正文 `cntv2018` vs 结果 `cntv201812`、正文 `getUaDesUaKey()` 写法丢了 `$#SD&*`；★ **审计判据：native 方法先判「参与计算」还是「只做校验」**（源文点开 `j_a`/`j_b` 发现只校验 APP 签名 —— 原话「其实看到 `return` 也会发现，`j_a`、`j_b` 根本不需要分析」，起初白花时间）；★ **双端参数差异**（`wdClientType` 1/2、iOS 的 uuid **全大写**、`wdNumber` 范围 iOS 可能 `[0,1000000)`）；★ **源文明确不公开两处**（`Afas`/`Filter` 算法；`playUrl` 最终解密 —— 且自陈「**文章中列举的加解密方法依然不能解密 PlayUrl**」「解密 PlayUrl 方法被爱加密抽走了，即使脱壳反编译成功也无法找到源码」）⇒ 只登记结构，**缺的一律标「源文未公开」不补编**；附带 `nodeId=9000000000` 代表 cctv1 |
+| 639 | `52pojie-1159049-【原创源码】某手视频去水印解析 易语言纯源码 没有使用模块.md` | `f3ad99a57d8d4f144ffde19083801ec6` | 2026-09-24 | `stream-drm-reverse` | evolve | ★ **短视频「无水印直链」的形态学**（易语言 + Python 双实现）：**某手分享短链** —— 带 `Cookie: did=web_<32 位随机小写字母数字>` + **iPhone UA**（原样抄）请求，`allow_redirects=True` 跟 302，从返回 HTML 按 `"srcNoMark":"` … `"},"user"` 之间截 mp4 直链；★ **判据：去水印的落点是响应里的「另一个字段」，不是把水印字段删掉**；★ **`did` 是客户端随机伪设备标识** ⇒ 与签名里的随机值一样，**同会话内一致即可、不必复现具体值**（源文两版生成方式不同：Python 是 32 位随机小写字母数字、易语言是 `取数据摘要(ToBin(rnd(1,50)))`，**都只是「随机」，不构成算法**）；**皮皮虾/抖音系 id 直取** —— `is.snssdk.com/bds/cell/detail/?cell_type=1&aid=1319&app_name=super&cell_id=<id>`，`allow_redirects=False`，取 `data.data.item.origin_video_download.url_list[0].url`（★ `aid`/`cell_type`/`app_name` 是**当时**取值 ⇒ 站点改版即失效）；★ **易语言（COM/WinHttp）写法** —— `CoInitialize(0)` **必须先调**（COM 线程初始化）→ `CreateObject("WinHttp.WinHttpRequest.5.1")` → `open`/`SetRequestHeader`/`send` → `GetProperty("ResponseText")`，并配自定义 `rightxm(起止串截取)` = 「找起始串 → 跳过它 → 找结束串 → 取中间」；★ **提炼：只要拿到「请求头 + 参数变换」，换语言只是语法翻译** —— 源文正是用「易语言源码 + 附 Python 对照实现」给出双语言等价 |

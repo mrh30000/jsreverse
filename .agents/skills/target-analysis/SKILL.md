@@ -1,6 +1,6 @@
 ---
 name: target-analysis
-description: 目标级/会话级逆向分析工作流技能，替代已移除的 analyze_target、session_analyze_purified、session_generate_report 三个 MCP 工具。当需要一键式采集代码+Hook 时间线并给出行动方案、对抓包会话做场景推断/流量提纯/加密切片、或产出会话分析报告时使用。规则逻辑以参考实现形式保留，调用方 Agent 用现有工具（collect_code/create_hook/get_hook_data/list_network_requests 等）复现。当出现「网络面板没有接口但页面有数据」「RENDER_DATA / __NEXT_DATA__ / __INITIAL_STATE__」「SSR 直出数据」「无限滚动加载不动」「XHR 截获拿不到响应」「列表数据导出 CSV」这类采集侧现象时，也用本技能（见 references/in-page-data-carriers.md）。
+description: 目标级/会话级逆向分析工作流技能，替代已移除的 analyze_target、session_analyze_purified、session_generate_report 三个 MCP 工具。当需要一键式采集代码+Hook 时间线并给出行动方案、对抓包会话做场景推断/流量提纯/加密切片、或产出会话分析报告时使用。规则逻辑以参考实现形式保留，调用方 Agent 用现有工具（collect_code/create_hook/get_hook_data/list_network_requests 等）复现。当出现「网络面板没有接口但页面有数据」「RENDER_DATA / __NEXT_DATA__ / __INITIAL_STATE__」「SSR 直出数据」「无限滚动加载不动」「XHR 截获拿不到响应」「列表数据导出 CSV」这类采集侧现象时，也用本技能（见 references/in-page-data-carriers.md）。当出现「抓包工具里空无一物 / 只有 Tunnel to 443 / 客户端 certificate verify failed / 程序一设代理就无法联网」这类捕获层现象时，也用本技能（见 references/capture-layer-tooling.md）。
 ---
 
 # 目标与会话分析工作流（Agent 自行编排）
@@ -62,6 +62,24 @@ description: 目标级/会话级逆向分析工作流技能，替代已移除的
    不是标准属性 ⇒ 判断条件永远不成立、一条都不收，且**不报错**），
    并在 `addEventListener("load")` 里做，**不要覆盖 `onreadystatechange`**（那是页面在用的属性）。
    驱动优先级：**直接驱动分页参数 > 点「加载更多」 > 滚屏**。
+
+## E. 捕获层工具与盲区（B33）
+
+**何时用**：抓包工具里空无一物 / 只有 `Tunnel to` 443 / 客户端报证书错 / 程序一开代理就断网 ——
+即「**这个包到底能不能抓到、抓不到时是哪一层断的**」。这是 `references/traffic-purifier.md` 的**上游一层**
+（那份规则管「**已经抓到的流量**怎么提纯」，本文管「**流量凭什么能被抓到**」）。
+
+三句判据：
+
+1. **抓包 = 让流量经过代理**（`127.0.0.1:8888`）：不经过就抓不到；HTTPS 解密 = 中间人，前提是客户端信任根证书；
+2. **抓不到先分三种形态**：程序**自带 HTTP 栈**直连 socket（全局代理对它无效，用 `depends` 看是否依赖 `WININET.DLL`）→
+   **自带 CA bundle、不读系统根证书**（`Tunnel to` 443 后没有下文 + `certificate verify failed`）→
+   **客户端主动检测代理**（一开代理就断网）；
+3. ★ **域名必须在代理层可见**：`Resolve hostnames through proxy` 不勾 ⇒ 代理只收到 `CONNECT 180.97.33.108:443`，
+   伪造证书签给了 IP ⇒ 做校验的客户端就报错。
+
+改包路线（改 Request 骗服务器 vs 改 Response 骗客户端）、FiddlerScript / AutoResponder / 命令调试，
+以及封包字段与 304 假象，见 `references/capture-layer-tooling.md`。
 
 ## 相关工具
 
