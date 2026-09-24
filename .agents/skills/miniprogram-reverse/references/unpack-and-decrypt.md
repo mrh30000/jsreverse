@@ -71,6 +71,8 @@ python scripts/wxapkg_tool.py list out.wxapkg        # 或 extract -o <目录>
 - 用 `everything` 搜 `*.wxapkg` 再按修改时间倒序，比记路径可靠。
 - **`.meta` 文件里有小程序名称**，用于确认"这个 appid 目录确实是目标"（抖音包尤其需要）。
 - 电脑端路径随机字符串那段就是 appid 目录名，`wx` 开头。
+- **另一种强制"重新下载"的手法（`52pojie-832333`）**：**先分享小游戏/小程序 → 删除它 → 从分享卡片重新进入**
+  ⇒ 触发**重新下载**，再按修改时间倒序就能锁定最新包（适合"不知道 appid 目录 / 目录里包太多"）。
 
 ---
 
@@ -123,6 +125,15 @@ python scripts/wxapkg_tool.py list out.wxapkg        # 或 extract -o <目录>
 | 插件目录（`plugins/**`）报权限错误 | **整目录删掉**（没有调用插件应用的权限，留着必炸） |
 | 渲染层提示请求域名不合法 | 勾选「不校验合法域名」；**参数往往在本地生成**，请求发不出去也不影响逆 sign |
 | 编译后一堆无关报错、无从下手 | 先在本地设置里**关掉**「上传时压缩代码 / ES6 转 ES5」一类选项再编译 |
+| `wx-scope` 一类字段（`wxml` / 配置里） | 全局替换 **`wx-scope` → `scope`**（解包产物把字段名写错；`52pojie-1872067`） |
+| 编译/运行时报 `VM2_INTERNAL_STATE_DO_NOT_USE_OR_PROGRAM_WILL_FAIL.handleException(e)` | **全局替换整段为 `e`**（`handleException(t)` → `t`），工程才能跑；这是 `vm2` 残留（`52pojie-1872067`） |
+
+> ⚠️ **`VM2_INTERNAL_STATE_...` 的两义（与 `web-js-env-patcher` 方向相反）**：该标识是 **`vm2` 沙箱**的内部状态对象
+> （`vm2` 的 `transformer.js` 会把它追加到每个 `catch` 之后，见
+> `../../web-js-env-patcher/references/node-leakage-and-silent-failure.md`）。
+> 在**小程序侧**，处置是**把它整段删掉**（替换回原来的异常变量 `e` / `t`）；
+> 在 `web-js-env-patcher` 里方向相反：**要识别并绕开**它，好让扣下来的代码在 Node（VM2 环境）里跑对。
+> **同源（都来自 `vm2`）但方向相反，结论不要互相照搬**（源文未说明它为何出现在解包产物里）。
 
 **"页面点不动但参数照算"这一点很关键**：sign / x-sign 常**在本地生成**（时间戳 + 本地常量 + 缓存 token），
 所以哪怕请求被域名校验拦下，**在 `send` 处断点照样能拿到完整入参**。

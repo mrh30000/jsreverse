@@ -1,6 +1,6 @@
 ---
 name: miniprogram-reverse
-description: 微信/抖音/支付宝小程序与小游戏（含云开发）逆向与数据采集技能：**从包出发**，不从抓包硬啃。触发词：`wxapkg`、`__APP__.wxapkg`、`V1MMWX`、`ttpkg.js`、`TPKG`、`nebula`、`app-service.js`、`app.json`、`game.json`、`subPackage`、`unveilr`、`wxappUnpacker`、`wx.request`、`wx.login`、`wx.cloud.callFunction`、`openid`、`x-clienttraceid`/`Nonce`/`Curtime`/`Checksum`、`X-Sign`/`x-sign`、`xmSign`/`tokenSign`、`paramsMD5`、`getHmacSha256`、`X-HMAC-SIGNATURE`、`constant-obfuscated.js`、`app-key`、`x-evone-signature`。覆盖：包落点+「全删再打开」定位法、PC 包解密（PBKDF2+AES-256-CBC+`wxid[-2]` 异或）、`TPKG` 大端索引、支付宝 `nebula` tar、解包修复清单、常量表爆破、sign 五族与国密/双层 AES、`wx.login` 的 `code` 不可纯算、云函数重打包+frida+RPC、`debugxweb`/`WeChatOpenDevTools`、安卓 `appbrand0-4` 需指定 pid（模拟器会封号）、MITM 改存档/响应、`cert.json`/`sign.json` 校验、**Uniapp/Weex 混合 App 的 `app-service.js`**（hook `WXSDKInstance.render`）、跨版本常量会轮换、**小游戏**（Cocos 跑通、Unity→`wasmcode` wasm、`wasm_split` 符号重算、MessagePack 帧）。用户说「小程序逆向/解包/反编译/wxapkg 解密/签名/抓包/云函数/源码获取/改数值/ttpkg 解包/抓包抓不到/代码看不懂/包解密失败/解包后打不开/改了包没用/小游戏逆向」「解包工具只解不出某一类产物」「PHM 解析模式」时都应使用本技能。
+description: 微信/抖音/支付宝小程序与小游戏（含云开发）逆向与数据采集技能：**从包出发**，不从抓包硬啃。触发词：`wxapkg`、`__APP__.wxapkg`、`V1MMWX`、`ttpkg.js`、`TPKG`、`nebula`、`app-service.js`、`app.json`、`game.json`、`subPackage`、`unveilr`、`wxappUnpacker`、`wx.request`、`wx.login`、`wx.cloud.callFunction`、`openid`、`x-clienttraceid`/`Nonce`/`Curtime`/`Checksum`、`X-Sign`/`x-sign`、`xmSign`/`tokenSign`、`paramsMD5`、`getHmacSha256`、`X-HMAC-SIGNATURE`、`constant-obfuscated.js`、`app-key`、`LayaHttpRequest`/`RdWXBizDataCrypt`、`VM2_INTERNAL_STATE_...`、`wx-scope`。覆盖：包落点+「全删再打开」定位法、PC 包解密（PBKDF2+AES-256-CBC）、`TPKG` 大端索引、支付宝 `nebula` tar、解包修复清单、常量表爆破、sign 七族与国密/双层 AES、`wx.login` 的 `code` 不可纯算、云函数重打包+frida+RPC、`debugxweb`/`WeChatOpenDevTools`、安卓 `appbrand0-4` 需指定 pid、MITM 改存档/响应、`cert.json`/`sign.json` 校验、**Uniapp/Weex 的 `app-service.js`**、**小游戏**（Cocos 跑通、Unity→`wasmcode` wasm、`wasm_split` 符号重算、MessagePack 帧、Laya 引擎链定位）。用户说「小程序逆向/解包/反编译/wxapkg 解密/签名/抓包/云函数/源码获取/改数值/ttpkg 解包/抓包抓不到/包解密失败/解包后打不开/改了包没用/小游戏逆向」「解包工具只解不出某一类产物」「PHM 解析模式」时都应使用本技能。
 ---
 
 # 小程序逆向：包 → 算法 → 运行时
@@ -102,6 +102,8 @@ description: 微信/抖音/支付宝小程序与小游戏（含云开发）逆�
 | 按 dump 工具给的地址在 wasm 里**搜不到函数** | 该产物是 `wasm_split` 拆分型 | 名字要重算：`j${getRedirIndex(addr) & 0xFFFFFFF}`（§3.3） |
 | 改了余额，**过一会儿又变回去** | 服务端权威，被"操作完成"类响应覆盖 | 把回写状态的那类响应一起改（§7） |
 | 小程序 https 抓包 `ssl handshake error` | 安卓 7.0+ 不信任自签 CA | 换 PC 端 / Burp；`minigame-and-unity-wasm.md` §5.6 |
+| 小游戏工程**加载到 100% 后无报错、也进不去** | 源文未定位原因（974827） | **别死磕跑起来**：直接全局搜 URL 片段静态读核心 JS（§1 补充） |
+| Charles 抓包**全是 `unknown`** | 没配 `SSL Proxying Settings` | 里面加 **`*`（所有域名）**，与证书信任无关（`minigame-and-unity-wasm.md` §5.7） |
 
 ## 反例黑名单（不要做的事）
 
@@ -166,14 +168,18 @@ brotli.exe -d "xxx.code.unityweb.br"      # Unity 小游戏的 .wasm 是 brotli 
 
 - `references/unpack-and-decrypt.md`：**包层唯一权威源** —— 平台↔格式↔是否加密对照、
   PC 包解密算法全参数（PBKDF2 `saltiest`/1000/32、iv 字面量、1023 字节头部、`wxid[-2]` 与 `<2` 兜底）、
-  六个落点路径表 + "全删再打开"定位法、`TPKG` 索引（大端 / 12 字节间隔 / 名字长度字段）、
-  支付宝 `nebula` 双路与证书 hook 点、**解包后修复清单 7 条**、改包失效与 AutoResponder 处置、"解包后怎么读得动" 5 条。
+  六个落点路径表 + "全删再打开"/"分享后重下载"定位法、`TPKG` 索引（大端 / 12 字节间隔 / 名字长度字段）、
+  支付宝 `nebula` 双路与证书 hook 点、**解包后修复清单 9 条**（含 `wx-scope`→`scope`、
+  `VM2_INTERNAL_STATE_...`→`e`）、改包失效与 AutoResponder 处置、"解包后怎么读得动" 5 条。
 - `references/request-crypto-and-sign.md`：**请求层唯一权威源** —— 抓包四分类、
-  sign 五族（排序拼接+盐 / 固定前缀+大写 / HmacSHA256 / 时间戳+client_key / 62 字符表乱序）、
+  sign 七族（排序拼接+盐 / 固定前缀+大写 / HmacSHA256 / 时间戳+client_key / 62 字符表乱序 /
+  **整包 JSON 双校验** / **固定 GUID 前缀（小游戏）**）、
   加密四类（单层 AES / **双层自描述 AES** / RSA 私钥前端签名 / 国密与魔改）、
+  **「替换方法体」把加解密当 oracle 用（不必知道 key/iv）**、
   key/iv/盐 **五个来源 + 爆破法**（`const_bruteforce.py` 三件套）、
   **"错误 iv 也能解出可读明文"的假阳性判据**、跨版本常量轮换双源实证、
-  **参数来源矩阵（哪些不可纯算）+ 参数来源 diff 判据**、14 条"不报错但结果错"坑表。
+  **参数来源矩阵（哪些不可纯算）+ 参数来源 diff 判据**、
+  **「下载→改→上传」闭环（含"无签名明文存档"变体：版本字段 / 自动保存 / 非 200 重取）**、17 条"不报错但结果错"坑表。
 - `references/runtime-and-debug.md`：**运行时唯一权威源** —— 三条调试入口代价表、
   断点五条套路（sign 位置↔断点、打不上怎么办、本地生成所以拦不住）、
   **云函数流水线（解包 → 探针 → 重打包 → frida 掰直 MD5 → RPC）**、
@@ -182,16 +188,20 @@ brotli.exe -d "xxx.code.unityweb.br"      # Unity 小游戏的 .wasm 是 brotli 
   `Script.mContent` 读改回写、`Plus_InitURL` 分流），
   MITM 改存档/改响应骨架与"清缓存"前置、权限位改法的适用边界、排错 11 条。
 - `references/minigame-and-unity-wasm.md`：**小游戏入口层的唯一权威源**（B27）——
-  小游戏 vs 小程序的分流判据（`game.json` / `wasmcode` 三分栈）、**把反编译产物跑起来的 6 个坑**
+  小游戏 vs 小程序的分流判据（`game.json` / `code.js` / `wasmcode` 三分栈）、**把反编译产物跑起来的 6 个坑**
   （`app-config.json`→`game.json`、`gamePlugins`→`plugins`、补 `cocos2d-js-min.js`、
-  **用报错里的 md5 覆盖 `signature.json`**、`ERROR 4930`、登录 `openid` 走代理替换）、
+  **用报错里的 md5 覆盖 `signature.json`**、`ERROR 4930`、登录 `openid` 走代理替换；
+  + 974827 的"加载到 100% 卡住也别死磕"）、
   **Unity IL2CPP → vx 小游戏 → wasm 全链路**（`.br` brotli、`import/main/sub.wasm` 分工、
   `global-metadata.dat` 去缓存找、Il2CppDumper、**`wasm_split` 符号重算（`j${idx & 0xFFFFFFF}`）**、
   魔改 `ghidra_wasm.py`、Ghidra 搜 `类名$$方法`、日志断点改内存、**WAT 补丁持久化（来源未证 + 可能有 md5 校验）**）、
   **WS + MessagePack 帧**（mask、mitmproxy、**纯操作码协议的"死路判据"**）、
-  `sign` 两族（升序拼接+MD5 含 `wx_secret` / 固定前缀+key+ts+**完整 URL**）、
+  **Laya 引擎封装链定位**（`HttpPost` → `LayaHttpRequest` → `wx.decrypt` → `RdWXBizDataCrypt.js`，
+  只认 `function` 定义那一处）、**抓包定位自建服务器（排除腾讯域名）+ Charles `SSL Proxying` 必配 `*`**、
+  `sign` 两族（升序拼接+MD5 含 `wx_secret` / 固定前缀+key+ts+**完整 URL**；
+  + 974827 的"密钥按 sign 类型在 `secret`/`secret1` 间切换、且由解密得到（未展开）"）、
   **"弯道超车"调试法（不知道在哪断就整个文件全行断点）**、**没有 `==` ⇒ 是 hex 不是 base64**、
-  密钥二次复用（`clientKey.substr(0,16)`）、**未证字段的登记范式**、**响应体改写的三步边界判据**、排错 12 条、反例 11 条。
+  密钥二次复用（`clientKey.substr(0,16)`）、**未证字段的登记范式**、**响应体改写的三步边界判据**、排错 17 条、反例 14 条。
 - `scripts/wxapkg_tool.py`：识别 / PC 解密 / 列举 / 提取，**零依赖**（PyCryptodome 缺失时自走纯 Python AES），
   `--selftest` **29 项**（NIST SP800-38A F.2.1 向量、加解密往返、`xorKey` 边界、错 wxid 必须被抓住、索引截断不静默）。
 - `scripts/const_bruteforce.py`：常量表爆破三件套（`aes-pair` / `md5-salt` / `xor-int32`），

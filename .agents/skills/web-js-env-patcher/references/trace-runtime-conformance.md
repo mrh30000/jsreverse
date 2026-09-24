@@ -44,6 +44,25 @@ Trace 有证据时必须记录：
 
 缺少真实值时应标记为待同 baseline 采样，而不是用空值或默认值生成匹配契约。
 
+## 轻量等价物：没有 Trace 基建时的人工「执行路径」对拍
+
+正式闭环依赖 ruyi-trace 采集产物。**手上没有 Trace 基建、又要先在 Node 里验一遍逻辑时**，有一个人工降级版
+（`52pojie-1496350`，猿人学第 10 题的 4 代瑞数低配壳）：
+
+> 控制流平坦化的 VM 里，**把依次执行的 `case` 编号打印出来**，浏览器与 Node 两边**逐项比对**。
+> 源文原话的用途是「**以免误入歧途**」。
+
+| 维度 | 人工版（`case` 号序列） | 正式契约（本文件） |
+| --- | --- | --- |
+| 覆盖 | **只有"执行路径顺序"一项** | 路径 + owner / descriptor / brand / prototype / ownKeys / 参数 / 返回值 / 异常 / 副作用 |
+| 证据 | 两边各打印一份序号序列，人工 diff | `trace-runtime-contract.json` + sequence hash，机器判定 |
+| 收口 | 无阻断门禁 | `check_trace_runtime_conformance.js` 门禁 |
+
+⇒ **人工版是降级手段，不是替代**：有 Trace 时必须走上面的正式闭环；人工版只用来回答
+「我这版扣代码的**过程**和浏览器一样吗」。它与"最终结果偶然一致"是两回事 ——
+**只看结果很容易把"过程完全不同但结果相同"当成成功**（同一条纪律见
+`../../web-reverse-algorithm/references/07-antidebug-and-live-patching.md` §5.8）。
+
 ## audit-only 入口
 
 最终入口或专用内部审计模式必须支持：

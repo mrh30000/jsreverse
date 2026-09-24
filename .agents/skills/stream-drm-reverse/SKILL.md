@@ -79,13 +79,14 @@ description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链�
    python $S/key_wrapper.py alpha-check --table "<JS 里的字符表>" --enforce   # ★ 先跑这个
    python $S/key_wrapper.py noise-check --enforce                             # 噪声字符是否三侧都忽略
    ```
-   五族快速对号（细节 `references/key-wrapper-families.md`）：
+   按结构签名快速对号（完整族表见 `references/key-wrapper-families.md` §2）：
    | 结构签名 | 族 | 命令 |
    | --- | --- | --- |
    | base64 文本 + `charCodeAt(i) ^ token[i % d]` | W1 重复 XOR | `key_wrapper.py xor --mode b64-xor-b64` |
    | 首字符 + 末 3 字符「不参与」解码；末 3 的中间位是个位数 | W2 字符表滚动 + 噪声 | `key_wrapper.py xiaoe` |
    | 整个响应是 hex，还原后含固定标记串与前后各 13 位数字 | W3 定长正文 | `key_wrapper.py xm` |
    | 响应同时给两段等长串 | W4 两半异或 | `key_wrapper.py xor-halves` |
+   | **许可接口（如 `play_licenses`）下发的带 `1-` 前缀 base64 文本** | W7 前缀剥离 + 隔 2 异或 | 见 `references/key-wrapper-families.md` §6.6 复算 |
 
 4. **🔴 CHECKPOINT · 单分片闭环（必做）**：先只解**一个**分片，用 `ffmpeg` 试播：
    ```bash
@@ -144,6 +145,7 @@ description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链�
 | ★ APP 里 native 方法「点进去没算法」 | 先看 `return` 形态：**只做 APP 签名校验**的方法不用逆 | 同上 §3A.3（判「参与计算 vs 只做校验」） |
 | ★ 想「去水印」却去找水印字段删 | 落点是**另一个字段**（`srcNoMark` / `origin_video_download`） | 同上 §3B；随机 `did` 只需同会话内一致，不必复现 |
 | ★ `ffmpeg -f concat` 报 `Unsafe file name` | 清单里是相对 / 特殊协议路径，默认安全策略拒绝 | 加 `-safe 0`（`hls-and-ts-structure.md` §5.1） |
+| ★ 分片**全部下完**、只有**合并**这一步报错 | key 解密密码不对（双层族典型**假成功**） | `hls-and-ts-structure.md` §4.6.1（判据 4） |
 
 ## 反例黑名单（不要做的事）
 

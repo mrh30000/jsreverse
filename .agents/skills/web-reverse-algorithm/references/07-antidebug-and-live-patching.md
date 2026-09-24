@@ -1,11 +1,14 @@
-# 反调试绕过与在线补丁调试（mitmproxy / 响应改写）
+# 反调试绕过与在线补丁调试（mitmproxy / FiddlerScript / 响应改写）
 
 > 目录
 > 1. 什么时候用这份文档
 > 2. 无限 debugger 的三层定位与处置
 > 3. 为什么优先用响应改写而不是 DevTools 的 Overrides
+> 3.1 FiddlerScript 的 `OnBeforeResponse` 通道（Windows 侧等价物）
 > 4. 动态加密响应体的「解密 → 反混淆 → 再加密」回写
 > 5. 每次访问都变的 JS：把逻辑还原成 Python
+> 5.7 注入式反调试对抗四条（改 `eval` 实参 / 反向插 `debugger` / 本地桩 / 两份 eval diff）
+> 5.8 扣代码阶段的运行期对拍与环境检测处置
 > 6. 参数溯源三元分类法
 > 7. 失败模式表
 > 8. 反例黑名单
@@ -71,6 +74,37 @@ mitmdump -q -p 8888 -s main.py     # -q 静默 / -p 端口 / -s 脚本
 - **替换串必须逐字符来自真实响应**。先用断点把原串打印出来再复制，不要凭截图手打（空格、标点、单双引号都可能是坑）。
 - 匹配用「最独特的子串」，不要用整行；换行/缩进在压缩后的 HTML 里不可靠。
 - 先只改一处、验证生效，再叠加下一处。一次改三处，出错时无法归因。
+
+### 3.1 FiddlerScript 的 `OnBeforeResponse` 通道（Windows 侧等价物）
+
+mitmproxy 需要 Python 环境；Windows 上更顺手的等价物是 Fiddler 的**规则脚本** `CustomRules.js`（`Rules → Customize Rules`，
+语言是 JScript.NET，语法按 ECMAScript 用即可）。它的关键优势是**运行状态下改脚本、重新编译，不需要重启 Fiddler**
+（`52pojie-1208999` 源文引述《Fiddler 调试权威指南》）。
+
+**Session 处理函数按下列顺序执行**（源文逐条列出，**注入点在 `OnBeforeResponse`**）：
+
+| 顺序 | 函数 | 时机 |
+| --- | --- | --- |
+| 1 | `OnPeekAtRequestHeaders` | 收到客户端**请求头**之后 |
+| 2 | `OnBeforeRequest` | 收到**请求体**之后（此后请求转发给服务器） |
+| 3 | `OnPeekAtResponseHeaders` | 收到服务器**响应头**之后（此后响应头转发给客户端） |
+| 4 | **`OnBeforeResponse`** | 收到服务器**响应体**之后（此后响应体转发给客户端）← **改响应体在这里** |
+| 5 | `OnReturningError` | Fiddler 自身产生的错误信息返回给客户端时（用于定制客户端看到的错误） |
+
+> ★ **必踩的坑**：**所有**经过 Fiddler 的请求都会走 `OnBeforeResponse`，跨域资源也不例外。
+> 源文原话：「这就要求你自己对请求进行筛选，否则将会对**所有请求**都执行对应的操作」。
+> 源文的最小筛选口径是 **主机名 + 响应类型双条件**（JScript.NET 原样）：
+
+```
+if (oSession.HostnameIs("<目标域名>") && oSession.oResponse.headers.ExistsAndContains("Content-Type", "html")) { … }
+```
+
+> ⚠️ 不要拿 `HostnameIs` 去匹配路径（它只比主机名）——同一条坑在
+> `../../target-analysis/references/capture-layer-tooling.md` §2 已由另一源文书证过。
+
+**这一侧的 API 清单**（`GetResponseBodyAsString` / `utilSetResponseBody` / `GetRequestBodyAsString` /
+`utilSetRequestBody` / `oSession.oRequest["Cookie"]` / `ui-color` / `utilDecodeResponse` 等）见
+`../../target-analysis/references/capture-layer-tooling.md` §2，**本节不重复登记**，只讲"用它做反调试对抗"的配方（见 §5.7）。
 
 ---
 
@@ -180,6 +214,84 @@ def response(flow):
 
 回写后在第二层代码里**任意位置下断点**即可，不用再设事件监听断点。
 
+### 5.7 注入式反调试对抗四条（都来自 `52pojie-1208999` / `52pojie-1496350`）
+
+上面的 §4 与本节是**两条不同颗粒度的路线**，先分清：
+
+| 路线 | 改什么 | 要不要"再加密" | 持久性 |
+| --- | --- | --- | --- |
+| §4 闭包回写 | **脚本本体**（解密 → 反混淆 → 再加密） | **要**（必须严格互逆） | 一次改写，长期有效 |
+| 本节 ① | **只在 `eval` 执行的那一瞬间改它的实参** | **不要** | 每次响应都要注入（由中间人自动完成） |
+
+**① 在 `eval(string)` 之前改它的实参 —— 可以完全跳过解密算法**
+
+原理：这类站点的 `debugger` **不在静态 JS 文件里**，而在"解密后准备送进 `eval` 的字符串"里。
+脚本本体仍有解密算法，但**在 `eval` 执行的前一瞬间，那个字符串已经是明文** —— 在这一点上动手，**解密算法可以完全不管**。
+
+定位**不能靠变量名**（变量名/数字都是动态生成的），要靠**语法特征**。源文给的正则（`52pojie-1208999` 原样）：
+
+```
+/\bret\s*=\s*[\w\$]+\.call\([\w\$]+,\s*([\w\$]+)\)/
+```
+
+第 1 个捕获组就是 `eval` 的实参变量名；随后把 `eval(<该变量>)` 换成 `eval(<去过 debugger 的变量>)`。
+源文的注入是**两步**：先 `var rmDbg1Res = <arg>.replace(/\bdebugger\s*;/, '');`（只删第一条），
+再用第二个正则把另一处"赋值型反调试"**整块**替换成 `<var> = false;`，最后才把 `eval` 的实参换成处理后的变量。
+
+> ⚠️ **`debugger` 不止一处，而且触发源不同**。源文实测该站有**两处**：一处由**鼠标事件**（`MouseEvent`）触发，
+> 一处由**定时器**（`setInterval`）触发；两处都在 `debugger` 前后用 `new Date().getTime()` 做**时间差判定**。
+> ⇒ **只顺着堆栈拆掉第一处是不够的**，要按**触发源**各找一遍（"事件 / 定时器各一"是这类站的常见配置）。
+
+**② 以牙还牙：注入 `debugger` 做动态断点**
+
+动机：动态脚本**在 DevTools 里留不下断点位置**（每次都是新的 `VM<编号>`），于是"无法反复调试"。
+做法：用同一套正则把 `debugger` **注入**到目标位置 —— 断点位置由**你的中间人规则**决定，与 DevTools 无关。
+
+> 同一招的另一种落点：**把脚本替换成本地固定副本，再在自执行脚本开头手插 `debugger`** ——
+> 见 `../../web-js-env-patcher/references/ruishu-botgate.md`（瑞数 §3 入口定位）。
+> 两者是"**规则注入**"vs"**固定副本**"的取舍：前者免维护副本、后者断点更稳。
+
+**③ 用本地桩替换线上页面，先拿到"能调的环境"**（`52pojie-1496350`，猿人学第 10 题）
+
+两条 AutoResponder 规则（源文原样）：
+
+```
+EXACT:https://<目标站>/match/10   ->  http://127.0.0.1:5000/10
+regex:https://<目标站>/eval.*?    ->  http://127.0.0.1:5000/eval
+```
+
+★ **验收判据（源文口径）**：配好规则后重开首页**数据仍能正常加载**，并且按 F12 **不再进入无限 debugger**
+⇒ 调试环境已经搭好。这两条同时成立才算成功（少了第一条，你以为在调线上，其实页面是残的）。
+
+> 操作路径与"两个勾"见 `../../target-analysis/references/capture-layer-tooling.md` §3。
+> 其中 **`Unmatched requests passthrough` 必须勾**，否则没命中的请求被拦死，页面表现为"莫名其妙地坏了"。
+
+**④ 两份 `eval` 字符串对比找变量**（同源）：动态脚本的变量名会在两次下发之间变化 ——
+**把两份 `eval` 出来的代码 diff 一遍**，变化的标识符就是"本次运行的变量名"，比逐个猜快。
+
+### 5.8 扣代码阶段的运行期对拍与环境检测处置（`52pojie-1496350`）
+
+**★ 浏览器 ↔ Node 的「`case` 号」对拍**
+
+控制流平坦化的 VM（或"多个函数合并的大型控制流"）扣代码时，**把依次执行的 `case` 编号打印出来**，
+浏览器与 Node 两边**逐项比对**。源文原话的用途是「**以免误入歧途**」——
+只看最终结果，很容易把"过程完全不同但结果偶然一致"当成成功。
+
+> 这是**没有 Trace 基建时的人工 timeline 对拍**。正式版（机器可验证的 contract + sequence hash）见
+> `../../web-js-env-patcher/references/trace-runtime-conformance.md`；那边是重型闭环，这边是十分钟能上手的手工版。
+
+**环境检测的处置范式：把检测的返回值改写成常量（最小干预）**
+
+| 检测对象 | 源文里的形态 | 处置（源文原样） |
+| --- | --- | --- |
+| `userAgent` | `... _yrxWeF[...].userAgent.indexOf(...) !== -1 \|\| ...` 整行赋给 `_yrxTY4` | 把整行注释掉，紧跟其后写 `_yrxTY4 = false;` |
+| `HeadlessChrome` | `/HeadlessChrome/.test(...) \|\| ... === ''` → `_yrxTY4` | 同上，写 `_yrxTY4 = false;` |
+| DOM 探针 | `function _yrxWxt()` 里 `createElement('div')` 造元素 + `while` 循环追加 + cookie 检测 | **函数体整段注释掉，只留 `var _yrxrqQ = 3`**（返回值写死） |
+
+> 原则与 §8 一致：**只写死返回值，不删整段逻辑** —— 删掉会连带删掉正常业务分支，结论会失真。
+> 源文自陈「**还有很多就不列举了**」⇒ 上表是**样例而非全集**；检测面清单见
+> `../../web-js-env-patcher/references/high-strength-browser-detection.md`。
+
 ---
 
 ## 6. 参数溯源三元分类法
@@ -218,6 +330,10 @@ def response(flow):
 | 正则匹配不到 key | 代码未格式化，或压缩后标识符被改名 | 先过 Babel 格式化；改用 AST 按 `CallExpression` 语义匹配 |
 | 扣下来的 JS 明天就跑不了 | 目标是动态下发 JS | 改用 §5：只还原逻辑为 Python，不扣代码 |
 | 第二层代码 dump 不出来 | 第一层需要浏览器环境才肯执行 | 先做最小补环境（转 `web-js-env-patcher`），或直接在第一层末尾注入 dump 语句 |
+| `debugger` 删掉一处后仍在**别处**断下 | 站点有**多处** `debugger`，且触发源不同 | 按**触发源**（鼠标事件 / `setInterval`）各定位一遍，各自注入（§5.7 ①） |
+| 本地桩替换后页面数据加载不出来 | AutoResponder 没勾 `Unmatched requests passthrough`，未命中的请求被拦死 | 勾上；见 `../../target-analysis/references/capture-layer-tooling.md` §3 |
+| 响应注入"这次生效、下次失效" | 站点是**动态下发脚本**，每次响应都要重新注入 | 把注入写成中间人规则（§3.1 / §5.7 ①），不要指望改一次管很久 |
+| Node 复算的中间值与浏览器不一致（最终结果却一样） | 控制流平坦化 VM 的 `case` 走向不同 | 打印 `case` 序号序列逐项对拍（§5.8），别只看最终结果 |
 
 ---
 
@@ -229,3 +345,7 @@ def response(flow):
 - **不要在同一轮里既改请求体又改响应体**。出错时无法判断是上游还是下游。
 - **不要把「能跑通一次」当作完成**。动态 JS 类目标的验收标准是「连续 N 次（N ≥ 3）跑通且中间不重新扣代码」。
 - **不要在没确认授权的情况下改写第三方站点响应并提交数据**。改写仅用于本地调试定位，提交前必须回到授权范围内的自有目标。
+- **不要以为"删掉了一个 `debugger`"就拆完了**。源文站点实测有**两处**，且触发源不同（鼠标事件 / `setInterval`）。
+- **不要靠变量名去定位动态脚本里的注入点**。变量名每次下发都变，匹配必须落在**语法特征**上（§5.7 ① 的正则）。
+- **不要在扣代码时凭"最终结果对了"收工**。中间过程也要对拍（`case` 号序列，§5.8）——"结果偶然一致"最容易被当成成功。
+- **不要为了省事把检测函数整体删掉**。把返回值写成常量即可（§5.8），删掉会连带影响正常分支（§8 同条原则）。

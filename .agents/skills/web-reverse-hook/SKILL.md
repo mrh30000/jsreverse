@@ -1,6 +1,6 @@
 ---
 name: web-reverse-hook
-description: 生成并注入页面级运行时 Hook 脚本，用于拦截加密库（CryptoJS/JSEncrypt/SM-crypto）、JSVMP 虚拟机探针、反调试综合防御绕过（debugger/console/窗口尺寸/强退/iframe原生借用）、关键数据流追踪（Promise/Cookie/Storage/网络/时间）、SPA 动态路由深度提取（Vue/React 路由表与守卫清除）以及**Vue/Vuex 运行时状态固化与组件注册表替换**（油猴 / 篡改猴 / userscript 注入范式）。当用户提到“hook CryptoJS”“拦截 RSA 明文密文”“国密 hook”“JSVMP 探针”“绕过反调试”“无限 debugger”“阻止跳转/关闭”“SPA 隐藏路由提取”“拦截 cookie/storage/promise”“改 Vuex state”“$store.state 改不动”“__vue__ 取不到”“registerComponent 替换组件”“videojs Player 注入”“油猴脚本怎么注入”“无直链视频怎么下”“video 的 src 是 blob:”“网络面板只有分片没有可播地址”“hook addSourceBuffer”“MSE 缓存视频”“控制台反检测”“devtools 检测”“注入太晚拦截不到”“jQuery 事件定位”“Event Listener 只有 jQuery 闭包”“jQuery hook 拿不到真实回调”“$._data events”、以及“cookie hook 装完页面就不正常”“覆盖 document.cookie 后其它 cookie 丢了”“油猴 @match 不生效/只命中首页”“setter 里 debugger 断太多次”“没有任何注入设施时怎么抢在页面代码之前”、反hook检测、Function.toString 检测、hook 被发现、closed shadow root、attachShadow 拿不到、shadowRoot 是 null、页面禁止复制、user-select none、去除登录弹窗、页面解锁配方、油猴去水印、倍速被重置、切屏即暂停、blob 图片导出 PDF 时使用。
+description: 生成并注入页面级运行时 Hook 脚本，用于拦截加密库（CryptoJS/JSEncrypt/SM-crypto）、JSVMP 虚拟机探针、反调试综合防御绕过（debugger/console/窗口尺寸/强退/iframe原生借用）、关键数据流追踪（Promise/Cookie/Storage/网络/时间）、SPA 动态路由深度提取（Vue/React 路由表与守卫清除）以及**Vue/Vuex 运行时状态固化与组件注册表替换**（油猴 / 篡改猴 / userscript 注入范式）。当用户提到“hook CryptoJS”“拦截 RSA 明文密文”“国密 hook”“JSVMP 探针”“绕过反调试”“无限 debugger”“阻止跳转/关闭”“SPA 隐藏路由提取”“拦截 cookie/storage/promise”“改 Vuex state”“$store.state 改不动”“__vue__ 取不到”“registerComponent 替换组件”“videojs Player 注入”“油猴脚本怎么注入”“无直链视频怎么下”“video 的 src 是 blob:”“网络面板只有分片没有可播地址”“hook addSourceBuffer”“MSE 缓存视频”“控制台反检测”“devtools 检测”“注入太晚拦截不到”“jQuery 事件定位”“Event Listener 只有 jQuery 闭包”“jQuery hook 拿不到真实回调”“$._data events”、以及“cookie hook 装完页面就不正常”“覆盖 document.cookie 后其它 cookie 丢了”“油猴 @match 不生效/只命中首页”“setter 里 debugger 断太多次”“没有任何注入设施时怎么抢在页面代码之前”、反hook检测、Function.toString 检测、hook 被发现、closed shadow root、attachShadow 拿不到、shadowRoot 是 null、页面禁止复制、user-select none、去除登录弹窗、页面解锁配方、公众号密码/关注解锁、看着像 token 的其实是 base64、油猴去水印、倍速被重置、切屏即暂停、blob 图片导出 PDF 时使用。
 ---
 
 # Web 运行时 Hook 脚本
@@ -161,7 +161,7 @@ window.setTimeout = function (...args) {
 
 详见 `references/page-unlock-and-userscript-recipes.md`（`anti-hook-detection-and-bypass.md` 的同族扩展：
 那篇讲「怎么不被发现」，本文讲「**怎么把页面自己的限制按下去、把页面自己的资源捞出来**」）。
-六条判据：
+七条判据：
 
 1. **★ 控制台条件断点注入**（临时验证，刷新失效）：条件写 `d[s]===false&&(d[s]=true),false` ——
    **逗号表达式前半段改值、最后一项恒 `false` ⇒ 永不停下但每次经过都改**。
@@ -188,6 +188,10 @@ window.setTimeout = function (...args) {
    图片捕获版 `MutationObserver`（`childList`+`subtree`，命中 `div.pdfimg.move.rendered`）+ **生产者-消费者队列**
    （`fetchQueue` / `processingUrls` / `isWorkerRunning`）、**页码取元素 `data-page`**；
    **必须完整翻页、下载必须队列化**。
+
+7. **★ 内容门控（关注 / 密码 / 关注回复）三通路**（`references/page-unlock-and-userscript-recipes.md` §7）：
+   ★ **判据：参数以 `=`/`==` 结尾且参数名像 token ⇒ 先 `atob` 解一次看内容**（源文自陈「看到末尾有两个 `=` 很眼熟，**没有认真看**」而绕了远路）；三条通路 = **把重复轮询的状态接口搬本地** / **重写校验函数**（口诀「**先存原引用、再同名顶掉**」，注意 **`function` 声明提升**会让书写顺序在运行时失效）/ **搜界面文案 → 顺到下发接口 → 控制台直接调**。
+   **边界**：这三例的判定**都在服务端**（`shortcodeapi` 返回 `1` 才放行、`pass` 字段决定结果）⇒ 通路的实质是**取得服务端已认可的输入**，不是破解服务端。
 
 **收束判据（与 §「反 hook 检测」同层）**：动手前先分清「**限制在前端**」还是「**校验在服务端**」——
 前端解锁**只在服务端不复核时有效**（源文金句「几乎没有什么是油猴做不到的。。。如果有，那就是服务器功能了」）。

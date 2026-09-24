@@ -77,6 +77,30 @@
       "verified_in_article": true
     },
     {
+      "file": "docs/references/52pojie-1638865-酷狗音乐歌曲爬取.md",
+      "line": 52,
+      "quote": "sign_params = ['NVPh5oo715z5DIWAeQlhMDsWXXQV4hwt', 'bitrate=0', 'callback=callback123',",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1638865-酷狗音乐歌曲爬取.md",
+      "line": 31,
+      "quote": "t = time.time()",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1638865-酷狗音乐歌曲爬取.md",
+      "line": 100,
+      "quote": "'_': '1653050047389'",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1638865-酷狗音乐歌曲爬取.md",
+      "line": 95,
+      "quote": "'dfid': '2mSZvv2GejpK2VDsgh0K7U0O'",
+      "verified_in_article": true
+    },
+    {
       "file": "docs/references/52pojie-1719655-酷狗音乐网页歌曲爬取优化.md",
       "line": 44,
       "quote": "sign_params = ['NVPh5oo715z5DIWAeQlhMDsWXXQV4hwt', 'bitrate=0',",
@@ -104,11 +128,16 @@
     "2022 版未给示例 signature，无法确认是否真实可用",
     "下载接口 play/getdata 是否必须带 cookie（文章给了 kg_mid/kg_dfid 等 cookie 但未说明是否必需）",
     "mid 取值口径不一致：2020 版=时间戳，2022 版下载接口用固定 hex 'c18aeb062e34929c6e90e3af8f7e2512'，两者关系未说明",
-    "2022 版 request 中 token 为空串，其作用文章未说明"
+    "2022 版 request 中 token 为空串，其作用文章未说明",
+    "`_`（play/getdata 里的时间戳参数）在 1638865 里是硬编码 '1653050047389'，与同一份代码里 clienttime/mid/uuid 的实时值口径不同，源文未说明它是否需要实时",
+    "1638865 的 play/getdata 把 dfid 与 mid 写成固定值（'2mSZvv2GejpK2VDsgh0K7U0O' / 'c18aeb062e34929c6e90e3af8f7e2512'），源文未说明这两者是设备标识（可复用）还是会话值（会过期）"
   ],
   "self_check": [
     "用 2020 版公式复算 t=1600307100792, keyword=许嵩 → AD72928A4E0B85FCDC9A34FF1C238AAB，与文章 line 260 完全一致",
     "复算 t=1600304102390, keyword=许嵩 → 99B1C89A2402FFD00BA141EF34811A87，与文章 line 24 完全一致",
-    "2022 版（token=/userid=0/小写、t=time.time()）文章未给示例 signature，未能对拍；其 clienttime 用浮点秒与 2020 版 13 位毫秒不一致，存疑"
+    "2022 版（token=/userid=0/小写、t=time.time()）文章未给示例 signature，未能对拍；其 clienttime 用浮点秒与 2020 版 13 位毫秒不一致，存疑",
+    "★ 本流水线独立复算（Python，非源文数字）：1638865 的 sign_params 去掉首尾盐值后共 18 项，键序 bitrate→uuid **严格字典升序**（机械核对通过，无重复键）——可作为「参数顺序被改过」的回归断言",
+    "★ 本流水线独立复算锚点：t=1653050047.389（取自 1638865 自身硬编码的 '_'=1653050047389 毫秒换算）、keyword=一生所爱、page=1 ⇒ signature=cf5e1fed8199e46de6733a8df5a539f3；t=1653050047（整数秒）⇒ 2e4bbd38f064b453485614b09fa5911d。**这两个值均为本流水线自算，源文未给示例，不能当作「与源文一致」的证据**，只作回归对拍锚点",
+    "1638865（2022-05，本批新登记）与 1719655（已在册）是**同一份代码的两个来源**：1638865 的正文代码与 1719655 的代码块逐字同构（后者在代码注释里自陈来源 thread-1638865）⇒ 两文的「2022 版」口径**不是两次独立观察**，不能互相印证"
   ]
 }

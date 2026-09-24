@@ -24,6 +24,16 @@
       "name": "版本参数差异",
       "rule": "2020 版含 tag=em、userid=-1；2022 版改为 token=（空）、userid=0",
       "symptom_if_wrong": "参数集混用会导致 signature 不符"
+    },
+    {
+      "name": "时间戳口径（2022 版为浮点秒）",
+      "rule": "1638865 用 t=time.time()（浮点秒，如 1653050047.389）直接 str 后拼入 clienttime/mid/uuid；2020 版是 13 位毫秒字符串",
+      "symptom_if_wrong": "signature 不符；且若把浮点秒误当毫秒会得到完全不同的串"
+    },
+    {
+      "name": "页面固定设备标识可直接复用（待复核）",
+      "rule": "1638865 的 play/getdata 把 dfid / mid 写成固定值（与搜索接口的 mid=时间戳不同），并带一个硬编码的 '_' 毫秒时间戳",
+      "symptom_if_wrong": "若这些值其实有时效，照抄固定值会间歇性失败（源文未说明，勿当结论）"
     }
   ]
 }
