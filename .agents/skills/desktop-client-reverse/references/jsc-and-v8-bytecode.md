@@ -89,6 +89,7 @@ python …/jsc_xxtea_tool.py decrypt assets/xx.jsc \
 | **so 字符串 + 交叉引用** | IDA 打开 `armeabi-v7a/libcocos2djs.so` → 搜 `decrypt` 符号 / 搜报错串 | `1362276` |
 | **报错串反向定位** | 原包搜 `Can't decrypt code for %s`，其**上一行/邻近**就是 key 的赋值 | `1307664` |
 | **构造对照样本** | 自己用 cocos 打一个 demo，`build → encrypt[&gzip] → createApp`，在产物里 **搜自己预设的 key**，看它出现在哪 | `1307664` |
+| ★★ **二进制里搜 `main.js` 反查 key（手游 APK 免 IDA 路径）** | 用十六进制编辑器打开 **`libcocos2djs.so`**，搜 ASCII 字符串 **`main.js`**；紧挨着它的形如 `0ed68e2d-8b2f-4a…` 的串就是 **jsc 解密 key** ⇒ 直接丢进 jsc 解密工具（v1.44 一类）解开 | `52pojie-1784353` |
 
 补充口径（`1362276`）：**不同 CPU 架构的 so 不是同一份**（`armeabi-v7a` / `arm64-v8a`），
 按目标机型取对应目录；`JNI_OnLoad` →（`cocos_jni_env_init` 之类）这条链**不一定**放着密钥，

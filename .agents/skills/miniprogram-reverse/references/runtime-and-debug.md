@@ -231,6 +231,7 @@ def response(flow: http.HTTPFlow):
 | 云函数抓不到业务数据 | 必须**改包 + 重打包 + RPC**（§3） | websocket 把数据外发 |
 | frida 脚本"跑着没反应" | 进程选错了（主进程 vs `appbrandN`） | 用 pid 而非包名 |
 | frida 重打包脚本无效 | `RadiumWMPF` 版本不同 ⇒ RVA 失效 | 重新定位比较点 |
+| ★ 存储封装（`getStore`/`setStore`）**断不到** | 先确认断点是否落在**未被执行的模块**；若 `setStore` 断不到、`clearStore` 能断 | ★★ **改搜「哪里调用了 `setStore`」**，不要死磕断点；被读的值常是**闭包里的私有对象**（`t[e]`，非局部变量），往上找它的初始化处 |
 | 模拟器上微信被封 | **模拟器登录微信会封号**（实测结论） | 用 PC 版微信；静态度优先 |
 | 改了 JS 但行为没变 | 本地缓存命中 | 先清 `wxid_*/Applet/wx*` 再试 |
 | 目标没有 `wxapkg`，但字符串里有 `app-service.js` | **不是小程序，是 Uniapp/Weex 混合 App** | 从原生渲染入口抠（§4.4），搜 `WXSDKInstance.render` |

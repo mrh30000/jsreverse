@@ -178,8 +178,13 @@ WebSocket 逆向后建议沉淀（**这些是产出到你自己任务目录的�
   **不能重连、不能 HTTP 重放**两条硬约束；厂商侧配方见
   `../web-verify-patcher/references/slider-vendor-matrix.md` §3.13）
 
-完整案例参考：本技能 `references/cases/` 下的两份站点抽象 case
-（`case-websocket-protobuf.md` / `case-ws-carried-captcha.md`）；
+- `references/cases/case-cocos2djs-ws-packet.md`（**Cocos2d-JS 手游的 WS 封包**：定长头 + 可选压缩的分层解码顺序
+  `headerFlag → 长度(字节序反转) → moduleEnum → cmdEnum → statusCode → readBytes`、
+  **`HashCode` 漏处理会「前多两字节、后丢两字节」**、短数据不压缩、
+  以及 `cocos2djs.so` 里搜 `main.js` 定位 `jsc` 解密 key 的取巧路径与其边界）
+
+完整案例参考：本技能 `references/cases/` 下的三份站点抽象 case
+（`case-websocket-protobuf.md` / `case-ws-carried-captcha.md` / `case-cocos2djs-ws-packet.md`）；
 六阶段工作流（Observe / Capture / Rebuild / Patch / PureExtraction / Port）见项目根 `AGENTS.md`。
 
 ---

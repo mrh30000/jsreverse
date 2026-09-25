@@ -5,6 +5,11 @@
 > **它不替代 `02-algorithm-families.md`**：那里按「平台/题型」列站点模式（其中
 > `§一 得物 newSign（so 层 AES-ECB）` 就是本大类的第一个样本）；本文件按「载体类型」给**总纲与判据**。
 > 页面内的算法题（含打包成 bundle 的）走 `01-decision-tree.md` → `15-call-site-locating-playbook.md`。
+>
+> ★★ **（B41 起）App 客户端（Android / iOS）的完整工作流已独立成技能：`../../android-app-reverse/SKILL.md`。**
+> 新样本请优先走那边：侦察三件套与版本 delta、unidbg 工程化四步、出口倒推法、
+> 分段 Hook、输出形状优先、魔改算法识别、RPC 化与边界、Flutter 专题。
+> 本文件继续保留**早期样本**与本节判据作为交叉参照；两边冲突时以 `android-app-reverse` 为准。
 
 ---
 
