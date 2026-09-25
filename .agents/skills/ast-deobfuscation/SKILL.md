@@ -124,6 +124,7 @@ description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反�
   （`U+202A–202E` / `U+2066–2069`）；这类混淆**不改语义、只改显示**，照着「看起来的样子」写 pass
   会静默改坏程序。处置：**先清洗再格式化再做静态分析**，判据与码位表见 `references/invisible-unicode.md`。
 - 混淆家族与加固手段全面特征检测时，读 `references/obfuscation-detector.md`。
+- **检测结论是「仅 minify」（只短名化标识符，无控制流扁平化 / 字符串数组 / 不透明谓词）时，读 `references/rename-sequence-replay.md`**：走「改名变换序列回放」（`[遍历序号, 旧名, 新名]` 三元组 + Babel 作用域安全重命名，零结构改动、行为零变化），**不要**去跑控制流还原管线。
 - 处理数学、代数恒等式与死分支时，读 `references/opaque-predicates.md`。
 - 使用安全隔离沙箱求值前置环境时，读 `references/sandbox-evaluator.md`。
 - 处理对象 Dispatcher 与复杂代理函数折叠时，读 `references/wrapper-folder.md`。

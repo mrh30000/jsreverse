@@ -73,7 +73,7 @@
 | `algorithm` | 可选，`{family, detail, key_material, output_encoding, output_length}`；`family` ∈ `hash`/`hmac`/`symmetric`/`asymmetric`/`national`/`table`/`xor`/`custom`/`none`/`unknown`（`unknown` = 源文章只给定位不给算法，如实标注优于硬归类） |
 | `sources` | **来源可追溯性**：`[{file, line, quote, verified_in_article}]`；`file` 是**仓库相对路径**（如 `docs/references/xxx.md`），lint 会逐个 `stat`；`line` 若给出必须是正整数 |
 | `notes` | 可选自由文本 |
-| `dependencies` | 可选，**蓝图 id 的字符串数组**：本蓝图的算法/结论**依赖另一条蓝图**时填写（如 `jd-h5st` 依赖 `jd-env-params` 的业务态字段）。⚠️ **B38 新增**：此前只有 `mutations.json` 的正文散着写交叉引用，**没有结构化字段** ⇒ 检索时看不出来；lint 目前**不校验本字段**（未登记在 schema 里时会**静默生效**，这正是本轮把它补进来的原因） |
+| `dependencies` | 可选，**蓝图 id 的字符串数组**：本蓝图的算法/结论**依赖另一条蓝图**时填写（如 `jd-h5st` 依赖 `jd-env-params` 的业务态字段）。⚠️ **B38 新增**：此前只有 `mutations.json` 的正文散着写交叉引用，**没有结构化字段** ⇒ 检索时看不出来。★ **B39 起 lint 已设防**（此前是「已登记但未设防」，写错会**静默生效**）：校验 ① 必须是**数组**且元素为**非空字符串** ② **不得自指** ③ 引用的 id **必须在 `index.json` 里存在** ④ 不得有**重复项**；`blueprint-lint.js --selftest` 已配 **4 类会失败的夹具 + 1 个合法阴性对照**（S13a–S13e） |
 
 > `sources` 是本库的**溯源红线**：没有来源的蓝图等于"凭印象写的"，lint 会 warn。
 > 若某个结论来自多篇文章，**逐篇列出**；若两篇冲突，用 `contradictions` 显式记录，不要悄悄选一个。

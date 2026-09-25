@@ -5592,3 +5592,151 @@ B31 的 `b31-verify-docs.js` 用的是**硬编码文件清单**，于是「清�
    ⇒ **继续并入 `web-reverse-algorithm/references/18-native-layer-algorithm-restore.md`**（本批已从 349 行扩到 645 行）。
    **触发再评估的条件（收紧）**：出现 **≥2 个可独立成篇的工作流**，
    例如「**`unidbg` 工程化补环境**」与「**`IDA` 脚本化批量还原**」各自出现**跨 3 篇以上源文的稳定套路**时，再议。
+
+---
+
+## 批次 B39 · 2026-09-25（第四十次执行）
+
+**取材口径**：**归档线第 39 轮新收 7 篇全取（7/7 命中）** —— 承接上一批「归档线第 39 轮」的优先级 ①。
+本轮归档自述「**互链通道首次归零并结项**、作者维度首次零 WAF 跑满两批」⇒ 供给降到 7 篇，
+**如实按 7 篇蒸馏，不为数字翻旧账**。
+簇结构：**客户端载体/打包产物 1 篇**（Bun standalone exe 解混淆）、**平台签名 1 篇**（xhs a1/x-s/x-s-common）、
+**客户端 App 接口 1 篇**（某米主题商店）、**协议分帧 1 篇**（WS + protobuf）、
+**媒体地址还原 2 篇**（免费影视/动漫站的解析接口族，同作者互证）、**反调试 + 多写者 cookie 1 篇**（求助帖）。
+
+**产出**：**0 新建技能**（能力缺口评估 = 0，逐簇给了「为什么不是新建」的判据），
+**演化 7 个技能、新建 1 个参考文件 + 4 个脚本改动 + 1 个 lint 判据**；**未新建蓝图**（`xhs-x-s` 为**编辑既有**）。
+
+### 本批的「结论级发现」（三条，均由本库复算/反推抓出）
+
+1. ★★★ **WS 会话信封的长度字段语义是「帧总长 − 6」，且同一连接里存在「另一族」**
+   （`52pojie-1926836`）。源文是**求助帖**、从未给结论 ⇒ 本库从 20 帧 hex 反推出
+   「11 字节头 + `[7:9]` 路由号 + `[9:11]` payload 长度」并**逐帧断言**（Node **60/60**、Python 独立复现 **9/9**）。
+   最值钱的一条：**长度等式只能定位帧边界，不能定位 payload 起点** ——
+   另一族（`msgId 0x14–0x17`，5/20 帧）的 `6 + 长度字段 == 帧长` **照样成立**，
+   但按偏移 11 切出来的 payload 一解析就报 `wiretype 7` / `field 0`。
+   ⇒ 解码器因此**写了一条会主动报错的护栏**，而不是返回「看起来还行」的垃圾。
+2. ★★★ **解析站的 AES key/iv「只差大小写」，且跨请求/跨站固定**（`52pojie-2033927`）。
+   `key = ARTPLAYERliUlanG` / `iv = ArtplayerliUlanG`（各 16 字节、**字节不等**）。
+   源文只解了一次；本库用源文给出的**两个不同时点**的密文（各 240 字节）**同解出两条不同的合法 m3u8**
+   ⇒ 「key/iv 与 URL 无关、跨请求复用」（样本 2，单站）；再叠加两篇是**两个不同域名、相隔两个月**
+   的解析站用**同一组常量** ⇒ 判据升级为「开源播放器模板的固定常量，`key`/`iv` 只差大小写是手工改模板的痕迹」。
+   ⚠️ 口径边界：**这是另一个站的独立样本，不是对 B32 遗留 `2105967` 的复核**（那条仍挂着）。
+3. ★★ **第一层「全字节 percent-encode」不是任何标准库函数**（两篇互证）。
+   实测 **一层长度 == 3 × 二层字符数**（294=3×98、171=3×57）⇒ **连字母数字都被编码**；
+   对照 `quote(s, safe="")` 仅 71 字符 ⇒ **标准库产不出这一层**（造密文必须逐字节编码）。
+   同族陷阱：第二层反编码函数**源文两篇各写一个**（`unquote` vs `unescape`），
+   本库实测 `unescape("%E4%B8%AD%E6%96%87")` 出 **3 个 Latin-1 乱码字符** ⇒ **禁用 `unescape`**；
+   本批两样本**全为 ASCII 所以两者恰好相同 —— 是巧合不是等价**（与 B37「假绿」同族）。
+
+### 本批自曝缺陷（全部在本轮内修完）
+
+1. ★★★ **`pb_decode_raw.py` 的自实现 AES 里 `ShiftRows` 方向写反了**，而**第一条 FIPS 向量是全零输入 ⇒ 抓不到**：
+   全零/常量状态在**任何置换**下都不变 ⇒ 该向量**恒绿**。
+   **抓到它的是第二条非零向量**（附录 B 原配三元组）。
+   ⇒ 纪律：**置换/重排类实现，测试向量必须含非对称输入**（「全零向量抓不到行置换类 bug」）。
+2. ★★ **我写的第二条「FIPS 向量」把「全零密钥」和「附录 C.1 的明文」配成一对** ——
+   那不是官方向量 ⇒ 红的是**断言**不是代码。⇒ 纪律：**官方向量的 key/plaintext/ciphertext 必须原配**。
+3. ★★★ **长常量手抄必错（本批连踩两次）**：`B_CT` 手抄**漏了一个字符 `g`**；
+   AES 密文手抄**折行错位** ⇒ 解出 `末字节 168` 的伪错。
+   ⇒ 改为**程序抽取**（`b39-extract-ct.py` / `b39-extract-aes-ct.py` / `b39-extract-frames.py`），并把这条写进脚本注释。
+4. ★★ **门禁第一版 `PATH_RE` 允许空尾** ⇒ 把 `websocket-reverse/SKILL.md` 里
+   「本技能**不含** `scripts/`」这句**目录提及**判成悬空引用 ⇒ 收紧为「尾部非空且不以 `/` 结尾」
+   （**收紧不是放宽**：真引用一定带文件名）。
+5. ★★ **蓝图裸名判据把 `schema 字段名` 当成蓝图 id**：写「蓝图的 `dependencies`」被判成「蓝图不存在」⇒
+   加 `SCHEMA_KEYS` 白名单（`dependencies`/`sources`/`mutations`/… 24 个字段名）。
+6. ★★★ **新建的「被引用频次 Top-N」统计第一版恒 0**（1008 个匹配、**0 命中**）：两处取错 ——
+   ① 裸形态的**完整相对路径在 group 3**（我取了 group 4 的尾段）；② 技能名是 `relative` 的**第 0 段**（我取了 `[1]`）。
+   修好后 **271 个被引文件、Top-40 并入 36 个新文件**（待检集 158 → **176**）。
+   ⇒ 与 B37「恒亮」、B38「恒红」互为镜像：**「恒 0 的统计等于没有统计」** ⇒ 已固化成**故障注入 N2 的非空断言**。
+7. ★★ **跨技能引用深度**（本仓**第五次**踩）：子代理在 `references/` 下写 `../../ast-deobfuscation/SKILL.md`（少一级）
+   与蓝图里写 `../../web-reverse-algorithm/...`（应为 `../../../../`）⇒ `check_skill_integrity.js` 报 2 处 BLOCK，已修。
+8. ★ **`blueprint-lint.js` 的 `lintBlueprint` 原本在「边遍历边建 id 集」** ⇒ 第一个蓝图的 `dependencies`
+   看不到全集 id ⇒ 改为**两遍**（先算全集再逐个 lint），并**保持重复 id/path 的报错顺序不变**。
+9. ★ **`b39-verify-numbers.py` 自身两处错**：① 拿「一层 `%XX` 串」去比「二层明文」（**比较对象写反**，断言恒红）；
+   ② 格式串里含字面 `%3D` 未写 `%%` ⇒ `TypeError`。
+   ★ 另一处针写得过窄：落点写成 `` `set` 方法 ``（带反引号）而针写 `set 方法` ⇒ 恒不命中
+   ⇒ 纪律：**针必须按落点的实际措辞写**。
+10. ★★ **真机断言第一版 28/30，两条失败**都是**我自己的断言错**（不是被测事实错）：
+   ① `hex()` 返回的已是小写 hex，**再 `.toLowerCase()` 不可能让 `41` 等于 `61`** ⇒ 判「只差大小写」必须在
+   **字符串/字节**层面比（`KEY.toLowerCase() === IV.toLowerCase()`），不能在 hex 层面比；
+   ② `encodeURIComponent` 的未保留集里**不含空格**（`' ' → %20`）⇒ 我把空格写进期望集。
+   ⇒ 纪律（本仓第二次）：**「断言失败」先怀疑断言**；并**实测未保留集恰好 71 个字符**（含 `!'()*-._~` 与 alnum）。
+11. ★★ **`b39-parse-assert.py` 第一版用 `subprocess` 调 browsercli ⇒ 撞 Windows「命令行太长」**
+   （整段脚本作为 `--function` 参数超限）⇒ 改为**从 stdin 读**（`browsercli … | python b39-parse-assert.py`）。
+   ★ 附带：`browsercli` 是 shell 脚本（`/e/env/nvm/nodejs/browsercli`），**不在 Python 的 PATH 上**，
+   且 Windows 下要优先找 `browsercli.cmd`。
+   ⇒ 这两条已写进脚本 docstring（**别只留在记忆里**）。
+
+### 处理清单
+
+| # | 文件 | md5 | 处理时间 | 关联技能 | 变更类型 | 备注 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 716 | `52pojie-2129831-针对Cl de Code 2.1.252 win版的解混淆脚本.md` | `89f34f5ef93189f5268878209c2ae17f` | 2026-09-25 | `ast-deobfuscation` + `desktop-client-reverse` | evolve | ★★ **「改名变换序列回放」范式** ⇒ 落 `ast-deobfuscation` **新 `references/rename-sequence-replay.md`**（原无此文件）+ `desktop-client-reverse/references/desktop-runtime-surfaces.md` 新增一节「Bun standalone exe」（SKILL.md 各 +1 行导航）。★★★ **题型判据**：源文明确「原版混淆**仅为 minify——只改了名，没有控制流扁平化**」⇒ **三条都满足才走本路线**（无 CFF / 无字符串数组 / 无透明谓词）；⚠️ 只看到短名就跑控制流还原管线是「**白费功夫且引入风险**」（结构一改，「行为零变化」这条唯一验收手段即失效）。★★ **范式**：序列元素 = `[遍历序号, 旧名, 新名]`，**序号是锚点**（结构漂移时靠它对齐），回放时用 **Babel 作用域安全重命名**——纯文本替换会把「同名不同绑定」**静默改语义**。★ **验收**：只改标识符 ⇒ 行为零变化 ⇒ 可用「改动后仍可运行 / AST 节点数不变」做**会失败**的断言。★ 规模（源文自报）：1798 个 JS 文件、22517 个导出符号 99.7% 恢复语义名、440176 个局部绑定改名后残留 0；样本 `Clxxde Code` 2.1.252 / MD5 `5EB043F2630D710629BD80CCE2D6C39B`。★ **预期现象白名单（源文给的，不是错误）**：biome 跳过 >1MiB 大文件；3 个非 UTF-8 vendor 资产（chart/hljs/mermaid）解析报错。★ **保真**：源文对产品名/厂商名自脱敏（`Clxxde Code` / `clxxde.exe` / `Anxxropic`）⇒ 落点**保留脱敏形态，未解码**。★ 可迁移边界：**任何 Bun/Deno/Node 的 standalone 打包产物都适用**（只改名不改结构是打包器默认行为，不是该产品特例）。 |
+| 717 | `52pojie-1981410-xhs x-s x-s-common b1 算法.md` | `cd1cccbc250e555ba70a428541f6cf21` | 2026-09-25 | `reverse-knowledge` + `web-js-env-patcher` | evolve | ★ **编辑既有蓝图 `xhs-x-s`**（非新建）⇒ `workflow.md` 新增「a1 的定位与两条实现路线」+「**最小补环境模板**」两节，`metadata.json` / `mutations.json` / `index.json` **四处同步**（`sources` +1，蓝图总数不变 = 32）。★★ **a1 的定位法（「从值反查写入点」的实例）**：搜 `a1` 命中太多 → **发现 a1 的值是常量** → **改搜这个常量本身** → **命中 `set` 方法**（是 `set` 才让它成为 cookie）；★ 已**指向** `15-call-site-locating-playbook.md` §0 的 J1「消失点比出现点更好用」而**不重复**该节。★★ **两条路线的取舍（源文明确表态）**：① 补环境 ② 长链接调用 —— **推荐补环境**，理由是**长链接方式「a1 是写死，拓展性差」**（换号/换 a1 即失效，只适合一次性取证）。★★ **最小补环境模板**（源文给了完整一版，含关键桩 `document.cookie = "a1"`）⇒ **逐字登记**，且**保留源文自打的码**（`www.xxxxx.com` / UA 里的 `xxxx`，未擅自还原）。★ **x-s 入口 = `window._webmsxyw`**，依赖三参数（**请求 url、body、a1**）；源文写「windos 函数」，实为 `window` 上的函数（已登记）。★ `x-s-common` 是对 `v`（含 `x1~x10`）做加密编码 —— **源文仍未给代码** ⇒ **蓝图 `gaps` 里那条「x-s-common 无代码」未填掉**，只补「`v` 含 `x1~x10`」这个新事实（gaps 6 条）。⚠️ 本片是 **2024-11** 的帖，早于蓝图既有两个来源（2026-02 / 2026-04）⇒ 版本时点差异如实登记。 |
+| 718 | `52pojie-2125273-某米主题商店接口逆向分析.md` | `e4eb98a1ae8b9ed97dd61643dfedebe7` | 2026-09-25 | `web-reverse-algorithm` | evolve | ★★★ **本批唯一「负结论」型增量** ⇒ 落 `18-native-layer-algorithm-restore.md` **新 §3.9**（含 §0 判据表 +1 行；SKILL.md 导航 +1）。★★★ **前置判据（本节核心）：先证明服务端根本不要签名，再决定要不要还原** —— **裸请求 → 逐个删参数 → 看报错是「缺参数」还是「签名错误」**；若删任一参数都只报「缺少 xxx」且**没有参数进入计算**（换成任何常量也通过）⇒ **风控层塌缩成「照抄抓包参数」，立刻把「还原算法」从预算里删掉**（源文原话：「这些参数都只是『设备画像』，服务端校验的是**存在性和格式，不是严格签名**——这也是为什么能脱离 App 用脚本模拟请求」）。★★ **画像参数 vs 签名参数的三合一判据**：**「逐个换成常量不影响通过」+「不含时间戳/随机数」+「多次请求值不变」**。★ `capability`（`w,b,s,m,h5,a:2,v:7`）是**本地字符串拼凑，不是哈希** ⇒ 判据：**形如 `a,b,c:1,d:2` 的能力串先怀疑是能力集，别去反推哈希**。★★ **「index 被限 ⇒ tag 旁路」通用化**：同一站对**不同分类**准入策略可能不同（源文实测**字体被限、主题正常**）⇒ **搜索接口恒空时，先横向换分类，再纵向换参数**；`tag`/`keyword` 这类**语义更宽的通道常常敞开**（写成 fallback：先精确、空了自动切宽通道）。★ **优先序**：**详情接口 `/api/v9/products/{uuid}` 自带 `downloadUrlRoot + downloadUrl` ⇒ 少一步请求、少一个签名点**（详情 > 专门下载接口）。★ **Jadx 定位法**：**全局搜接口路径字符串（`download/v2`）⇒ 命中常量 ⇒ 反查调用关系 ⇒ 落到 Manager 类**（与 §3.8「搜带引号的形式」同族，已指向既有节）。★ **与 §3.8 的边界已写死**：§3.8 = **已确认有签名**之后怎么还原；§3.9 = **还没确认有没有签名**之前怎么尽早证伪 ⇒ **执行顺序先跑 §3.9**。⚠️ **保真**：源文自脱敏的 `com.xxx.thememanager` / `xxx.market.xxx.com` / `com.xxx.t` / `ThemeMarket/<hash>` **一律保留脱敏形态**；源文混用的 `{资源ID}` / `uuid` 两个叫法都保留；抓包工具名「手机小蓝鸟」**照抄不改写**。 |
+| 719 | `52pojie-1926836-有没有web 逆向大佬 给点提示 ， protobuf 相关 卡壳了.md` | `f46c7febfde42dd188cd89ccafb17569` | 2026-09-25 | `protobuf-reverse` + `websocket-reverse` | evolve | ★★★ **源文是求助帖（作者问「`o.setUint` 那段什么意思」，从未给结论）⇒ 本批结论全部由本库从源文贴出的 20 帧 hex 反推 + 逐帧断言**（`artifacts/skill-evolution/tools/b39-ws-frame-check.js` **60/60 全绿**；Python 侧独立复现 42/42 中的 9 项）。落 `protobuf-reverse/references/framing-and-transport.md` **新 §1b**（+§2 判据表 +1 行）+ `references/schema-recovery-from-js.md` **新 §2b** + `scripts/pb_decode_raw.py` **新增 `--frame ws-env`**（53 项自检，含 5 条本族断言）+ `websocket-reverse/references/cases/case-websocket-protobuf.md` 新节 + SKILL.md 速查表 +2 行。★★★ **帧结构（业务帧）**：`[0:2]` msgId(BE) / `[2:4]` **长度字段 = 帧总长 − 6** / `[4][5][6]` 恒 0 / `[7:9]` 路由号 i / `[9:11]` payload 长度 r / `[11:]` 裸 protobuf。★★★ **三个源文一个都没写、必须自己算的等式**：① `n = 5 + r`、`buffer = 6 + n` ⇒ **头部恰好 11 字节**（源文写成 `e + 5 + 6`，没人告诉你那是 11）；② **长度字段语义是「帧总长 − 6」**（20/20 帧成立）——**既不是 payload 长度、也不是帧总长**；③ `r` 才是 payload 长度且 `11 + r == 帧长`（11/11）⇒ **两个长度字段互为交叉校验**。★★★ **分族（本批最值钱的一条）**：20 帧实为**三族**（守卫断言 11 业务 + 5 另一族 + 4 心跳 == 20）——心跳 6 字节（`4E20…` 发 / `4E21…` 收，长度字段 0）；**另一族**（msgId `0x14/0x15/0x16/0x17`）**长度等式照样成立**（88 字节帧 `6 + 0x52 == 88`）但 `[9:11]` 不是 payload 长度 ⇒ **判 payload 起点的唯一硬判据是「切完能恰好解析完」**，长度等式只能定位**帧边界**。⇒ `--frame ws-env` 因此**写了一条会主动报错的护栏**（不满足 `11 + r == 帧长` 就 `raise`，**绝不返回看似合理的 payload**）。★ **正向验证**：把源文最大的一条帧（**11886 字节**）喂进 `--frame ws-env`，解出 156 条**同构**记录（字段集完全一致）⇒ 这是「帧切对了」的强证据。★★ `encode` 函数体是一份**完整字段表**：`uint32(N)` 的 `N = field<<3 \| wire`（`10→f1/str`、`18→f2`、`26→f3`、`34→f4`、**`40→f5/wire0/int32`**、`50→f6`、`58→f7`）⇒ 判据：**`N` 跨到 8 的倍数区间就是字段号跳档的信号，不要凭 `N` 的绝对大小估字段号**（58 看着像「字段 58」，实际是**字段 7**）；`Object.hasOwnProperty.call` 说明生成器开了**可选字段**模式，字段一律可省。⚠️ 登记纪律：**响应侧那套字段号与请求侧不是同一个 message，源文未给字段名 ⇒ 不臆造**；另一族结构**明确记为未解**（源文从未给结论）。 |
+| 720 | `52pojie-2016709-纯小白，记一次某日番动漫网视频地址解密全过程.md` | `111aeb7b865a74f5454a6f6ac4aeeee0` | 2026-09-25 | `stream-drm-reverse` | evolve | ★ 与下一篇**同作者、同手法、互为交叉验证** ⇒ 一并落 `playback-address-interfaces.md` **新 §3C「解析接口族」**（§3C 新增一节、SKILL.md 分流表 +1 行 + 权威源描述 +1 段 + description 触发词 +2 个；`scripts/playback_address.py` 新增 `jiexi-l1` / `jiexi-aes` 两个子命令，自检 **56 → 68 项**）。★★★ **第一层不是普通 Base64**：`base64decode` 出来的是 `%68%74%74%70%73%3A%2F%2F…` —— **连字母数字都被 `%XX` 编码了**（本库实测 **一层长度 == 3 × 二层字符数**：294=3×98、171=3×57）；对照 `quote(s, safe="")` 只有 71 字符 ⇒ **标准库里没有任何函数产出这一层**（造密文必须逐字节编码，用标准 encode 会**长度对不上且服务端不认**）。★★ **第二层反编码函数有分叉，且源文两篇各写了一个（互不一致）**：本篇用 `urllib.parse.unquote`、下一篇用 JS 的 `unescape`；本库实测 `unescape("%E4%B8%AD%E6%96%87")` = **3 个 Latin-1 乱码字符**，而 `decodeURIComponent` = `中文` ⇒ **判据：第二层统一用 `decodeURIComponent`/`unquote`，禁用 `unescape`**；本批两个样本**全为 ASCII 所以两者恰好相同 —— 这个「都对」是巧合不是等价**（与 B37「假绿」同族）。★ 源头定位动作（两篇一致）：`Ctrl+U` 的 `view-source:` 里先搜 `.m3u8`/`.mp4`，搜不到再搜 **`aaa=`**（免费影视站的通用变量名家族：`aaa=`/`player_aaaa`）。★ 定位法：**从网络面板的「发起程序」调用栈反查**（`匿名` 栈拿 key/time、上一级 `start` 拿到 `decrypt`），**第三方解析站的变量名往往不混淆**（源文原话「生怕别人不知道」）。 |
+| 721 | `52pojie-2033927-记一次简单解析某免费影视站播放地址的全过程（适合小白练手）.md` | `95f78755e20605c35d695c73f891f078` | 2026-09-25 | `stream-drm-reverse` | evolve | ★ 与上一篇同簇 ⇒ 合并落 `playback-address-interfaces.md` **§3C**。★★★ **本批结论级发现：`key`/`iv` 跨请求固定，且二者「只差大小写」** —— `key = ARTPLAYERliUlanG` / `iv = ArtplayerliUlanG`（各 **16 字节 ⇒ AES-128**，字节**不相等**但小写后相同）。★★ **源文只解了一次，本库补出第二条证据**：源文正文给了**两个不同时点**的响应密文（各 **240 字节**、16 的倍数），本库用**同一组 key/iv 都解出合法 m3u8**（两条明文**不同**）⇒ 「**key/iv 与 URL 无关、跨请求复用**」（样本数 2，单站）；配合两篇是**两个不同域名、相隔两个月**的解析站用**同一组常量** ⇒ 判据升级为「**这类解析站全家桶的 AES key/iv 是开源播放器模板里的固定常量**」（`key`/`iv` 只差大小写是**手工改模板留下的痕迹**）。⚠️ **口径边界**：这是**另一个站**的独立样本，**不是**对 B32 遗留 `2105967` 的复核（那条仍挂着）。★ **第三层链路**：`GET <解析站>/?url=<平台页地址>` 抓 `key`/`time`/`vkey` → `POST <解析站>:<port>/api.php`（`url=…&time=…&key=…`）→ 返回 `{code:200,url:"<AES 密文>",type:"m3u8"}` → AES-CBC 解 ⇒ 真实 m3u8。★ `key`/`time` 是**一次性负载**（本库实测两跳的 time `1748108226` 与首次响应里的 `1748103938` **不同**）⇒ **必须现取现用，不要缓存**。★ 本库复算：PKCS7 填充合法（末字节 6、逐字节一致）、明文 `https://ts.key.<解析站>:4433/vod/<长串>.m3u8`；**路径末段是 128 字节的 base64**（172 字符含 `%3D`）—— **这一段 128 字节的用途源文未说 ⇒ 登记为 gap，不臆测**。★★ **源文缺陷登记（照抄跑不起来）**：`headers` 字面量写成 `"User-Agent": "User-Agent": "Mozilla…"`（**键重复且成了 `k: k: v`**）⇒ **直接 `SyntaxError`**；另有 DrissionPage 不支持 `verify=False`。⇒ 这是本仓**第二次**抓到「源文代码语法错」（首次见 B34 的少括号）⇒ 纪律：**照抄源文代码前一律先过语法**。★ 反调试绕过（两篇一致）：`view-source:` 不受页面 JS 干扰；若 `debugger` **硬编码在 HTML 里**，注释掉即可跳过（**先试这个零成本动作**）。 |
+| 722 | `52pojie-1906023-求助某安js逆向存在反debugger和混淆策略分析.md` | `a27888dc6675e2f80aab1093bde633f6` | 2026-09-25 | `web-reverse-hook` + `web-js-env-patcher` + `web-reverse-algorithm` | evolve | ★★ **源文是悬赏求助帖（作者自己没解决）⇒ 只登记被实证的现象与数字，不登记任何猜测为结论**。落 `web-reverse-hook/references/anti-hook-detection-and-bypass.md`（并入既有章节，**不新建文件**）+ `web-js-env-patcher/references/cookie-generation-analysis.md` **新「多写者」一节** + `web-reverse-algorithm/references/09-antidebug-and-automation-fingerprint.md`（并入）。★★★ **「进 debugger 即被反制」的现象（源文实测）**：在进入 `debugger` 的瞬间，页面**删除了 debugger 并刷新**，**随后所有请求返回 403** ⇒ 整理成「**debugger 触发的代价分级**」——有的站只是卡住，有的是「**检测到调试就直接清 debugger + 刷新 + 后续全 403**」；★ **落地动作：第一条 debugger 不要设在「反调试检测代码自己」上，要先设在上报/校验动作上**（已**指向**该文件既有 §2「不打 `toString`，改短路上报动作」而**不重复**）。★★ **「五个 cookie 名 = 风控/统计 SDK 指纹」清单**：`bnc-uuid` / `deviceId` / `se_gd` / `thx_guid` / `device-info` （源文 hook 时按这五个名条件触发 `debugger`）⇒ 登记为「**先试这五个**」的启发式，并**明确标注「单站观察、名单会变、用法是启发不是判据」**。★ **回答发帖人的第 1 问（怎么在十几个混淆 JS 里定位有用的那个）**：**不要读 JS，要读 cookie 的「谁写的」** —— 用 hook 拿写入者调用栈，**按 cookie 名反查文件**，而不是按文件猜参数；配套「**逐个禁用后看哪一步 cookie 缺失导致后续失败**」。★ 可迁移的量化事实：源文说最大的 js **格式化后有九万行**；首页**加载十几个 JS 各写一部分 cookie**，后续请求缺一个即「参数错误」。★ 混淆形态线索：`b("0x172", ")e4a")` 这种「**索引 + 第二参数**」调用（ob 的 `stringArrayEncoding`）+ `f["vtYVa"]` / `v["WGwHb"]` 随机名**别名表** ⇒ 先做字符串还原与别名表展平再读逻辑（交给 `ast-deobfuscation`）。 |
+
+> ⚠️ 上表 md5 由 `append-b39-ledger.py` **从磁盘现算**（不手抄）；编号按行出现顺序自动生成；
+> 备注里的裸竖线已按 `\|` 转义（列数断言通过）。
+
+### 本批次技能变更汇总
+
+| 技能 | 变更类型 | 主要落点 |
+| --- | --- | --- |
+| `ast-deobfuscation` | evolve | **新建 `references/rename-sequence-replay.md`**（「改名变换序列回放」范式：仅-minify 三判据 / `[遍历序号, 旧名, 新名]` 序号锚定 / Babel 作用域安全重命名 / 「零结构改动」的会失败断言 / 跨版本迁移判据 / 预期现象白名单）；`SKILL.md` +1 行导航 |
+| `desktop-client-reverse` | evolve | `references/desktop-runtime-surfaces.md` 新增一节「Bun standalone exe」（与 Electron / NW.js / jsc 的分工 + 「先判要不要取 JS，再决定走解混淆还是字节码」）；`SKILL.md` +1 行 |
+| `protobuf-reverse` | evolve | `references/framing-and-transport.md` **新 §1b「自定义会话信封」**（11 字节头 / **长度字段 = 帧总长 − 6** / 两个长度字段互为交叉校验 / 三族表 / 「长度等式不能定位 payload 起点」）+ §2 判据表 +1 行；`references/schema-recovery-from-js.md` **新 §2b**（`uint32(N)` ⇒ `field = N>>3`、`wire = N&7` 的手算表 + 三条判据）；`scripts/pb_decode_raw.py` **新增 `--frame ws-env`**（含**主动报错的族护栏**，自检 53 项）；`SKILL.md` 第 1 步 +2 条判据 |
+| `websocket-reverse` | evolve | `references/cases/case-websocket-protobuf.md` 新增「已实证的一类：自定义会话信封」节（三等式 / 三族表 / 11886 字节真实帧的正向验证 / OB 混淆线索）；`SKILL.md` 协议速查表 **+2 行** |
+| `stream-drm-reverse` | evolve | `references/playback-address-interfaces.md` **新 §3C「解析接口族」**（三层串接 / **全字节 percent-encode 的 `3 ×` 判据** / `unescape` 分叉 / 解析 API 两跳 / AES 常量与「只差大小写」/ 排错表 / 源文缺陷登记）；`scripts/playback_address.py` **新增 `jiexi-l1` / `jiexi-aes`** + **纯标准库 AES-128-CBC 自实现**（自检 **56 → 68 项**）；`SKILL.md` 分流表 +1 行、权威源描述 +1 段、description +2 触发词（**压到 994 / 1000**） |
+| `web-reverse-hook` | evolve | `references/anti-hook-detection-and-bypass.md` 并入「debugger 触发的代价分级」（进 debugger 即清 debugger + 刷新 + 后续 403）+ 「第一条断点别设在反调试检测代码上」+ 五个风控 SDK cookie 名启发式清单 |
+| `web-js-env-patcher` | evolve | `references/cookie-generation-analysis.md` **新增「多写者：一个站有 N 个 JS 各写一部分 cookie」**（按 cookie 名反查写入者 / 逐个禁用验证 / 「不要假定一个 JS 写全部」） |
+| `web-reverse-algorithm` | evolve | `references/18-native-layer-algorithm-restore.md` **新 §3.9「负结论：先证明服务端根本不要签名」**（删参数看报错措辞的分诊法 / 画像参数 vs 签名参数三合一判据 / 能力串不是哈希 / tag 旁路 / 详情接口优先 / Jadx 搜路径反查调用链）+ §0 判据表 +1 行；`references/09-antidebug-and-automation-fingerprint.md` 并入 debugger→403 现象；`SKILL.md` +1 行 |
+| `reverse-knowledge` | evolve | 蓝图 `xhs-x-s`：`workflow.md` +2 节（a1 定位法 / 最小补环境模板逐字）、`metadata.json`（`sources` +1）、`mutations.json`、`index.json` **四处同步**；**蓝图总数不变（32）**；★ `references/blueprint-schema.md` 把 `dependencies` 的说明从「**lint 不校验**」改为「**B39 起已设防**」（四条判据）；★ `scripts/blueprint-lint.js` **新增 `dependencies` 四条校验 + 4 类失败夹具 + 1 个合法阴性对照**（自检 **13 → 20 项**） |
+
+### 本批验收（全部实跑）
+
+| 项目 | 结果 |
+| --- | --- |
+| `check_skill_integrity.js` | **0 阻断 / 0 告警**（台账 715 → **722**、候选 1205、待处理 490 → **483**） |
+| `b39-verify-docs.js` | **0 阻断**（改动集 23 + 一跳 99 + 二跳 36 + **被引 Top-40 并入 36** = **176 文件**；路径引用 **535 处 0 悬空** / § 引用 **89 处 0 悬空** / 小节号 0 异常 / 裸名跨技能 0 / 蓝图裸名 0 / **带引文的标题引用 7 处 0 漂移**） |
+| `blueprint-lint.js` | `--selftest` **20/20**；真库 **error 0 / warn 1**（= 基线） |
+| `b39-verify-numbers.py`（异语言复算） | **42/42** |
+| `b39-ws-frame-check.js`（Node 帧断言） | **60/60** |
+| `b39-media-crypto-check.js`（Node 加解密） | **24/24** |
+| `playback_address.py --selftest` | **68/68**（含两条真实密文的 AES 实解） |
+| `pb_decode_raw.py --selftest` | **53/53** |
+| `b39-fault-injection.py` | **11/11**（N1a/N1b/N2/N2b 阴性对照全绿 + I1–I3b 三条 `dependencies` 注入 + I4 真悬空 + I5 阴性对照） |
+| ★ **browsercli 真机 Chrome** | **30/30 全绿**（6 组：**真机跑源文写帧函数**验证「长度字段 = 帧总长 − 6」/ 双层 `atob`+`decodeURIComponent` 还原源文密文 / **`unescape` 与 `decodeURIComponent` 分叉** / `encodeURIComponent` 未保留集 71 字符 / ★★ **WebCrypto 独立解出源文两条密文**（与 Python 纯标准库 AES **跨实现一致**）/ cookie hook 真机拦截） |
+| 双镜像 `.claude/skills` ↔ `.agents/skills` | 逐字节一致 |
+
+### 下一批优先级（B39 更新）
+
+1. **归档线第 40 轮**（按既有簇就地取材）；若仍是「见底轮」的个位数供给，**如实按个位数蒸馏**。
+2. ★ **`stream-drm-reverse` W7「无脚本入口」仍未消**（B34 遗留，**连续六批**）——
+   下一批若再遇同类样本，**优先把 W7 实现进 `key_wrapper.py`（带 `--selftest`）**。
+   ⚠️ 对照：本批把「解析接口族」**从零做到有 CLI + 68 项自检**（说明这条遗留是「可解的」，只是还没遇到样本）。
+3. ★ **文档门禁再扩一档**：本批已加「**被引频次 Top-N**」（并入 36 个新文件）；
+   下一批可试 **「被引 Top-N 的 N 加大 + 观察是否收敛」**，并补本批暴露的**口径边界**：
+   `PATH_RE` **不覆盖跨技能的 `SKILL.md` 引用**（那由 `check_skill_integrity.js` 负责）
+   ⇒ 可考虑把两类判据合并成一个入口，避免「以为覆盖了其实没覆盖」。
+4. ★ **本批新登记的「单源 / 未复核」项（勿当结论用）**：
+   `2129831` 的「序号锚点跨版本是否漂移」（源文只给一个版本）、
+   `1981410` 的 a1 算法细节（源文只说「一些随机数」）与 `x-s-common` 的 `v` 字段语义（**仍是 gap**）、
+   `2125273` 的**完整设备字段集**（源文以 `……` 省略）与「字体分类为何被单独限制」、
+   `1926836` 的**另一族信封结构**（5 帧，**明确未解**）与响应侧 schema 的字段名、
+   `2033927` 的**路径末段那 128 字节 base64 的用途**、
+   `1906023` 的「五个 cookie 名」是**单站观察**（名单会变）。
+5. ★ **`2105967` 的「key 长期不变 / IV 跨视频复用」仍未复核**（B32 遗留）——
+   本批在**另一个站**（`shipinbofang.net`）独立复现了同一模式（2 样本）⇒
+   下一批若拿到该站样本，可把这条从「单站单样本」升到「跨站 3 样本」。
+6. **候选新技能 `captcha-flow-orchestration`** —— **第三十三次确认不新建**（本批 7 篇无验证码题）。
+7. **候选元技能「本流水线自身的批次作业」** —— **第二次评估：仍暂不建**。
+   判据：本批 9 条自曝缺陷里 **6 条是「自建门禁/自建脚本」型**（恒 0 统计、取错分组、
+   断言配错、比较对象写反、格式串 `%`、针过窄）—— 这类**已在 `b39-fault-injection.py` 里沉淀成
+   「阴性对照 + 非空断言 + 唯一夹具」三件套**，**不必另立技能**；
+   另 2 条（跨技能引用深度、长常量手抄）**已写进脚本注释与本节**。
+   **再评估触发条件**：出现「**跨批可复用的完整作业脚本**」（而不是散在 `artifacts/tools/` 的批次脚本）时再议。

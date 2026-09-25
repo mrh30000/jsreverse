@@ -24,6 +24,31 @@
       "name": "环境指纹（补环境方案）",
       "rule": "VMP 需 navigator.userAgent='...Chrome/120.0.0.0...'、appVersion、platform='Win32'、language='zh-CN'、languages=['zh-CN','zh','en']、cookieEnabled、webdriver=false、screen 1920x1080、canvas toDataURL、performance.now 等",
       "symptom_if_wrong": "缺环境则 VMP 报错或输出与浏览器不一致"
+    },
+    {
+      "name": "a1 的定位：从值反查写入点（搜常量而非搜名）",
+      "rule": "a1 是常量 cookie；先搜 'a1'（命中太多）→ 发现它的值是常量 → 改搜这个常量本身 → 命中 set 方法（是 set 才让它成为 cookie）",
+      "symptom_if_wrong": "只搜 'a1' 会命中大量同名变量/文案，定位不到写入点；漏掉『搜常量』这一步会误以为 a1 是随机生成、去啃别的混淆代码"
+    },
+    {
+      "name": "x-s 入口与三参数",
+      "rule": "x-s 由 window._webmsxyw 生成，依赖三个参数：请求 url、body、a1（52pojie-1981410）",
+      "symptom_if_wrong": "补环境时没把请求 url / body / a1 正确喂进去，x-s 与浏览器不一致；只传 url 不传 body 会得到稳定但错误的值"
+    },
+    {
+      "name": "补环境 vs 长链接调用（路线取舍）",
+      "rule": "两条路线都可行，源文推荐『补环境』；『长链接调用』方式 a1 是写死，拓展性差",
+      "symptom_if_wrong": "走长链接方式时 a1 写死：换号 / 换 a1 即失效；且 a1 写死后若与实际请求携带的 a1 不一致，x-s 签名会错"
+    },
+    {
+      "name": "最小补环境模板漏桩（关键桩 document.cookie = 'a1'）",
+      "rule": "模板首行 window = global; delete global; delete Buffer;，并需 document.cookie = \"a1\" 这个关键桩（52pojie-1981410 逐字模板）",
+      "symptom_if_wrong": "漏掉 document.cookie 桩 ⇒ 取不到 a1 ⇒ x-s 与浏览器不一致；漏掉 delete global / delete Buffer ⇒ 混淆代码可能走到 Node 分支"
+    },
+    {
+      "name": "x-s-common 是对 v 的加密编码（非 x-s 复制）",
+      "rule": "x-s-common 对 v 值做加密编码，v 里含 x1~x10 等属性（52pojie-1981410）；文章未给代码",
+      "symptom_if_wrong": "把 x-s-common 当成 x-s 的复制 / 明文 JSON 处理会失败（本仓仍无其生成算法，属 gap）"
     }
   ]
 }

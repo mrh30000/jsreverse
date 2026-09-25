@@ -53,6 +53,67 @@ node scripts/pb_proto_from_js.js --input bundle.js --out schema.proto --strict
 | 模块别名类型（`new n.Resource`） | 用**尾段唯一匹配**换回完整 message 名；匹配不到就**保留原名 + 写备注** | 不许臆造类型名 |
 | 未知 reader 方法 | 类型写成 `unknown_<方法名>` | 让"没覆盖"显式可见，而不是伪装成已知类型 |
 
+## 2b. ★★ 手算模式：`encode` 函数体里的 `uint32(N)` 就是「tag 的十进制值」
+
+**来源** `52pojie-1926836` —— 源文是一条**求助帖**，作者贴出了生成代码却「看不太懂」。
+而那段 `encode` 其实是一份**完整的字段表**，只是把 tag 写成了十进制。
+
+```js
+e.encode = function (e, t) {
+    return t || (t = l.create()),
+        null != e.packInfo       && Object.hasOwnProperty.call(e, "packInfo")       && t.uint32(10).string(e.packInfo),
+        null != e.userType       && Object.hasOwnProperty.call(e, "userType")       && t.uint32(18).string(e.userType),
+        null != e.areaName       && Object.hasOwnProperty.call(e, "areaName")       && t.uint32(26).string(e.areaName),
+        null != e.deviceId       && Object.hasOwnProperty.call(e, "deviceId")       && t.uint32(34).string(e.deviceId),
+        null != e.clientverison  && Object.hasOwnProperty.call(e, "clientverison")  && t.uint32(40).int32(e.clientverison),
+        null != e.invitePlayerId && Object.hasOwnProperty.call(e, "invitePlayerId") && t.uint32(50).string(e.invitePlayerId),
+        null != e.channelName    && Object.hasOwnProperty.call(e, "channelName")    && t.uint32(58).string(e.channelName),
+        t
+}
+```
+
+**手算规则（protobufjs 的 `writer` 约定）：`uint32(N)` 里的 `N` = `field_number << 3 | wire_type`。**
+
+| `N` | `N >> 3` | `N & 7` | wire | 方法 | 字段 |
+| --- | --- | --- | --- | --- | --- |
+| 10 | **1** | 2 | 2（LEN） | `.string()` | `packInfo` = `string` **1** |
+| 18 | **2** | 2 | 2 | `.string()` | `userType` = `string` **2** |
+| 26 | **3** | 2 | 2 | `.string()` | `areaName` = `string` **3** |
+| 34 | **4** | 2 | 2 | `.string()` | `deviceId` = `string` **4** |
+| 40 | **5** | **0** | 0（VARINT） | `.int32()` | `clientverison` = `int32` **5** |
+| 50 | **6** | 2 | 2 | `.string()` | `invitePlayerId` = `string` **6** |
+| 58 | **7** | 2 | 2 | `.string()` | `channelName` = `string` **7** |
+
+相当于：
+
+```proto
+message X {
+  string packInfo       = 1;
+  string userType       = 2;
+  string areaName       = 3;
+  string deviceId       = 4;
+  int32  clientverison  = 5;   // ★ 源文拼写如此（少一个 's'），逐字保留
+  string invitePlayerId = 6;
+  string channelName    = 7;
+}
+```
+
+★★ **可迁移的三条判据**：
+
+1. **「十进制 `N` 突然跨到 8 的倍数区间」就是字段号跳档的信号**：`40 = 5<<3 | 0` 是**唯一 wire 0** 的字段，
+   所以 `>> 3` 之后**顺序仍然连续**（1..7）—— **不要凭 `N` 的绝对大小估字段号**（58 看着像「字段 58」，
+   实际是**字段 7**）。
+2. **`Object.hasOwnProperty.call(e, "x")` 这种「既判 `!= null` 又判 hasOwnProperty」的写法，
+   说明生成器开了「可选字段」模式** ⇒ 字段一律可省，**不要按 required 处理**。
+3. **比读 `decode` 更省**：`encode` 直接给出「JS 字段名 ↔ tag」的双向映射，而 `decode` 只给 tag；
+   两者都在时**以 `encode` 为准抄名字、以 `decode` 为辅核类型**。
+
+> ⚠️ 本例的 `encode` 只覆盖了**请求**那一个 message。响应侧（11886 字节那条）解出来是
+> `{1: id, 2: [{1: id, 2: id, 3: <中文名>, ...}]}` 这类**另一套**字段号 —— 两套 schema 不是同一个
+> message，**不要混用**。响应侧的字段名源文未给，本库**不臆造**。
+
+---
+
 ## 3. 校验纪律：三源互证
 
 **只用生成 JS 一个来源是不够的**——抽取器会忠实复制生成 JS 里的错误，

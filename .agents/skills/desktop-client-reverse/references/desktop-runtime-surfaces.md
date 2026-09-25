@@ -154,3 +154,41 @@ DevTools、断点、Sources 全都在，等价于 §1.3 的结果但**零成本*
 * ❌ 不要用 DevTools 的"本地覆盖"去对抗**带随机参数的脚本 URL**（实测必失败）。
 * ❌ 不要跨版本复用 WebView2 的虚表补丁（原文明确"不同版本应该不通用"）。
 * ❌ 不要改完展示层就宣称"破解成功"——**要验证消费路径也走你的值**。
+
+## 8. Bun standalone 原生 exe（内嵌 JS）
+
+> **来源**：`52pojie-2129831`（`Clxxde Code` 2.1.252 解混淆脚本，作者 Shadione）。
+> 出问题的是 **Bun standalone 打包的原生 exe**，**不是 Electron / NW.js / pkg**，所以判据与处置在前三类之外单列。
+
+### 8.1 判据（**只有能确认的两条**）
+
+源文对形态只交代了一句：「Bun standalone 打包的原生 exe，内部 JS 全部经过 minify（标识符短名化）」。
+据此**能确认的只有**：
+
+* **单文件原生 exe**（不是"目录 + `app.asar`"，也不是 `nw.exe` + `index.html` 那种）；
+* **exe 内部含 JS**，且这些 JS **全部经过 minify（标识符短名化）**。
+
+⚠️ 源文**没有**给出 Bun 运行时 / 加载器 / 段布局等更细的特征，
+**不要把源文没说的特征写成结论**；要判"是不是 Bun 打包"需另行取证（不在本文范围）。
+
+### 8.2 分工：这一种该去哪个文件
+
+* 目录里有 `app.asar` / `resources/app` / fuse 相关 ⇒ **Electron**，去 `references/electron-asar-and-fuses.md`；
+* 启动器是 `nw.exe` / 有 `is_nwjc` / 加载 `*.min.bin`，或目标是浏览器扩展 ⇒ 去 `references/extension-and-nwjs.md`；
+* **都不是、只有一个自带 JS 的原生 exe（且不是已知的 Node pkg 形态）⇒ 才是本节这一种**，
+  再按 §8.3 决定"要不要把 JS 取出来"。
+
+### 8.3 可迁移动作：先判"要不要取 JS 出来"，再决定路线
+
+Bun standalone 的 **JS 藏在 exe 里**，两条分支互斥、**先决定再动手**：
+
+1. **JS 是被 minify 的明文**（只有短标识符，没有控制流扁平化 / 字符串数组 / 不透明谓词）
+   ⇒ 取出来之后走**解混淆**：`../../ast-deobfuscation/references/rename-sequence-replay.md`
+   （「改名变换序列回放」，零结构改动、行为零变化）。
+2. **JS 是字节码**（不是可读文本，而是 V8 code cache 一类）
+   ⇒ 不走解混淆，改走**字节码路线**：`references/jsc-and-v8-bytecode.md`
+   （该文件 §6 有 Node pkg 单文件 exe 的对应处置）。
+
+> 判据一句话：**"取出来是能读的 JS" ⇒ 解混淆；"取出来是字节码" ⇒ 字节码路线。**
+> 与 §1 的 WebView2、`references/electron-asar-and-fuses.md` 的 Electron 一样，
+> 共同目标都是"先拿到可读代码"，再谈算法。

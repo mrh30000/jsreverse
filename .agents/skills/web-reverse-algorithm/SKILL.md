@@ -417,6 +417,7 @@ python scripts/waf_clearance_solver.py --selftest
 - [references/18-native-layer-algorithm-restore.md](./references/18-native-layer-algorithm-restore.md)
   用途：**「算法根本不在页面 JS 里」时的载体层总纲** —— so/native、Java（`jadx`）、
   APK 内资源包、打包产物、wasm 的**五路分流判据**（★ 先全局搜**逐字参数名**：搜得到 ⇒ 页面里至少一层；搜不到 ⇒ 大概率整链在客户端）。
+  ★★★ **先做「第 0 步」（最省钱，§3.9）：裸请求 → 逐个删参数 → 报错是「缺参数」而不是「签名错误」⇒ 整个风控层塌缩成「照抄抓包参数」，没有算法可还原。**
   ★★★ 六条最值钱的动作：① **`ida` 里搜不到方法名 ⇒ 先判「动态注册」而不是「函数不存在」**
   （`JNI_OnLoad` → `GetEnv` → `RegisterNatives`；`JNIEnv*`/`JavaVM*` 类型要用 xref 定，**别凭名字猜**；
   `methods` 数组常被加密，且**同一 App 的多 ABI so 里 `arm(32)` 常比 `arm64` 好读**）；

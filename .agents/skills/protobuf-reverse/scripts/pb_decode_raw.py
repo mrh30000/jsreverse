@@ -21,6 +21,7 @@
 用法：
   python pb_decode_raw.py --input body.bin --frame grpc-web --pretty
   python pb_decode_raw.py --input resp.bin --frame len4be --typedef
+  python pb_decode_raw.py --input ws_frame.bin --frame ws-env     # WS 自定义信封（帧总长 - 6）
   python pb_decode_raw.py --b64 "CgZQZXJpb2RpY2Fs" --pretty
   echo -n ... | python pb_decode_raw.py --stdin
   python pb_decode_raw.py --selftest
@@ -364,6 +365,34 @@ def strip_frame(data: bytes, frame: str) -> tuple:
         if width + length > len(data):
             raise PbError("长度前缀声明 %d，实际可用 %d" % (length, len(data) - width))
         return data[width : width + length], "长度前缀 %d 字节(%s)=%d" % (width, order, length)
+    if frame in ("ws-env", "ws-envelope"):
+        # ★ 自定义「WS 信封」族（B39 新增，来源 `52pojie-1926836`）。
+        #   与 gRPC-Web 的**关键差别**：长度字段的语义是「**帧总长 - 6**」而不是「载荷长度」，
+        #   且头部宽度**随帧而变化**（心跳 6B / 无 payload 11B / 有 payload 11B）。
+        #   ⇒ 不能写死「剥 11 字节」，必须先用长度等式定位 payload 起点。
+        if len(data) < 6:
+            raise PbError("WS 信封帧至少 6 字节，实际 %d" % len(data))
+        msg_id = int.from_bytes(data[0:2], "big")
+        len_field = int.from_bytes(data[2:4], "big")
+        if 6 + len_field != len(data):
+            raise PbError(
+                "WS 信封长度字段语义不符：「帧总长 - 6」应为 %d，实际 %d"
+                % (len_field, len(data) - 6))
+        if len(data) == 6:
+            return b"", "WS 信封(msgId=0x%04X) 心跳/空帧：6 字节，长度字段 0" % msg_id
+        if len(data) < 11:
+            return data[6:], ("WS 信封(msgId=0x%04X) 短帧 %d 字节：长度等式成立但不足 11 ⇒ "
+                              "本形态未解，不要按 11 字节头切" % msg_id, len(data))[1]
+        i16 = int.from_bytes(data[7:9], "big")
+        r16 = int.from_bytes(data[9:11], "big")
+        if 11 + r16 != len(data):
+            # ★ 这条是「分族」判据：不满足就说明遇到了另一族信封，
+            #   此时**不要返回一个看似合理的 payload**（那是静默错），要报错。
+            raise PbError(
+                "WS 信封(msgId=0x%04X) 偏移 9..11 的长度 %d 与 11+r 不等（帧长 %d）⇒ "
+                "**这不是本族**，帧头布局不同，请按原始 hex 自行分析" % (msg_id, r16, len(data)))
+        return data[11:], ("WS 信封(msgId=0x%04X) i=%d r=%d，11 字节头（保留位 %d,%d,%d）"
+                           % (msg_id, i16, r16, data[4], data[5], data[6]))
     if frame == "auto":
         candidates = []
         try:
@@ -492,6 +521,41 @@ def _selftest() -> int:
     check("framed-parses", try_parse_nested(payload) is not None)
     check("framed-raw-fails", try_parse_nested(framed) is None, "10 字节帧头被误当字段")
 
+    # 13b) ★ WS 信封族（B39）：帧全部**逐字来自** `52pojie-1926836`（由
+    #   `artifacts/skill-evolution/tools/b39-extract-frames.py` 程序抽取，非手抄）。
+    #   长度语义 = 「帧总长 - 6」（源文 `n = 5 + r`、`buffer = 6 + n`）；头部 11 字节。
+    _ws_welcome = bytes.fromhex('0024000E000000006400090A0757656C636F6D65')   # msgId 0x24 i=100 r=9
+    _pl, _note = strip_frame(_ws_welcome, 'ws-env')
+    check('ws-env-basic', _pl == b'\x0a\x07Welcome' and 'i=100 r=9' in _note, _note)
+    check('ws-env-parses', try_parse_nested(_pl) is not None)
+
+    # 心跳帧（6 字节、长度字段 0）：源文 `4E 20 00 00 00 00` / `4E 21 00 00 00 00`
+    for _hb in ('4E2000000000', '4E2100000000'):
+        _pl2, _note2 = strip_frame(bytes.fromhex(_hb), 'ws-env')
+        check('ws-env-heartbeat', _pl2 == b'' and '心跳' in _note2, _note2)
+
+    # ★ 唯一硬判据：6 + 长度字段 == 帧总长。差一个字节就必须报错（防静默错切）
+    try:
+        strip_frame(bytes.fromhex('0024000D000000006400090A0757656C636F6D65'), 'ws-env')
+        check('ws-env-len-eq', False, '长度等式不符却未报错')
+    except PbError:
+        check('ws-env-len-eq', True)
+
+    # ★★ 分族护栏：msgId 0x14 的 88 字节帧（源文 line 74）**不属于本族**（偏移 9..11 不是 payload 长度）
+    #   ⇒ 必须报错，而不是返回一段看似合理的垃圾。这是本批「两族信封」结论的机器判据。
+    _f14 = bytes.fromhex(
+        '00140052000000093231303239393535350020463332344541304232443134394445384331'
+        '3435383446333245454239383139000201343D61000100000BBF0001300000000100000003'
+        '33313100' + '09' + '77785F6368646E6577')
+    check('ws-env-family-b-lenfield', 6 + int.from_bytes(_f14[2:4], 'big') == len(_f14),
+          '0x14 族的长度等式**成立**（%d + %d == %d）⇒ 只有偏移 9..11 那一步能把它认出来'
+          % (6, int.from_bytes(_f14[2:4], 'big'), len(_f14)))
+    try:
+        strip_frame(_f14, 'ws-env')
+        check('ws-env-family-b', False, '0x14 族被误当本族')
+    except PbError:
+        check('ws-env-family-b', True)
+
     # 14) base64 整段（严格路径）
     enc = base64.b64encode(body).decode()
     payload, _ = strip_frame(enc.encode(), "base64")
@@ -609,8 +673,8 @@ def build_parser():
     p.add_argument(
         "--frame",
         default="auto",
-        choices=["auto", "none", "grpc-web", "len4be", "len4le", "len2be", "base64"],
-        help="帧剥离方式；默认 auto（依次尝试 gRPC-Web / 长度前缀，都不通则原样）",
+        choices=["auto", "none", "grpc-web", "len4be", "len4le", "len2be", "base64", "ws-env"],
+        help="帧剥离方式；默认 auto（依次尝试 gRPC-Web / 长度前缀，都不通则原样）。ws-env = WS 自定义信封（长度字段语义是「帧总长 - 6」）",
     )
     p.add_argument("--typedef", action="store_true", help="额外输出推测类型表")
     p.add_argument("--raw", action="store_true", help="额外输出按原始顺序的字段列表（round-trip 输入）")

@@ -680,7 +680,7 @@
       "title": "小红书 Web 请求签名 x-s / x-s-common / x-t（mnsv2 = XXTEA + 自定义 Base64）",
       "category": "platform-signature",
       "status": "active",
-      "summary": "小红书 Web 的 x-s = 'XYS_' + 自定义码表 Base64(JSON{x0..x4})，其中 x3 由 window.mnsv2(XXTEA+自定义Base64) 生成；x-t 为毫秒时间戳。",
+      "summary": "小红书 Web 的 x-s = 'XYS_' + 自定义码表 Base64(JSON{x0..x4})，其中 x3 由 window.mnsv2(XXTEA+自定义Base64) 生成；x-t 为毫秒时间戳；x-s 入口为 window._webmsxyw(url, body, a1)，a1 为常量 cookie（搜其值可命中 set 写入点）。",
       "aliases": [
         "x-s",
         "X-s",
@@ -689,7 +689,9 @@
         "x-t",
         "mnsv2",
         "mns0301",
-        "XYS_"
+        "XYS_",
+        "a1",
+        "_webmsxyw"
       ],
       "keywords": [
         "小红书",
@@ -699,7 +701,10 @@
         "x-s",
         "mnsv2",
         "XXTEA",
-        "自定义Base64"
+        "自定义Base64",
+        "a1",
+        "_webmsxyw",
+        "补环境"
       ]
     },
     {

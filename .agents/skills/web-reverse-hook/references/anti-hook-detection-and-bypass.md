@@ -4,10 +4,11 @@
 「页面是不是在检测你 hook 了原生方法」和「目标内容是不是根本不在开放 DOM 里」。**
 
 > 反调试四件套（无限 `debugger` / console / 窗口尺寸 / 强退 / iframe 原生借用）见 `../SKILL.md` 的 `antidebug` 预设；
-> 本文补的是它**没有覆盖**的三类：
+> 本文补的是它**没有覆盖**的四类：
 > ① **hook 被 `Function.prototype.toString` 白名单比对发现**（§1–§4）；
 > ② **closed shadow DOM**（§5–§6）；
-> ③ **页面自己施加的「禁止复制 / 弹登录」限制**（§7）。
+> ③ **页面自己施加的「禁止复制 / 弹登录」限制**（§7）；
+> ④ **cookie 写入点的 hook、被实证的一批 cookie 名、以及「进 debugger 即被反制」**（§8–§9）。
 > 本文只给**思路与片段**，尚未做成 `build-hook.js` 预设（见文末「未实现项」）。
 
 ---
@@ -65,6 +66,28 @@ function a(e) {
 
 **判据**：异常上报往往只有**一处**。先「搜异常文案 → 找到上报函数 → 看它由谁定时调用」，
 通常比死磕 `toString` 便宜得多。
+
+### debugger 的代价分级（B39：当「断一下」本身有代价）
+
+来源 `docs/references/52pojie-1906023`（**求助帖，发帖人自己没解决**）。其**被实证的现象**是：
+在 cookie 写入的 `set` 里进入 `debugger` 的瞬间，页面就执行「**删除 debugger + 刷新页面**」，
+随后所有请求返回 **403**。（源文同段还写「应该是检测到我在 debugger」—— ⚠️ 那是**源文推测，未复核**；
+「删 debugger + 刷新 + 后续请求全部 403」才是被观测到的事实。）
+
+⇒ 设断点前先认清自己在赌哪一档：
+
+| 档 | 现象 | 依据 |
+| --- | --- | --- |
+| 1 · 只是卡住 | 断点反复触发，页面还能继续走 | 无限 `debugger` 类（`antidebug` 预设） |
+| 2 · 页面被刷新 / 清空 | 打开 DevTools 后页面跳走或变空 | `../../web-reverse-algorithm/references/09-antidebug-and-automation-fingerprint.md` §1 类 7 / §4 |
+| **3 · 断一下即被反制** | **删 debugger + 刷新 + 后续请求全部 403** | **`52pojie-1906023`（本文新收）** |
+
+★★ **第 3 档的落地动作（本节相对 §2 的增量）**：
+**第一条 `debugger` 不要设在「反调试检测代码自己」上** —— 一进去就被判定，反制往往是不可逆的
+（刷新 + 后续全 403）。**要先设在上报 / 校验动作上**（即 §2 说的「短路对象」），
+用 §3 的 `stack` 过滤在**不真正进入调试器**的前提下把调用链取出来。
+
+> **这与 §2 是同一个结论的两面**：§2 说「别在检测器本体上硬碰」，本节补的是「**碰了要付什么代价**」。
 
 ---
 
@@ -299,7 +322,107 @@ function copyNode(node) {
 
 ---
 
-## 8. 与既有预设的分工表
+## 8. Cookie 写入点的 hook 与「按 cookie 名反查写入者」（B39）
+
+来源 `docs/references/52pojie-1906023`（**求助帖，只登记被实证的现象与数字**）。
+场景：**首页加载十几个 JS，这些 JS 向浏览器写入 cookie；后续请求都要带这些 cookie，
+否则「参数错误」**（源文 line 10–11 逐字）。
+
+### 8.1 改写与分流的铁律（先读这条，再抄下面的片段）
+
+源文 hook 的形态是：
+
+```text
+Object.defineProperty(document, "cookie", { set: function(val){...}, get(){ return v } })
+```
+
+⚠️ **该形态「只留最后一次写入的值」—— 正是 `../SKILL.md`「Cookie hook：三个『一定有』的坑」坑 2
+所述会毁掉整站的写法**（`get` 返回自维护字符串 / 存放于 `document` 自身）。
+⇒ **不要照抄这个 `get`**：要**观测**就走 `dataflow` 预设（转发原生描述符），
+要**改写**就明确声明、并自行补齐 `k=v; ` 拼接与过期语义。
+**本节只取它「按 cookie 名条件触发」的那一半**，转发部分的正确写法见上引章节。
+
+### 8.2 条件 `debugger`：按 cookie 名触发（把观测收窄到要的那一次）
+
+源文在 setter 里按名放行（源文对 `bnc-uuid` / `deviceId` / `se_gd` / `thx_guid` / `device-info`
+分列了五个 `if (val.indexOf(...) !== -1) { debugger }`）：
+
+```text
+// 与 SKILL.md 坑 3 的 --cookie-match 同语义：只在命中时才 debugger
+if (val.indexOf("bnc-uuid") !== -1) { debugger; }
+if (val.indexOf("deviceId") !== -1) { debugger; }
+```
+
+- **与已有工具的关系**：本技能 `dataflow` 预设的 `--cookie-match <关键词>` 就是这条
+  （**子串包含**匹配；关键词太短如 `a` 等于没有条件）。
+  ⇒ 有 `dataflow` 时**不必手写**这段（`../SKILL.md` 坑 3）。
+- ⚠️ **`debugger` 本身有代价**，见 §2「debugger 的代价分级」——
+  本簇的源文正是在这一步被反制（进 debugger 即删 debugger + 刷新 + 403）。
+
+### 8.3 ★★ 五个 cookie 名 = 一批风控 / 统计 SDK 的指纹清单（先试这五个）
+
+源文 hook 点名了这五个名 —— **它们本身就是可迁移的「先查这几个名」启发式清单**：
+
+| cookie 名 | 源文中的角色 |
+| --- | --- |
+| `bnc-uuid` | 条件 `debugger` 命中名之一 |
+| `deviceId` | 同上 |
+| `se_gd` | 同上；源文反混淆代码里另有 `se_gd` / `se_gsd` 的读写痕迹 |
+| `thx_guid` | 同上 |
+| `device-info` | 同上；**源文在此名写入时进入 debugger 并触发反制**（§2 第 3 档） |
+
+> ★ **标注**：**这是单站观察，名单会变，用法是启发不是判据。**
+> 含义是「遇到一批混淆 JS 写 cookie 时，可以先把这五个名当第一批 hook 关键词试」，
+> **不能**当成「有这五个名就是同一套 SDK」的结论（单样本只登记不判因）。
+
+### 8.4 ★ 判据：怎么定位「十几个混淆 JS 里哪个有用」（源文第 1 问的可执行版）
+
+**不要读 JS，要读 cookie 的「谁写的」。**
+源文第 1 问的难点是「十几个混淆 JS（最大的格式化后**九万行**），怀疑有些只是混淆视听」——
+⇒ 通读 JS 不是答案，**用 8.2 的 hook 拿到「写入者调用栈」，按 cookie 名反查文件**：
+
+```
+① 装上 cookie hook（转发原生描述符）+ 按名条件 debugger，且用 §3 的 stack 过滤避免真进调试器
+② 记下「每个 cookie 名 → 写入它的 (file, line)」这张映射表
+③ 按 cookie 名反查文件：目标 cookie 是哪个文件写的，那个文件才值得读
+   —— 而不是「按文件猜它可能产哪个参数」
+```
+
+**迁移性**：这是 `../../web-reverse-algorithm/references/15-call-site-locating-playbook.md` 的 **J1
+「消失点比出现点更好用」的一个具体实例** —— cookie 的「值」到处可见（出现点），
+但「**谁 set 它**」只有一个（写入点 = 生成点）。方法与判据本身见该手册，本节不重复。
+
+**配套判据（「哪个 JS 是必要的」）**：逐个禁用候选 JS，看**哪一步 cookie 缺失导致后续失败** ——
+缺失的那一个就是必要的。它与上面的「正查写入者」互证，且比单看代码可靠；
+完整流程见 `../../web-js-env-patcher/references/cookie-generation-analysis.md` 的「多写者」一节
+（**本仓已有，此处不重复**）。
+
+⚠️ **规模提醒**：源文自陈「最大的 js 文件格式化后有**九万行**」——
+到这个量级时，「按 cookie 名反查写入者」（本节）**优先于**「通读 / 全量还原」。
+
+---
+
+## 9. 混淆形态登记：ob 混淆的「索引 + 第二参」双参调用
+
+源文给出的混淆样本形态（逐字摘自 `52pojie-1906023`，**只登记形态，不判因**）：
+
+```text
+b('0x172', ')e4a')
+f[b('0x127', 'gT&1')](...)
+```
+
+**形态特征**：`b(索引, 字符串)` —— **第一个参数是索引，第二个参数是一个字符串（看着像随机盐 / 密钥分片）**，
+二者共同决定取出哪个成员。源文正文判定该样本为 **ob 混淆**（`obfuscator.io` 风格）。
+
+> ⇒ 这类「**索引 + 第二参**」的双参取值调用，指向
+> `../../ast-deobfuscation/references/ob-variant-taxonomy.md`（OB 变体分类与还原对策）与
+> `../../ast-deobfuscation/references/obfuscation-detector.md`（判「是不是 OB」）：
+> 先按第二参字符串分组，再把 `b(idx, salt)` 还原成成员名。
+> **本文只登记形态特征**，反混淆本身不在本技能范围。
+
+---
+
+## 10. 与既有预设的分工表
 
 | 场景 | 去处 |
 | --- | --- |
@@ -308,17 +431,22 @@ function copyNode(node) {
 | **hook 被 `toString` 白名单检测** | **本文 §1–§4** |
 | **closed shadow root / `attachShadow` 拿不到** | **本文 §5–§6** |
 | **页面禁止复制 / `user-select: none` / 弹登录框** | **本文 §7** |
+| **cookie 写入点 hook / 按 cookie 名反查写入者 / 进 debugger 即被反制** | **本文 §2（代价分级）+ §8–§9** |
 | cookie 被 hook 写坏（读到的 cookie 残缺） | `../SKILL.md`「Cookie hook：三个『一定有』的坑」 |
 | MSE 无直链（`src` 是 `blob:`） | `mse-capture` 预设 |
+| **多写者（十几个 JS 各写一部分 cookie）的取证** | `../../web-js-env-patcher/references/cookie-generation-analysis.md` |
+| **跟栈定位生成点的方法论** | `../../web-reverse-algorithm/references/15-call-site-locating-playbook.md` |
+| **ob 混淆（含「索引 + 第二参」双参形态）的反混淆** | `../../ast-deobfuscation/references/ob-variant-taxonomy.md` |
 
 ---
 
-## 9. 来源表
+## 11. 来源表
 
 | 主题 | 文章裸 id | 年份 | 关键字面量 |
 | --- | --- | --- | --- |
 | 反 hook 检测（`toString` 白名单）+ closed shadow DOM + 框架句柄逃逸 | 52pojie-1650555 | 2022 | `attachShadow`、`checkoutNotTrustScript`、`window.OCS`、`native code`、`__vue__.shadowDom` |
 | 页面限制解除（禁止复制 / 登录弹窗） | 52pojie-1608506 | 2022 | `user-select`、`hljs.signin`、`execCommand('copy')` |
+| cookie 写入点 hook + 五 cookie 名清单 + 进 debugger 即被反制 + ob 双参形态 | 52pojie-1906023 | 2024 | `bnc-uuid`、`deviceId`、`se_gd`、`thx_guid`、`device-info`、`sajssdk_2015_cookie_access_test`、403、九万行 |
 
 ---
 
@@ -326,3 +454,11 @@ function copyNode(node) {
 
 本文给的是**思路与片段**，尚未做成 `build-hook.js` 预设 ——
 如要做成预设，需在 `scripts/hooks/` 新增钩子文件并接进 `build-hook.js`（属于后续工作）。
+
+**B39 新增未落地项**（只落了文档，没有脚本入口）：
+
+1. **「五个 cookie 名」清单**（§8.3）目前只是文档，**尚未做成 `dataflow` 预设的默认关键词集** ——
+   若要落地，宜在 `build-hook.js` 的 `dataflow` cookie 分支加一个可选的「SDK 指纹名预设」，
+   ⚠️ 但其命名须以「**单站观察、会变**」为前提，不要写成通用判据。
+2. **「按 cookie 名反查写入者」的汇总表**（§8.4）目前靠人工记录 ——
+   `dataflow` 预设已能打出 `logAt`（文件名 / 行号），但**没有自动汇总成「名 → 文件」映射**。

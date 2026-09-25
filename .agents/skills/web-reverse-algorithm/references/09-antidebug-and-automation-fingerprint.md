@@ -20,6 +20,7 @@
 | **5. 窗口尺寸** | `window.outerHeight - window.innerHeight > 400` ⇒ 判定 DevTools 打开 | 断在 `window.close` / `resize` 回调 | 用 `Object.defineProperty` 固定 `innerHeight/innerWidth/outerHeight/outerWidth` 为标准分辨率（如 1366×660、1400×760） |
 | **6. console 探测与 table 耗时差** | 靠 `console.log` 对象求值或 `console.table` 渲染大量对象产生的同步卡顿（50~200ms）测出 DevTools | 断在 `console.clear` / `console.table` 附近 | `console.clear = ()=>{}; console.table = ()=>{}`，并通过 Proxy 保护 `console.log/trace` 只读（见 §3.2） |
 | **7. 跳转/关闭/清 DOM** | `window.open()`、`location.href=`、`history.back()`、`body.innerHTML=''`、注入 `blur(20px)` 样式 | 打开 DevTools 后页面被刷新/变空/模糊 | 阻断 `window.close` / `history.go/back`；通过 `window.onbeforeunload` 埋断点抓重定向源头（见 §4） |
+| **7b. ★ 检测到调试即「删 debugger + 刷新 + 后续全 403」** | 一进 `debugger` 就移除调试能力、刷新页面，**其后所有请求返回 403** | 只断了一次，页面即刷新，再请求全部 `403`（`52pojie-1906023`，**求助帖**） | **见 §4.4**：这是第 7 类的**升级形态**（不可逆反制），处置与第 7 类不同 |
 | **8. 内存/CPU 压制（内存炸弹）** | 循环构造 `1000×1000` 对象、`setInterval` 里 `new Array(1e4).fill('x')` | 页面卡死、内存飙升 | 只拦该定时器（按调用栈白名单），**不要全局禁 `setInterval`** |
 | **9. 原生方法完整性校验** | `/[native code]/.test(fn.toString())` | 一旦你 hook 过某个 API 就会被判为篡改 | 见 §2（**这是 hook 方案最大的敌人**） |
 | **10. 焦点/可见性伪造检测** | 抢前台后仍报 `hasFocus()===true && visibilityState==='visible'` | 见 §5 | 关掉自动化框架的焦点仿真 |
@@ -229,6 +230,28 @@ at Et.XCID (app.80fffb17.js:54:48576)
   避免误伤正常业务（这一步是能否长期使用的关键）。
 - **可迁移**。换一个站点，换的只是 sink 清单与符号名，方法不变。
 
+### 4.4 ★ 检测到调试即「删 debugger + 刷新 + 后续全 403」（B39）
+
+来源 `52pojie-1906023`（**求助帖，发帖人自己没解决**；只登记其**实测现象**）。
+发帖人 hook `document.cookie`、在写入 `device-info` 时触发 `debugger`，实测：
+
+> **在进入 `debugger` 的瞬间，页面就执行了「删除 debugger + 刷新页面」，随后所有请求返回 403。**
+
+**与 §1 表第 7 类的差异（只补这三点）**：
+
+1. **触发条件是「检测到调试」本身**，不是常规业务跳转；
+2. **反制动作包含「删除断点」**（源文原话「直接删除 debugger」）—— 不是简单刷新，
+   而是**先让断点失效、再刷新**；
+3. **后果是「后续请求全部 403」** —— 反制不只是"把页面赶走"，更像**给会话打上了标记**，之后连数据都拿不到。
+
+⇒ **处置（与 §4 三步法同口径，不重复）**：**第一条 `debugger` 不要设在「反调试检测代码自己」上**，
+**先设在「上报 / 校验动作」上** —— 断在检测点上，等于用一次 403 换一条栈；
+§4 的「先抓 sink → 看栈 → 回 bundle 对位」正是为了在不触发反制的前提下拿到链路。
+同类的「代价分级」见 `../../web-reverse-hook/references/anti-hook-detection-and-bypass.md` §2。
+
+⚠️ **不判因**：源文第 2 问「该网站使用了什么技术检测到我在 debugger、怎么删除断点」**未解答**；
+本样本的**检测手法**在本文件仍属**未还原**（§1 表第 7 类的检测细节不在本文范围）。
+
 ---
 
 ## 5. 自动化框架自身留下的指纹（不在目标 JS 里）
@@ -318,6 +341,7 @@ page.run_cdp('Emulation.setFocusEmulationEnabled', enabled=False)
 │   └─ 搜不到 "debugger" → eval 内（§1 类 3）→ hook eval
 ├─ 页面被刷新 / 清空 / 模糊
 │   └─ 走 §4 三步法（先抓 sink → 看栈 → 回 bundle 对位），不要盲搜
+│       （若是"一进 debugger 就删断点 + 刷新 + 后续全 403"，见 §4.4）
 ├─ 页面卡死 / 内存飙升
 │   └─ 内存炸弹（§1 类 8）→ 按调用栈白名单拦定时器，不要全局禁
 ├─ hook 了但依然被抓
@@ -344,6 +368,8 @@ page.run_cdp('Emulation.setFocusEmulationEnabled', enabled=False)
 - **不要用 DevTools 的「Deactivate breakpoints」当作绕过**。它只影响当前会话，刷新即失效，且掩盖了失败分支的真实行为。
 - **不要手打要替换的字符串**。必须从真实响应里复制（`07-*` §3）。
 - **不要删掉反调试的整段逻辑**。它后面往往跟着正常业务分支，删了会导致页面行为改变、结论失真；只做最小干预（插入 `return;` / 注释调用点）。
+- **不要把第一条 `debugger` 设在「反调试检测代码自己」上。** 有的站一旦检测到调试就**删断点 + 刷新 + 后续请求全部 403**（§4.4）；
+  先断在**上报 / 校验动作**上，避免用一次 403 换一条栈。
 - **不要在同一轮里既改请求体又改响应体**。出错时无法判断是上游还是下游。
 - **不要把「能跑通一次」当作完成**。动态 JS 类目标的验收标准是「连续 N 次（N ≥ 3）跑通且中间不重新扣代码」。
 - **不要在没确认授权的情况下改写第三方站点响应并提交数据。** 改写仅用于本地定位。

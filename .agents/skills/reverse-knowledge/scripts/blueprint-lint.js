@@ -71,7 +71,7 @@ async function readJsonOrNull(p) {
   }
 }
 
-async function lintBlueprint(dataDir, entry, repoRoot) {
+async function lintBlueprint(dataDir, entry, repoRoot, allIds) {
   const where = `blueprint[${entry && entry.id ? entry.id : '?'}]`;
   if (!entry || typeof entry !== 'object') {
     err(where, 'index 条目不是对象');
@@ -119,6 +119,32 @@ async function lintBlueprint(dataDir, entry, repoRoot) {
     }
     if (meta.aliases !== undefined && !Array.isArray(meta.aliases)) {
       err(where, 'metadata.aliases 必须是数组');
+    }
+    // ★★ 承 B38「下一批优先级 ④」：`dependencies` 此前是**已登记但未设防**的字段
+    //   （在 schema 里写了，但 lint 既不查类型、也不查引用是否存在 ⇒ 写错会静默生效）。
+    //   本批按 B38 定的两条最小校验落地，并配**会失败的夹具**（否则又是一条恒亮的检查）。
+    if (meta.dependencies !== undefined) {
+      if (!Array.isArray(meta.dependencies)) {
+        err(where, 'metadata.dependencies 必须是数组');
+      } else {
+        const seenDep = new Set();
+        for (let i = 0; i < meta.dependencies.length; i++) {
+          const d = meta.dependencies[i];
+          if (typeof d !== 'string' || !d.trim()) {
+            err(where, `metadata.dependencies[${i}] 必须是非空字符串`);
+            continue;
+          }
+          if (d === meta.id) {
+            err(where, `metadata.dependencies[${i}] 不得自指（"${d}" == 本蓝图 id）`);
+          }
+          if (seenDep.has(d)) err(where, `metadata.dependencies 重复项: ${d}`);
+          seenDep.add(d);
+          // 引用必须是**已存在的蓝图 id**（allIds 来自 index.json；索引自身损坏时不误报）
+          if (allIds && allIds.size && !allIds.has(d)) {
+            err(where, `metadata.dependencies[${i}] 引用的蓝图 id 不存在: ${d}`);
+          }
+        }
+      }
     }
     if (meta.algorithm !== undefined) {
       const fam = meta.algorithm && meta.algorithm.family;
@@ -222,18 +248,29 @@ async function lintDir(dataDir, repoRoot) {
     err('index.json', '必须含非空 blueprints 数组');
     return;
   }
+  // ★ 两遍：先把**全集 id** 算出来（供每个蓝图的 `dependencies` 校验「引用的 id 是否存在」），
+  //   再逐个 lint。重复 id / path 的报错仍在**原来那一次遍历**里发，保持报错顺序不变。
   const ids = new Set();
-  const paths = new Set();
+  const dupIds = new Set();
   for (const entry of index.blueprints) {
     if (entry && entry.id) {
-      if (ids.has(entry.id)) err('index.json', `重复 id: ${entry.id}`);
+      if (ids.has(entry.id)) dupIds.add(entry.id);
       ids.add(entry.id);
     }
+  }
+  for (const entry of index.blueprints) {
+    if (entry && entry.id && dupIds.has(entry.id)) {
+      err('index.json', `重复 id: ${entry.id}`);
+      dupIds.delete(entry.id);
+    }
+  }
+  const paths = new Set();
+  for (const entry of index.blueprints) {
     if (entry && entry.path) {
       if (paths.has(entry.path)) err('index.json', `重复 path: ${entry.path}`);
       paths.add(entry.path);
     }
-    await lintBlueprint(dataDir, entry, repoRoot);
+    await lintBlueprint(dataDir, entry, repoRoot, ids);
   }
 
   // 孤儿目录 / 孤儿文件
@@ -312,6 +349,26 @@ async function makeLintFixture() {
   );
   await mk('orphan', null, null, null, null);
 
+  // ★★ B39 新增：`dependencies` 的**会失败**夹具（4 类错误各一个）
+  //   badep1 = 非数组；badep2 = 自指 + 悬空 id + 重复项；badep3 = 合法依赖（阴性对照）
+  const depBase = {
+    title: '依赖演示',
+    category: 'platform-signature',
+    status: 'active',
+    version: '1.0.0',
+    summary: 's',
+    sources: [{file: 'docs/references/ok.md', line: 1, quote: 'x'}],
+  };
+  await mk('badep1',
+    {...depBase, id: 'badep1', dependencies: 'jd-env-params'},
+    {parts: [{name: 'a'}]}, {mutations: [{name: 'm'}]}, '1. a\n2. b\n');
+  await mk('badep2',
+    {...depBase, id: 'badep2', dependencies: ['badep2', 'no-such-blueprint', 'good', 'good']},
+    {parts: [{name: 'a'}]}, {mutations: [{name: 'm'}]}, '1. a\n2. b\n');
+  await mk('badep3',
+    {...depBase, id: 'badep3', dependencies: ['good']},
+    {parts: [{name: 'a'}]}, {mutations: [{name: 'm'}]}, '1. a\n2. b\n');
+
   const index = {
     schemaVersion: 1,
     blueprints: [
@@ -320,6 +377,9 @@ async function makeLintFixture() {
       {id: 'badsources', path: 'badsources', title: 'x', category: 'generic', status: 'unknown', summary: 's'},
       {id: 'ghost', path: 'does-not-exist', title: 'x', category: 'generic', status: 'unknown', summary: 's'},
       {id: 'badmeta', path: 'good', title: 'dup', category: 'generic', status: 'unknown', summary: 's'},
+      {id: 'badep1', path: 'badep1', title: 'x', category: 'platform-signature', status: 'active', summary: 's'},
+      {id: 'badep2', path: 'badep2', title: 'x', category: 'platform-signature', status: 'active', summary: 's'},
+      {id: 'badep3', path: 'badep3', title: 'x', category: 'platform-signature', status: 'active', summary: 's'},
     ],
   };
   await writeFile(path.join(data, 'index.json'), JSON.stringify(index), 'utf-8');
@@ -348,13 +408,23 @@ async function selftest() {
       'S10 抓到孤儿目录',
     );
     assert(errors.length > 0, 'S11 坏夹具必须产生 error（否则校验器形同虚设）');
+    // ★★ B39 新增：`dependencies` 四类错误必须各自被抓到
+    assert(joined.includes('dependencies 必须是数组'), 'S13a 抓到 dependencies 非数组');
+    assert(joined.includes('不得自指'), 'S13b 抓到 dependencies 自指');
+    assert(joined.includes('引用的蓝图 id 不存在'), 'S13c 抓到 dependencies 悬空 id');
+    assert(joined.includes('dependencies 重复项'), 'S13d 抓到 dependencies 重复项');
+    // ★ 阴性对照：合法依赖（badep3 → good，两者都存在）**不得**产生 dependencies 类 error
+    assert(
+      !errors.some(e => e.startsWith('blueprint[badep3]') && e.includes('dependencies')),
+      'S13e 合法 dependencies 不得报错（否则该检查恒红）',
+    );
 
     // 反例：全绿夹具必须零 error（防止"什么都能报错"）
     const {root: r2, data: d2, repo: rp2} = await makeLintFixture();
     errors.length = 0;
     warns.length = 0;
     await lintDir(d2, rp2);
-    const goodOnly = errors.filter(e => !e.startsWith('blueprint[badmeta]') && !e.startsWith('blueprint[badsources]') && !e.startsWith('blueprint[ghost]') && !e.startsWith('index.json'));
+    const goodOnly = errors.filter(e => !e.startsWith('blueprint[badmeta]') && !e.startsWith('blueprint[badsources]') && !e.startsWith('blueprint[ghost]') && !e.startsWith('blueprint[badep1]') && !e.startsWith('blueprint[badep2]') && !e.startsWith('index.json'));
     assert(goodOnly.length === 0, `S12 合法蓝图不得报 error，实际: ${goodOnly.join(' | ')}`);
     await rm(r2, {recursive: true, force: true});
 
