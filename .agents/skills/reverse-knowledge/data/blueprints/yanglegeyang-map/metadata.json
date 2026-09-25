@@ -1,10 +1,10 @@
 {
   "id": "yanglegeyang-map",
-  "title": "羊了个羊 小程序协议参数（map_info_ex / 关卡配置 / game_over_ex）",
+  "title": "羊了个羊 小程序协议（账号 token / map_info_ex / 关卡配置 / game_over）",
   "category": "platform-protocol",
   "status": "historical",
-  "version": "1.0.0",
-  "summary": "羊了个羊小程序无签名算法，只有请求参数清单：header t 为登录得到的账号信息；game_over_ex 提交 base64(protobuf MatchPlayInfo) + MapSeed2 + Version。",
+  "version": "1.1.0",
+  "summary": "羊了个羊小程序无签名算法，只有请求参数清单：header t 为登录态凭据（**两篇口径未对齐**：账号信息 vs 登录接口返回的 token，见 gaps）；game_over_ex 提交 base64(protobuf MatchPlayInfo) + MapSeed2 + Version。B36 补上账号链（user_info → login_oppo → token）与更早的「简化版 GET game_over / topic_game_over」。",
   "aliases": [
     "MatchPlayInfo",
     "MapSeed2",
@@ -12,20 +12,29 @@
     "map_seed_2",
     "map_md5",
     "game_over_ex",
-    "map_info_ex"
+    "game_over",
+    "topic_game_over",
+    "map_info_ex",
+    "login_oppo",
+    "user_info"
   ],
   "keywords": [
     "羊了个羊",
     "easygame2021",
     "cat-match",
     "game_over_ex",
+    "game_over",
+    "topic_game_over",
+    "login_oppo",
+    "wx_open_id",
+    "免抓包",
     "MatchPlayInfo",
     "protobuf",
     "小程序"
   ],
   "algorithm": {
     "family": "custom",
-    "detail": "无哈希/签名/加密算法；唯一「编码」是 MatchPlayInfo = base64(protobuf 序列化)。protobuf 定义：message MatchPlayInfo { message MatchStepInfo { required int32 chessIndex = 1; required int32 timeTag = 2; } required int32 gameType = 1; optional int32 mapId = 2; optional int32 mapSeed = 3; repeated MatchStepInfo stepInfoList = 4; }，实际只用到 gameType 与 stepInfoList。gameType: 3 每日挑战 0 GAMEMAIN 1 GAMETOMB 2 过关挑战 4 话题挑战。timeTag：24 号前是操作间隔毫秒，24 号改成 type（方块初始化后的类型）。chessIndex 从第 1 层 0 开始编号。道具操作 id：-1 移出 道具 / -2 撤回道具 / -3 洗牌道具 / -4 复活道具。",
+    "detail": "无哈希/签名/加密算法；唯一「编码」是 MatchPlayInfo = base64(protobuf 序列化)。protobuf 定义：message MatchPlayInfo { message MatchStepInfo { required int32 chessIndex = 1; required int32 timeTag = 2; } required int32 gameType = 1; optional int32 mapId = 2; optional int32 mapSeed = 3; repeated MatchStepInfo stepInfoList = 4; }，实际只用到 gameType 与 stepInfoList。gameType: 3 每日挑战 0 GAMEMAIN 1 GAMETOMB 2 过关挑战 4 话题挑战。timeTag：24 号前是操作间隔毫秒，24 号改成 type（方块初始化后的类型）。chessIndex 从第 1 层 0 开始编号。道具操作 id：-1 移出 道具 / -2 撤回道具 / -3 洗牌道具 / -4 复活道具。B36 补充：更早的简化版路径 game_over / topic_game_over 是 GET + 5 个 query 参数（rank_score / rank_state / rank_time / rank_role / skin），不带 MatchPlayInfo；header t 的获取链是 user_info(uid) → login_oppo(POST) → token。",
     "key_material": null,
     "output_encoding": "base64",
     "output_length": null
@@ -108,22 +117,68 @@
       "line": 102,
       "quote": "(**觉的是游戏更新操作加了Version之后失效 游戏可以过关 不加次数 当天不能玩**)",
       "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1689437-免抓包 羊了个羊过通关次数和话题.md",
+      "line": 10,
+      "quote": "在页面获取uid填写到下面代码中",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1689437-免抓包 羊了个羊过通关次数和话题.md",
+      "line": 23,
+      "quote": "url = \"https://cat-match.easygame2021.com/sheep/v1/game/user_info?\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1689437-免抓包 羊了个羊过通关次数和话题.md",
+      "line": 34,
+      "quote": "url = \"https://cat-match.easygame2021.com/sheep/v1/user/login_oppo\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1689437-免抓包 羊了个羊过通关次数和话题.md",
+      "line": 41,
+      "quote": "res = requests.post(url,data=data,headers=headers).json()['data']['token']",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1689437-免抓包 羊了个羊过通关次数和话题.md",
+      "line": 46,
+      "quote": "url = \"https://cat-match.easygame2021.com/sheep/v1/game/topic_game_over?rank_score=1&rank_state=1&rank_time=1&rank_role=1&skin=1\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1689437-免抓包 羊了个羊过通关次数和话题.md",
+      "line": 52,
+      "quote": "url = \"https://cat-match.easygame2021.com/sheep/v1/game/game_over?rank_score=1&rank_state=1&rank_time=1&rank_role=1&skin=1\"",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1689437-免抓包 羊了个羊过通关次数和话题.md",
+      "line": 59,
+      "quote": "headers['t'] = token",
+      "verified_in_article": true
     }
   ],
   "entry": {
-    "location": "小程序包 sheeps.js（wxapkg 解密 + wxappUnpacker 解包后可见）",
-    "trigger": "地图加载（map_info_ex）/ 游戏结束（game_over_ex）",
-    "transport": "请求头 t（账号信息）；GET query：matchType=3；POST body：JSON（rank_score 等 + MatchPlayInfo + MapSeed2 + Version）"
+    "location": "小程序包 sheeps.js（wxapkg 解密 + wxappUnpacker 解包后可见）；账号链不需要包，从页面拿 uid 即可",
+    "trigger": "地图加载（map_info_ex）/ 游戏结束（game_over_ex 或更早的 game_over）/ 每日话题（topic_game_over）",
+    "transport": "请求头 t（**登录态凭据；两篇口径未对齐**：1692161 称「账号信息」、1689437 直接填登录接口返回的 token，见 gaps）；GET query：matchType=3 或 rank_* 五参数；POST body：JSON（rank_score 等 + MatchPlayInfo + MapSeed2 + Version）"
   },
   "gaps": [
-    "header t 的具体格式与获取流程文章未给（只说「登录小程序得到的账号信息」）",
+    "header t 的**格式**两篇口径不同：1692161 说「登录小程序得到的账号信息」，1689437 直接把它当**登录接口返回的 token** 用（`headers['t'] = token`）；1689437 源码里 `user_info` 的 `t` 又是一个**硬编码 JWT 示例值**（已过期），⇒ 「t 到底放账号信息还是放 token」**两篇未对齐，本库不裁决**",
     "MatchPlayInfo 是否另有校验字段（如 mapId/mapSeed）文章说「只用到2个字段」",
     "blockTypeData 中 \"15\" 缺失、\"17+\" 为白板的编号规则未说明",
-    "作者未给出可复现的最终请求/响应示例（只说思路），因此 verified_in_article 以「有明确原文描述与 proto 定义」为准，未见对拍成功截图"
+    "作者未给出可复现的最终请求/响应示例（只说思路），因此 verified_in_article 以「有明确原文描述与 proto 定义」为准，未见对拍成功截图",
+    "1689437 未给出 `login_oppo` 的返回结构（只写了 `['data']['token']`），也未说明 `login_oppo` 这个渠道名（oppo）的语义",
+    "1689437 的 `user_info` 请求里 `t` 是写死的示例 JWT（本库已复算其载荷，见 self_check），**不等于**真实可用的 t"
   ],
   "self_check": [
     "map_md5 两项均为 32 位十六进制（046ef1bab26e5b9bfe2473ded237b572 / b5b742de1506849f1c1cf2fd2d10dfce），与「两关配置数据 md5」表述吻合；第二项同时是静态关卡 txt 的文件名",
     "map_seed 为 4 个整数、map_seed_2 为字符串形式的整数，均为种子/透传值，无加密痕迹",
-    "game_over_ex 的 9 个字段与 protobuf 定义核对：rank_* 走 JSON，只有 MatchPlayInfo 内含 binary 序列化"
+    "game_over_ex 的 9 个字段与 protobuf 定义核对：rank_* 走 JSON，只有 MatchPlayInfo 内含 binary 序列化",
+    "B36 复算 1689437 里那个示例 JWT：`alg=HS256`，载荷键为 {exp, nbf, iat, jti, open_id, uid, debug, lang}，`iat=1663301423`；`exp-nbf=31102200` 秒 ⇒ 属**已过期的示例值**，不可直接复用",
+    "B36 复算：`game_over` / `topic_game_over` 的 query 参数恰好 5 个（rank_score / rank_state / rank_time / rank_role / skin），与 `game_over_ex` 的 body 字段**同名但传输位置不同**（GET query vs POST body）"
   ]
 }

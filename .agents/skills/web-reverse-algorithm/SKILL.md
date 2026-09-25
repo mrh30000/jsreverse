@@ -74,6 +74,15 @@ node skills/web-reverse-algorithm/scripts/detect-crypto.js -i ./dist/sign.js --j
 以及「扣代码」的四个实操要点（报错驱动补全 / 让加载器 `console.log` 自己报缺哪个模块 /
 **原型追加的方法必须补在 `new` 之前** / 加载器头部「形参 vs `e = {}`」冲突）。
 
+★ **一个入口搜不到时的四个替代动作（B36 新增，该文件 §8.5）** ——「换靶」而不是「硬啃」：
+① **换关键词**（先试**拼音** `jiami`/`jiemi`/`mima`/`yanzheng` —— 国内站点常态，四级候选表在该文件）；
+② **找「响应解密出口」而不是「请求加密入口」**（密文在响应里就**搜 `decrypt`** 不搜 `encrypt`；
+在**命中行**与 **`return`** 两处下断反复试表达式；**机械指纹 `.toString(<某个>.enc.Utf8)`** ⇒ 就是
+`WordArray → 明文字符串` 的出口）；
+③ **「第一次请求返回空」⇒ 先比 header 差异**，不要先改 query（自定义签名头常叫 `Portal-Sign` 这类
+**既不叫 sign 也不叫 token** 的名字 ⇒ **搜「像签名的值」比搜「像签名的字段」更有效**）；
+④ **「加密就是 `toString()`」**：**请求加密与响应解密可能是同一个对象** ⇒ 先试这条路（只扣一个函数，成本最低）。
+
 **反调试的范围远不止 `debugger`**：还有窗口尺寸探测、console 探测、跳转/清 DOM/内存炸弹、
 原生方法完整性校验、以及**受 hook 影响的隐藏 iframe**（从 `contentWindow` 取回未 hook 的原生 API）。
 `07-*` 解决「怎么处置无限 debugger」，本文另外补的反调试分类、sink→栈→bundle 三步定位法、
@@ -114,6 +123,13 @@ node skills/web-reverse-algorithm/scripts/detect-crypto.js -i ./dist/sign.js --j
 - 同接口还有 `formhash` / `csrf` / `execution` / `token_id` / `uuid` / `lt` / `pwdDefaultEncryptSalt`
 - 出现 `h5Fingerprint` / `risk_platform` / `device_type` 一类**风控指纹字段**
 - 「下载器/脚本提示密码不对」「本地算出的密文服务端不认」「同一明文两次密文不同」
+
+★ **RSA 密码题的三个静默事实（B36 新增，该文件 §4.5）**：
+① **假循环**（`for (s=0; s<e.length; s++) { t = n.encrypt(password) }` —— 循环变量**没进实参** ⇒
+每轮算同一个输入、只取最后一次）⇒ **复现时不要照抄**、**对拍时不要拿「密文是否相等」当判据**
+（PKCS#1 v1.5 填充带随机 ⇒ 这几次结果本就互不相同）；
+② **「公钥能对拍」≠「这就是最终待提交的值」**（断点位置可能**不是生效路径**）；
+③ **关键字搜索要带「拼音 / 别名」候选**（搜 `password` 只找到一半、改搜 `jiami` 才断成功）。
 
 **这类题有自己的一套判据与工具**，读 [references/12-login-and-account-params.md](./references/12-login-and-account-params.md)
 （**该文是「登录提交参数怎么判族、怎么复算」的唯一权威源**）并用 `scripts/login_param_probe.py`：

@@ -4,6 +4,7 @@
 > `52pojie-1385134`（2021-03，单文件 HTML 内嵌 base64 PDF）、
 > `52pojie-1433013`（2021-05，文库 `@media print`）、
 > `52pojie-1674294`（2022-08，在线阅读文档五形态，**本篇主源**）、
+> `52pojie-1960261`（2024-09，试读站 PDF：`salt ‖ IV ‖ 密文` + PBKDF2-SHA256 派生，§5.4）、
 > `52pojie-2088383`（2026-01，pdf.js 通用下载与追密码）。
 >
 > **定位**：目标不是 `m3u8 + ts`，而是「**浏览器里能看、本地打开就废**」的**文档页** ——
@@ -51,6 +52,7 @@
 | 一次**不带 Range** 的响应里就有 `Content-Range: bytes 0-2967096/2967097`，且**没有文件传输** | **① Range（探长握手）** | 这是「拿总长」的那一次，紧接着才发 `Range` 取块 | §3.2 |
 | `data:application/pdf;base64,` / 单文件 30MB HTML / 一个 `blob:` 地址 | **② base64 内嵌** | `atob` / `base64.b64decode` 落盘；**注意可能带密码**（含「生成 blob 时加密码」） | §4 |
 | 响应体「啥也看不懂」、`Content-Type: application/octet-stream`、页面用 XHR 取 | **③ 整体加密（AES / wasm）** | 下 XHR 断点 → F5 看堆栈 → 找 AES（常带注释）/ wasm `_decodeData` | §5 |
+| 同一份文件**一个 URL 一次取全**，JS 里出现 `crypto.subtle` + `PBKDF2` + `slice(0x0,0x8)` | **③-子 自描述容器**（盐 ‖ IV ‖ 密文） | 按 §5.4 的固定布局切三段 + `PBKDF2-SHA256/65536/16B` 派生 → AES-CBC | §5.4 |
 | 网络面板里有 **pdf.js worker**（`pdf.worker.js`）、页面全局有 `PDFViewerApplication`、或 URL 片段带 `#pdfjs.action=download` | **④ pdf.js 容器** | 控制台 `PDFViewerApplication.download()`；**有密码就追 `.onPassword`** | §6 |
 | 同一本书**每「页」4 个参数**（页数 / 时间戳 / sign / nonce），链接**只能用一次** | **⑤ 一次性 URL + 签名分页** | 「阻止请求域」取链接；复现 `MD5('123456'+nonce+stime)` 后按页循环 | §7 |
 | 每页一张图片，元数据响应里有 `encryptedData` / `encrypted:true` | **⑥ 逐页图片流**（源文附带形态） | 元数据 ECB 解 → 取 `canvas_info` → 按索引重映射像素 | §8 |
@@ -246,6 +248,67 @@ Module.onRuntimeInitialized = function () {
 > - 站点背景（供判据参考）：2021 年起 openstd 新站全面改用 **pdf.js**，
 >   **手机版也用同一套加密**；站点另给「直接下载」的 DRM 文件，那种**必须用站点自带工具打开**
 >   （⇒ 见到「需专用阅读器」的下载件，不要当成本文形态硬解）。
+
+---
+
+### 5.4 形态③-子：**自描述容器**（`salt ‖ IV ‖ 密文` + PBKDF2 派生，1960261）
+
+**现象**：阅读器（Vite/SPA 的 chunk）里有一个 `loadDecrypt(url)`：`fetch(url)` → `arrayBuffer()` →
+**切三段** → 派生 key → AES-CBC 解密 → 把结果当 PDF 喂给 pdf.js（`initDocument(buf, 'xxx.pdf')`）。
+
+**判据（不用猜，看三处）**：
+
+1. 有 **`window.crypto.subtle`** ⇒ 走的是 WebCrypto 语义（`deriveKey` / `decrypt` 都是 Promise）；
+2. 出现 **`'name': 'PBKDF2'` + `iterations` + `'hash': 'SHA-256'`** ⇒ 这一族**唯一**的指纹；
+3. 切片下标是**十六进制字面量**：`slice(0x0, 0x8)` / `slice(0x8, 0x18)` / `slice(0x18)`。
+
+**容器布局（本族固定，`0x18 = 24`）**：
+
+| 段 | 切片 | 长度 | 用途 |
+| --- | --- | --- | --- |
+| ① | `buf.slice(0x0, 0x8)` | **8 字节** | **PBKDF2 的 salt** |
+| ② | `buf.slice(0x8, 0x18)` | **16 字节** | **AES-CBC 的 IV** |
+| ③ | `buf.slice(0x18)` | 余下全部 | **密文** |
+
+**KDF 参数（源文原样）**：`importKey('raw', new TextEncoder().encode(<口令>), {name:'PBKDF2'}, false, ['deriveKey'])`
+→ `deriveKey({name:'PBKDF2', salt, iterations: 0x10000, hash:'SHA-256'}, key, {name:'AES-CBC', length: 0x80}, …)`
+⇒ **iterations = 65536**、**dkLen = 128 bit = 16 字节**、**口令是明文 UTF-8 字符串**（不是 hex、不是 base64）。
+
+**★ 本库独立复算（可逐字节对拍，本批 `b36-verify-numbers.py` 已断言）**：
+
+源文自己给了一个可对拍样本 ——
+`Passphrase="xSeZw1dY2HKAj3yk"` / `salt=d6 dc bf d0 0e c1 81 f1` / `iterations=65536` / `SHA-256` / `Key size=128`
+⇒ 派生 key = **`1f67c8caec75e3069c52e43e29555904`**。
+`hashlib.pbkdf2_hmac("sha256", b"xSeZw1dY2HKAj3yk", bytes.fromhex("d6dcbfd00ec181f1"), 65536, 16).hex()`
+**逐字节命中** ⇒ **本族配方可用，不是截图推断**。
+
+**Python 落地（零依赖，`media_crypto.py` 走 AES 那一档）**：
+
+```python
+import hashlib
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes   # 或 pycryptodome
+
+raw = open("some.xxxx", "rb").read()
+salt, iv, ct = raw[:8], raw[8:0x18], raw[0x18:]
+key = hashlib.pbkdf2_hmac("sha256", PASS.encode(), salt, 0x10000, 16)
+dec = Cipher(algorithms.AES(key), modes.CBC(iv)).decryptor()
+open("out.pdf", "wb").write(dec.update(ct) + dec.finalize())     # 头应为 %PDF-
+```
+
+**坑**：
+
+| 坑 | 症状 | 正解 |
+| --- | --- | --- |
+| 把 `slice` 当成**字符串**切片 | 边界对不上、解出来乱码 | `arrayBuffer()` 之后是**字节**；`0x8` / `0x18` 是字节偏移 |
+| 口令按 hex/base64 解 | 派生出的 key 完全不对 | 口令是**明文串**（`TextEncoder().encode()` 即 UTF-8 字节） |
+| 少做一次 base64 | 解出来还是乱 | 源文这一族的 `loadDecrypt` **不做** base64（`fetch` 直接给二进制）—— 与 §5.2 的 wasm 路线不同，**先看代码有没有 `atob` 再决定** |
+| 把 `extractable=false` 当硬约束 | 想看中间 key 却看不到 | 源文调试时把 `deriveKey(..., false, ...)` 的 `false` 改 `true` 即可 `exportKey` ⇒ **这是调试技巧，不是算法的一部分** |
+
+**⚠️ 源文残留登记（不要据它推算法）**：该篇开头另挂了一段
+`RC4密文: 54f7d1b1…30cba` / `RC4KEY: V0hBVCBUSEUgRlVDSw==`，
+**正文再未回到 RC4**；且该 `RC4KEY` 的 base64 解出是 **`WHAT THE FUCK`（13 字节）**、
+密文 94 个 hex 字符 = **47 字节**（本库复算）。
+⇒ 登记为「**源文残留、与正文链路无对应关系**」，**不得**据此推断正文算法，也**不得**把它当成同一目标的两层。
 
 ---
 
@@ -724,6 +787,7 @@ window.URL.revokeObjectURL(link.href)
 | 3 | `52pojie-1433013` | 某度文库导出 pdf 格式的 html | 2021-05-04 | §9.9 **`@media print` 破除法**与**边界**（「只能获取看得到的页面 / 不能破解会员」） |
 | 4 | `52pojie-1674294` | 在线阅读文档解密（**本篇主源**） | 2022-08-11 | §9.1 **PDF 文件头四种表示法**；形态① **Range 懒加载 + 「小十个字节」实测坑**；形态② base64→blob；形态③ **XHR 追栈 + wasm `_decodeData` 直接 hook 整份 PDF**；形态⑤ **一次性 URL 两个验证动作 + 四参数 + `MD5('123456'+nonce+stime)` 分页**；形态⑥ **元数据 ECB + `canvas_info` 索引重映射 + 改 host 拿永久地址**；EPUB / PNG 附形态（EPUB 部分归 `ebook-and-container-drm.md`） |
 | 5 | `52pojie-2088383` | pdf.js 通用 pdf 下载教程 | 2026-01-23 | 形态④ `PDFViewerApplication.download()`「基本上通用」；§9.4 **`.onPassword` 追码**；§9.5 **base36 两位一组解码**（含可复算的实测输入输出）；§9.6 **postMessage 自动传密码链 + `r0inab`/`r0inyk`**；§9.12 **软件差异登记** |
+| 6 | `52pojie-1960261` | 某试读解密 | 2024-09-01 | §5.4 **自描述容器**（`salt=0x0..0x8` / `iv=0x8..0x18` / `ct=0x18..` + `PBKDF2-SHA256/65536/128bit` → AES-CBC → pdf.js）；**本库逐字节复算源文给出的 PBKDF2 样本**（`1f67c8ca…` 命中）；源文残留 RC4 段（`RC4KEY` 解出 `WHAT THE FUCK`）登记为无对应链路 |
 
 > 「日期」= 来源文章发布时间（**不是**站点改版时间）。站点随时会换鉴权、分块粒度与加密形态
 > ⇒ **引用本表时必须连同日期一起引用**。

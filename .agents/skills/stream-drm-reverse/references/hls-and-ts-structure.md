@@ -315,6 +315,61 @@ list(base64.b64decode("AQIDBQcLDRETFx0HBQMCAQ=="))
 > 源文给出的最终真 key 是 `CF7767B4C359687EF78BD7824147E8A4`（32 位 hex → 16 字节二进制）
 > —— **本库未复核**（缺 key 文件的密文样本），此处仅留存源文口径。
 
+### 4.6.2 工具层：`.pdx` 容器与 `N_m3u8DL-RE` 的 Polyv 三参数（`52pojie-1945942`）
+
+同一族（某利威 / polyv）的**第三种来源形态**：拿到的既不是 `.m3u8` 也不是 `.ts`，
+而是一个 **`.pdx`**（形如 `…/<vid>_1.pdx`）。**`N_m3u8DL-RE` 默认当普通 HLS 处理会失败**。
+
+**配方（源文原样两条命令）**：
+
+```bash
+# v12 —— 可直接合并成 mp4
+N_m3u8DL-RE.exe "https://hls.videocc.net/<...>/<vid>_1.pdx" \
+  --tmp-dir ./cache --save-dir ./Download --save-name "1697442267278116" \
+  --custom-hls-method Polyv --custom-hls-key 98d2ea568b5316a9eb9aae8596ef2241 \
+  --seed-const 215 -H "Referer:https://www.yiihuu.cc"
+
+# v13 —— 只能二进制合并，产物要用专用播放器播
+N_m3u8DL-RE.exe "https://hls.videocc.net/<...>/<vid>_3.pdx" \
+  --tmp-dir ./cache --save-dir ./Download --save-name "1697442267278116.mp4" \
+  --custom-hls-method Polyv --custom-hls-key RleW2az0Y70z3eQ0CZFLJA== \
+  --seed-const 171 -H "Referer:https://www.yiihuu.cc" --binary-merge
+```
+
+**代次判据（可机械判别，不靠猜）**：
+
+| 现象 | 代 | 处置 |
+| --- | --- | --- |
+| 同一命令直接产出**可播 mp4** | v12 | 不加 `--binary-merge` |
+| 必须加 `--binary-merge`、且产物**要用专用播放器**才播得出来 | v13 | 二进制合并；别急着怀疑 key |
+
+**`--custom-hls-key` 的两种编码形态（本库复算，`b36-verify-numbers.py` 已断言）**：
+
+| 来源 | 字面量 | 字符数 | 解出字节数 |
+| --- | --- | --- | --- |
+| v12 | `98d2ea568b5316a9eb9aae8596ef2241` | 32（纯 hex） | **16** |
+| v13 | `RleW2az0Y70z3eQ0CZFLJA==` | 24（base64，带 `==`） | **16**（`465796d9acf463bd33dde43409914b24`） |
+
+⇒ **判据：`--custom-hls-key` 解出来必须是 16 字节**。两种写法只是「给人看」的编码不同
+（hex / base64），**不是两把不同的 key**。
+
+**⚠️ 两个必须登记的边界（源文未说明，本库只登记不判因）**：
+
+1. **`--seed-const` 与 `--custom-hls-key` 是两个独立参数**：
+   本库复算 `MD5("215")[:16] = 3b8a614226a953a8 ≠ 98d2ea568b5316a9`、
+   `MD5("171")[:16] = a4a042cf4fd6bfb4 ≠ 465796d9acf463bd`
+   ⇒ **`custom-hls-key` 不是 `MD5(seed_const)` 的派生值**。
+   §4.6 里那句「`key = MD5(seed_const)[:16]`」讲的是**解「key 文件」那一层**，
+   **不要**把它挪来解释这个命令行参数（两篇源文讲的不是同一个量）。
+2. **`seed-const` 的取值来源**（215 / 171）**源文没给**，只给了值 ⇒ **不得**编造推导式。
+
+**其它两条纪律**：
+
+- **`Referer` 是必需的**（源文两条命令都带 `-H "Referer:https://www.yiihuu.cc"`）——
+  与 §4.6 判据表里「key URI 403 ⇒ 先补 token」同源，都是**站点侧的来源校验**。
+- 本篇是**工具复现式**（源文自陈「不介绍分析过程」）⇒ **不得**据此反推 §4.6 的双层结构；
+  算法口径一律以 §4.6 为准。
+
 ### 4.7 同一次请求里的签名（别和媒体解密混在一起）
 
 直播接口系常在同一个接口里既签名又返回加密播放地址：
@@ -586,3 +641,5 @@ ffmpeg -v error -i seg0.clear.ts -f null -                           # 唯一算
 | 解出来「**部分画面正常、部分仍花屏**」 | wasm 导出壳带环境检测，或选错了近似变体 | 同上 §5（绕壳 / 逐字节 diff 两个变体） |
 | **本来能播、改了「解密」反而不能播** | 解密写在了解复用之后，SPS 已被当明文解析 | 同上 §6（把解密提到 `case 7` 内、`ExpGolomb` 之前） |
 | ★ 分片**全部下完**、只有**合并**这一步报错 | key 解密密码不对（双层族的**假成功**） | 见 §4.6.1 判据 4；同时回查 `vid` 是否取了**带后缀的全名** |
+| 拿到的是 **`.pdx`** 而不是 `.m3u8` / `.ts`，下载器直接失败 | 厂商自封装容器（某利威 / polyv 系） | 走 §4.6.2：`--custom-hls-method Polyv --custom-hls-key <16 字节> --seed-const <n>` + `-H "Referer:…"`；v13 还要 `--binary-merge` |
+| `--custom-hls-key` 填了却仍报 key 错 | 编码形态填错（hex 字面量 vs base64 字面量） | 解出来**必须是 16 字节**（§4.6.2 表）；别把 `--seed-const` 当成它的派生来源 |

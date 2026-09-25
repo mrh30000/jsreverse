@@ -151,6 +151,37 @@ let temp = (0, t.useContext)(i);
 > 与 §1.3 的差别：§1.3 改的是**许可校验的判断**（状态机 / 令牌 / 校验函数），本节改的是
 > **消费权限的那个对象**（直接给 `app.user` 塞一个 `roles`）—— 前者要找到赋值处，后者只需找到取用处。
 
+### §1.8 第四种用途：把 popup 当**网页**跑（为「选中元素 / 自动化」铺路）
+
+**判据（一句话）**：**每个扩展界面本质都是一个网页** ⇒ popup 可以用
+`chrome-extension://<extension_id>/<popup 路径>` 直接在**标签页**里打开，
+于是 F12 能选中元素、自动化工具也能点到它。
+
+**为什么需要这一步**：popup 平时以**弹窗**形态存在，**无法直接 F12 选元素**，
+「给某个输入框填值 / 点某个按钮」这类自动化在弹窗形态下没有稳定落点。
+
+**四步**（`52pojie-2082856`，OKX Wallet 案例）：
+
+| # | 动作 | 要点 |
+| --- | --- | --- |
+| ① | 拿 `extension_id` | `chrome://extensions/` → 开发者模式 → 该扩展详情页复制 ID（与 §1.7 同一步） |
+| ② | 打开界面 | `chrome-extension://{extension_id}/popup.html` —— **路径以 `manifest.json` 的 `default_popup` 为准**（MV3 在 `action.default_popup`，MV2 在 `browser_action.default_popup`；名字不一定是 `popup.html`） |
+| ③ | 点下去**又变回弹窗**时，查是谁弹的 | Sources → **Event Listener Breakpoints → Mouse → `click`**，在事件起点断下 → 跟栈找到那个 `window.open` / `this.openwindow(...)` 调用点 |
+| ④ | 直接访问它要打开的 URL | 源文实测：找到 `this.openwindow` 后，它要打开的地址**单独访问确实就是那个页面** ⇒ 把「弹窗」换成「标签页」 |
+
+**★ 可迁移判据**：**「点一下界面就换了一种窗口形态」= 有 JS 主动 `window.open`**。
+不要去找「怎么让弹窗能 F12」，**去断 `click`、找调用点、直接访问目标 URL**——
+这是把「不可调试的窗口」降级成「普通网页」的通用动作。
+
+**坑与边界**：
+
+1. **`chrome.*` API 不保证在普通标签页里等价可用**：`chrome-extension://` 页面与 popup 同源，
+   但涉及 `activeTab` / 用户手势 / `chrome.windows` 的 API 在标签页里会**静默失败或行为不同**
+   ⇒ 「元素选中了但按钮点了没反应」先怀疑这一条，而不是怀疑定位错。
+2. **不要为此重打包**：直接访问 URL 属于**只读式使用**，与 §1.5 的重打包（改身份、`update_url`）是两码事。
+3. **边界**：本节只解决「**能不能定位到元素**」；目标若是**钱包助记词/私钥**这类凭据界面，
+   仅在**自己拥有**的账户与设备上做技术验证，不要把这类脚本做成可分发的东西。
+
 ---
 
 ## §2 nw.js（`nwjc` 二进制加密）
@@ -277,6 +308,9 @@ let temp = (0, t.useContext)(i);
 | nw.js + `nwjc` 判据 | `52pojie-1679769` | `is_nwjc`、`mrd.min.bin`、`nwjc`/`nwjs`/`debug` 开关 |
 | 文件校验是拦路虎 | `52pojie-1679769` | MD5 摘要校验、"可以直接打开"、加载完成检测 |
 | 资源解密"能跑就不要逆" | `52pojie-1679769` | `decryptImg`、`compress_texture` |
+| 扩展「能力面」：头改写/爬虫伪装/禁 Cookie 三法 | `52pojie-1893105` | `chrome.webRequest.onBeforeSendHeaders`、`Googlebot/2.1`、`contentSettings.cookies` |
+| 改本地已安装扩展 JS 注入伪造权限对象（**转述**） | `52pojie-1940437`（原作 `52pojie-1940297`） | `controller/setting.js`、`dhpfcgilccfkodnhbllpiaabofjbjcbg`、`temp.app.user = { roles: [...] }` |
+| **popup 当网页跑**（`chrome-extension://` + 断 `click` 找 `openwindow`） | `52pojie-2082856` | `chrome-extension://{id}/popup.html`、`this.openwindow`、Event Listener Breakpoints → Mouse → click |
 | Electron 埋点法 + Debugtron | `52pojie-1847258` | `console.log("1")…`、`asar extract/pack`、Debugtron |
 | 扣出来不对 ⇒ 还有一层 | `52pojie-1847258` | "可以看到不对" ⇒ "确实又进行了一次 base64" |
 | 扩展本地 JS 替换（注入伪造权限对象） | `52pojie-1940437`（转述自 `52pojie-1940297`） | 扩展 ID `dhpfcgilccfkodnhbllpiaabofjbjcbg`、`controller/setting.js`、`(0, t.useContext)(i)`、`temp.app.user`、`roles: ["premium", "member"]` |

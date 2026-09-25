@@ -24,6 +24,26 @@
       "name": "被覆盖判定",
       "rule": "上层块与当前块行列值绝对值差 < 8 即被覆盖（块的逻辑宽高为 8）",
       "symptom_if_wrong": "可操作块集合算错、解不可行"
+    },
+    {
+      "name": "两条端点并存（_ex 与非 _ex）",
+      "rule": "早期用 GET `game_over` / `topic_game_over`（rank_* 五参数走 query，不需要对局记录）；后期改为 POST `game_over_ex`（rank_* 走 body，且必须带 MatchPlayInfo + MapSeed2 + Version）",
+      "symptom_if_wrong": "拿 `_ex` 的 body 去发 GET，或拿 GET 的 5 个参数去发 `_ex` —— 服务端返回参数缺失/无效果，但**不一定报错**"
+    },
+    {
+      "name": "rank_role 取值不同",
+      "rule": "1689437 的简化版 GET 用 `rank_role=1`；1692161 的 `game_over_ex` 示例用 `rank_role=2`",
+      "symptom_if_wrong": "文章未说明；本库不裁决哪个是「过关」语义（`rank_state` 另有 1过关/2失败 的定义）"
+    },
+    {
+      "name": "header t 的两种口径",
+      "rule": "1692161：t = 「登录小程序得到的账号信息」；1689437：t = 登录接口 `login_oppo` 返回的 `data.token`（`headers['t'] = token`）",
+      "symptom_if_wrong": "t 放错内容 ⇒ 服务端按未登录处理（返回空数据或 `err_code != 0`）。**两篇未对齐，本库不裁决**"
+    },
+    {
+      "name": "t 的时效",
+      "rule": "1689437 的 `user_info` 请求里 t 是**写死的示例 JWT**（本库复算：`alg=HS256`、`iat=1663301423`、`exp-nbf=31102200` 秒）⇒ 早已过期",
+      "symptom_if_wrong": "照抄示例 t ⇒ 直接失效；必须自己走 `user_info → login_oppo` 换一次"
     }
   ]
 }

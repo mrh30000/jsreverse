@@ -725,6 +725,53 @@ async function processFetchQueue() {
 - **页面刷新**：某些网站上脚本启动后书籍内容加载不出来（一直转圈），「通常按 `F5` 多次刷新页面可以解决」；
 - **跨域**：脚本**已内置方案尝试解决跨域（CORS）限制**，「能显著提高成功率，但不能保证 100% 成功」。
 
+### 6.5 打印导出型：`window.print()` 当「网页长文 → PDF」的通用通道（`52pojie-1923373`）
+
+**判据**：页面把「全文」藏在**前端门控**后面（关注后可见 / 未登录折叠），
+而你要的是**一份能带走的文档**（PDF / 纸质件）⇒ **不必扣接口**：删掉遮罩 + 用它自带的打印。
+
+**三步配方（源文原样）**：
+
+| # | 动作 | 源文选择器 |
+| --- | --- | --- |
+| ① | **解除正文折叠**（折叠就是内联 `style` 上的 `max-height`） | `document.getElementById('article_content').removeAttribute('style')` |
+| ② | **删遮罩与关注引导** | `.hide-article-box`（「关注后可阅读全文」浮层）；`document.querySelector('.follow-text').closest('[data-flag="follow"]')` |
+| ③ | **展开被折叠的代码块 / 侧栏**（模拟点击），再 `window.print()` | `.hide-preCode-bt`、`.sidecolumn-hide` |
+
+**★ 判据：「前端折叠」与「服务端截断」是两件事**。
+先看**源码里有没有全文** —— 有 ⇒ 本节三步即可；没有 ⇒ 回 §7/§8 走接口，不要在这里使劲。
+
+**★ 打印瞬间隐藏自己的 UI（源文技巧，很实用）**：
+
+```js
+window.matchMedia('print').addListener(mql => {
+  buttons.forEach(b => { b.style.display = mql.matches ? 'none' : ''; });
+});
+```
+
+⇒ **`matchMedia('print')` 是「进入 / 退出打印态」那一刻的钩子**（比 `@media print` 更可控：
+不用改站点 CSS，只在自己的元素上动手）。与
+`../../stream-drm-reverse/references/online-document-unlock.md` §9.9 的「删 `@media print`」是**反向**的两件事：
+那边是**去掉站点加的限制**，这边是**给自己的按钮加限制**。
+
+**⚠️ 源文缺陷登记（「AI 优化版」引入的真 bug，不要照抄）**：
+
+源文后附的优化版把动作表写成
+
+```js
+{ name: '保存', action: window.print }   // ❌ 未绑定 this
+```
+
+`window.print` 被**当值传递**后调用，`this` 不再是 `window` ⇒ Chrome 里抛
+**`TypeError: Illegal invocation`**（与 `video.play()` / `document.write` 一类同型）。
+
+> ⇒ **可迁移判据**：宿主方法**当值传递**（丢进数组、当回调）时必须包一层
+> `() => window.print()` 或 `window.print.bind(window)`。
+> **「能读到这个方法名」≠「能这么调用它」** —— 这类错误**不报错在写的时候，只在点下去的时候**。
+
+**边界**：本法**只解决「展示 / 复制限制」**；打印拿到的通常是**渲染后的页面**（等同长截图），
+**不是原始 PDF** —— 要原始件仍要走接口链路。
+
 ---
 
 ## 7. ★ 内容门控（关注 / 密码 / 关注回复）的三条通路
@@ -866,6 +913,7 @@ function b64DecodeUnicode(a) {
 | 无直链视频落盘（`src` 是 `blob:`、只有分片） | `../SKILL.md` 的 `mse-capture` 预设 |
 | **视频交互解锁（倍速 / 失焦 / 进度）——不落盘** | **本文 §5** |
 | **图片/PDF 资源捕获（含 `blob:` 图片）** | **本文 §6** |
+| **网页长文 → PDF 导出（删 DOM 遮罩 + `window.print()` + `matchMedia('print')`）** | **本文 §6.5** |
 | **改本地已安装扩展 JS（不重打包）** | `../../desktop-client-reverse/references/extension-and-nwjs.md` §1.7 |
 | **内容门控（关注 / 密码 / 关注回复）的三条通路** | **本文 §7** |
 | 判断「前端限制 vs 服务端校验」 | **本文 §8** |
@@ -885,3 +933,5 @@ function b64DecodeUnicode(a) {
 | 同上（★ 看着像 token 的参数其实是 base64） | 52pojie-1799911 | 2023 | `shortcodeapi`、`wxpass`/`wxshowyz`、末尾两个 `=`、`b64DecodeUnicode` |
 | 媒体播放解锁（失焦/倍速/进度） | 52pojie-2099142 | 2026 | `blockEvents`、`killSetter`、`Document.prototype.hasFocus`、`DOMException: aborted`、`.xt_video_player_progress`、`.progresswrap`、`mousedown -> mouseup -> click`、400ms 防抖、`KeyA`–`KeyZ` |
 | 图片/PDF 资源捕获 | 52pojie-2051222 | 2025 | `getNumericFilename`、`\d{5,}`、`startRequestMonitoring`、`div.pdfimg.move.rendered`、`fetchQueue`、`processingUrls`、`isWorkerRunning`、`data-page`、`blob:https://` |
+| ★ 网页长文「打印成 PDF」+ DOM 门控绕过 + 打印态钩子 | 52pojie-1923373 | 2024 | `article_content`、`.hide-article-box`、`.follow-text`、`[data-flag="follow"]`、`.hide-preCode-bt`、`.sidecolumn-hide`、`window.matchMedia('print')`、`window.print`（**未绑定 `this` ⇒ `Illegal invocation`**，源文缺陷） |
+| ★ 无直链视频：把抓取层从 URL 层下移到 MSE 层 | 52pojie-2077700 | 2026 | `captureFromStart`、`h5vodLastPostion`、`video.currentTime = 0`、`playbackRate = 10`、`iframe[sandbox]` 剥离、`streamSaver`、`addSourceBuffer.toString`（详见 `../../stream-drm-reverse/references/player-and-live-capture.md` §2.5） |

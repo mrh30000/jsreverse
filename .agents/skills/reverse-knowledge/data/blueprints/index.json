@@ -704,10 +704,10 @@
     {
       "id": "yanglegeyang-map",
       "path": "yanglegeyang-map",
-      "title": "羊了个羊 小程序协议参数（map_info_ex / 关卡配置 / game_over_ex）",
+      "title": "羊了个羊 小程序协议（账号 token / map_info_ex / 关卡配置 / game_over）",
       "category": "platform-protocol",
       "status": "historical",
-      "summary": "羊了个羊小程序无签名算法，只有请求参数清单：header t 为登录得到的账号信息；game_over_ex 提交 base64(protobuf MatchPlayInfo) + MapSeed2 + Version。",
+      "summary": "羊了个羊小程序无签名算法，只有请求参数清单：header t 为登录态凭据（**两篇口径未对齐**：账号信息 vs 登录接口返回的 token，见 gaps）；game_over_ex 提交 base64(protobuf MatchPlayInfo) + MapSeed2 + Version。B36 补上账号链（user_info → login_oppo → token）与更早的「简化版 GET game_over / topic_game_over」。",
       "aliases": [
         "MatchPlayInfo",
         "MapSeed2",
@@ -715,13 +715,22 @@
         "map_seed_2",
         "map_md5",
         "game_over_ex",
-        "map_info_ex"
+        "game_over",
+        "topic_game_over",
+        "map_info_ex",
+        "login_oppo",
+        "user_info"
       ],
       "keywords": [
         "羊了个羊",
         "easygame2021",
         "cat-match",
         "game_over_ex",
+        "game_over",
+        "topic_game_over",
+        "login_oppo",
+        "wx_open_id",
+        "免抓包",
         "MatchPlayInfo",
         "protobuf",
         "小程序"

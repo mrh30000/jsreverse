@@ -2,7 +2,27 @@
   "parts": [
     {
       "name": "t",
-      "description": "作用: HTTP 头，登录小程序得到的账号信息 | 来源: 小程序登录后可得"
+      "description": "作用: HTTP 头 | 来源: **两种口径** —— ①1692161：登录小程序得到的账号信息；②1689437：`login_oppo` 接口返回的 `data.token`（`headers['t'] = token`）。两篇未对齐，本库不裁决"
+    },
+    {
+      "name": "uid",
+      "description": "作用: 账号链的起点，`user_info?uid=<uid>` 的 query | 来源: **页面里直接取**（源文原话「在页面获取 uid 填写到下面代码中」）⇒ 免抓包 | 示例: 页面上的用户标识"
+    },
+    {
+      "name": "wx_open_id",
+      "description": "作用: `login_oppo` 的 body 字段 `uid` | 来源: `user_info` 响应的 `data.wx_open_id`"
+    },
+    {
+      "name": "nick_name / avatar / sex",
+      "description": "作用: `login_oppo` 的 body 字段 | 来源: `user_info` 响应的 `data.*`；`sex` 源文固定传 1"
+    },
+    {
+      "name": "token",
+      "description": "作用: 账号链的产物，写回请求头 `t` | 来源: `POST /sheep/v1/user/login_oppo` 响应的 `data.token`"
+    },
+    {
+      "name": "login_oppo",
+      "description": "作用: 用 uid/昵称/头像换 token 的登录端点（渠道名为 oppo，语义源文未说明） | 来源: 固定路径 `/sheep/v1/user/login_oppo`（POST，form）"
     },
     {
       "name": "matchType",
@@ -51,6 +71,22 @@
     {
       "name": "Version",
       "description": "作用: POST body，25 号新增，固定 | 来源: 固定 | 示例: 0.0.1"
+    },
+    {
+      "name": "rank_score/rank_state/rank_time/rank_role/skin（GET 版）",
+      "description": "作用: 早期简化端点的 **GET query** 五参数（`game_over` / `topic_game_over`），与 `_ex` 的 body 字段同名但传输位置不同 | 来源: 全部固定传 1 | 示例: `?rank_score=1&rank_state=1&rank_time=1&rank_role=1&skin=1`"
+    },
+    {
+      "name": "topic_game_over",
+      "description": "作用: 「每日话题加入羊群」端点（GET） | 来源: 固定路径 `/sheep/v1/game/topic_game_over`"
+    },
+    {
+      "name": "game_over（非 _ex）",
+      "description": "作用: 早期「刷通关次数」端点（GET，**不带 MatchPlayInfo**） | 来源: 固定路径 `/sheep/v1/game/game_over`"
+    },
+    {
+      "name": "MicroMessenger UA",
+      "description": "作用: A 线全部请求共用的 UA 头 | 来源: 源文硬编码的微信小程序 UA（`MicroMessenger/8.0.21…MiniProgramEnv/android`）"
     }
   ]
 }

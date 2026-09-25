@@ -38,6 +38,7 @@ description: 桌面 / 打包型前端逆向技能（Electron / Tauri / WebView2 
 | 目录里有 `manifest.json` + `_locales/` + `background.js`（或 `service_worker`） | **浏览器扩展（CRX / 解压目录）** | 按 `references/extension-and-nwjs.md` §1：先找 `Extensions/<ID>/<版本号>` |
 | 有个扩展点开就弹「试用到期 / 解锁高级功能」 | **扩展的许可校验** | 文案 → 语言文件 → 变量名 → 逻辑文件（`references/extension-and-nwjs.md` §1.2），改**判断**不改字符串 |
 | 目标扩展的付费判断就写在它自己的前端 JS 里（如 `controller/setting.js` 的 `useContext` 返回值） | 扩展的**前端权限对象** | 直接改本地扩展文件、注入伪造 `roles`，**改完刷新页面**（`references/extension-and-nwjs.md` §1.7） |
+| popup 弹窗**选不中元素 / 没法自动化**；点一下就变成应用窗口 | **popup 本质是网页** | 直接开 `chrome-extension://{id}/<default_popup>`；「点一下换窗口形态」= 有 `window.open` ⇒ 断 `click` 找调用点（`references/extension-and-nwjs.md` §1.8） |
 | 启动器是 `nw.exe` / `index.html` 里有 `is_nwjc` / 加载 `*.min.bin` | **nw.js + `nwjc` 二进制** | 换回源码再谈（`references/extension-and-nwjs.md` §2）—— **它是编译不是加密** |
 | nw.js：换回源码后**闪退** | **文件校验**（不是算法问题） | 把 MD5 摘要判断改 `false`，**同时恢复「加载完成」检测**（`references/extension-and-nwjs.md` §2.3） |
 | asar 已解包、代码压缩、格式化后无法重打包 | — | `console.log` **顺序埋点法** + Debugtron（`references/extension-and-nwjs.md` §3） |

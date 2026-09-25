@@ -189,6 +189,14 @@ window.setTimeout = function (...args) {
    （`fetchQueue` / `processingUrls` / `isWorkerRunning`）、**页码取元素 `data-page`**；
    **必须完整翻页、下载必须队列化**。
 
+6b. **★ 网页长文 → PDF 导出**（`references/page-unlock-and-userscript-recipes.md` §6.5，B36 新增）：
+   ① `removeAttribute('style')` 解除 `max-height` 折叠 → ② 删遮罩 / 关注引导浮层 →
+   ③ 模拟点击展开代码块 → `window.print()`；**打印瞬间隐藏自己的 UI** 用
+   `window.matchMedia('print')` 的 `change` **而不是改站点 CSS**（真机已复核：返回 `MediaQueryList`、可挂载可回调）。
+   ⚠️ **两个坑**：① **先判「前端折叠」还是「服务端截断」**（源码里有没有全文）；
+   ② **宿主方法当值传递必须 `.bind(window)`** —— `{ action: window.print }` 会抛
+   **`TypeError: Illegal invocation`**（真机实测；同族还有 `document.createElement` 等）。
+
 7. **★ 内容门控（关注 / 密码 / 关注回复）三通路**（`references/page-unlock-and-userscript-recipes.md` §7）：
    ★ **判据：参数以 `=`/`==` 结尾且参数名像 token ⇒ 先 `atob` 解一次看内容**（源文自陈「看到末尾有两个 `=` 很眼熟，**没有认真看**」而绕了远路）；三条通路 = **把重复轮询的状态接口搬本地** / **重写校验函数**（口诀「**先存原引用、再同名顶掉**」，注意 **`function` 声明提升**会让书写顺序在运行时失效）/ **搜界面文案 → 顺到下发接口 → 控制台直接调**。
    **边界**：这三例的判定**都在服务端**（`shortcodeapi` 返回 `1` 才放行、`pass` 字段决定结果）⇒ 通路的实质是**取得服务端已认可的输入**，不是破解服务端。

@@ -303,6 +303,10 @@ python $S/key_wrapper.py noise-check --chars "-_! " --json
 - `references/hls-and-ts-structure.md`：HLS/m3u8 全字段语义与判层、**多候选 m3u8 的挑选判据（§1.5）**、
   TS→PES→ES/NALU 分层、
   **加密覆盖范围判据**、key/IV 四类来源与派生式、A/B/C/D 层实战配方、
+  ★ **§4.6.2 工具层（B36 新增）：`.pdx` 容器 + `N_m3u8DL-RE` 的 Polyv 三参数**
+  （`--custom-hls-method Polyv --custom-hls-key <16 字节> --seed-const <n> -H "Referer:…"`，
+  v13 另需 `--binary-merge`；**代次可机械判别**；**`--seed-const` 与 `--custom-hls-key` 是两个独立参数**
+  —— 已复算 `MD5(seed_const)[:16] ≠ 源文 key`，**别把 §4.6 的派生式挪来解释它**）、
   **整片 AES 的工程骨架（§5.1：`key==IV` + `zfill(5)` 序号 + gevent 并发 + `ffmpeg -safe 0` 合成）**、
   RPC 桥接、排错速查。
 - `references/preview-gating-and-segment-enumeration.md`：**试看门控 / 索引被截断的补齐（B32 新增）** ——
@@ -315,7 +319,8 @@ python $S/key_wrapper.py noise-check --chars "-_! " --json
   （`z = md5(md5(str((day+18)^10))[:10])`，含「`+` 优先于 `^`」「`getDate` vs `getDay`」
   「JS `getDay` 0=周日 vs Python `weekday` 0=周一」三个静默错 + **本流水线自算的 3 个回归锚点**）；
   ② **ts 分片 URL 本身就是 m3u8 的伪装形态**（`…_0.ts?start=0&end=…` ⇒ 改 `.m3u8` + 删 Range 参数；
-  「下载器报 key 错 ≠ key 问题」，**该案例实测 / 单样本**）；③ **页面直出（SSR）载体**
+  「下载器报 key 错 ≠ key 问题」，**两个独立年份的样本已复现（§4.4）**；
+  改写时**保留 `type`/`exper`/`sign`**、用「**紧跟 `.m3u8` 后面的第一个 `.ts`**」定位）；③ **页面直出（SSR）载体**
   （`window._SSR_HYDRATED_DATA` 由「只 base64」升级为「AES-CBC/Pkcs7 → base64 → base64」，
   `iv = key[:16]`；**零请求入口**，先看 HTML 有没有直出再考虑抓接口）。含排错速查与来源表。
 - `references/key-wrapper-families.md`：**key 二次构造 / 包装层（W 族）唯一权威源** ——
@@ -326,6 +331,12 @@ python $S/key_wrapper.py noise-check --chars "-_! " --json
 - `references/player-and-live-capture.md`：**直播流捕获 / 播放器侧 / 反录制唯一权威源** ——
   三条入口路线的选路判据、**MSE 源码注入四处落点与 `Uint8Array` 落盘陷阱**、
   **反录制判据（`<video>`+MSE 可 dump vs `<canvas>` 自渲染失效 + 两个确证特征）**、
+  ★ **§2.5 工程层（B36 新增）：把抓取层从「URL 层」下移到「MSE 层」** ——
+  「过一阵就失效、每次都是地址变了」的脚本都该做这次下移（字节流与域名无关）；
+  含**从头捕获（`currentTime=0` + 清站点进度记录）、十倍速攒片、`iframe[sandbox]` 剥离、
+  流式落盘防 OOM、被替换方法单独挂 `toString`**，以及
+  **源文反检测写法被真机证伪**（`Function.prototype.toString.call` 无效）与
+  **有效缓冲过滤 `bytesWritten > 0`**（空产物的第一因）。
   移动端 UA 换发行版、**base64「基址」403 的三步处置**、接口层两种伪装、`blob:` / 私有 scheme、已知 dts 噪声。
 - `references/vendor-key-schemes.md`：**厂商 key 方案与接口配方唯一权威源** —— 13 个实测配方
   （腾讯云点播 `overlayKey`、百度 BCE DRM `tokenVideoKey`、某浪 V3key、m3u8 整表替换、固定口令 AES-ECB、
@@ -343,6 +354,8 @@ python $S/key_wrapper.py noise-check --chars "-_! " --json
   ② base64 内嵌（30MB 单文件 HTML / `data:application/pdf;base64,` / blob，**可能带密码**）；
   ③ 整体加密（XHR 追栈找 AES；wasm `_decodeData` **直接 hook 整份 PDF 出口**；
   `HCNO → Module._init → UTF8ToString` 解出「密钥 + IV + hcno」三元组，**`#` 段是 IV**）；
+  ★ **③-子 自描述容器（B36 新增，§5.4）**：`salt(8) ‖ IV(16) ‖ 密文` + **`PBKDF2-SHA256 / 65536 / 128bit`**
+  （判据 = `crypto.subtle` + `'name':'PBKDF2'` + 十六进制切片下标；**本库已逐字节复算并真机对拍**）；
   ④ pdf.js 容器（`PDFViewerApplication.download()`「基本上通用」+ `.onPassword` 追码）；
   ⑤ 一次性 URL + 签名分页（**阻止请求域 / 跑两次**两个验证动作 + `MD5('123456'+nonce+stime)` 四参数按页循环）；
   ⑥ 逐页图片流（元数据 ECB + `canvas_info` 只重映射中间 10% 字节）。

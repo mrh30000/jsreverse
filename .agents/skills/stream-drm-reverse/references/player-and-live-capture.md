@@ -81,6 +81,51 @@ Error muxing packet
 这是**下载/合并顺序**问题，不是解密问题。处置：换容器（MKV）或改用「先本地下载再解密」两段式，
 不要据此回头怀疑 key。
 
+### §2.5 工程层：把「按 URL 抓」换成「按 MSE 落点抓」（`52pojie-2077700`）
+
+**★ 架构判据（本篇最有价值的一条）**：源文原本的脚本是**按 URL 抓**的（先解析出分片直链再下载），
+**一遇到 CDN 改域名就整体失效**。作者的处置**不是**「再解析一次新域名」，而是
+**把抓取层从「URL 层」下移到「MSE 层」**（`SourceBuffer.appendBuffer` 的字节流）——
+**字节流与域名无关**，所以换 CDN 不再影响它。
+
+> ⇒ **可迁移判据**：一个抓取脚本若「隔一段时间就失效、每次都是地址变了」，
+> 就该把它**下移到 `appendBuffer` 这一层**。这正是 §2.1 表里把 `appendBuffer` 排在**第一落点**的原因。
+
+**四个可直接搬的工程点**：
+
+| 点 | 做法 | 为什么需要 |
+| --- | --- | --- |
+| **从头捕获** | 在 `addSourceBuffer` 里 `setTimeout(() => { document.querySelectorAll('video').forEach(v => { if (v.currentTime > 0) v.currentTime = 0; }); }, 500)`；**同时清掉站点的播放进度记录**（源文站点是 `localStorage.h5vodLastPostion`，置 `"{}"`） | 站点记着上次播放位置，会把 `currentTime=0` 再写回去 ⇒ **只清 video 不清 storage 无效**。源文另注：从头捕获需要「**清空缓存并硬性重新加载**」 |
+| **倍速攒片** | `video.playbackRate = 10`（可切回 1） | 只影响**采集时长**，不改变抓到的字节 ⇒ 纯工程优化 |
+| **沙箱 iframe 剥离** | 定时扫 `iframe[sandbox]`：克隆 → `removeAttribute('sandbox')` → 替换原节点 | 站点把播放器塞进 sandbox iframe，阻止注入生效 |
+| **流式落盘** | 大数据量时把 `appendBuffer` 的块**边收边写**（StreamSaver + mitm iframe），而不是全堆在 `bufferList` | 长视频全缓存会 OOM ⇒ 源文因此保留「边下边存」按钮 |
+
+**反检测两条（一条要照抄、一条不要）**：
+
+- ✅ **给被替换的方法单独挂 `toString`**：
+  `MediaSource.prototype.addSourceBuffer.toString = () => 'function addSourceBuffer() { [native code] }'`
+  —— 影响面比改全局原型小（与 `../../web-reverse-hook/references/anti-hook-detection-and-bypass.md` 同口径）。
+- ❌ **源文写法存疑，不要照抄**：`Function.prototype.toString.call = function (caller) { … }`
+  —— `Function.prototype.toString.call` **只是「调用它」，不是一个可替代 `Function.prototype.toString` 的钩子**；
+  要让检测看到 native，得覆盖 `Function.prototype.toString` **本身**。**本条登记为源文缺陷**。
+
+**落盘前的两道过滤（这一族最常见的空产物原因）**：
+
+1. **有效缓冲区过滤**：`bufferList.length > 0 && bytesWritten > 0`。
+   只判「有没有 `SourceBuffer`」不够，要判**它真的被喂过字节**（源文告警原文：「没有找到有效的媒体数据」）。
+2. **多轨分别落盘**：`mime.split(';')[0]` → `video/*` 存 `.m4v`、其余存 `.m4a`
+   ⇒ 音视频是两个 `SourceBuffer` 时**各产一个文件**，再用 ffmpeg 合并（与 §2.2 的落盘纪律一致）。
+
+**判「流结束」**：`endOfStream` 被调用 **或** `MediaSource.readyState === 'ended'`。
+源文在 `endOfStream` 里分两条路：非流式 ⇒ 直接下载；流式 ⇒ 先 `close()` 该轨的 writer、不再保留已结束的轨。
+
+**边界**：
+
+- 源文脚本基于开源的 `media-source-extract`（Momo707577045）二次修改 ⇒ **引用时连出处一起写**；
+- `streamSaver.mitm` 指向**第三方域名**（`upyun.luckly-mjw.cn`）⇒ **这是外部依赖，离线 / 内网环境会失效**；
+- 与既有 `web-reverse-hook` 的 `mse-capture` 预设分工：**预设负责「抓全 + 交付」**，
+  本节负责**「怎么让它抓得久、抓得全、抓得住（不被 sandbox / 进度记录 / OOM 打断）」**。
+
 ## §3 移动端 UA / 移动端页面（「PC 抓不到」的标准解法）
 
 **实测三例**（同一站点的 PC 与移动端是两套发行版）：
@@ -212,6 +257,11 @@ ffprobe -v quiet -select_streams v:0 -show_entries stream_tags=handler_name \
 | 只在下载器里填 key 不去核 `METHOD` | 遇到厂商 METHOD 直接失败 | 先 `m3u8_probe.py`（`AES-128-PES` / `AES-128-ECB` 见 SKILL.md 分层表） |
 | 「合并时报 dts 非单调」当成解密失败 | 反复重解 | 是容器/顺序问题（§2.4） |
 | 一次性抓「所有分辨率」 | 拿到的多码流混在一起 | 把 `main.m3u8` 换成 `2000.m3u8` / `4000.m3u8` 逐档取（并非每档都存在） |
+| 脚本「过一阵就失效」，每次都是地址变了 | 抓取层建在 **URL 层**（与域名耦合） | **下移到 `appendBuffer`**（§2.5）；字节流与域名无关 |
+| 设了 `currentTime = 0` 却从头抓不到 | 站点把播放进度写回 `localStorage` | 连站点那条进度记录一起清（源文是 `h5vodLastPostion`）+ **清缓存硬性重载**（§2.5） |
+| `addSourceBuffer` 被替换后站点行为异常 | 只改了方法没挂 `toString` | 给该方法单独 `toString → [native code]`（§2.5） |
+| 长视频抓到一半浏览器崩 | 分片全堆在内存 | 流式边收边写 + 有效缓冲过滤（§2.5） |
+| 日志报「没有找到有效的媒体数据」 | 只判有没有 `SourceBuffer`，没判**是否被喂过字节** | 过滤条件加 `bytesWritten > 0`（§2.5） |
 
 ## §8 与其它文档的边界
 
@@ -220,3 +270,12 @@ ffprobe -v quiet -select_streams v:0 -show_entries stream_tags=handler_name \
 - **key 是二次构造的** → `key-wrapper-families.md`（**先跑它的字母表守卫**）
 - **厂商级 key 配方与 URL 差值法** → `vendor-key-schemes.md`
 - **wasm 内存取证 / 白盒** → `whitebox-and-wasm-crypto.md`
+
+---
+
+## 附录 · 本文件来源登记
+
+| 章节 | 来源文章裸 id | 说明 |
+| --- | --- | --- |
+| §2.1–§2.4、§3、§4、§5、§6 | 见 `SKILL.md` 分层表与各节内联引用 | 既有条目 |
+| **§2.5** | `52pojie-2077700` | 标题即「对《cctv视频下载解密简化步骤》里失效的脚本做了更新」。⚠️ **源文头部有代楼主编辑批注「内容已失效」**，但正文完整给出了那份用户脚本 ⇒ **只取正文的工程手法，不把该帖当成「可照抄的成品」**。实质：基于 `media-source-extract`（Momo707577045）二次修改 —— MSE 落点、从头捕获（video + `h5vodLastPostion`）、十倍速攒片、sandbox 剥离、流式落盘、`addSourceBuffer.toString` 反检测。**原帖 id 源文未给**，不猜 |
