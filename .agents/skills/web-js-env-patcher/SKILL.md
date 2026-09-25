@@ -1,6 +1,6 @@
 ---
 name: web-js-env-patcher
-description: "面向网页端 JavaScript 的 Node.js 补环境 Skill。用于 env.js/runner.js、缺失环境追踪、RuyiTrace/Proxy 日志分析、Trace API 首轮覆盖与 runtime contract、浏览器对象模型与 native-like、addon/xbs native-first、私有状态泄露阻断、对象形状审计、iframe/Worker/DOM-CSSOM/Performance/WebAPI 行为矩阵、Canvas/WebGL/WebGPU/Audio/字体/DOM 几何真实值回放、XHR/fetch no-send 语义审计、TLS 指纹兼容 Session bridge、curl_cffi 同 Session、动态资源刷新、Cookie 生成链路、source/entry/builder/writer 定位、阶段报告和最终交付门禁。也覆盖边缘 WAF / CDN 准入 Cookie 挑战的判层与链路（首访 403/412/429/503/521 + clearance cookie：加速乐 jsl 521、阿里 acw_sc__v2、Cloudflare 5s 盾与 Turnstile、Akamai `_abck`/`sensor_data`、F5 Shape/Reese84、Imperva、Kasada、DataDome、HUMAN/PerimeterX、AWS WAF、Fastly）。不要用于 App、移动端、小程序（小程序见 `miniprogram-reverse`）、Windows/Native 逆向或纯算重写；默认不主动分析 JSVMP 源码。、Math 精度差异（Math.E/Math.PI 参与运算的微小偏差）、getImageData 与本次 fillStyle 自洽、系统色 ActiveBorder/activecaption 经 getComputedStyle 必须转成 rgb、measureText 字体与 emoji 指纹、描述符批量检测"
+description: "面向网页端 JavaScript 的 Node.js 补环境 Skill。用于 env.js/runner.js、缺失环境追踪、RuyiTrace/Proxy 日志分析、Trace API 首轮覆盖与 runtime contract、浏览器对象模型与 native-like、addon/xbs native-first、私有状态泄露阻断、对象形状审计、iframe/Worker/DOM-CSSOM/Performance/WebAPI 行为矩阵、Canvas/WebGL/WebGPU/Audio/字体/DOM 几何真实值回放、XHR/fetch no-send 语义审计、TLS 指纹兼容 Session bridge、curl_cffi 同 Session、动态资源刷新、Cookie 生成链路、source/entry/builder/writer 定位、阶段报告和最终交付门禁。也覆盖边缘 WAF / CDN 准入 Cookie 挑战的判层与链路（首访 403/412/429/503/521 + clearance cookie：加速乐 jsl 521、阿里 acw_sc__v2、Cloudflare 5s 盾与 Turnstile、Akamai `_abck`/`sensor_data`、F5 Shape/Reese84、Imperva、Kasada、DataDome、HUMAN/PerimeterX、AWS WAF、Fastly）。不要用于 App、移动端、小程序（小程序见 `miniprogram-reverse`）、Windows/Native 逆向或纯算重写；默认不主动分析 JSVMP 源码。、Math 精度差异（Math.E/Math.PI 参与运算的微小偏差）、getImageData 与本次 fillStyle 自洽、系统色 ActiveBorder/activecaption 经 getComputedStyle 必须转成 rgb、measureText 字体与 emoji 指纹、描述符批量检测"当目标是**自动化框架自身的指纹**（`navigator.webdriver`、`excludeSwitches`、`enable-automation`、`$cdc_`、半自动化分工）时也使用。
 ---
 
 # 网页端 JS Node.js 补环境
@@ -33,6 +33,9 @@ description: "面向网页端 JavaScript 的 Node.js 补环境 Skill。用于 en
 
 - 新 case、信息缺失或需要确认模板：读取 `references/intake-template.md`、`references/workflow.md`、`references/delivery-templates.md`。
 - 选择 ruyiPage、RuyiTrace、Camoufox、CloakBrowser、手动取证或 AI 决定：读取 `references/browser-acquisition.md`。
+  该文件另含 **「自动化框架自曝指纹：2019 年口径 vs 现行判定」** —— 含**原生状态基线表**
+  （`navigator.webdriver` 取值 / 定义位置 / getter 是否 native / 实例有无 own property，真机实测）
+  与「**不要 patch `navigator.webdriver`**」的四重可检测性证据；取证前先跑一遍基线表。
 - 使用 ruyiPage / RuyiTrace、安装检测、自动捕获或导入 NDJSON：读取 `references/ruyi-tooling.md`。
 - 使用 Camoufox / camoufox-reverse-mcp：读取 `references/camoufox-tooling.md`。
 - 自动点击、拖拽、键盘、滚动或可能检测 `isTrusted`：读取 `references/trusted-input-and-isTrusted.md`。

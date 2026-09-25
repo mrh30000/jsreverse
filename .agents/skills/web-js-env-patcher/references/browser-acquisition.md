@@ -95,6 +95,46 @@
 
 普通 `dispatchEvent(new MouseEvent(...))`、`new KeyboardEvent(...)`、`new PointerEvent(...)` 默认是高风险合成事件，不能作为验证码或高风控交互的主路径。无法保证可信输入时，暂停并让用户选择手动完成、切换工具或明确接受风险。
 
+### 自动化框架自曝指纹：2019 年口径 vs 现行判定
+
+> **来源** `52pojie-896034` + `52pojie-897646`（2019-03，同作者同系列，淘宝半自动化采集）。
+> 这一族帖子的**通行做法**是「`excludeSwitches: ['enable-automation']` + 不加载图片 + 拟人化滑动」。
+> **它的结论今天基本不成立**，但**坑点仍然全部有效** —— 下面把「源文口径」与「本批真机实测」逐条对齐。
+
+| 项 | 源文（2019）口径 | 现行判定（本批真机实测） |
+| --- | --- | --- |
+| `navigator.webdriver` | 「自动化时为 `True`，正常浏览器为 `False`，**把它屏蔽掉**」 | 取值判据仍成立，但**屏蔽方式必须换**：见下一行 |
+| `excludeSwitches:['enable-automation']` | 作为**充分**手段 | **不再充分**。它去的是「正受到自动测试软件控制」提示条与 blink 的 AutomationControlled 特征；而 CDP 驱动本身仍会让 `navigator.webdriver` 为 `true` ⇒ **先量取值，再决定要不要处理** |
+| 实例级 patch（`Object.defineProperty(navigator,'webdriver',{get:()=>false})`） | 未提及 | ★★ **一眼可判，四重证据**：① 实例上**多出一个 own property**（原生没有）；② 补丁 getter 的 `toString()` **不再含 `[native code]`**；③ 原型链上从**一处变两处**（`instance` + `proto#1`）；④ `configurable: true` ⇒ 检测方可以 **`delete navigator.webdriver` 把它删掉再看** |
+| 不加载图片 `prefs:{'profile.managed_default_content_settings.images':2}` | 作为**提速**手段 | ★ **它本身就是一个自动化特征**：这是**用户配置文件级**设置，页面 JS 读不到，但检测侧可以**被动观测**「一个声明了 N 张图片的页面、图片请求数为 0」⇒ **别拿它当免费的提速开关** |
+| 拟人化滑动 | `scrollTop = 300+400*i` / `200*i`，另用 `random.randint(1,3)` 随机**延时** | ★ **位移是确定公式 ⇒ 零熵**（本批真机复算序列 `300,200,1100,600,1900,1000,2700,1400`，完全由下标决定）。**只随机延时、不随机位移 = 最常见的假拟人** |
+
+**★ 原生状态长什么样（本批在 browsercli 的真机 Chrome 上量出来的基线，可直接当比对标准）**
+
+| 观测项 | 原生值 |
+| --- | --- |
+| `navigator.webdriver` | `false`（本技能取证用的 Chrome **未暴露** webdriver） |
+| 定义位置 | **`Navigator.prototype`**（描述符键集 `get+set+enumerable+configurable`） |
+| getter 名 / 形态 | `"get webdriver"`，`Function.prototype.toString.call(get)` 含 **`[native code]`** |
+| `navigator` 实例 | **没有** own `webdriver`（`getOwnPropertyDescriptor(navigator,'webdriver') === undefined`） |
+| UA | 不含 `Headless`；`navigator.plugins.length = 5`；`window.chrome` 存在；`document` 上无 `$cdc_`；无 `_selenium` / `callPhantom` / `__nightmare` 一类蜜罐 |
+
+> **可复跑**：`artifacts/skill-evolution/tools/b40-browser-assert.js` + `b40-browser-assert.py`
+> （A/B 两组共 18 项，真机 Chrome 全绿）。⇒ **取证前先跑一遍这张表**：
+> 任何一项偏离基线，说明你用的浏览器**已经被打上了自动化印记**，此时不要开始取证。
+
+**★ 结论：不要 patch `navigator.webdriver`。** 两条正确路线：
+① **从启动就不置位**（`--disable-blink-features=AutomationControlled` 一类启动开关，而不是事后 JS 覆写）；
+② **用本技能主推的真实浏览器路线**（ruyiPage / Camoufox / CloakBrowser，见上文各自的启动硬约束）。
+
+**★★ 源文真正值钱的那条：半自动化的「分工」而不是「绕过」。**
+源文的完整链路其实是「**人工过登录（微博绑定淘宝）→ 复用登录态 → 再自动化采数据**」，
+并明确写了「支持模拟登录淘宝和自动处理滑动验证码」是在**人工介入**的前提下。
+⇒ 判据：**把「人做的部分」与「机器做的部分」切开**（登录 / MFA / 验证码答案交给人，
+机器只做「取数 + 拟人浏览 + 分页」），这与本技能的取证纪律（`captcha-flow-and-verify-handoff.md`）
+完全一致 —— **别试图让机器做完一切**。
+
+
 ## 验证码接口取证门禁
 
 信息完整并确认任务后、任何取证动作前，先确认目标是否为验证码 / 风控验证 / challenge / WAF 接口。若是，必须读取 `captcha-flow-and-verify-handoff.md` 并让用户选择取证方式：

@@ -1,6 +1,6 @@
 ---
 name: web-reverse-algorithm
-description: 面向 Web/JS 逆向中的纯算、验证码纯算、复杂 header/cookie 签名、混合加密、JSVMP/VMP、Wasm、PoW、响应解密、指纹与 challenge 参数还原工作流。用于需要从最终请求、最终 cookie、最终 verify 或最终 WebSocket 帧倒推 writer、builder、entry、source，设计浏览器与本地对齐检查点，判断何时做 AST 解混、何时插桩、何时做最小补环境、何时拆图像线与参数线、以及如何把研究结果落成 solver、SDK、脚本或服务的场景。用户明确提到纯算、验证码纯算、滑块、点选、旋转、PoW、collect、w、x-s、a_bogus、encSecKey、captchaBody、X-Bogus、Wasm、国密、补环境、指纹、challenge、verify、header 签名、cookie 签名、登录密码加密、登录提交参数、表单参数、单点登录、CAS、WebVPN、execution 令牌、RSA 公钥、JSEncrypt、密码 MD5 加盐、`publickey_mod`、DES 解密、`encoded` 隐藏字段时使用。当目标带无限 debugger / 反调试（打开 DevTools 就断住、document.write 覆写页面、eval 监管脚本）、JS 每次访问都变、响应体是加密的 JS、需要 mitmproxy/Fiddler 改写响应做在线补丁、或要判断某个参数属于「固定 / 上次返回 / JS 计算」时，同样使用本技能。当需要在 DevTools 里**跟栈定位加密发生在哪一行**（参数在某层「消失」、断在函数头部已带密文、函数没有形参却返回密文）、用**条件断点**在几十个共用同一拦截器的请求里筛出目标包、按「缺什么补什么」扣代码并让加载器自己报出缺失模块、排查**原型追加的方法必须在 `new` 之前补**或加载器头部「形参与 `e = {}` 冲突」时，也用本技能。当**手上只有一段密文**时需要先读**长度 / 字符集 / 公共子串**判断块大小与编码链，当请求头 Token 其实来自**别的响应**（`Bearer eyJ...` 直接解 payload）无需逆向算法，或加密落在**原生 so 层**（自描述导出名、hook 入参返回值对拍）时也用本技能。
+description: 面向 Web/JS 逆向中的纯算、验证码纯算、复杂 header/cookie 签名、混合加密、JSVMP/VMP、Wasm、PoW、响应解密、指纹与 challenge 参数还原工作流。用于需要从最终请求、最终 cookie、最终 verify 或最终 WebSocket 帧倒推 writer、builder、entry、source，设计浏览器与本地对齐检查点，判断何时做 AST 解混、何时插桩、何时做最小补环境、何时拆图像线与参数线、以及如何把研究结果落成 solver、SDK、脚本或服务的场景。用户明确提到纯算、验证码纯算、滑块、点选、旋转、PoW、collect、w、x-s、a_bogus、encSecKey、captchaBody、X-Bogus、Wasm、国密、补环境、指纹、challenge、verify、header 签名、cookie 签名、登录密码加密、登录提交参数、表单参数、单点登录、CAS、WebVPN、execution 令牌、RSA 公钥、JSEncrypt、`Z5Encrypt`、`);$_SERVER;}`、PHP 混淆方法体替换、密码 MD5 加盐、DES 解密时使用。当目标带无限 debugger / 反调试（打开 DevTools 就断住、document.write 覆写页面、eval 监管脚本）、JS 每次访问都变、响应体是加密的 JS、需要 mitmproxy/Fiddler 改写响应做在线补丁、或要判断某个参数属于「固定 / 上次返回 / JS 计算」时，同样使用本技能。当需要在 DevTools 里**跟栈定位加密发生在哪一行**（参数在某层「消失」、断在函数头部已带密文、函数没有形参却返回密文）、用**条件断点**在几十个共用同一拦截器的请求里筛出目标包、按「缺什么补什么」扣代码并让加载器自己报出缺失模块、排查**原型追加的方法必须在 `new` 之前补**或加载器头部「形参与 `e = {}` 冲突」时，也用本技能。当**手上只有一段密文**时需要先读**长度 / 字符集 / 公共子串**判断块大小与编码链，当请求头 Token 其实来自**别的响应**（`Bearer eyJ...` 直接解 payload）无需逆向算法，或加密落在**原生 so 层**（自描述导出名、hook 入参返回值对拍）时也用本技能。
 ---
 
 # Web 逆向纯算
@@ -429,6 +429,23 @@ python scripts/waf_clearance_solver.py --selftest
   属「**结果对、算式错**」）+ **`Base64.encode(Hex.decode(x)) ≡ b64(x)`**（hex 往返是 no-op）；
   ④ **加密资源包的密码就是「自带的同名测试样本」文件名 + 固定盐的 MD5** —— 先去 apk 里找同名 zip 当搜索词；
   ⑤ **签名种子来自 `malloc` 地址 ⇒ 每次不同、不可纯算**（判据与边界见蓝图 `tiktok-x-gorgon`）。
+- [references/19-opaque-source-patching.md](./references/19-opaque-source-patching.md)
+  用途：**「源码在手、但方法体不可读」的定向补丁**（商业混淆器 PHP，本批样本 `Z5Encrypt`）——
+  目标是**不解密**，只把决定「放行 / 拦截」的方法体**整段换成常量**。
+  ★ 判据：方法以 **`);$_SERVER;}`** 结尾（**定位方法边界的唯一锚点**）、解密器在**文件头的 `gzinflate` 全局块**里、
+  方法内变量名是**每次都变的 latin1 乱码**（⇒ **别按变量名匹配**）。
+  ★★ 三条最值钱的动作：① **「改哪个方法」由调用方决定，不由方法名决定**（`is_aut` 这个名字看不出是总开关，
+  是从 `options-module.php` 的用法反推的）；② **返回值类型由「调用方怎么用」决定** ——
+  远程通信给 `""` 而不是 `false`（避免 `=== false` 严格比较）、会被 `json_encode` 的给**数组**、
+  会被 hash 比较的给**合法 md5**；③ **哪些方法绝不能动** —— `eval` 里**定义业务函数 / 注册钩子**的那几个
+  （`zib_init_add_action` 动态定义 8 个短名全局函数，被 `ZibDB` 依赖）**动了就全局崩**。
+  ★ 另外三条：**自毁 / 反篡改方法（`delete` 一类）必须与授权方法一起拦**（否则每改一次少一个文件）·
+  **补 `public static` 必须「先清残留再按缺补」**（顺序反了会两头都没了）· **替换后必须过括号配平**
+  （PHP 只在运行期才报语法错）。配套 `scripts/php_opaque_patch.js`（`--list` / `--patch` / `--selftest` **40 项**，
+  含「字符串感知 vs 朴素 `indexOf`」的**反面夹具**）。
+  与 `02-algorithm-families.md` **§七 客户端授权题**（前端 JS 许可证，**先读那张判据表**）、
+  `07-antidebug-and-live-patching.md` **§5.8**（浏览器侧「把检测结果改写成常量」）、
+  `../miniprogram-reverse/references/request-crypto-and-sign.md` **§3.1**（小程序「替换方法体当 oracle」）同一范式。
 - 媒体流 / DRM / ts 分片（判层、AES/SM4 内容解密、许可证体系、白盒 wasm）→ `../stream-drm-reverse/SKILL.md`：
   本技能不覆盖这条链路，遇到 `m3u8` / `EXT-X-KEY` / `GetLicense` / 花屏类现象请直接切过去。
 

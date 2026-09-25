@@ -167,6 +167,79 @@ h5live.gslb.cmvideo.cn/...index.m3u8?...&ddCalcu=<交织串>&crossdomain=www
 | node 跑出来的值尾巴带换行或噪声 | 「取尾部 N 字符再 strip」是**源文口径**，不是技巧；先看源文给的切片长度 |
 | 会话 cookie 过期 | 别重走登录，先找 `auth_refresh` 这类**续期端点** |
 
+### §2.5 哔哩哔哩：`playurl` 响应里的 **DASH m4s 直链**（视频/音频分流）
+
+> 源文 `52pojie-1177888`（2020-05，**原理课**，作者明说「下一步才是自动化」）。
+> 本文把它收在这里的原因是：它给出了 **`playurl` 响应 → `.m4s` 直链** 这条最省事的路线，
+> 以及**两条必须提前知道的结构判据**（分流、以及「搜到 4K 不等于拿到 4K」）。
+
+**链路形状**（§2 三段式的直连变体：**不需要算签名**，抄 URL 即可）：
+
+```text
+① 播放页 HTML / BV 号        → ② 抓 playurl 的响应（不是请求）
+③ 响应里搜清晰度关键字        → ④ 拿 `upgcxcode/.../<avid>-<流序号>-<qn>.m4s`
+⑤ 请求时只补 `Referer: https://www.bilibili.com/`
+```
+
+**★★ 判据一：`.m4s` 是 DASH 分片 ⇒ 视频流与音频流是两条，下载少了那一条就没有声音。**
+文件名里的**流序号**就是这条判据：
+
+| 文件名片段 | 含义 |
+| --- | --- |
+| `<数>-1-<qn>.m4s` / `<数>-1-<qn>.flv` | **视频**流 |
+| `<数>-2-<qn>.m4s` | **音频**流（必须再拿一条，然后 `ffmpeg` 合并） |
+
+源文自己在结尾补了一句「**下载视频没有声音**，非常感谢大佬发现这个问题，并且给出了解决方案。
+我下一课详细讲解」⇒ **源文没解决、只登记了**；本篇按「判据」收录，不给方案。
+（`-1-` 里那个「1」是**流序号**，不是清晰度；清晰度在第三段。）
+
+**★★ 判据二：「响应里出现 4K 字样」≠「服务端给了你 4K」。**
+源文的实测序列本身就是这条判据的证据：
+
+| 步骤 | 拿到的文件名片段 | 实测分辨率 |
+| --- | --- | --- |
+| 抄第三方工具给的链接 | `<数>-1-32.flv` | 480P |
+| 「在 playurl 响应里搜 4K、找到标记的那条链接」，手工拼 | `<数>-1-30080.m4s` | **1080P**（源文原话「果不其然，我在想桃子」） |
+| 充值大会员后重新抓同一个响应 | `<数>-1-30120.m4s` | **4K** ✅ |
+
+⇒ **可迁移判据**：**可用码流由「账号权益」决定**，搜索关键字只能帮你**定位**，
+不能帮你**提权**。要判「到底给了哪几档」，去看响应里**实际列出的流表**
+（`dash.video[].id` / `accept_quality` 这类**枚举字段**），不要看 `Ctrl+F` 的命中数。
+⚠️ 源文只给了现象与截图，**没给这两个接口名与字段名** ⇒ 上表记的是「文件名的 `qn` 码段」这一层，
+具体字段名**本文不替它补**（登记为未复核）。
+
+**★ 判据三：同站同类 URL 可能并存两套签名方案，别混用。**
+
+| 方案 | 参数形态 | 出现场合（本篇样本） |
+| --- | --- | --- |
+| `expires` + **`ssig`** | 单值签名 | 源文抄来的那条 `.m4s` |
+| `e` + **`upsig` + `uparams`** | **白名单 + 摘要** | 源文从 `gen=playurl` 响应里捞的两条 |
+
+第二套的结构不变量（本批用源文给的 3 条 URL 逐条复算，2/2 成立）：
+
+```
+uparams = 被签名参数名的逗号分隔白名单   （本例恒为 e,uipk,nbs,deadline,gen,os,oi,trid,platform）
+upsig   = 这些参数值算出的摘要（32 位 hex）
+不在白名单里的参数 = upsig、uparams 自身、mid、logo
+```
+
+⇒ **判据**：改白名单内的任何一个值都要重算 `upsig`；改 `mid` / `logo` **不用**。
+（`upsig` 的算式与密钥**源文未给** ⇒ 登记为未复核，不要编造。）
+
+**★ 路径段的一个可复算规律**（本批 Node + 真机两条路径同值）：
+
+```
+upgcxcode/<数 % 100>/<数 // 100 % 100>/<数>/<数>-<流序号>-<qn>.<ext>
+源文样本：数 = 185221286 ⇒ 86 / 12 / 185221286 / 185221286-1-30080.m4s   ✅ 成立
+```
+
+⚠️ **一处未解的不一致（登记，不判因）**：源文同时给出页面 `BV1Yk4y1r7jM` 与这个 `185221286`，
+但**公开的 av↔BV 互转算法**（本批用 3 组公开对照对双向自证：`av170001 ↔ BV17x411w7KC` 等）
+算出 `bv2av("BV1Yk4y1r7jM") = 752883075` —— **与 185221286 不是同一个数**。
+⇒ `185221286` **不是该 BV 的 avid**（很可能是 cid 之类的内部 id）；**单样本，不下结论**。
+**可迁移的教训**：**不要把「同一篇帖子里出现的两个 id」默认当成同一个对象**；
+拿 `av↔BV` 这类有公开算法的映射先验一次，成本几行代码。
+
 ---
 
 ## §3 直播源：两条路线（免签 / 动态签名）
@@ -353,7 +426,7 @@ getHeaderAesKey()         = yichengtianxia12
 
 ---
 
-## §3B 短视频「去水印 / 无水印直链」的三种形态
+## §3B 短视频「去水印 / 无水印直链」的四种形态
 
 > **放哪一层**：本节归 **§0 地址还原层**（目标是「拿到一个能直接播的 mp4 直链」）。
 > 源文 `52pojie-1159049`（易语言 + Python 双实现）。
@@ -415,6 +488,114 @@ http.Clear ()
   「**易语言源码 + 附 Python 对照实现**」的方式给出双语言等价，与本技能的工程化目标一致。
 - `CoInitialize(0)` **必须先调**（COM 线程初始化）；`GetProperty("ResponseText")` 取文本，
   响应头走 `文本方法("GetAllResponseHeaders")`。
+
+### §3B.4 抖音系（APP 协议路线）：分享页内联 `itemId` → `aweme/detail` → `play_addr.url_list`
+
+> **来源**：`52pojie-968123`（2019-05-30，PHP）与 `52pojie-1022592`（2019-09-11，Java）——
+> **同一作者、同一手法、相隔 3.5 个月**。两篇互为交叉验证：PHP 版给**响应字段全集**，
+> Java 版给**版本迭代的 delta**（正文里保留了 7 条历史 API 串并标注「以上接口已经失效」）。
+
+**与 §3B.2 的关系**：§3B.2 是**第三方 id 直取接口**（`is.snssdk.com/bds/cell/detail`，皮皮虾/抖音系通用），
+本节是**抖音自己的 APP 协议接口**（`aweme/v1/aweme/detail`）。两者都属 §0 层，
+**但依赖方不同**：本节的接口要一串**客户端设备参数**，站点改版即失效。
+
+**链路（五步，一步都别跳）**：
+
+```text
+① 分享文本 → 抽出 URL        （源文两版都有这一步：去掉「复制此链接，…」之类的尾巴）
+② 请求该短链，跟 302 到分享页（v.douyin.com/<短码>）
+③ 分享页 HTML 的内联 <script> 里取 itemId  → 这就是 aweme_id
+④ GET aweme/v1/aweme/detail/?<客户端设备参数串>&aweme_id=<id>
+⑤ 从 aweme_detail 里取 play_addr.url_list[0] → 请求它、跟重定向 → 截掉 query
+```
+
+**① 分享文本 → URL（两版口径一致）**
+
+| 版 | 写法 |
+| --- | --- |
+| PHP | `$url = "http".explode("http", $share)[1];` 再 `explode("复制此链接，", $url)[0]` |
+| Java | 先判「含不含中文」，含中文则 `substring(indexOf("http"), lastIndexOf("/"))` |
+
+> ★ **可迁移判据**：**分享文本是「人话 + URL」的混合体，抽取规则永远是「找 URL 起止锚点」**，
+> 不存在通用正则；两版都在**用中文提示语或最后一个 `/` 当结束锚点**。
+> ⇒ 抓样本时**把分享文本原样存下来**，别只存 URL（否则没法回推锚点）。
+
+**③ 分享页里的 `itemId`（两版口径一致）**
+
+```php
+$str = explode("itemId: \"", $html)[1];
+$str = explode("\",", $str)[0];                 // PHP 版
+```
+```java
+int start = url1.indexOf("itemId: \"");
+int end   = url1.indexOf("\",\n            test_group");   // Java 版：结束锚点带上了下一个字段名
+String itemId = url1.substring(start, end).replaceAll("itemId: \"", "");
+```
+
+> ⚠️ **Java 版这一处很脆**：结束锚点写成了 `",\n            test_group`（**含缩进与换行**）。
+> 站点改一次缩进就失效。**判据**：锚点只应包含**语义稳定的部分**（`itemId: "` … `",`），
+> 空白与缩进**交给「去空白后再匹配」处理**。
+> 更稳的做法是**按结构取**（内联 JSON / `window.__INITIAL_STATE__` 一类载体，见
+> `playback-url-shapes-and-page-carriers.md` §5），而不是按字面锚点切。
+
+**④ 接口串：两版的差异就是「版本迭代 delta」**（同一作者相隔 3.5 个月）
+
+| 维度 | `52pojie-968123`（2019-05） | `52pojie-1022592`（2019-09） |
+| --- | --- | --- |
+| Host | `api-hl.amemv.com` | `aweme.snssdk.com`（历史串）/ 模板化（在用） |
+| `version_code` | `251` 写死 | `$version_code` 模板（历史串里出现 `140 / 251 / 650`） |
+| `manifest_version_code` | `251`（**与 version_code 相同**） | `660`（历史串里**与 `version_code=650` 不同**） |
+| `_rticket` | **有**（`1559206461097`） | **无** |
+| `ts` | `1559206460` | `1561136204`（且是**模板串里的残留常量**） |
+| `as` / `cp` | `a115996edcf39c7adf4355` / `9038c058c7f6e4ace1IcQg` | `a1e500706c54fd8c8d` / `004ad55fc8d60ac4e1` |
+
+**★★ 三条可直接落地的判据**：
+
+1. **`ts` 与 `_rticket` 是同一次请求的同一时刻，一个秒级一个毫秒级**。
+   本批复算（PHP 版样本）：`ts = 1559206460`，`_rticket = 1559206461097`，
+   且 `floor(_rticket / 1000) == ts + 1` ⇒ **两者配对生成、不可跨请求复用**。
+2. **`as` / `cp` 是「设备指纹对」，不是算法**。证据：两篇的取值不同、**长度也不同**
+   （18 位 vs 22 位）⇒ **不要试图复算它，也不要跨样本抄常量**；照抄源文常量 = 必失败。
+3. **`version_code` 与 `manifest_version_code` 可以不一致**（历史串里 `650` vs `660`）⇒
+   别用「两者必然相等」去校验参数串是否抄全。
+
+**⑤ 取地址：`play_addr.url_list` → 跟重定向 → 截掉 query**
+
+```java
+url = aweme_detail.long_video[0].video.play_addr.url_list[0];   // 长视频分支
+url = aweme_detail.video.play_addr.url_list[0];                 // 普通视频分支（PHP 版用这条）
+// 请求 url（不下载 body），取「最终 URL」，再截到 '?' 之前
+```
+
+- **两条分支要都判**：源文 Java 版走 `long_video[0].video.play_addr`，PHP 版走 `video.play_addr`。
+  ⇒ 判据：**先试 `long_video`，取不到再回落 `video`**。
+- ⚠️ **Java 版的截断写法有个健壮性缺陷**：`url.substring(url.indexOf("http"), url.lastIndexOf("?"))`
+  —— 若最终 URL **不含 `?`**，`lastIndexOf` 返回 `-1`，`substring(0, -1)` **直接抛
+  `StringIndexOutOfBoundsException`**。⇒ 自己实现时写成 `int q = url.indexOf('?'); url = q < 0 ? url : url.substring(0, q);`。
+  （这是**源文缺陷**，登记在此，不要照抄。）
+
+**响应字段全集（PHP 版给全了，按用途归类）**
+
+| 用途 | 字段路径 |
+| --- | --- |
+| **无水印视频** | `aweme_detail.video.play_addr.url_list`（**4 条**：两条 `*-dy.ixigua.com`、两条 `*-hl.amemv.com/aweme/v1/play/?video_id=…`） |
+| 封面 | `aweme_detail.video.origin_cover.url_list[0]` |
+| 音频 | `aweme_detail.music.play_url.url_list` |
+| 作者 | `aweme_detail.author.nickname` / `author.avatar_medium.url_list[0]` |
+| 描述 | `aweme_detail.share_info`（`share_weibo_desc` / `share_title` / `share_url` …） |
+
+**请求头（两版给的不是同一个，都要记）**
+
+| 场合 | UA / Header |
+| --- | --- |
+| 分享页（HTML） | 移动端浏览器 UA（PHP 版给了完整串）+ cookie `tt_webid=…; _ga=…; _gid=…; _ba=…` |
+| detail 接口 | Java 版：`Aweme/79025 CFNetwork/978.0.7 Darwin/18.7.0`（**iOS 客户端 UA**）；PHP 版：`okhttp/3.10.0.1` + `Host: api-hl.amemv.com` |
+
+> ⚠️ **PHP 版的 cookie 被作者自己脱敏成 `##`**（原话「涉及个人隐私，故不放出来」）
+> ⇒ **本库保留脱敏形态，不代为还原**；只登记「这条链路需要 cookie，且作者未公开其内容」。
+
+**边界**：本节的接口串是 **2019 年**的；`aid=1128`、`as`/`cp`、`version_code` 全部是**当时值**。
+**抄结构、不抄常量**；遇到同一族的新样本，按「④ 的 delta 表」逐参数 diff 一遍再动手。
 
 ---
 

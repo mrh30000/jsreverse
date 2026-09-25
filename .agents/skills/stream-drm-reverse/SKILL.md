@@ -1,6 +1,6 @@
 ---
 name: stream-drm-reverse
-description: 流媒体/视频点播/直播流/电子书的内容加密链路逆向技能：先定位「加密发生在哪一层」，再逐层解密。触发词：`m3u8`、`ts`、`EXT-X-KEY`、`METHOD=AES-128`、`SAMPLE-AES`、`AES-128-PES`、`AES-128-ECB`、`decryptdata.key`、`qiniuDRMKey`、`encrypt_info`、`protectedLicenses`、`GetLicense`、`GetProvision`、`service_name=mdcm`、`KID`、`CEK`、`CENC`、`cenc:pssh`、`cbcs`、`enca`、`cdm`、`widevine`、`playready`、`FairPlay`、`skd://`、`tokenVideoKey`、`h5e`、`liveLineUrl`、`streamName`、`bilidrm`、`data-keys`、`mp4decrypt`、`pywidevine`、`.wvd`、`KeyDive`、`wvdumper`、`MediaKeys.createSession`、`requestMediaKeySystemAccess`、`generateRequest`、`videojs-contrib-eme`、`SampleAesDecrypter`、`getAvcEncryptedData`、`funcNN_TEA`、`PES`、`NALU`、`HEAPU8`、`_emscripten_run_script`、`importObject`、`sekiro`、`ffmpeg -decryption_key`、`EPUB`。用户说「m3u8 解密/ts 解密/视频解析/去水印/无水印/直播源/切片解密/DRM/数字版权/白盒密码/白盒 AES/加密播放器/ffmpeg 重封装/电子书章节解密/下载器提示 key 错误/key 长度不是 16 字节/页面能播但网络面板看不到 m3u8 只能看到一堆 png/m3u8 地址解出来 403/播放器是 canvas 而不是 video/录屏会被录上浮动水印/视频能下载但不能播放/花屏/只有前几帧正常/拿到播放地址/authKey/ddCalcu/蜻蜓FM/听书网/解析接口/player_aaaa」时都应使用本技能。
+description: 流媒体/视频点播/直播流/电子书的内容加密链路逆向技能：先定位「加密发生在哪一层」，再逐层解密。触发词：`m3u8`、`ts`、`EXT-X-KEY`、`METHOD=AES-128`、`SAMPLE-AES`、`AES-128-PES`、`AES-128-ECB`、`decryptdata.key`、`qiniuDRMKey`、`encrypt_info`、`protectedLicenses`、`GetLicense`、`GetProvision`、`service_name=mdcm`、`KID`、`CEK`、`CENC`、`cenc:pssh`、`cbcs`、`enca`、`cdm`、`widevine`、`playready`、`FairPlay`、`skd://`、`tokenVideoKey`、`h5e`、`liveLineUrl`、`streamName`、`bilidrm`、`data-keys`、`mp4decrypt`、`pywidevine`、`.wvd`、`KeyDive`、`MediaKeys.createSession`、`requestMediaKeySystemAccess`、`generateRequest`、`videojs-contrib-eme`、`SampleAesDecrypter`、`getAvcEncryptedData`、`funcNN_TEA`、`PES`、`NALU`、`HEAPU8`、`_emscripten_run_script`、`importObject`、`ffmpeg -decryption_key`、`EPUB`、`upgcxcode`、`upsig`、`itemId`、`aweme`。用户说「m3u8 解密/ts 解密/视频解析/去水印/无水印/直播源/切片解密/DRM/数字版权/白盒密码/白盒 AES/加密播放器/ffmpeg 重封装/电子书章节解密/下载器提示 key 错误/key 长度不是 16 字节/页面能播但网络面板看不到 m3u8 只能看到一堆 png/m3u8 地址解出来 403/播放器是 canvas/视频能下载但不能播放/花屏/只有前几帧正常/拿到播放地址/authKey/ddCalcu/蜻蜓FM/解析接口/player_aaaa」时都应使用本技能。
 ---
 
 # 流媒体 / 视频内容保护逆向
@@ -28,6 +28,8 @@ description: 流媒体/视频点播/直播流/电子书的内容加密链路逆�
 | **APP 端取直播源**：请求头有 `Play-Ua` / 请求体有 `secretToken`，密钥是「前缀 + 资源 + native」拼出来的 | **§0 · APP 接口层** | 同上 §3A（三段拼接密钥 + 双端参数差异 + native 只做校验） |
 | **接口 200，但响应里的 `playUrl` / `playurl` 仍是密文** | **§0 之后还差一层（D 接口层）** | 同上 §3A：**HTTP 200 ≠ 拿到可播地址**；源文未公开算法时**不许编** |
 | **分享短链（`v.kuaishou.com/s/…` 一类）要 mp4「无水印直链」** | **§0 地址还原层（直链）** | 同上 §3B（落点是 `srcNoMark` / `origin_video_download` 这类**另一个字段**） |
+| **抖音/抖音系**：拿到的是「分享文本」，或看到 `itemId: "` / `aweme/v1/aweme/detail` / `play_addr.url_list` | **§0 · APP 协议直链** | 同上 §3B.4（五步链；`as`/`cp` 是**设备指纹**不可复算、`ts` 与 `_rticket` 秒/毫秒配对、`long_video` → `video` 两分支回落） |
+| **哔哩哔哩**：要 `.m4s` 直链，或 URL 里有 `upgcxcode` / `upsig` / `uparams` | **§0 · DASH 分流** | 同上 §2.5（**`-1-` 视频 / `-2-` 音频必须各拿一条**；`uparams` 是签名白名单、`mid`/`logo` 不在内） |
 | **免费影视/动漫站**：HTML 里捞到 `aaa=` / `player_aaaa=` 的密文，或地址要经**第三方解析 API**（路径含 `jiexi`）才给 | **§0 · 解析接口族（三层串接）** | 同上 §3C（`%XX` 全字节编码 + Base64 双层 → 解析 API 两跳拿 `key`/`time` → AES-CBC 常量 `ARTPLAYER…`/`Artplayer…`；★ 二层**禁用 `unescape`**） |
 | **播放页 HTML 里捞到好几条 m3u8，不知哪条在播** | **A 层前置：挑选** | `references/hls-and-ts-structure.md` §1.5（「重复出现次数最多」只当第一猜想） |
 | **试看只有 N 秒 / m3u8 路径带 `_preview` / 拿不到完整 playlist** | **预览门控层**（§0 与 A 层之间） | `references/preview-gating-and-segment-enumeration.md` §1 二分判据 → §3 分片枚举补齐 |
@@ -299,7 +301,11 @@ python $S/key_wrapper.py noise-check --chars "-_! " --json
   动态签名、抖音 `reflow/info` 一次拿 rtmp+hls、小红书 `__INITIAL_STATE__` 书签脚本）、
   **§3A 移动 APP 直播源**（`Play-Ua` DESede + `secretToken` HMacMD5 + 「前缀+资源+native」三段拼接密钥 +
   native 只做校验的审计判据 + iOS/Android 参数差异；HTTP 200 ≠ 拿到可播地址）、
-  **§3B 短视频去水印直链三形态**（`srcNoMark` / `origin_video_download` / 易语言 COM 对照）、
+  **§3B 短视频去水印直链四形态**（`srcNoMark` / `origin_video_download` / 易语言 COM 对照 /
+  **§3B.4 抖音系 APP 协议五步链**：分享文本 → `itemId: "` → `aweme/v1/aweme/detail` →
+  `play_addr.url_list`；含 `as`/`cp` 设备指纹判据、`ts`/`_rticket` 秒毫秒配对、两版 delta 表）、
+  **§2.5 哔哩哔哩 `playurl` → DASH `.m4s`**（`-1-`/`-2-` 分流 ⇒ 「下载了没声音」的真因；
+  「响应里搜到 4K ≠ 拿到 4K」，可用码流由**账号权益**决定；`uparams`/`upsig` 白名单不变量）、
   **§3C 解析接口族**（免费影视/动漫站的「页面不给地址、解析 API 给」整条链：`aaa=` 家族名 →
   **全字节 percent-encode + Base64 双层**（判据 `len(一层) == 3 × len(二层)`；二层禁用 `unescape`）→
   解析 API 两跳（`?url=` 取 `key`/`time`/`vkey` → `api.php` POST 换密文）→

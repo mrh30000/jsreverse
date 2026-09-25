@@ -182,7 +182,7 @@ global = new Proxy(_global, {
 > 这套 Proxy 手法与 `../../web-js-env-patcher/SKILL.md` 的「Proxy 吐环境」是同一族技术。
 > 区别：那边探的是 **JS 混淆代码**要的环境，这边探的是 **wasm 要的宿主对象**；
 > **需要补全的环境模型与 native 保护规则，以 `../../web-js-env-patcher/references/env-object-model.md`
-> 与 `env-native-protection.md` 为唯一权威源**，本文件不重复。
+> 与 `../../web-js-env-patcher/references/env-native-protection.md` 为唯一权威源**，本文件不重复。
 
 ---
 
@@ -434,4 +434,4 @@ search = function (s) {
 - 反 CFF（含 VMP 场景下的**正确退路**：不动 wasm、直接扣 JS 补环境）：`references/wasm-cff-restoration.md` §11.3
 - 内存语义与内存取证：`references/wasm2c-and-memory-semantics.md` §3–§4、§7
 - 转 Asm.js / 纯 JS：`references/wasm-to-js-transpilation.md`
-- 宿主环境模型与 native 保护（本文件不重复）：`../../web-js-env-patcher/references/env-object-model.md`、`env-native-protection.md`
+- 宿主环境模型与 native 保护（本文件不重复）：`../../web-js-env-patcher/references/env-object-model.md`、`../../web-js-env-patcher/references/env-native-protection.md`
