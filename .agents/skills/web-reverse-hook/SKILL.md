@@ -168,6 +168,16 @@ window.setTimeout = function (...args) {
    正式产物走第 2 条。
 2. **★ 原型/内置方法重写**：判断写在 `Array.prototype.find` 之下 ⇒ 重写 `find`，
    用**数组内容特征**（源文 `JSON.stringify(this).includes('github-sync')`）区分「该管的那次调用」。
+   **2a. ★★ DOM 属性（property）hook 必须在「原型描述符」上转发**（`references/page-unlock-and-userscript-recipes.md` §2.1，B37 新增）：
+   直接在**元素实例**上 `Object.defineProperty(el,'checked',{get,set})` 会把原型原生行为**架空**
+   —— 症状是**外观不更新、脚本读不到（静默、不报错）**；正解是先
+   `Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'checked')` 再 `get.call(this)`/`set.call(this,v)` 转发；
+   并在 setter 里 `this.dispatchEvent(new Event('change'))` 把「脚本改动」与「用户点击」并到同一条通知路径上，
+   用 `event.isTrusted` 区分来源。
+   **2b. ★★ 关掉埋点要「掐初始化」而不是「拦请求」**（同文件 §2.2）：
+   埋点/SDK 普遍有 `if (!url) return;` 的早退分支 ⇒ **删它的配置来源**（`meta[name^=octolytics-]`、
+   `meta[name=browser-stats-url]`）比覆盖 `navigator.sendBeacon` **影响面更小、位置更靠前**；
+   时机是硬约束，油猴必须 `@run-at document-start`。
    **纪律：先备份再重写**（`[].constructor.prototype._find = [].constructor.prototype._find || [].constructor.prototype.find`，
    不备份就把原生 `find` 永久覆盖掉；`||` 防二次注入覆盖备份）。
 3. **★ Vue 路由监听两条路**：① 原生层（hash 听 `hashchange`/`popstate`，history 拦 `history.pushState`）**只有字符串**；

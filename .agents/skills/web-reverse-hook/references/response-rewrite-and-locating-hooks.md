@@ -258,7 +258,107 @@ Function.prototype.apply = function (thisArg, argsArray=[]) {
 
 ---
 
-## 5. 与既有预设 / 文档的分工表
+## 5. ★★ 「属性访问断点」：Chrome 没有内存断点，但可以用描述符造一个（`52pojie-712068`）
+
+**要解决什么**：知道某个对象（如源文的许可证对象 `$data->c`）**在哪儿被读**，
+但**搜不到**（代码被 uglify + 字符串加密）、也不想人肉翻 6000 行。
+
+> 源文原话：Chrome **不支持**内存断点（「据说 Firefox 是支持的」），
+> 社区方案是用 **`Object.defineProperty` + `debugger`** 模拟「读写即断」。
+
+### 5.1 配方（源文逐字，来自 `paulirish/break-on-access`）
+
+在 DevTools 的 **Sources → Snippets → New snippet** 里粘贴后运行：
+
+```js
+function breakOn(obj, propertyName, mode, func) {
+    // 走原型链找描述符（对象自己的属性可能没有定义，访问器在原型上）
+    function getPropertyDescriptor(obj, name) {
+        var property = Object.getOwnPropertyDescriptor(obj, name);
+        var proto = Object.getPrototypeOf(obj);
+        while (property === undefined && proto !== null) {
+            property = Object.getOwnPropertyDescriptor(proto, name);
+            proto = Object.getPrototypeOf(proto);
+        }
+        return property;
+    }
+    function verifyNotWritable() {
+        if (mode !== 'read') throw "This property is not writable, so only possible mode is 'read'.";
+    }
+    var enabled = true;
+    var originalProperty = getPropertyDescriptor(obj, propertyName);
+    var newProperty = { enumerable: originalProperty.enumerable };
+
+    if (originalProperty.set) {                  // 访问器属性
+        newProperty.set = function (val) {
+            if (enabled && (!func || func && func(val))) debugger;
+            originalProperty.set.call(this, val);
+        };
+    } else if (originalProperty.writable) {       // 值属性
+        newProperty.set = function (val) {
+            if (enabled && (!func || func && func(val))) debugger;
+            originalProperty.value = val;
+        };
+    } else {
+        verifyNotWritable();
+    }
+
+    newProperty.get = function (val) {            // 读
+        if (enabled && mode === 'read' && (!func || func && func(val))) debugger;
+        return originalProperty.get ? originalProperty.get.call(this, val) : originalProperty.value;
+    };
+
+    Object.defineProperty(obj, propertyName, newProperty);
+
+    return {
+        disable: function () { enabled = false; },
+        enable: function () { enabled = true; }
+    };
+}
+```
+
+用法（源文原样）：
+
+```js
+breakOn(o, 'c', 'read');     // ⚠️ 源文正文里写成 read，函数签名里要的是字符串 mode
+```
+
+**然后**：任何代码访问这个属性都会停在 `debugger` 处 ⇒
+**在调用栈里往上一层，就是「谁在读它」**（源文原话：「在调用栈向上找一层，
+就是断点触发的位置了」）。
+
+### 5.2 ★★ 三条判据（比配方本身值钱）
+
+1. **★ 断点断在「修改之前」**（源文原话）——
+   因为 `debugger` 写在委托原 setter **之前**。⇒ 你在断点处看到的**还是旧值**，
+   这正好让你拿到「改之前」的状态；**别以为断点没生效**。
+2. **★ 值属性和访问器属性必须分开处理**：`originalProperty.set` 存在才是访问器；
+   否则走 `writable` 分支。⚠️ **源文的值属性分支写的是 `originalProperty.value = val`**
+   —— 它写的是**捕获到的描述符副本**，不是 `this[propertyName]`。
+   在**实例上**用这条时行为与原生一致（实例属性只有一个）；但**给原型上的属性用会串**。
+   ⇒ **给原型属性做断点，请改用 `Object.defineProperty(this, ...)` 或先确认只有一个实例会被读。**
+3. **★ 这是「定位」而不是「改写」**：`breakOn` 只加 `debugger`，
+   **不改变读写语义**（且 `disable()` 可随时关掉）。
+   ⇒ **它比 `response-rewrite` 类改写安全得多**，适合**第一次接触**一个混淆产物时先「照出来」。
+
+### 5.3 ★ 配套：断点处的控制台**能直接访问局部变量**
+
+源文原话：「Chrome 断点停住时，控制台的上下文是**断点语句处的上下文**，可以访问局部变量，
+所以断点处调用了 `S('...')` 的语句，你在控制台执行的话，**`S` 函数也一定存在**」。
+
+> ★★ **这是「原地验证字符串解密函数」的最省事动作**：
+> 在**任意一处**调用了解密函数的行上下断点 → 在 Console 里**手敲同一个表达式**跑一次
+> ⇒ 立刻知道它解出什么，**不用扣代码、不用补环境**。
+> ⇒ 与本文件 §3（在 `JSON.parse` 下断点看明文）是同一手法的两个用法。
+
+> ⚠️ **边界**：`breakOn` 依赖「**能拿到那个对象**」（源文是在 Console 里已有 `o` 的引用）。
+> 拿不到对象引用时，改用 ① 在**写它的那一行**下断点（源文用的 XHR 断点）→
+> ② 断下后在 Console 里对**局部变量**下手。
+> 另：**这是 Console/Snippet 里的调试工具，不适合放进油猴长期跑**（会拖慢页面）。
+
+---
+
+## 6. 与既有预设 / 文档的分工表
 
 | 场景 | 去处 |
 | --- | --- |
@@ -275,7 +375,7 @@ Function.prototype.apply = function (thisArg, argsArray=[]) {
 | hook 被 `toString` 白名单发现 / closed shadow root | `references/anti-hook-detection-and-bypass.md` |
 | JSVMP 参数补环境 / 观测点 | `../../web-js-env-patcher/references/vmp-verify-params-env-patching.md` |
 
-## 6. 来源表
+## 7. 来源表
 
 | 主题 | 文章裸 id | 年份 | 关键面量 |
 | --- | --- | --- | --- |
@@ -283,3 +383,4 @@ Function.prototype.apply = function (thisArg, argsArray=[]) {
 | `document.cookie` 的 `defineProperty` hook 模板 + hook 时机 | 52pojie-1492463 | 2021 | `Object.defineProperty(document,'cookie',…)`、`aaa`、`set` 里 `return val`、`get` 返回 `aaa`、控制台注入刷新失效、FD 替换响应 |
 | 定位 `JSON.parse` 顺到 DES 解密 | 52pojie-1477905 | 2021 | `JSON.parse`（两处命中）、断点刷新看明文、右上角函数名 `des`、扣代码 + `execjs` |
 | 按 `this.toString()` hook `apply` 掐无限 `debugger` | 52pojie-1851890 | 2023 | `Function.prototype.apply`、`'function anonymous(\n) {\ndebugger\n}'`、jsvmp 不好改文件、卡 debugger 跳转页 / 放行可用 |
+| ★★ **属性读写断点**（`breakOn`：原型链取描述符 + `debugger`）+ **断点处控制台可读局部变量** | 52pojie-712068 | 2018 | `breakOn(obj, propertyName, mode, func)`、`getPropertyDescriptor` 沿原型链找、`originalProperty.set.call(this, val)`、`originalProperty.value = val`（值属性分支写的是描述符副本 —— 源文缺陷）、`S('...')` 在 Console 原地调用、`e.charCodeAt(i) ^ i + n & 127`、`Crc ^ (-1) >>> 0` |

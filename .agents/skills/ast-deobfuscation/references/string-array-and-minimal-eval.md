@@ -193,8 +193,139 @@ function safeDeobfuscateWithRetry(code, config, runDeob) {
 ```
 **收益**：消除了大量由于局部混淆变量名多重赋值导致的人工手动干预，使得批量自动化反混淆成功率大幅提高。
 
-## 停止条件
+## 形态：**原地解密函数**（不是数组表）——AST 批量替换（`52pojie-712068`）
 
+前面讲的都是「**字符串表 + 索引**」这一族。还有另一族**长得完全不像**的：
+
+### 判据：调用形态是「一个字面量直接喂给一个函数」
+
+```text
+S('...')   /   _0x4c77('0x2', 'V%DS')   /   atob(window['b'])
+```
+
+- **没有数组、没有索引**，所以 `string-array` 类脚本**一个都匹配不到**；
+- 但**仍然是「常量折叠」问题**：`S` 是**纯函数**（输出只依赖入参），
+  所以可以在 AST 上把 `S(<Literal>)` **整节点替换成它解码后的字面量**。
+
+### 两个实测形态（本批新收）
+
+**形态 A · 单密钥 + 位置相关 XOR**（`52pojie-712068` 的 CKFinder）
+
+```js
+function S(e) {
+    for (var t = "", n = e.charCodeAt(0), i = 1; i < e.length; ++i)
+        t += String.fromCharCode(e.charCodeAt(i) ^ i + n & 127);
+    return t;
+}
+```
+
+> ★ **判据**：**首字节当密钥**（`n = e.charCodeAt(0)`）+ **下标参与运算**
+> ⇒ 同一个字符在不同位置解出不同值。
+> ⚠️ **优先级**：JS 里 `+` 先于 `&`，`&` 先于 `^`
+> ⇒ `e.charCodeAt(i) ^ i + n & 127` 实际是 `charCodeAt(i) ^ ((i + n) & 127)`。
+> **移植到 Python 时必须照这个括号写**，否则**不报错、结果全错**。
+> 同文件还有**第二个变体**（常量密钥 `255`）：`String.fromCharCode(e.charCodeAt(n) ^ 255 & n)`
+> ⇒ **同一份代码里可能有多个不同参数的解码函数，先分别识别再批量替换。**
+
+**形态 B · RC4 变体 + 字符串表**（`52pojie-1294569` 猿人学第 1 题）
+
+```js
+// 源文原样：J(0x0, ']dQW') / J(0x1, 'GTu!')
+var t = function (w, m) {
+    var T = [], A = 0x0, C, b = '', W = '';
+    w = Y(w);                                    // Y = 自定义 base64 解码
+    for (var R = 0x0, v = w['length']; R < v; R++)
+        W += '%' + ('00' + w['charCodeAt'](R)['toString'](0x10))['slice'](-0x2);
+    w = decodeURIComponent(W);                   // ★ 先做一次「百分号 → 字节」往返
+    for (l = 0x0; l < 0x100; l++) T[l] = l;      // KSA 初始化
+    for (l = 0x0; l < 0x100; l++) {              // KSA 打乱（密钥 = 第二实参）
+        A = (A + T[l] + m['charCodeAt'](l % m['length'])) % 0x100,
+        C = T[l], T[l] = T[A], T[A] = C;
+    }
+    for (var L = 0x0; L < w['length']; L++) {    // PRGA
+        l = (l + 0x1) % 0x100, A = (A + T[l]) % 0x100,
+        C = T[l], T[l] = T[A], T[A] = C,
+        b += String['fromCharCode'](w['charCodeAt'](L) ^ T[(T[l] + T[A]) % 0x100]);
+    }
+    return b;
+};
+```
+
+> ★★ **判据**：**「256 表 + 两次打乱 + 逐字节异或」= RC4**（与 `control-flow-and-opcode-patterns.md`
+> 里 VMP 的 RC4 识别同源）。这里的两个差异点：
+> 1. **密文先过 base64，再过一次 `decodeURIComponent`**
+>    （`%XX` 往返 = 「把每个字节重新按 UTF-8 解释一遍」）⇒ **移植时这一句最容易漏**；
+> 2. **密钥是「第二实参」**（这里是 `']dQW'` / `'GTu!'`），所以**同一个 `J` 函数能解出多组字符串**。
+
+### ★★★ 通用做法：用 `acorn` + `escodegen` 做**定向替换**（源文给的是完整可跑代码）
+
+源文原话：「因为 JavaScript 的字符串太特殊了，使用字符串匹配的话很麻烦，
+我这里选择分析 AST，针对 AST 进行替换。」
+
+```js
+const acorn = require('acorn');
+const walk = require('acorn/dist/walk');
+const escodegen = require('escodegen');
+
+function recursiveDecode(node) {
+    if (node.type === 'Literal') {
+        node.value = S(node.value);
+    } else if (node.type === 'ConditionalExpression') {
+        recursiveDecode(node.consequent);
+        recursiveDecode(node.alternate);
+    } else {
+        console.log('Node type is neither Literal nor ConditionalExpression. ' + node.start);
+    }
+}
+
+const ast = acorn.parse(data);
+walk.simple(ast, {
+    CallExpression: function (node) {
+        if (node.callee.type === 'Identifier' && node.callee.name === 'S' && node.arguments.length === 1) {
+            const arg0 = node.arguments[0];
+            recursiveDecode(arg0);
+            if (arg0.type === 'Literal') {
+                node.type = arg0.type; node.value = arg0.value;
+            } else if (arg0.type === 'ConditionalExpression') {
+                node.type = arg0.type; node.test = arg0.test;
+                node.consequent = arg0.consequent; node.alternate = arg0.alternate;
+            }
+        }
+    }
+});
+fs.writeFileSync(outputFile, escodegen.generate(ast));
+```
+
+> ★★ **四条可迁移判据**：
+> 1. **替换的是「整个 `CallExpression` 节点」，不是它的实参** ——
+>    即 `S('abc')` 整块变成 `'解码结果'`。源文正是这么做的（把 `node.type` 改成 `Literal`）。
+> 2. **必须处理三元分支**：混淆器常把 `S(...)` 写成
+>    `cond ? S('a') : S('b')`，**两个分支都要递归解码**，否则漏一半。
+> 3. **遇到非预期节点类型时「打印位置 + 跳过」而不是抛错**（源文的 `else` 分支打印 `node.start`）
+>    ⇒ 让脚本能**跑完**，你再看漏了哪几处。
+> 4. **⚠️ 替换前先确认 `S` 是纯函数**：只要它读了 `window`/`document`/时间/随机数，
+>    静态替换就会**静默产出错误的合法 JS**（这是本技能反复强调的坑，
+>    见 `static-index-replacement-pitfalls.md`）。
+>    **验证动作**：在**断点处的 Console 里原地调用一次 `S('...')`**，
+>    看结果与你的离线实现是否一致（做法见
+>    `../../web-reverse-hook/references/response-rewrite-and-locating-hooks.md` §5.3）。
+
+### ★ 补充判据：「乱码字符串排查法」（源文原话）
+
+> 「这一行会打印所有的一次解码之后的字符串，然后我们就排查一下吧，
+> 反正才 6246 行，**不到五分钟差不多就能看完**。」
+
+即：在 `recursiveDecode` 里加一行 `console.log(node.value)`，
+**把「解码后仍是乱码」的字符串全打出来**，然后**人眼扫一遍**找线索
+（源文正是靠这一步找到「`This is a demo version of CKFinder 3`」那个暗桩串的）。
+
+> ★ **适用条件**：解码函数**能正确还原大部分字符串**（说明它就是对的），
+> 剩下少数「解了还是乱码」的往往**不是字符串**而是别的编码/数据结构。
+> ⇒ 这是一个**零成本的「解码器对不对」体检**，比逐个人工验证快得多。
+
+---
+
+## 停止条件
 - 主要字符串表已经恢复。
 - 核心解码器入口已经清楚。
 - 剩余部分不再适合纯静态恢复。

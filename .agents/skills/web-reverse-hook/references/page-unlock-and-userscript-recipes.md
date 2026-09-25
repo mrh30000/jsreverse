@@ -217,6 +217,111 @@ let d = DDe.find(f=>f.key === e)
    否则页面别处对 `find` 的调用会一起坏掉；
 3. 源文末尾把脚本丢在 greasyfork（`441008`）—— 从「验证」到「可分发」的一步之差就是把它落成油猴脚本。
 
+### 2.1 ★★ DOM「属性」（property）hook：**必须在原型描述符上转发**（`52pojie-1781066`）
+
+**问题**：要感知一个 `<input type="checkbox">` 的 `checked` 变化，**包括被脚本改动**。
+
+`addEventListener('change', ...)` **只覆盖用户点击** —— 脚本改 `checked` 不会派发 `change`。
+于是自然想到 `Object.defineProperty`：
+
+```js
+// ❌ 源文第一版（错的）
+var _val = checkbox.checked;
+Object.defineProperty(checkbox, "checked", {
+    get: () => { return _val; },
+    set: (val) => { _val = val; console.log(_val); }
+});
+```
+
+**症状（源文原话）**：「脚本更改了值后 checkbox 的**外观没有改变**，用户点击了 checkbox 后
+**脚本得到的值没有改变**」—— 因为它把**原型上原生的访问器整条架空了**：
+你只保存了一个影子变量，浏览器渲染与内部状态都读不到它。
+
+**★ 正解（源文第二版，逐字）**：
+
+```js
+const { get, set } = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked');
+Object.defineProperty(checkbox, 'checked', {
+    get() { return get.call(this); },
+    set(newVal) {
+        console.log(`Setting "checked" property to "${newVal}"...`);
+        return set.call(this, newVal);
+    }
+});
+```
+
+**★★ 通用配适（源文最终版）**：既然已经能感知「脚本改值」，就**在 setter 里补派一个 `change`**，
+让用户点击与脚本改动走**同一条通知路径**，于是老的 `addEventListener('change')` 直接可用：
+
+```js
+function patch(checkbox) {
+    const { get, set } = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked');
+    Object.defineProperty(checkbox, 'checked', {
+        get() { return get.call(this); },
+        set(newVal) {
+            this.dispatchEvent(new Event("change"));
+            return set.call(this, newVal);
+        }
+    });
+}
+```
+
+> ★★ **可迁移判据（本小节的核心）**：
+> **在 DOM 元素「实例」上 `Object.defineProperty` 一个原生 property，会把原型上的原生行为架空。**
+> ⇒ **必须先 `Object.getOwnPropertyDescriptor(<原型>, '<属性>')` 拿到原生 get/set，
+> 在自己的 getter/setter 里用 `get.call(this)` / `set.call(this, val)` 转发。**
+> 症状是**静默的**：外观不更新、值读不到、页面不报错。
+> ⇒ **凡是要 hook 的属性在「原型」上（`HTMLInputElement.prototype.checked`、
+> `HTMLVideoElement.prototype.playbackRate`、`Document.prototype.hasFocus`…），
+> 这条判据都成立**（与 `anti-hook-detection-and-bypass.md` §2「从 native 层入手」同源）。
+>
+> ★ **附带判据**：**要区分「用户操作」还是「脚本改动」，看 `event.isTrusted`**
+> （源文原话：「只需检查 Event 的 `isTrusted` 即可」）。
+> 这条与 `../../web-js-env-patcher/references/trusted-input-and-isTrusted.md` 是同一件事的两面。
+
+> ⚠️ 边界：源文的 `patch()` **只作用于被传入的那一个元素实例**；
+> 要覆盖整页同类元素需自行遍历或改原型（改原型影响面更大，先确认没有别人依赖原生行为）。
+
+### 2.2 ★★ 让「不想要的功能」静默不启用：**掐初始化，不拦请求**（`52pojie-1969514`）
+
+**场景**：GitHub 会把行为数据打给 `collector.github.com/github/collect` 与
+`api.github.com/_private/browser/stats`。目标是**扼杀在摇篮里**，而不是「等它要发的时候拦下来」。
+
+**源文的定位动作（照着做）**：网络面板找到请求 → **检视调用堆栈** → 进最顶部的调用者 →
+找到发出请求的那一行 → 往上找**它的初始化位置**。
+
+- 第一条链：`hydroAnalyticsClient` ← `getOptionsFromMeta('octolytics')` ←
+  从 `document.head` 里读**名字以 `octolytics-` 开头的 `<meta>`**；
+  其中 `octolytics-url` 缺失时 `collectorUrl` 为 `undefined` ⇒ **后续抛错**（注释原话：
+  `This most likely means analytics are disabled.`）。
+  ⇒ 处置：`$$("meta[name^=octolytics-]").forEach(el => el.remove());`
+- 第二条链：`safeSend` 的调用方里写着
+
+  ```text
+  const url = ssrSafeDocument?.head?.querySelector('meta[name="browser-stats-url"]')?.content
+  if (!url) { return }
+  ```
+
+  ⇒ 处置：`$("meta[name=browser-stats-url]")?.remove();`
+
+**★★ 可迁移判据（本小节的核心）**：
+
+1. **「配置缺失 ⇒ 静默不启用」是埋点 / SDK 的通用设计。**
+   这类组件几乎都会写 `if (!url) return;` 这样的早退分支 ——
+   它是设计者留的「未配置即关闭」口子。
+   ⇒ **要关掉它，去删那个「配置来源」（meta 标签 / 全局配置对象 / `data-*`），
+   而不是去覆盖它的发送 API。**
+2. **为什么不要覆盖 `navigator.sendBeacon`**（源文专门点出的误区）：
+   覆盖宿主方法**影响面大**（所有调用方都受影响），而且**只挡住了最后一步**；
+   删配置是**只影响这一个组件**，且它在源头上就没被启用。
+3. **时机是硬约束**：脚本必须在**配置读取之前**运行。
+   油猴要 `@run-at document-start`（源文两条链都重复写了这一句）。
+   ⇒ **顺序纪律**：先删 meta，再让页面脚本跑。
+
+> ★ **与 §8 的边界**：本小节关的是**站点自己的采集/上报**；
+> 若站点把上报当作**风控前置**（不上报就不发数据），删掉会直接导致业务不可用 ——
+> 那是「风控校验」而不是「埋点」，回 `../../web-verify-patcher/`。
+
 ---
 
 ## 3. ★ Vue 路由钩子注入（框架层监听路由）
@@ -935,3 +1040,5 @@ function b64DecodeUnicode(a) {
 | 图片/PDF 资源捕获 | 52pojie-2051222 | 2025 | `getNumericFilename`、`\d{5,}`、`startRequestMonitoring`、`div.pdfimg.move.rendered`、`fetchQueue`、`processingUrls`、`isWorkerRunning`、`data-page`、`blob:https://` |
 | ★ 网页长文「打印成 PDF」+ DOM 门控绕过 + 打印态钩子 | 52pojie-1923373 | 2024 | `article_content`、`.hide-article-box`、`.follow-text`、`[data-flag="follow"]`、`.hide-preCode-bt`、`.sidecolumn-hide`、`window.matchMedia('print')`、`window.print`（**未绑定 `this` ⇒ `Illegal invocation`**，源文缺陷） |
 | ★ 无直链视频：把抓取层从 URL 层下移到 MSE 层 | 52pojie-2077700 | 2026 | `captureFromStart`、`h5vodLastPostion`、`video.currentTime = 0`、`playbackRate = 10`、`iframe[sandbox]` 剥离、`streamSaver`、`addSourceBuffer.toString`（详见 `../../stream-drm-reverse/references/player-and-live-capture.md` §2.5） |
+| ★★ DOM property hook（`checked`）+ 原型描述符转发 + 用 `change` 统一通知 + `isTrusted` 区分来源 | 52pojie-1781066 | 2023 | `Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'checked')`、`get.call(this)`/`set.call(this,newVal)`、`this.dispatchEvent(new Event("change"))`、`e.isTrusted`（详见本文 §2.1） |
+| ★★ 埋点「掐初始化」而非「拦请求」：删 meta 配置让 SDK 静默不启用 | 52pojie-1969514 | 2024 | `meta[name^=octolytics-]`、`meta[name=browser-stats-url]`、`getOptionsFromMeta`、`safeSend`、`if (!url) { return }`、`@run-at document-start`（详见本文 §2.2） |

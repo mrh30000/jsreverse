@@ -601,6 +601,34 @@
       ]
     },
     {
+      "id": "tiktok-x-gorgon",
+      "path": "tiktok-x-gorgon",
+      "title": "海外版抖音 / TikTok x-gorgon 签名（1474 版，26 字节，种子来自 malloc 地址）",
+      "category": "platform-signature",
+      "status": "partial",
+      "summary": "海外版某音 1474 版的 x-gorgon：26 字节缓冲 = 0401 固定头 + 2 字节 malloc 地址低位 + 20 字节参数，经 256 码表三轮运算产出；★ 结果由内存地址决定，故每次不同、且不可纯算复现。",
+      "aliases": [
+        "x-gorgon",
+        "xgorgon",
+        "x_gorgon",
+        "x-gorgon-1474"
+      ],
+      "keywords": [
+        "抖音",
+        "douyin",
+        "海外某音",
+        "tiktok",
+        "x-gorgon",
+        "xgorgon",
+        "1474",
+        "malloc",
+        "内存地址",
+        "随机种子",
+        "设备画像",
+        "0401"
+      ]
+    },
+    {
       "id": "toutiao-a-bogus",
       "path": "toutiao-a-bogus",
       "title": "头条 a-bogus 签名",

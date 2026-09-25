@@ -405,6 +405,7 @@ python scripts/waf_clearance_solver.py --selftest
   **题型 → 定位手法 → 算法 → 可迁移判据**主表，以及逐条判据：
   **`m` 参数里 `丨`（U+4E28）分隔符 ⇒ 先按「拼接串」拆而非整体加密**、
   **属性名拼接混淆（成员访问方括号里是加法表达式）与内联 RC4 字符串表**、
+  ★ **源文附录的 `hex_md5` 有 6 处常数抄错（源文自带的 `md5_vm_test()` 锚点可当场判死）**、
   **动态 cookie 的入口是「不带 cookie 时服务端返回的那段 script」而非 cookie 本身**、
   **「接口本身没有反爬」时把注意力从请求侧转到响应侧（响应侧 CSS 隐藏 / `left` 偏移 / 字体）**、
   **同一值既当查询参数又当 cookie 密钥 ⇒ 先标成密钥材料**、
@@ -413,6 +414,14 @@ python scripts/waf_clearance_solver.py --selftest
   **OB 三段 script（自检 / 保活 / 业务）先反混淆再读**、
   以及 **★ 蜜罐判据：一段代码只用自己产出的值做校验 ⇒ 先怀疑它是蜜罐，处置是「浏览器 vs node 逐字符回溯」而非改算法**；
   并与 `../web-font-obfuscation/SKILL.md`（动态字体）、`../web-verify-patcher/SKILL.md`（图文点选）分工。
+- [references/18-native-layer-algorithm-restore.md](./references/18-native-layer-algorithm-restore.md)
+  用途：**「算法根本不在页面 JS 里」时的载体层总纲** —— so/native、Java（`jadx`）、
+  APK 内资源包、打包产物、wasm 的**五路分流判据**（★ 先全局搜**逐字参数名**：搜得到 ⇒ 页面里至少一层；搜不到 ⇒ 大概率整链在客户端）。
+  ★★ 三条最值钱的动作：① **so 里的 `sv`（签名版本选择器）要「写死随机数、只跟一个分支」**；
+  ② **用「函数调用前后打印同一块内存」反推变换语义，而不是读汇编**（本批实现在某程 `row_rotation` 上）；
+  ③ **Java 层能整类搬到 Java 工程就不要还原**（`jadx` 的入口是**业务接口名**，不是 `encrypt`）；
+  ④ **加密资源包的密码就是「自带的同名测试样本」文件名 + 固定盐的 MD5** —— 先去 apk 里找同名 zip 当搜索词；
+  ⑤ **签名种子来自 `malloc` 地址 ⇒ 每次不同、不可纯算**（判据与边界见蓝图 `tiktok-x-gorgon`）。
 - 媒体流 / DRM / ts 分片（判层、AES/SM4 内容解密、许可证体系、白盒 wasm）→ `../stream-drm-reverse/SKILL.md`：
   本技能不覆盖这条链路，遇到 `m3u8` / `EXT-X-KEY` / `GetLicense` / 花屏类现象请直接切过去。
 

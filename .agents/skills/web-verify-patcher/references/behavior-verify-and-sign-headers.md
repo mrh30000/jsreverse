@@ -3,7 +3,8 @@
 > **来源**：`52pojie-1978737` + `52pojie-1982617`（某云无感滑块上/下，**双源同一目标**）、
 > `52pojie-1697353`（快手滑块）、`52pojie-1745678`（抖音 `s_v_web_id`）、
 > `52pojie-1857712`（百某网数字九宫格，cookie 状态机）、`52pojie-1872638`（备案查询 汉字点选 + jsl）、
-> `52pojie-2088578`（某雷云盘 `ck0.` 无感 token）、`52pojie-1606904`（captcha 机器人检测原理）。
+> `52pojie-2088578`（某雷云盘 `ck0.` 无感 token）、`52pojie-1606904`（captcha 机器人检测原理）、
+> `52pojie-1843070`（Apple ID 注册链的 hashcash PoW 与指纹头，见 §12）。
 >
 > 本文件只收**"提交参数/交互链路"层**的事实；图像识别与坐标换算走
 > `references/motion-and-coordinate.md` / `references/captcha-model-training.md`，
@@ -308,6 +309,10 @@ ck0.<Part1>.<Part2>
 | 12 | 把"结构观测"当"生成公式" | 只有结构是事实时，只登记结构（§7） |
 | 13 | 本地 `verified=true` 就当通过 | 可能还有服务端复核（§8） |
 | 14 | 纠结轨迹形状 | 先查四因素（请求头/callback/fp/发送间隔），再谈轨迹 |
+| 15 | 想复现抓包里那个 `counter` | `counter` 是**最小解**（可复算），但 `date`/`challenge` 每次都变 ⇒ **抓包值复现不了**；验收改成「服务端接受 + 本地校验前 `bits` 位为 0」（§12.1） |
+| 16 | 用极验的 **hex 前导零**口径去解 hashcash 的 **bit 前导零** | 两种难度语义，`bits` 非 4 倍数时必然偶发失败（§12.1） |
+| 17 | 为「探测不到的引擎能力」补桩再算指纹 | 该族指纹**把 `catch` 里的异常信息也编进去** ⇒ 补桩会改变结果（§12.2） |
+| 18 | 以为 `Z`（时区）是浏览器算的 | 源文实际硬编码 `GMT+08:00`，那段计算是**死代码**（§12.2） |
 
 ## 11. 反例（不要做）
 
@@ -317,3 +322,104 @@ ck0.<Part1>.<Part2>
 * ❌ 不要为"能自造的参数"高兴太早 —— 先确认**该接口**是否接受自造值（§4）。
 * ❌ 不要把未验证的推测写进脚本（`ck0.` 的生成公式就是例子）：**先取一次真值当 oracle**。
 * ❌ 不要在冷启动缺 cookie 的状态下 debug 参数生成（九宫格类会把 307 当成"失败"）。
+
+## 12. 注册/登录链上的两个「签名头」：hashcash PoW 与浏览器指纹串（`52pojie-1843070`）
+
+Apple ID 自动注册链上有两个必须自己算的头。**它们都不是验证码**，但都属于
+「请求级签名头」，且**判据非常干净**，值得单独记。
+
+### 12.1 `X-APPLE-HC`：hashcash 形态的 PoW（**提交整串，不是摘要**）
+
+源文样例值：
+
+```text
+X-APPLE-HC: 1:12:20231006073858:c0684bd8bf7b40b08559dd9970aba269::5126
+```
+
+| 段 | 值 | 说明 |
+| --- | --- | --- |
+| `version` | `1` | 固定 |
+| `bits` | `12` | **难度**；源文实测「页面上可以取到，一般为 10–12」 |
+| `date` | `20231006073858` | 时间戳（14 位 `YYYYMMDDhhmmss`） |
+| `challenge` | `c0684bd8…269` | **32 位 hex（16 字节）**，页面可取 |
+| `ext` | （空） | 额外数据，可空 ⇒ **出现连续的 `::`，不是笔误** |
+| `counter` | `5126` | **从 0 开始递增**，直到 `SHA1(整串)` 的**二进制前 `bits` 位全为 0** |
+
+> ★★ **与 §7.1（`../../web-reverse-algorithm/references/08-mixed-crypto-segmentation.md`）的分工**：
+> 极验那种是「`pow_msg` + `pow_sign` **两字段**、提交**摘要**」；
+> hashcash 这种是「**一个字段、提交整串**，由服务端自己重算」。
+> ⇒ **判据：提交的值里带一个自增整数 ⇒ hashcash 系；只有摘要 ⇒ 极验系。**
+
+> ⚠️⚠️ **本批复算的硬结论（三侧一致：Python / Node / 真机 WebCrypto）**：
+> 源文给的 `4824`（bits=11）与 `5126`（bits=12）**恰好就是最小解** ——
+> `counter` 从 `0` 顺序试，第一个满足前导零的就是它（**取 0 不合法**，实测前 11 位 = `11101111010`）。
+> ⇒ **给定同一组 `(version, bits, date, challenge)`，`counter` 唯一确定、可复算**；
+> **但 `date` / `challenge` 每次都变** ⇒ **抓包里的那个 `counter` 复现不了**；
+> ⇒ 本族参数的验收标准是 **「服务端接受」+「本地独立校验前 `bits` 位为 0」+「结构一致」**，
+> **不能**用「与抓包值相同」当验收（这是本仓库「逐字节对拍」纪律的**明确例外**，
+> 详见 `../../web-reverse-algorithm/references/08-mixed-crypto-segmentation.md` §7.2）。
+>
+> ⚠️ **难度口径不要混**：本条是 **bit 语义**（二进制前 `bits` 位为 0）——
+> 与极验的 **hex 语义**（前导零 hex 位 + 半个 nibble 上界，见 `geetest-protocol-matrix.md` §8.1）
+> **是两个不同的判据**，抄错会在非 4 倍数 `bits`（如 11）上偶发失败。
+
+### 12.2 `X-Apple-I-FD-Client-Info`：一个「五字段指纹串」
+
+源文样例（缩进原样）：
+
+```text
+X-Apple-I-FD-Client-Info: {
+        "U":"Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:87.0) Gecko/20100101 Firefox/87.0",
+        "L":"en-US",
+        "Z":"GMT+00:00",
+        "V":"1.1",
+        "F":"Fla44j1e3NlY5BNlY5BSmHACVZXnN92g.ogjOENVPv.2dI_AIQjvEodUW2vqBBNmkaikkL3s0mcK8rU9zIpUauz3Y25BNlY5cklY5BqNAE.lTjV.CyL"
+}
+```
+
+| 字段 | 来源 | 判据 |
+| --- | --- | --- |
+| `U` | `navigator.userAgent` | 直接取 |
+| `L` | `navigator.language` | 直接取 |
+| `Z` | 时区串 | 源文**实际是硬编码**写死的 `GMT+08:00`；公式见下 |
+| `V` | `"1.1"` | 固定（版本号） |
+| `F` | **一段巨长的指纹 JS 的返回值** | ★ 见下，这是唯一的难点 |
+
+**`Z` 的公式（源文代码里有，但被后面的硬编码覆盖了）**：
+
+```js
+var t = (new Date).getTimezoneOffset();        // 东八区返回 -480
+var r = Math.abs(parseInt(t / 60, 10)), a = Math.abs(t % 60);
+t = "GMT" + (0 < t ? "-" : "+") + (10 > r ? "0" + r : r) + ":" + (10 > a ? "0" + a : a);
+```
+
+> ★ **本批复算**：`getTimezoneOffset()` 东八区 = `-480` ⇒ `r=8, a=0` ⇒ **`GMT+08:00`**，与源文硬编码一致。
+> ★★ **但源文紧接着写了 `t = tmp.Z`（即直接用硬编码的 `Z`）⇒ 上面那段是「算了但没用」的死代码。**
+> ⇒ **登记为源文缺陷**：不要以为 `Z` 是由浏览器算出来的。
+
+**`F` 值的取法（源文原样）**：从页面上把相关 JS **抽出来**，用一个 `r(false)` 调用拿到
+`client_id`；用 Python 跑时必须**声明 `window` 与 `navigator` 两个对象**：
+
+```python
+# 源文原样（PyExecJS）
+code = 'var window = {};var navigator = {userAgent: "' + user_agent + '", language:"' + language + '"};' + code
+ctx = execjs.compile(code)
+client_id = ctx.call('r', False)
+```
+
+> ★★ **三条可迁移判据**：
+> 1. **指纹串的最小补环境就是「`window` + `navigator` 两个对象」** ——
+>    因为这段代码是 **IE / JScript 时代**的产物，探测的是
+>    `ScriptEngineMajorVersion()` / `ScriptEngineMinorVersion()` / `ScriptEngineBuildVersion()`
+>    与 ActiveX 的 **CLSID**（`c("{7790769C-0471-11D2-AF11-00C04FA35D02}")`）这类
+>    **引擎独有的全局函数** ⇒ **它们不存在时由 `try/catch` 兜住**，
+>    `catch` 分支返回 `escape(e.message)` ⇒ ★★ **指纹串里会含「异常信息」**。
+>    ⇒ **判据：这种指纹是「把探测不到的东西也编进指纹」，所以必须原样保留缺失行为，不要为它补桩。**
+> 2. **`navigator.plugins` 会被遍历**（源文的 `n(e)` 按名字找插件、拼 `name + "|" + description`）
+>    ⇒ 补环境时 `plugins` 要么给空数组，要么给**与真实浏览器一致**的列表，**不能给 `undefined`**。
+> 3. **采集函数里带 `debugger` 语句**（源文 `r()` 的第一行）⇒ 属于**反调试种子**；
+>    自动化环境下会直接卡住，处置见 `../../web-reverse-algorithm/references/07-antidebug-and-live-patching.md`。
+
+> ⚠️ **边界**：源文自陈「时间紧迫，过程我就忽略了，只贴结果」⇒
+> `F` 的内部算法**源文没有解释**，本库**只登记调用形态与补环境要求**，不推断其算法。
+> 该指纹 JS 在**不同版本**下内容会变 ⇒ 每次都要**从当前页面重新抽**。

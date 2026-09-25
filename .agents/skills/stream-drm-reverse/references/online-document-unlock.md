@@ -56,6 +56,7 @@
 | 网络面板里有 **pdf.js worker**（`pdf.worker.js`）、页面全局有 `PDFViewerApplication`、或 URL 片段带 `#pdfjs.action=download` | **④ pdf.js 容器** | 控制台 `PDFViewerApplication.download()`；**有密码就追 `.onPassword`** | §6 |
 | 同一本书**每「页」4 个参数**（页数 / 时间戳 / sign / nonce），链接**只能用一次** | **⑤ 一次性 URL + 签名分页** | 「阻止请求域」取链接；复现 `MD5('123456'+nonce+stime)` 后按页循环 | §7 |
 | 每页一张图片，元数据响应里有 `encryptedData` / `encrypted:true` | **⑥ 逐页图片流**（源文附带形态） | 元数据 ECB 解 → 取 `canvas_info` → 按索引重映射像素 | §8 |
+| 每页**多块**图片、块**大小不一**（不规则乱序）、块文件名是**一段无规律的 hex** | **⑥-子 不规则切块 + 哈希命名** | 位置从元数据 `{x,y}` 读（别猜网格）；文件名按**非标准 CRC32**（多一句取反）复算 | §8.5 |
 | `ctrl+P` 打印失效 / 右键复制受限（文库类） | **文库展示限制** | 全局搜 `@media print` 删掉 | §9.9 |
 
 > **判据优先级**：先看**响应形态**（Range / base64 / 乱码 / pdf.js / 一次性），
@@ -518,6 +519,123 @@ def unpack_page(down_url, canvas):
 > **JS 写的是** `Date.parse(new Date) / 1E3 - parseInt(differenceDate) + 15`，
 > 而**源文 Python 复现写的是** `int(time.time()) + 18`。**两者不一致**（偏移量与 `differenceDate` 都不同）
 > ⇒ 该偏移**必须自行取证复算**，本文不给统一公式。
+
+### 8.5 ★★ 形态⑥-子：**不规则方块乱序 + 资源名由非标准 CRC32 生成**（`52pojie-1880044`）
+
+与 §8 同为「一页 = 多块图片」，但**切块几何与命名规则完全不同**，且这两点都可机械判别：
+
+**① 切块几何：不是整齐网格**
+
+源文原话：「与龙X期刊的整齐 `5*5` 方块，或是 XX 学堂 `5*1` 乱序不同，
+该网站采用了新颖的（对我来说）**不规则方块（乱序）**」。
+⇒ 每个块的真实位置**必须从元数据里读**，不能按「第 i 块放在第 i 格」推。
+源文的结构是 `infoJson[<块索引>] = {x, y}`，另有整页的 `w` / `h`。
+
+**② 资源名 = `baseURL + 非标准CRC32(bookId_level_pageNo_块索引) + ".jpg"`**
+
+源文的拼接（逐字）：
+
+```js
+pagePicsURLArray["pics"][iStr]["url"] =
+    picsBaseURL + crcForPageCutMode01(book_json.book_identifier + "_" + (level + 1) + "_" + pageNo + "_" + iStr) + ".jpg";
+```
+
+**非标准 CRC32 的实现（源文逐字）**：
+
+```js
+function crcForPageCutMode01(Instr) {
+    if (typeof (window.Crc32Table) == "undefined") {
+        window.Crc32Table = new Array(256);
+        for (i = 0; i < 256; i++) {
+            Crc = i;
+            for (j = 0; j < 8; j++) {
+                if (Crc & 1) Crc = ((Crc >> 1) & 0x7FFFFFFF) ^ 0xEDB88320;
+                else        Crc = ((Crc >> 1) & 0x7FFFFFFF);
+            }
+            Crc32Table[i] = Crc;
+        }
+    }
+    if (typeof Instr != "string") Instr = "" + Instr;
+    Crc = 0xFFFFFFFF;
+    for (i = 0; i < Instr.length; i++)
+        Crc = ((Crc >> 8) & 0x00FFFFFF) ^ Crc32Table[(Crc & 0xFF) ^ Instr.charCodeAt(i)];
+    Crc ^= 0xFFFFFFFF;
+    Crc = (Crc ^ (-1)) >>> 0;          // ★★ 就是多这一句
+    return (Crc).toString(16);
+}
+```
+
+> ★★★ **判据（一句话）**：**与标准 CRC32 只差最后一句「再按位取反一次」。**
+> ⇒ 机械判别：**结果 == 标准 CRC32 的按位取反**（本批复算已坐实，
+> 见 `artifacts/skill-evolution/tools/b37-verify-numbers.py` §3）。
+> Python 落地：
+
+```python
+import binascii
+def crc_for_page_cut_mode01(s: str) -> str:
+    return format((binascii.crc32(s.encode()) ^ 0xFFFFFFFF) & 0xFFFFFFFF, "x")
+```
+
+> ★ **`>>> 0` 的作用**：JS 的位运算是 32 位**有符号**，`>>> 0` 把它**无符号化**；
+> Python 侧等价物是 `& 0xFFFFFFFF`。
+> ⚠️⚠️ **源文 Python 那一行有优先级隐患**：`b = (b ^ (-1)) & 0xFFFFFFFF >> 0` ——
+> Python 里 `>>` 优先级**高于** `&`，所以它实际算的是 `(b ^ -1) & (0xFFFFFFFF >> 0)`
+> = `(b ^ -1) & 0xFFFFFFFF`，**恰好等价**。
+> ⇒ **这是「靠巧合正确」的写法，不要照抄**；写 `(b ^ (-1)) & 0xFFFFFFFF` 或本文的函数形式。
+
+> ⚠️ **源文自相矛盾（已登记）**：JS 段用 `(level + 1)`（并注释「`level+1` 可以写死，最高等级」），
+> 而源文 Python 复现段**写死了 `"_3_"`**、示例里又用 `"_2_"`。
+> 本库实算两个值都给了：`crc("491721607cf2ca_2_1_0") = f03e3a2f`（**命中源文截图里的目标值**）、
+> `crc("491721607cf2ca_3_1_0") = cd5e139f`。
+> ⇒ **`level` 的取值必须自行取证**，本文不裁决。
+
+**③ 坐标 JSON 由 AES 解密，且 key == IV**
+
+源文（逐字）：
+
+```js
+var pageKey = book_json.book_identifier + book_json.company_identifier;
+if (pageKey.length > 16) pageKey = pageKey.substring(0, 16);
+pageKey = CryptoJS.enc.Latin1.parse(pageKey);   // 密钥
+var iv = CryptoJS.enc.Latin1.parse(pageKey);    // 与密钥保持一致
+```
+
+> ★★ **三条判据**：
+> 1. **key = 拼接后截断到 16 位**（`book_identifier + company_identifier`）——
+>    ⇒ **两个业务 id 拼起来当密钥**，是很常见的「零配置密钥」写法；
+> 2. **IV 与 key 相同**（源文原话「与密钥保持一致」）；
+> 3. **`CryptoJS.enc.Latin1.parse` ⇒ Python 用 `.encode('latin-1')` 而不是 `utf-8`** ——
+>    这是本文件反复出现的坑（见 §9 系列）。
+>
+> 模式与填充：**CBC + ZeroPadding**。Python 侧源文用「解出来后**过滤掉 `\x00`**」代替去填充：
+
+```python
+decrypted = ''.join([chr(i) for i in decrypted if i != 0])
+```
+
+> ⚠️ **ZeroPadding 的边界**：**过滤所有 0 字节会误删明文里本来就有的 `\x00`**。
+> 文本类 JSON 里通常没有，所以源文的做法能用；**换到二进制载荷上会静默损坏数据**。
+
+**④ 拼图（源文原样，通用配方）**
+
+```python
+from PIL import Image
+from io import BytesIO
+
+pic = Image.new("RGB", (data["w"], data["h"]))          # 先建整页大小的空图
+for j in data.keys():
+    if j in ("w", "h"): continue
+    block = Image.open(BytesIO(requests.get(data[j]["Link"]).content))
+    pic.paste(block, data[j]["place"])                    # place = (x, y)
+pic.save(f"{bookid}/{i}.png")
+```
+
+> ★ **判据**：`Image.open()` 只吃**文件名或文件对象**，网络流要**先 `BytesIO`**。
+> 位置直接来自元数据的 `(x, y)` ⇒ **不规则切块也能拼**，前提是别自己猜位置。
+
+> ★ **与 §8 的差别（不要混）**：§8 是「**同尺寸块 + 中段字节重映射**」；
+> 本条是「**不规则块 + 位置来自元数据 + 资源名由哈希生成**」。
+> 两者的共同前置都是**先解元数据、再取图片**。
 > 另外 `_nonce` 用的是自写 `requestUuidV4()`（源文 Python 用 `str(uuid.uuid4()).replace("-", "")`），
 > **与 `uuid.uuid4()` 原样输出不同**（无短横线）。
 
@@ -774,6 +892,9 @@ window.URL.revokeObjectURL(link.href)
 | `ctrl+P` 打印失效 | 文库展示限制（CSS） | 全局搜 `@media print` 删掉；**边界见 §9.9** |
 | 图片页解出来是花的 | 漏了 `canvas_info` 索引重映射那一步 | 先解元数据 ECB，再对中间 10% 字节走索引表（§8.2） |
 | 图片地址带 `sample/tmp` 字样 | 很可能是临时缓存 | 先试改 host 拿永久地址（§8.3） |
+| 块图片的 URL **猜不出来**（一段无规律 hex） | 资源名由**哈希**生成 | 先判是不是「标准 CRC32 再取反一次」（§8.5②），别硬枚举 |
+| 拼出来的页**位置错**（图对了、位置乱） | 按「第 i 块放第 i 格」猜的几何 | **不规则切块**：位置必须从元数据的 `{x,y}` 读（§8.5①） |
+| AES 解出的坐标 JSON 是乱码 | key/IV 由两个业务 id **拼接截断**得来，且用 **Latin-1** | 复核 `(book_identifier + company_identifier)[:16]` 与 `.encode('latin-1')`（§8.5③） |
 | 站点给的是「需专用阅读器打开的下载件」 | 那是**另一套 DRM 工具链** | 不属本文形态；回 `SKILL.md` / `references/license-and-key-hierarchy.md` 定层 |
 
 ---
@@ -788,6 +909,7 @@ window.URL.revokeObjectURL(link.href)
 | 4 | `52pojie-1674294` | 在线阅读文档解密（**本篇主源**） | 2022-08-11 | §9.1 **PDF 文件头四种表示法**；形态① **Range 懒加载 + 「小十个字节」实测坑**；形态② base64→blob；形态③ **XHR 追栈 + wasm `_decodeData` 直接 hook 整份 PDF**；形态⑤ **一次性 URL 两个验证动作 + 四参数 + `MD5('123456'+nonce+stime)` 分页**；形态⑥ **元数据 ECB + `canvas_info` 索引重映射 + 改 host 拿永久地址**；EPUB / PNG 附形态（EPUB 部分归 `ebook-and-container-drm.md`） |
 | 5 | `52pojie-2088383` | pdf.js 通用 pdf 下载教程 | 2026-01-23 | 形态④ `PDFViewerApplication.download()`「基本上通用」；§9.4 **`.onPassword` 追码**；§9.5 **base36 两位一组解码**（含可复算的实测输入输出）；§9.6 **postMessage 自动传密码链 + `r0inab`/`r0inyk`**；§9.12 **软件差异登记** |
 | 6 | `52pojie-1960261` | 某试读解密 | 2024-09-01 | §5.4 **自描述容器**（`salt=0x0..0x8` / `iv=0x8..0x18` / `ct=0x18..` + `PBKDF2-SHA256/65536/128bit` → AES-CBC → pdf.js）；**本库逐字节复算源文给出的 PBKDF2 样本**（`1f67c8ca…` 命中）；源文残留 RC4 段（`RC4KEY` 解出 `WHAT THE FUCK`）登记为无对应链路 |
+| 7 | `52pojie-1880044` | 逆向世界某读切块图片链接与Python还原切割图片 | 2024-01-13 | §8.5 **形态⑥-子**：不规则切块的「位置从元数据读」判据；**非标准 CRC32**（与标准差一句取反，本库复算 `f03e3a2f` 命中源文）；元数据 AES 的 **key = 两个业务 id 拼接截断 16 位、IV = key、Latin-1**；`Image.new` + `paste` 拼图配方；**源文自身 `_2_`/`_3_` 矛盾**与 Python `>>` 优先级「靠巧合正确」两处登记 |
 
 > 「日期」= 来源文章发布时间（**不是**站点改版时间）。站点随时会换鉴权、分块粒度与加密形态
 > ⇒ **引用本表时必须连同日期一起引用**。

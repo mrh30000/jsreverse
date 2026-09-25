@@ -60,7 +60,7 @@ def latin1_bytes(s):
     """复现 JS 的 `charCodeAt(i) & 0xff`：非 Latin-1 字符按低 8 位截断。
 
     这条口径**必须**显式建模：`CryptoJS.MD5(str)` 走 UTF-8，而手写 `hex_md5` 走 `& 0xff`，
-    同一个字符串在两种实现下**算出完全不同的哈希**（B14 `key-wrapper-families.md` §7 同源坑）。
+    同一个字符串在两种实现下**算出完全不同的哈希**（B14 `../../stream-drm-reverse/references/key-wrapper-families.md` §7 同源坑）。
     """
     return bytes(ord(c) & 0xFF for c in s)
 
