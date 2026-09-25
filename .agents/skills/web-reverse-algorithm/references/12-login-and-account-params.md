@@ -232,7 +232,7 @@ jiami = function (password) {
 <input name="encoded" id="encoded" type="hidden" value="">             <!-- 1217367 / 1421183 -->
 ```
 
-```js
+```text
 casLoginForm.submit(doLogin);
 function doLogin() {
     ...
@@ -306,6 +306,41 @@ function getParamsHash(cfg) {
 
 另一类（`1743808`）：`Sign = md5(<某个参数>)`，先 `initiator` 下断点 → **堆栈回溯**找变量来源
 → 再在那一行附近找 `md5`。**判据：断点停下的那一层 scope 里没有目标参数 ⇒ 往上一层层跟。**
+
+### §9.1 ★★★ 「流传的公式」必须实测，不能采信（`52pojie-980940`，某鱼 TV `sign`）
+
+源文把网上/论坛流传的 **五条** `sign` 公式**全部实测了一遍**，结论是**五条全错**
+（`lapi/live/thirdPart/getPlay/…`、`room/…?aid=androidhd1&cdn=ws…`、`rid+did+'A12Svb&%1UUmf@hC'+tt`、
+`room/%s?aid=wp…+ 'zNzMV1y4EMxOHS6I5WKm'` …），服务端**一律返回"鉴权失败"**。
+
+> ★★★ **可迁移判据（三条）**：
+> 1. **"网上查到的公式" 与 "原站实测" 之间，只认后者** —— 流传公式多为**旧版本 / 别的端（PC vs ISO vs WP）**；
+>    源文里那几条恰好是**不同 aid / 不同 client_sys** 的杂糅。
+> 2. **判"是不是本地算的"**：源文的关键一步是「斗鱼的 sign **不是从服务器获取返回值** ⇒ 那应该是在本地 js 计算出来的」
+>    —— **服务端不下发** = 客户端生成，**这个是非题先答，再去决定要不要读 JS**。
+> 3. **★ 定位落点**：源文用 fiddler 断点发现 sign「可能是三个 js 计算出来的」，并**列全了移动端与 PC 端两套脚本**。
+>    ⇒ **先枚举"可能参与计算的脚本清单"（移动端 / PC 端各一套），再逐个筛**；
+>    **不要一上来就整个 bundle 抠**。
+>
+> ★★ 本条与 §8.5（换靶四动作）/ §8.6（三法 60% 覆盖率）**互补**：
+> 那两条解决"搜不到 / 命中太多"，本条解决"**搜到的不是这个版本的**"。
+
+### §9.2 ★★ 「形参 ↔ 实参对位」：不读逻辑也能定参数（`52pojie-1908960`，B站 `task_sign`）
+
+```text
+调用点：OGVActivityApiService.b.a(r5, r6, r7, r8, r9, r10, r11, r12, r13)
+被调方形参：b.a(oGVActivityApiService, str, str2, str3, str4, str5, continuation, i2, obj)
+业务方法形参：completeTask(@Query("position") str, @Query("task_id") str2, @Query("token") str3,
+                            @Query("timestamp") str4, @Query("task_sign") str5, continuation)
+⇒ 逐位对齐：r10 ↔ task_sign、r8 ↔ token、r9 ↔ timestamp
+```
+
+> ★★★ **判据**：Kotlin/Android 反编译里**注释（`@Query("name")`）保留了参数名** ⇒
+> **"调用点实参顺序 ↔ 被调方形参顺序 ↔ 带注解的业务方法形参顺序"** 三张表逐位对齐，
+> 就能**在读懂任何逻辑之前**先确定"哪个寄存器/变量是目标参数"。
+> ★ 配套（同文）：`task_sign = md5(timestamp + '固定盐' + token).toString('hex')` ⇒
+> ★★ **同一平台的"第二条签名"往往比主签名简单得多**，且**固定盐被作者自己脱敏**（本库保留脱敏形态）。
+> ⇒ **先做"这个接口有没有自己的、更简单的签名"这个是非题**，别默认全站共用一套。
 
 ---
 

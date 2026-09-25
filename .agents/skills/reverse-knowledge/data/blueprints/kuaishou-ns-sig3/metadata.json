@@ -1,0 +1,89 @@
+{
+  "id": "kuaishou-ns-sig3",
+  "title": "快手 __NS_sig3 参数（sha256 变形 + 双 base64 + 时间戳异或）",
+  "category": "platform-signature",
+  "status": "partial",
+  "version": "1.0.0",
+  "summary": "快手 App 请求参数 __NS_sig3：主体是「sha256 的变形」输出经一次变换后再 base64 两次；前面部分与当前时间戳异或一个值后加密；另有两处常量取自图片数据（同版本不变，可 dump）。同批还一并还原了 sig 与 __NStokensig。",
+  "aliases": [
+    "__NS_sig3",
+    "NS_sig3",
+    "sig3",
+    "__NStokensig",
+    "kuaishou"
+  ],
+  "keywords": [
+    "快手",
+    "kuaishou",
+    "sig3",
+    "NS_sig3",
+    "doCommandNative",
+    "ollvm",
+    "unidbg",
+    "trace"
+  ],
+  "algorithm": {
+    "family": "hash",
+    "detail": "入口：JNI_OnLoad → RegisterNatives（位于 sub_88F4）→ doCommandNative = sub_c060；调用链 sub_c060 → sub_26BB8 → sub_3AE54 → sub_3AAF8 → sub_3F920 → sub_3E550（sha256 的**变形**，其常量表在 dword_9e338）。sub_3E550 的输出经 sub_3FDA4 变换后再 base64 **两次**得到 sig3 的一部分；sig3 前面那部分与**当前时间戳异或一个值**后加密（位置 sub_24404）。另有两处值「读取图片的数据之后加密获得」，同版本内不变。",
+    "key_material": "源文未逐字给出常量；关键结构常量表位置为 dword_9e338（sha256 常量表，被改动）；另有 sub_3FDA4 的变换表。",
+    "output_encoding": "base64（**两次**）",
+    "output_length": "源文未给"
+  },
+  "entry": {
+    "location": "libxxx.so 的 doCommandNative（= sub_c060）；JNI_OnLoad → RegisterNatives 在 sub_88F4",
+    "trigger": "请求前由 native 生成",
+    "transport": "query / body 参数，参数名逐字：__NS_sig3（同族另有 sig、__NStokensig）"
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-1512064-快手_NS_sig3参数算法分析研究学习过程.md",
+      "line": 22,
+      "quote": "可以看到sub\\_3E550函数的返回值是sig3算法部分结果，并且该函数调用了两次，第一次是要加密的内容，第二次是一个base64的值。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1512064-快手_NS_sig3参数算法分析研究学习过程.md",
+      "line": 29,
+      "quote": "很明显这是sha256算法的常量表，该函数是sha256的变形。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1512064-快手_NS_sig3参数算法分析研究学习过程.md",
+      "line": 45,
+      "quote": "可以看到，经过sha256算法的返回值在经过这个函数，把sub\\_3FDA4 函数的结果在经过base64之后在进行base64就是sig3算法的部分值。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1512064-快手_NS_sig3参数算法分析研究学习过程.md",
+      "line": 50,
+      "quote": "这两个位置的值，是读取图片的数据之后加密获得的，具体没去跟，因为同一个版本这个值不会变所以dump出数据就行",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1512064-快手_NS_sig3参数算法分析研究学习过程.md",
+      "line": 54,
+      "quote": "与当前时间戳异或一个值后进行进行加密。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1512064-快手_NS_sig3参数算法分析研究学习过程.md",
+      "line": 61,
+      "quote": "至此\\_\\_NS\\_sig3和sig和\\_\\_NStokensig已经全部搞定转了python源码和java源码。",
+      "verified_in_article": true
+    }
+  ],
+  "notes": "★★ 本条的**主要价值在方法而非字面算法**：① `ollvm` 混淆导致 IDA F5 极慢且不可读时，**用 frida hook 逐层收敛**（hook sub_3E550 看返回值 = sig3 的一部分）；② **ida trace 之外还有 unicorn trace**（源文原话：unicorn trace 的结果比 ida trace 好分析）；③ ★★ 「**同版本内不变的常量可以 dump 出来用，不必追生成逻辑**」（图片数据派生值那两处）——这是一条**成本取舍判据**；④ 该文给出「从 JNI_OnLoad/RegisterNatives 反推入口」的早期完整实例，与 `android-app-reverse` 的现行口径一致。**status=partial**：源文只给「哪几段怎么拼」，未给常量与完整公式。",
+  "gaps": [
+    "sha256「变形」具体改了什么（源文只说『是 sha256 的变形』并指出常量表位置）。",
+    "sub_3FDA4 的变换规则（只说『经过这个函数后两次 base64』）。",
+    "与时间戳异或的那个值（位置 sub_24404，值未给）。",
+    "两处「图片数据派生值」的 dump 内容与用法。",
+    "sig 与 __NStokensig 的算法（源文说『已全部搞定』但未展开）。",
+    "源文无示例密文，无法对拍。"
+  ],
+  "self_check": [
+    "标题与正文一致：正文写 __NS_sig3 / sig / __NStokensig，未出现其它平台。",
+    "status 定为 partial：源文缺常量、缺示例，**不满足 active 的『近期样本仍有效』口径**。",
+    "所有 sources 的 file 均为本仓 docs/references 下真实文件，line 为 grep -n 实测行号。"
+  ]
+}

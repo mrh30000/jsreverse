@@ -1,0 +1,24 @@
+{
+  "parts": [
+    {
+      "name": "__NS_sig3",
+      "description": "作用: 快手 App 请求签名参数 | 来源: 双 base64(sha256 变形 + 变换) 与「时间戳异或一个值后加密」拼接 | 示例: 源文未给"
+    },
+    {
+      "name": "sig / __NStokensig",
+      "description": "作用: 同族签名参数 | 来源: 源文称一并还原但未展开 | 示例: 源文未给"
+    },
+    {
+      "name": "doCommandNative / sub_c060",
+      "description": "作用: 加密入口 | 来源: JNI_OnLoad → RegisterNatives(sub_88F4) 注册 | 示例: —"
+    },
+    {
+      "name": "sub_3E550",
+      "description": "作用: sha256 变形的核心 | 来源: 常量表 dword_9e338；调用两次（一次是被加密内容，一次是 base64 值） | 示例: —"
+    },
+    {
+      "name": "sub_24404",
+      "description": "作用: sig3 前半段 | 来源: 与当前时间戳异或一个值后再加密 | 示例: —"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 ---
 name: android-app-reverse
-description: 客户端 App（Android / iOS）接口签名与封包加解密逆向技能，工具面 frida / unidbg / jadx / IDA / 算法助手。当目标参数「不在网页里」而在 App 里时用：jadx 全局搜参数名搜不到、请求体是一长串 hex、响应体是密文、`System.loadLibrary` / `JNI_OnLoad` / `RegisterNatives` 动态注册、`libxxx.so` / `libmetasec_ml.so` / `libsscronet.so` / `libEncryptor.so` / `libtoken.so`、frida hook 入参 / spawn / attach / 主动调用 / `NewStringUTF`、unidbg 补环境 / `traceWrite` / hook `memcpy` / 固定输出、X-Gorgon / x-argus / x-ladon / x-khronos / x-ss-stub / x-medusa / x-soter、newSign / sDjcSign / G-Auth-Sign / X-Ca-Signature / ttEncrypt / appSign / requestTag / sDjcSign、梆梆 / 爱加密 / 360 / 百度壳 / 伪百度 / 脱壳 / fart / dump so、算法助手 / Inspeckage / jnitrace / `frida_hook_libart` / 魔改 RC4 / 魔改 DES / 白盒 SM4、Flutter 逆向 / blutter / reFlutter / Doldrums / libapp.so / libflutter.so、split APK / xapk 取 so、RPC 化 / NanoHTTPD / 不可还原算法的远程调用。用户说「App 逆向 / 安卓逆向 / 抓不到包 / 这个签名怎么算 / 加固脱壳 / so 分析 / frida hook 不到 / unidbg 跑不起来 / Flutter 反编译 / 客户端协议」时用本技能。
+description: 客户端 App（Android / iOS）接口签名与封包加解密逆向技能，工具面 frida / unidbg / jadx / IDA / 算法助手。当目标参数「不在网页里」而在 App 里时用：jadx 全局搜参数名搜不到、请求体是一长串 hex、响应体是密文、`System.loadLibrary` / `JNI_OnLoad` / `RegisterNatives` 动态注册、`libxxx.so` / `libmetasec_ml.so` / `libsscronet.so` / `libEncryptor.so` / `libtoken.so`、frida hook 入参 / spawn / attach / 主动调用 / `NewStringUTF`、unidbg 补环境 / `traceWrite` / hook `memcpy` / 固定输出、X-Gorgon / x-argus / x-ladon / x-khronos / x-ss-stub / x-medusa / x-soter、newSign / sDjcSign / G-Auth-Sign / X-Ca-Signature / ttEncrypt / appSign / requestTag / sDjcSign、梆梆 / 爱加密 / 360 / 百度壳 / 伪百度 / 脱壳 / fart / dump so、算法助手 / Inspeckage / jnitrace / `frida_hook_libart` / 魔改 RC4 / 魔改 DES / 白盒 SM4、Flutter 逆向 / blutter / reFlutter / Doldrums / libapp.so / libflutter.so、split APK / xapk 取 so、RPC 化 / NanoHTTPD / 不可还原算法的远程调用、iOS 侧（砸壳 / `CCCrypt` / `frida-trace` / 越狱检测 / 设备风控）。用户说「App 逆向 / 安卓逆向 / iOS 逆向 / 抓不到包 / 这个签名怎么算 / 加固脱壳 / so 分析 / frida hook 不到 / unidbg 跑不起来 / Flutter 反编译 / 客户端协议」时用本技能。
 ---
 
 # 客户端 App 逆向：载体 → 出口 → 逐字节
@@ -27,7 +27,7 @@ description: 客户端 App（Android / iOS）接口签名与封包加解密逆�
 | 目标数据走 WebSocket 帧 | `../websocket-reverse/SKILL.md` |
 | 验证码 / 滑块 / 风控 challenge | `../web-verify-patcher/SKILL.md` |
 | 已知成熟平台签名蓝图的**离线查询**（抖音 a_bogus、京东 h5st…） | `../reverse-knowledge/SKILL.md` |
-| **App 里算出来的 sign / 加密请求体 / 加密响应体** | **本技能** |
+| **App 里算出来的 sign / 加密请求体 / 加密响应体** | **本技能**（Android 走 `01`–`05`；**iOS 走 `references/06-ios-app-reverse.md`**） |
 
 > ★★ **迁移提示**：`../web-reverse-algorithm/references/18-native-layer-algorithm-restore.md`
 > 是本技能的**前身**（历史上 App 端样本被并入 web 技能）。它保留了「得物 so 层 AES-ECB」
@@ -49,6 +49,9 @@ description: 客户端 App（Android / iOS）接口签名与封包加解密逆�
 | App 是 **Flutter**（`libapp.so` + `libflutter.so`） | Flutter | 走 `references/05-flutter-app-reverse.md` | 中 |
 | 静态全被抽空 / 类目录少得异常 | **加固** | 查壳 → 脱壳（`fart` / 在线 / `DITOR` / `dump_so.py`） | 中 |
 | 算法确认**不可还原**（白盒 SM4 / VMP / 运行时自解密） | — | 走 `references/04-rpc-and-boundary.md`（RPC 化，别硬还原） | 低 |
+| 手上只有 **`.ipa`**，或加密调用是 `CCCrypt` / `CCHmac` / `SecKeyEncrypt` | **iOS** | 走 `references/06-ios-app-reverse.md`（先砸壳，再 `frida-trace` 拦系统函数） | 中 |
+| 启动就闪退 / 点了登录没反应（改过签名或装了 hook 框架） | **iOS 反调试** | `06` §2：`SVC` NOP + `exit(0)` 条件变量 + `embedded.mobileprovision` | 低 |
+| App 里有一张小体积的加密资源（`.PIC` / `.dat` / 非标准 magic） | **资源 = 密钥字典** | `06` §5：HMAC → 逐字节变换 → AES-CBC → zlib → JSON 取 k1..k6 | 中 |
 
 > ★ **选路铁律（与 web 侧同源）**：**能从高层拿到就不要下沉。**
 > Java 层能整类搬走就不要 unidbg；能在 App 内直接调用（frida RPC / Xposed RPC）就不要还原算法。
@@ -96,10 +99,11 @@ description: 客户端 App（Android / iOS）接口签名与封包加解密逆�
 | --- | --- |
 | `references/01-recon-and-carriers.md` | 侦察三件套、载体判据、加固与脱壳、**版本 delta（库级哈希差分）**、split APK 取 so、**证据纪律**（字段名≠结论 / Presence / 默认值误判 / 探针先脱敏） |
 | `references/02-native-dynamic-tracing.md` | 静态 vs 动态注册、**unidbg 工程化四步**、**出口倒推法**、**分段 Hook**、**输出形状优先**、反汇编工具是变量、arm32/arm64 约定与结构体返回 |
-| `references/03-signature-and-packet-families.md` | 签名串的六种拼装形态、多层嵌套与「会话密钥 + 公钥包裹」、**密钥/IV 的传递方式**、**魔改算法识别**、时间与随机源、返回形态判据、定位手法速查 |
+| `references/03-signature-and-packet-families.md` | 签名串的十八种拼装形态、多层嵌套与「会话密钥 + 公钥包裹」、**密钥/IV 的传递方式**、**魔改算法识别**、时间与随机源、返回形态判据、定位手法速查 |
 | `references/04-rpc-and-boundary.md` | **不可还原 ⇒ RPC 化**的四条路线与选路判据、边界与伦理 |
 | `references/05-flutter-app-reverse.md` | Flutter 判据、`blutter` / `reFlutter` / `Doldrums` 静态路线、**特征码比对兜底路线**、密文长度特征表 |
-| `scripts/app_cipher_shape.py` | 零依赖**密文形状诊断器**：长度倍数 / AES·DES·RSA 候选 / base64 长度表 / 固定开销分解；`--selftest` 内置断言 |
+| `references/06-ios-app-reverse.md` | **iOS 分册**：取件与砸壳、启动/登录闪退三件套、`frida-trace` 四种定位、**`CCCrypt` 参数语义表**、**加密资源当密钥字典**、风控 SDK 采集面、越狱检测四类面、iOS 坑表 |
+| `scripts/app_cipher_shape.py` | 零依赖**密文形状诊断器**：`shape`（长度倍数 / AES·DES·RSA·**XXTEA** 候选 / base64 长度表）、`decompose`（固定头 + 随机材料 + 块对齐拆分）、`predict`（摘要前缀 + PKCS#7 输出长度）、**`cccrypt`（iOS `CCCrypt` 参数 → 算法/模式/强度）**；`--selftest` 内置 **32** 项断言 |
 
 ---
 

@@ -40,6 +40,45 @@ objdump -d  libtarget.so
 > ★★ **`readelf -Ws` 里没有 `Java_...` 不是「函数不存在」**，而是「动态注册」——
 > 下一跳是 `JNI_OnLoad` + `RegisterNatives`，见 `02-native-dynamic-tracing.md` §1。
 
+### §1.2 ★★ 「全局搜不到」的四个猜想（按概率排序）
+
+**来源** `52pojie-654477`（2017，直播 App）。原文把"搜不到"归成四条，**至今仍然成立**：
+
+| # | 猜想 | 怎么证 / 怎么办 |
+| --- | --- | --- |
+| 1 | **有多个 dex** | `unzip -Z1` 看 `classes2.dex` / `classes3.dex`；jadx 逐个打开再搜 |
+| 2 | **动态加载的插件包** | 全局搜 `DexClassLoader` → 找插件落盘路径 → 单独 jadx 插件 |
+| 3 | **在 so 里** | `IDA` 打开 `libxxx.so` → `Shift+F12` 看字符串表再搜（**符号名可能被抹，字符串常在**） |
+| 4 | **根本不是本地生成的** | 它是**服务端返回的**（配置 / 开关 / token）⇒ 去抓包里找，不要在代码里找 |
+
+> ★ **配套的两条工具纪律**（同文实测）：
+> ① **jadx 打开 `.apk` 卡死** ⇒ 先 `unzip` 出 `classes*.dex`，**只打开 dex**（资源解析是卡死主因）；
+> ② **Jadx 右键"查找用法"为空** ⇒ 那个方法多半是**接口/抽象方法的实现**，
+> **去父类或接口上再右键一次**。
+> ★ 另：**Xposed hook 多 dex 应用时，必须先 hook `Application.attach` 拿到正确的 ClassLoader**，
+> 否则"类找不到"（同文原话）。
+
+### §1.3 ★★ 本批新收的四条「低成本定位/调试配方」
+
+| 配方 | 做法 | 适用 / 依据 |
+| --- | --- | --- |
+| **Hook 摘要算法本身（通杀）** | 一次性 hook `java.security.MessageDigest` 的**全部 `update` / `digest` 重载**，打印 `getAlgorithm()` + 参数 + 返回值 + 堆栈 | ★★ 源文原话「**可以一开始就 hook md5 就可以秒杀了**」；**同一个脚本再挂上 Base64 / AES / RSA / SHA1 / SHA256 更保险**（`1644568`） |
+| **Android Studio 动态调试 smali** | 用 AndroidKiller 反编译 → **只把加密相关的 smali 文件拷进 AS 工程** → 配置端口 → `adb shell am start -D -n <包名>/<入口>` → 在**字符串拼接/赋值处**打断点，看寄存器变化 | ★ 适合"反编译代码看不懂、但知道大概位置"的题；★★ **判据：同一字符串（如 `rqid`）在多个 smali 里出现 ⇒ 全部打断点，看程序实际走哪一个**（`1003401`） |
+| **反射大师脱壳（加壳时）** | 反射大师（需 Xposed 激活）→ 勾选目标 APK → 进入软件 → 当前 Activity → **长按写出 DEX** → 修复 Magic → 取文件 | ★ 比"先研究壳"便宜；★ 脱出来的 dex **方法名可见**时直接 jadx 搜（`1712752`） |
+| **`unidbg` 死在系统调用 ⇒ 换脚本** | 补环境补到 `syscall` 层报错时，**先换一份"别人跑通过"的脚本**再继续补 | ★ 源文原话「但是很不幸，死在了系统调用。没有办法，拿出同事的脚本」；★★ 换脚本后**立刻看到"多了一串东西"**，反而更快定位到拼接点（`1658810`） |
+
+### §1.4 载体补充：三种「代码不在 dex 里」的 App
+
+| 载体 | 判据 | 去哪找 |
+| --- | --- | --- |
+| **插件化 App** | `lib/` 目录里出现 **`.apk` 文件**（或 `so` 名其实是 apk） | 直接 `unzip` 那个 apk 再 jadx（`678959` 手机淘宝 `login4android`） |
+| **uni-app** | `AndroidManifest.xml` 里有经典 uniapp 特征 | `assets/` 下找 **`app-service.js`**（可能是**压缩过的一行**，先在线/本地解压再搜）（`1793143`） |
+| **React Native + NodeJS** | `assets/index.android.bundle` | 改后缀为 `.js` → 格式化 → 搜参数名；**搜不到再进 Java 层**（`1138081` / `1140214`） |
+
+> ★★ **判据**：**"jadx 里搜不到任何加密痕迹，但 App 明显在加密"** ⇒
+> 先按本表判载体（`assets/` 里有没有 bundle / `app-service.js`；`lib/` 里有没有 apk），
+> **不要继续在 dex 里换关键词**。
+
 ---
 
 ## §2 载体判据表
@@ -266,3 +305,4 @@ function emit(type, data) {
 | `52pojie-1445251` 京东 sign | §3.3 版本选择（避开 frida 检测） |
 | `52pojie-2127692` 海外社交签名链 | §3.3 frida 负结论落盘、§4 `.rodata` 地址绑定版本 |
 | `52pojie-1262453` 豆瓣 app | §3.3 模拟器 Android 5.1 才信任用户证书 |
+| `52pojie-654477` 直播 App `s_sg` | §1.2 「搜不到」四猜想 + jadx 卡死/多 dex/父类右键/ClassLoader |

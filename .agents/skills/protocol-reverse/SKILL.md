@@ -98,8 +98,13 @@ MUST 产出：
 ## 参考
 
 - `references/protocol-workflow.md` — 帧布局速查（**其中 Protobuf 细节已抽到 `protobuf-reverse`，本文件只保留指针**）
+- `references/multi-magic-and-compression.md` — **帧切开之后的"额外一层"**：同一连接多 magic 分派、
+  SIMD(NEON) 批量异或翻译、**连续流压缩（zstd-stream / permessage-deflate）不能每帧 reset**、
+  **双 TLS 栈导致一部分请求抓不到**、TLV 固定字段表、字节集反转、CRC "对谁算"、
+  PC 端条件断点定位、地址池/抗拦截结构
 - 相关技能（本仓库内）：`protobuf-reverse`（protobuf / gRPC-Web）、`websocket-reverse`（WS 帧与分组）、
-  `wsam-reverse`（Wasm）、`ast-deobfuscation`（生成 JS 被混淆时）
+  `wsam-reverse`（Wasm）、`ast-deobfuscation`（生成 JS 被混淆时）、
+  `android-app-reverse`（协议实现在 App/so 里时）
 
 ## 路由上下文
 

@@ -218,7 +218,39 @@ Promise resolved、Worker 回包出现或 probe 不报错都不能单独视为�
 DOM 存在性检测 —— 这些都必须按真实浏览器 baseline 回放，而不是"返回一个空对象"，
 详见 `references/env-object-model.md` 的 `CSSStyleDeclaration / getComputedStyle` 一行。
 
-### Error / clone / native shape
+### ★★★ 评分型风控 SDK 的采集面与「耗时」通道（B42 新增）
+
+> 来源：`52pojie-1104122`（数美 `fpv2.js`，douyu 登录页引入）、`52pojie-1537322`（iOS `SAKGuard` 设备风控）。
+> **本节同样不新增触发类别**；重点是**两张字段清单**与**一条容易被全体忽略的检测通道**。
+
+| # | 检测点 | 浏览器侧"正确形态" | 映射类别 |
+| --- | --- | --- | --- |
+| 9 | **`canvas` 指纹**（`smdata.canvas`） | 与 `toDataURL` 同类，但**单独成一个上报字段** ⇒ 补环境时它必须与 `toDataURL` **同源一致** | `dom-cssom` |
+| 10 | **`plugins` 列表** | 不是空数组就能过：**长度、顺序、每项的 `name/description/filename/length`** 都要与 baseline 同形 | `object-shape` |
+| 11 | **四个语言字段** | `lang` / `userLang` / `browserLang` / `systemLang` + `langs` 数组 —— **五个值的组合关系**必须自洽（不能全填同一个） | `object-shape` |
+| 12 | **`res` / `clientSize` / `timezone`** | 分辨率、可视区、时区三者**互相自洽**（`res` 说 1920×1080 而 `clientSize` 说 375×667 会被对不上） | `object-shape` |
+| 13 | **★★★ 执行耗时（`time`）** | 数美的 `smdata.time` 不是"时刻"，而是 **`(+new Date()) - <函数开始时刻>`**，即**这次执行花了多少毫秒**。⇒ **补环境跑得太快本身就是异常信号** | `clock-timer` |
+
+> ★★★ **第 13 条是本类目标最容易被漏掉的一维**：
+> **"字段值全对"不代表"通过"** —— 评分型风控会拿**自身执行耗时**做"是否被 hook / 是否真机"的判据。
+> ⇒ 补环境侧的对策只有两条：① **不要为调试在关键路径插 `console.log` / 断点**（会显著拖慢）；
+> ② **不要为了"快"而把 SDK 的异步/延时步骤整段删掉**（会显著加快）。
+> ⇒ 落地口径：**把 `time` 的"量级"也写进 baseline 矩阵**（不要求逐毫秒一致，要求量级同阶）。
+> ★ 同族：`1537322` 的 iOS 侧有 `m148`/`m149`（**浮点秒**）与 `m150`/`m200`（**整数**）并存，
+> 也是"时间通道不止一个"的实证。
+
+**★★★ 关键数据落多处缓存（复现时最容易只做一半）**：
+
+```text
+数美：deviceId 同时写 cookie / local / session / flash / userData，key 统一是 smidV2；
+      ★ 而且 **每次运行都会重新"算"一个 deviceId，但上报的是缓存里的那个**
+      ⇒ 判据：「算了却不用」 ⇒ 复现时要**同步所有落地 + 让"读缓存"先命中**
+SAKGuard（iOS）：本地 ID 走 **keychain**（`generateLocalID` → `localID`），**卸载重装不换**
+```
+
+> ★★ 与 `references/fingerprint-baseline-consistency.md` 的分工：
+> 那里讲"多入口读到同一个值"的**一致性**；这里补的是"**同一份数据要写进多个介质**"这一半。
+
 
 检查：
 

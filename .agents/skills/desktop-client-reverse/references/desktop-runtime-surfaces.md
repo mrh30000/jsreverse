@@ -192,3 +192,67 @@ Bun standalone 的 **JS 藏在 exe 里**，两条分支互斥、**先决定再�
 > 判据一句话：**"取出来是能读的 JS" ⇒ 解混淆；"取出来是字节码" ⇒ 字节码路线。**
 > 与 §1 的 WebView2、`references/electron-asar-and-fuses.md` 的 Electron 一样，
 > 共同目标都是"先拿到可读代码"，再谈算法。
+
+---
+
+## 9. 类 Electron 客户端 + native DLL 算法（`2091183`，某音乐 PC 端）
+
+**取件与桥接**：
+
+```text
+① 观察软件目录 ⇒ 类 Electron/CEF 的程序 ⇒ 试开远程调试：
+   cloudmusic.exe --remote-debugging-port=9222
+② 用 Edge/Chrome 附加 ⇒ 事件监听断点（Search 栏点击）⇒ 追到 JS 层：
+     serialData(t) { … return yield n(t) }  →  window.channel.serialData(t)
+③ window.channel.* 是 **native 桥**（在 DLL 里），JS 侧只是转发
+④ 参数形态：t = ["/api/search/pc/result/tab", "<jsonData 字符串>"]（接口名 + body）
+```
+
+**DLL 侧定位（三步，可照抄）**：
+
+```text
+① 目录里没有 *.node ⇒ 找主库 DLL（本例 cloudmusic.dll）
+② 导出表**没有** serialData ⇒ 改**搜字符串**：搜到一串 if 链：
+     "encodeAnonymousId2" / "encryptId" / "serialData" / "serialData2" / "deSerialData"
+     ⇒ ★★ 这是**字符串 → 函数指针的分发器**，按名字对号入座即可拿到目标函数
+③ hook 它的实现（本例 sub_180E0D3A0）⇒ 出错路径会打印
+   "Serial: <接口名> error:<code>" 的日志字符串 ⇒ 可用日志驱动定位
+```
+
+**算法侧判据（本例）**：
+
+```text
+★ 加密函数入口出现 **多个 base64 形态的宽字符串常量**：
+    L"y1LN8qzeNzxTWX6dVeyshvKmXJRQRfkZy9Y7e7fao6g="
+    L"qGWDhNWDRGvh421GZVutvg==" / L"ErCUMN/gBpmtg+wmLZrDCA=="
+    L"xKlkMXZUU8J2uUH2ZfmYmQ==" / L"eOYLRn09GyKgAzkfn3pLFA=="
+  ⇒ 它们**不是密钥本身**，而是"密钥的密文"：要过一个 `sub_xxx(key, out, &len)` 解密函数才拿到真 key
+★ 随后出现 `AES_set_encrypt_key()` + 循环 `AES_encrypt()`（16 字节一步）
+  ⇒ **这是 OpenSSL/BoringSSL 的 AES 调用形态** ⇒ 算法族确定是 AES，剩下只需把 key/iv/mode 定死
+```
+
+> ★★★ **可迁移判据**：
+> ① **"导出表里没有目标函数名" ≠ 没实现** —— 先**搜字符串**找分发器（`sub_xxx("名字")` 的 if 链），
+>   这是 TLV/RPC 型 native 桥的通用形态。
+> ② **代码里成串的 base64 宽字符串常量，多半是"被加密的密钥"**（而非明文密钥）⇒
+>   必须找到紧随其后的解密调用把真 key 解出来；**别把 base64 串直接当 key 用**。
+> ③ **`AES_set_encrypt_key` + `AES_encrypt`（16 字节步进）** 是 OpenSSL 系 AES 的强指纹。
+
+### 9.1 ★★ 坑：frida 附加"多进程客户端"时必须挑对进程
+
+```text
+现象：frida -f cloudmusic.exe -l 163.js 完全不触发
+真因：该客户端有 **4 个相关进程**，frida 附加到的不是真正加载 cloudmusic.dll 的那个
+处置：**附加内存占用最大的那个进程**（源文原话）
+```
+
+> ★★ 这与 `../../android-app-reverse/references/02-native-dynamic-tracing.md` §1.2 的
+> 「hook 不到先怀疑附错目标」同源；**桌面端因为多进程更常见，先看进程列表再 hook**。
+> ★ 另：**优先试"客户端自带的远程调试开关"**（`--remote-debugging-port`）——
+> 比一上来就动 DLL 便宜得多（与 §4「本地监听端口是最便宜的入口」同类）。
+
+### 9.2 来源表补充
+
+| 源文 | 贡献 |
+| --- | --- |
+| `52pojie-2091183` 某抑云 eapi | §9 远程调试开关、`window.channel.*` native 桥、字符串分发器、base64 常量=密钥密文、AES 指纹、§9.1 多进程附加坑 |

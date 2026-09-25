@@ -184,6 +184,12 @@ description: 使用 Babel AST 对 JavaScript 做分层、可回退的定向反�
   - `references/patterns/zhipin.md`
   - `references/patterns/cn-bidding-ob.md`
   - `references/patterns/mps-ob.md`
+  - `references/patterns/shumei.md`（**数美风控 `fpv2.js`**：四段式结构与**数组移位步长 = 传入参数 + 1**、
+    第三段**改写原生 `atob`**（自写 base64 + `decodeURIComponent`）、
+    `switch` 平坦化（`runLine` 字符串即执行顺序）+ **运算符字典（value 可为函数、且可嵌套）** +
+    **`arguments` 原地反转 ⇒ 参数顺序不能按声明读**、
+    异常流控 / **执行耗时检测（`time` = 函数内耗时，会上报）** / 关键数据写多处缓存（`smidV2`）、
+    **JSONP 上传 ⇒ XHR 断点无效**）
 
 ## 校验
 

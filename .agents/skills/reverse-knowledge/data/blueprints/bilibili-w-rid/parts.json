@@ -31,6 +31,14 @@
     {
       "name": "ct",
       "description": "作用: localStorage 键名 | 来源: localStorage.getItem(ct)，文章未给键名字符串"
+    },
+    {
+      "name": "task_sign",
+      "description": "作用: 大积分活动接口签名 | 来源: MD5(timestamp + 固定盐 + token) | 示例: 源文未给（固定盐被作者自己脱敏，本库不代为还原）"
+    },
+    {
+      "name": "timestamp / task_id / position / token",
+      "description": "作用: 大积分活动接口的其余查询参数 | 来源: 请求 query（token 已知、timestamp 已知） | 示例: 源文省略"
     }
   ]
 }

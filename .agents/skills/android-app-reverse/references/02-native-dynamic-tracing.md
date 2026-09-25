@@ -57,6 +57,9 @@ signature = ([BI)[B      ; [B byte[] · I int · [B byte[]  ← Java 与 native 
 | `frida_hook_libart` 的 `hook_art.js` hook **`NewStringUTF`** | `1332557` | ★★ **加「字符串长度 > 50」过滤**再打堆栈 ⇒ 定位 `libshield.so+0x93fa8`；`sub_939D8` 在 IDA 里按 **`X`** 找调用者 ⇒ Java `intercept`（`okhttp3/Interceptor`） |
 | 搜 `System.loadLibrary` 找 so 名 | `1388335` | ★ 若 so 名被**索引化**（`StubApp.getString2("17534")`）⇒ hook `getString2` 还原 |
 | 静态扫描 + 字符串直接搜 | `2031450` / `2047651` | ★ 抓包里字段名带**业务语义**（`c=applaunch`）⇒ 直接搜该字符串 |
+| **hook `HashMap.put` 打堆栈** | `2074694`（手法 1） | ★★ 最通用的一招：`put` 是参数汇聚点，**打堆栈即得业务入口**。**变体**：只对**特定 key** 打（`if (a.equals("username")) showStacks()`）⇒ 直接定位登录函数（`2014961`） |
+| **hook `System.loadLibrary`** | `1388335` | 同上（so 名被索引化时的兜底） |
+| **hook `memcpy`** | `2073893` | ★★ 源文原话：「**是分析前的好习惯**」—— 后续配合 `emulator.traceWrite` 追溯来源 |
 
 ---
 
@@ -358,6 +361,34 @@ memcpy / memmove / strcat / strdup / hex 编码器（sub_109FB8 是「最终 hex
 
 ---
 
+### §7.5 ★★ Go / cgo 编译出来的 so：调用约定完全不同
+
+**来源** `52pojie-1691013`（xx度灰 App，`libsojm` 由 **Go** 写成，`cgo` 桥接）。
+
+```text
+① 导出函数名是常规静态注册：Java_com_qq_lib_EncryptUtil_encrypt(env, clazz, a3, a4)
+② 但函数体只会做一件事：把参数塞进数组 → 调 **crosscall2(<fn>, <args>, <size>, <runtime>)**
+   ★ 其中 size 传的是 20 = 5 * 4，而数组明明只放了 4 个元素
+     ⇒ **多出来的那个槽位是"返回值的落点"**
+③ 进入 cgoexp_xxx 后：**参数完全通过栈传递**，而且**同一个参数会被重复传多遍**
+④ ★★ 结论（源文原话）："这个 so 库的调用约定与常规的不同，很可能是**全部通过栈**进行的，
+   包括参数的传递以及返回值的传递" —— 返回后 **cgo 会把返回值写回参数数组之后的位置**
+   （`*(_DWORD *)(a6 + 16) = v10;`）
+```
+
+> ★★★ **判据（三条，缺一不可）**：
+> ① 反汇编里出现 **`crosscall2` / `cgo_wait_runtime_init_done` / `cgoexp_`** 前缀的符号；
+> ② 函数体短得可疑，参数被**原样塞进数组**再转发；
+> ③ **传入的 size 比参数个数多**。
+> ⇒ **这种 so 不要按"标准 JNI"去读**；**优先按"输出形状"（`02` §5）与"分段 hook"（§4）来还原**，
+> 或者直接走 **RPC 化**（`04-rpc-and-boundary.md`）。
+> ★ 另一条同源判据：**它把 `go` 的 `crypto/cipher` 用起来了** ⇒
+> 若在符号/字符串里看到 `crypto/cipher`、`newCipher`、`CFB` 等 Go 侧名字，
+> **先按 Go 的默认参数复现，再与 Python 对拍**（源文实测：Go 的 CFB 与 Python 的 CFB
+> **默认结果不同**，需要对上分段/移位口径）。
+
+---
+
 ## §8 来源表
 
 | 源文 | 贡献 |
@@ -377,3 +408,5 @@ memcpy / memmove / strcat / strdup / hex 编码器（sub_109FB8 是「最终 hex
 | `52pojie-2047651` 某海外运营商 | §1.2 搜业务字符串 |
 | `52pojie-2100363` 某卡 Flutter | §5.4 密文长度特征表 |
 | `52pojie-2127692` 海外社交签名链 | §2.4（`JNI_OnLoad` 定位） |
+| `52pojie-2014961` zcool 登录 | §1.2 按 key 打 `HashMap.put` 堆栈定登录函数 |
+| `52pojie-1691013` xx度灰 | §7.5 Go/cgo so 的栈传参与返回值落点、Go CFB 与 Python 默认不同 |

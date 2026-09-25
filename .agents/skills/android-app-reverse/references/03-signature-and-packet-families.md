@@ -6,7 +6,7 @@
 
 ---
 
-## §1 签名串的六种拼装形态
+## §1 签名串的十八种拼装形态
 
 **全部来自本批实测**，可直接当候选清单逐条比对：
 
@@ -18,6 +18,18 @@
 | 4 | `参数名:值` 逐对拼接 → MD5 | `583158` / `676712` | ★ `676712` 的 key 排序用**自定义比较器**；`sign` 自身要排除 |
 | 5 | `盐 + Base64(明文)` 后**逐字符排序** → MD5 | `1737837`（洞见者） | ★★ **「排序」这一步极不常见**，`('Xangah6iephe1Zsb' + base64(json)).split('').sort().join('')` |
 | 6 | `MD5(deviceId:毫秒时间戳)` **再大写** | `2107752`（饰品交易） | ★ `requestTag` 是**请求头**里的名字，不叫 `sign` |
+| 7 | 明文 = `hea + a1 + en + a2 + end` → `md5(明文)`；实际加密串 = `a1 + "-36cd479b6b5-" + a2 + "-36cd479b6b5-" + 该 md5` → **AES-ECB/PKCS7** → hex | `2014961`（zcool 登录） | ★★ **同一次加密里存在"两串"**：一串只喂哈希、另一串才是 AES 原文；两串的**分隔符写死**（`-36cd479b6b5-`） |
+| 8 | 参数按 key 排序 → `k=v&…` → **删掉尾部的 `&`** → 拼盐（`v2020global`）→ MD5（**小写**） | `1139448`（mall 登录） | ★ `formatUrlMap(map, 参数2, 参数3)`：**参数 2 = 是否对值做 URL 编码**、**参数 3 = key 是否转小写** —— POST 场景两个都是 `false` |
+| 9 | `MD5("ANDROID" + appKey + deviceIdentify)` 当**一次性 token** | `1396064`（抢茅台） | ★ 硬编码串 `"ANDROID"`；★ 落点字段叫 **`reservationToken`**，藏在 `orderAddInfo` 这个 **URL 编码的 JSON** 里（既不是 header、也不是裸 URL 参数）；★ **iOS 与 Android 共用同一套算法**（同文原话） |
+| 10 | `固定串 + deviceId + 毫秒时间戳` → MD5 → **大写** | `1452996`（影视邀请） | ★ 那个"固定串"是**DES 解密**出来的产物（不是加密结果）⇒ 在算法助手里**搜不到**，只能靠注入打印；解密实现是 `DESede/CBC/PKCS5Padding`（key 与 `IvParameterSpec` 都来自 `getBytes()`） |
+| 11 | `MD5( path + "?" + Uri.decode(排序后 rawQuery) + 盐 )` | `1644568`（听书 `sc`） | ★ 用 `TreeMap` 重排 query；★ 判据：**长度像 md5 就直接搜 `java.security.MessageDigest` / `md5`**，比逐层跟接口快 |
+| 12 | `SHA1( 全大写("K=V&K=V&…&<常量>") )`，结果**按 76 字节分段、段间插 `\n`** | `1658810`（某拉雅 `signature`） | ★★ **"全大写"与"分段换行"是两个必须复现的细节**；★ 常量段是 `MOBILE-V1-PRODUCT-<64hex>` |
+| 13 | `MD5( 包名 + <APK 签名 SHA256> + 固定串 + 时间戳 )` | `1555004`（加菲猫 `ns`） | ★★ 明文实为 `包名 + "1A06…AC7FA" + "&z4Y!s!2br" + 时间戳`；`<APK 签名 SHA256>` 与 `GetSignatureString()` 的 native 返回值**静态看不出来** ⇒ **动态断点读寄存器**；★ 另一参数 `old_key` 是**阿里 UTDID**（每设备不同，不是常量） |
+| 14 | `APP_KEY + formatUrlMap(参数排序拼接)` | `1752032`（某头像 App） | ★ 与形态 8 同族（`formatUrlMap` + 排序 + 尾 `&` 要删）；★ **"盲猜几种方案都不对 ⇒ 去搜 `setParams`/`formatUrlMap` 这类"设置参数"的方法"**（源文的破局动作） |
+| 15 | **HMAC-SHA256**（`sign` 为 64 位 hex，jadx 搜 `HmacSha256` 命中） | `1547120`（某生鲜超市） | ★ 同站另有 `eu` / `fv` 两个加密参数需一并还原；★★ 接口有 **5 分钟时效**（服务端检测 `t`）⇒ **时间戳必须同源** |
+| 16 | `RSA(密码)`，公钥来自**本地 `SharedPreferences` XML 或响应里的 `rsa_public_key`** | `851229`（3733 平台） | ★ 判据：**抓包里只有密码字段在变** ⇒ 只还原它；★ **公钥既可能在安装目录 XML 里，也可能直接由接口返回**（两条都试） |
+| 17 | `AES-CBC/PKCS5` → `toHexString`；或 `AES(data)` + `sign = MD5(排序后 k=v&… + signKey)` | `1163182`（某猫）/ `1915146`（手游 SDK） | ★ 某猫的加密封装在 **`AesEncryptionUtil`** 里（进去一眼看到 `AES/CBC/PKCS5Padding` + `toHexString`）；★ 判据：**字段名太大众（`data`/`sign`）⇒ 改搜"业务常量"**（`productCode` 这类不变量一次命中） |
+| 18 | RN bundle（`index.android.bundle`）里的 `fenduan()`：**每80位长度,分割1次** → 逐段 RSA → 拼成 `token` | `1140214`（第 3 饭） | ★★ **"分段长度"是可复现的硬特征**，别当成"整体一次加密"；★ 代码里**同时留了公钥与私钥** ⇒ 本地可直接解密对拍（正常只需公钥，留私钥是作者的破绽） |
 
 > ★★ **判据**：**拼接串里必须显式带分隔符**（`|` / `&` / `:` / `#`）是常态；
 > **完全不带的（形态 3）需要靠「长度 + 顺序」对拍**，不要一上来就假设有分隔符。
@@ -29,6 +41,72 @@
 | **硬编码常量** | 点进去就是字面量 | 直接抄 | `1137911` / `1915954` / `2107752` |
 | **native 侧固定串**（被简单变换） | 如 `f34988b = '#'`（分隔符） | 顺着常量找赋值点 | `2060153` |
 | **派生表** | `key = table[(~byte) & 0xFF]`（**按位取反后查 256 字节固定表**） | 把表整张抄下来复现 | `2073893` |
+| **配置/资源里带出来** | 先解一张加密资源（`.PIC`）→ JSON 里的 `k1..k6` 各管一段 | 走 `06-ios-app-reverse.md` §5「加密资源文件当"密钥字典"」 | `1537322` |
+
+### §1.2 ★★★ 「两串原文」与「同 key 复用」——两个省时间的判据
+
+```text
+判据 A（两串原文）：加密函数体内出现**两次字符串拼接**，且其中一串带 `md5(...)`：
+  ⇒ 前者是"给哈希用的"，后者才是"给 AES 用的"。
+  ⇒ 复现时**不要只拼一次**。（实测：`2014961`）
+```
+
+```text
+判据 B（同 key 复用）：请求用某 key 加密；拿同一个 key 去解响应，
+  解出来是**可读明文** ⇒ ★★ **直接复用，不要再逆向响应侧**
+  （`2014961` 原话："后面解密第一步尝试用相同 key 解密看看，结果就是同一个 key 就直接不逆向了"）。
+  ⇒ 这是**成本最低的一次实验**：比读反汇编快，且成功率高。
+```
+
+> ★ **反面对照**：`52pojie-1352135`（某东 `jwData`）虽然只是 `DESede/CBC/PKCS5Padding` + 全零 IV，
+> 但明文是 `lng + "_" + lat + "_" + networkType + "_null"` —— **先定明文拼法，再定算法**，
+> 顺序反了会一直觉得"算法不对"。
+
+### §1.3 参数值的预处理（不是加密，但决定成败）
+
+有些"算不出来"不是算法问题，而是**入参在进加密前被改造过**。实测两类：
+
+| 预处理 | 做法 | 判据 / 陷阱 |
+| --- | --- | --- |
+| **中文取姓氏首字母** | `getBytes("GB2312")` 取两个字节 → `(b0 << 8 & 0xFF00) + (b1 & 0xFF)` → 与一张 **27 项的区间阈值表**比较 → 落在哪个区间取对应 `A..Z` | ★★ 这是**区间查表，不是 Unicode 映射**；★ 反编译出来的 `int[27]` 常量表**必须程序抽取**（手抄必错） |
+| **手机号/身份证按位取子串再查表** | 如 `b[手机号[2]] + b[手机号[5]] + b[手机号[7]]`（从 11 项字母表取） | ★★ **下标是"字符位置的数字"，不是字符本身**；★ 两次取自**两张不同的表**（`a` / `b`） |
+
+> 来源 `52pojie-1138081`（`keystr` 实名认证签名）：整条链是
+> `姓首字母 + 手机号查表 + "_" + (pid+6) + 手机号查表2 + 身份证三段子串拼接 + 姓名首字母`
+> → `MD5(该串)` → 再拼 `pjjsdsb` → **再 MD5 一次**（**两次 MD5，第二次的输入含第一次的结果**）。
+
+### §1.4 ★ 常见「不是魔改，只是少见的标准算法」
+
+| 算法 | 出现位置判据 | 处置 | 样本 |
+| --- | --- | --- | --- |
+| **XXTEA** | 代码里出现 `DELTA = -1640531527`（`0x9E3779B9` 的有符号形式）、`UByte.MAX_VALUE = -1`、`52 / (n+1) + 6` 轮数、`MX(...)` 函数 | `fixKey` 把 key **补/截到 16 字节**（`arraycopy`）；`encryptToBase64String` = `Base64(encrypt(...))`；★ **密文长度 = `4*(ceil(明文/4)+1)`** ⇒ 形状是「4 的倍数但**不是** 8 的倍数」（24→28、32→36、51→56），见 `scripts/app_cipher_shape.py shape` | `1530981`（某社区 `params`） |
+| **DES-ECB-NoPadding（补齐到 8 倍数）** | `Cipher.getInstance("DES/ECB/NoPadding")`；key 由 `getKey()` **取前 8 字节补齐** | 主体在 native；**base64 后先 strip 空白再 MD5**（`replaceAll("[\\s*\\t\\n\\r]", "")`） | `1778152`（U3D 游戏 `code`） |
+| **3DES-CBC + 全零 IV** | `DESede/CBC/PKCS5Padding` + `IV_BYTES = {0,0,0,0,0,0,0,0}` | 直接复现 | `1352135`（某东 `jwData`）；`589291`（合富 `pwd`，key `GDgLwwdK270Qj1w4`） |
+| **RSA-NoPadding（明文右侧补 `\0` 到 key 长度）** | `Cipher.getInstance("RSA")` 默认 **NoPadding**，明文长度 = 密钥模长 | ★★ Python `PKCS1_v1_5` **不行**，必须手工：`bytes2int(右补0)` → `encrypt_int(m, e, n)` → `int2bytes(kLen)` → **hex 大写** | `1622354`（酷狗系 `pk`） |
+
+> ★★★ **`RSA/NoPadding` 的复现骨架（Python，源文可跑）**：
+
+```python
+import rsa                                    # 需 pip install rsa
+from Crypto.PublicKey import RSA
+from base64 import b64decode
+
+def zfill_to_keylen(s: str, n: int) -> bytes:  # 不是加密！只是把明文补到模长
+    b = s.encode()
+    return b + b"\0" * (n - len(b))            # n = rsa.common.byte_size(pubkey.n)
+
+class RsaNoPadding:
+    def __init__(self, key_b64): self.pub = RSA.importKey(b64decode(key_b64))
+    def encrypt(self, message: str) -> str:
+        n = self.pub.n; k = rsa.common.byte_size(n)
+        m = rsa.transform.bytes2int(zfill_to_keylen(message, k))
+        c = rsa.core.encrypt_int(m, self.pub.e, n)
+        return rsa.transform.int2bytes(c, k).hex().upper()
+```
+
+> ★ 同文另一条：**`key` 参数不总是随机** —— 那里是
+> `MD5(AppId + AppKey + APPVersion + str(clienttime_ms).lower())`，
+> 属于 **"多个常量 + 一个时间戳" 型 key**；**先把 key 的生成式定下来，再算 t1/t2**。
 
 ---
 
@@ -233,3 +311,22 @@ part3：base64(md5(data))
 | `52pojie-2054564` 某瓣 app | §6 手法 2 |
 | `52pojie-1388335` / `52pojie-1332557` / `52pojie-1243816` | §6 手法 5/6/7 |
 | `52pojie-2122819` ttEncrypt | §4 秒级种子 PRNG |
+| `52pojie-2014961` zcool 登录 | §1 形态 7、§1.2 两串原文 / 同 key 复用、§1.4 AES-ECB |
+| `52pojie-1139448` mall 登录 | §1 形态 8、§1.1 `formatUrlMap` 的两个开关 |
+| `52pojie-1396064` / `52pojie-1397031` 抢茅台 | §1 形态 9、§1.1 `"ANDROID"` 硬编码、iOS/Android 同算法 |
+| `52pojie-1452996` 影视邀请 | §1 形态 10、§1.1 "固定串"来自 DES 解密 |
+| `52pojie-1138081` 实名认证 `keystr` | §1.3 中文首字母 / 手机号身份证查表 / 两次 MD5 |
+| `52pojie-1530981` 某社区登录 | §1.4 XXTEA（`fixKey` 16 字节） |
+| `52pojie-1778152` U3D 游戏 `code` | §1.4 DES-ECB-NoPadding + 补齐 |
+| `52pojie-1352135` 某东 `jwData` | §1.4 3DES-CBC 全零 IV + 明文拼法 |
+| `52pojie-589291` 合富 App | §1.4 3DES（key `GDgLwwdK270Qj1w4`）+ 参数 MD5 校验 `_s` |
+| `52pojie-1622354` 酷狗系 App | §1.4 RSA-NoPadding 复现骨架、§1.1 派生 key |
+| `52pojie-1537322` ppp买菜 iOS | §1.1 配置/资源里带出 key（详见 `06-ios-app-reverse.md` §5） |
+| `52pojie-1644568` 听书 `sc` | §1 形态 11（`TreeMap` 重排 query + 盐） |
+| `52pojie-1658810` 某拉雅 | §1 形态 12（全大写 + 76 字节分段 SHA1） |
+| `52pojie-1555004` 加菲猫 | §1 形态 13（APK 签名 SHA256 进串、UTDID 非常量） |
+| `52pojie-1752032` 某头像 App | §1 形态 14（`formatUrlMap` 破局动作） |
+| `52pojie-1547120` 某生鲜超市 | §1 形态 15（HMAC-SHA256 + `eu`/`fv` + 5 分钟时效） |
+| `52pojie-851229` 3733 平台 | §1 形态 16（RSA 密码 + 公钥两条来源） |
+| `52pojie-1163182` 某猫 / `52pojie-1915146` 手游 SDK | §1 形态 17（AES-CBC→hex / `AES(data)` + `signKey`） |
+| `52pojie-1315172` 极略三国 | §2.3 请求与响应**各一个盐** |

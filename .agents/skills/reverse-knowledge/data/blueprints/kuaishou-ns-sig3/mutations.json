@@ -1,0 +1,24 @@
+{
+  "mutations": [
+    {
+      "name": "ollvm 混淆下硬读 F5",
+      "rule": "IDA F5 又慢又不可读时，改用 **frida 逐层 hook**（hook sub_3E550 看返回值）或 **unicorn trace** 收敛到具体函数",
+      "symptom_if_wrong": "在 sub_c060 上死磕反编译会消耗掉全部预算（源文原话『头皮发麻』『F5 都巨慢』）"
+    },
+    {
+      "name": "对「同版本内不变的常量」也去追生成逻辑",
+      "rule": "两处值来自图片数据派生，同版本内不变 ⇒ **dump 出来直接用**",
+      "symptom_if_wrong": "花大量时间追图片处理链，收益为零（源文明确『具体没去跟』）"
+    },
+    {
+      "name": "base64 只解一层",
+      "rule": "sub_3FDA4 的输出要 **base64 两次**才是 sig3 的一部分",
+      "symptom_if_wrong": "只 base64 一次得到的结果与抓包不一致"
+    },
+    {
+      "name": "把 sha256 变形当标准 sha256",
+      "rule": "源文实测该函数是 **sha256 的变形**（常量表被改动，位置 dword_9e338）",
+      "symptom_if_wrong": "用标准 sha256 算，输出对不上；应先按标准实现对拍，再逐项 diff 常量表（方法见 `android-app-reverse/references/03-signature-and-packet-families.md` §3.1）"
+    }
+  ]
+}

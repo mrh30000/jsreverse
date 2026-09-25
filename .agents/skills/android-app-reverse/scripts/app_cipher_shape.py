@@ -69,9 +69,50 @@ def candidates(n: int):
         out.append(("AES", "长度是 16 的倍数（分组 16 字节）"))
     if n % 8 == 0:
         out.append(("DES/3DES", "长度是 8 的倍数（分组 8 字节）"))
+    if n % 4 == 0 and n % 8 != 0:
+        out.append(("XXTEA", "4 的倍数但**不是** 8 的倍数 ⇒ XXTEA 输出长度是 `4*(ceil(n/4)+1)`（实测 24→28、32→36）"))
     if not out:
         out.append(("未知", "既不是 8 的倍数、也不是 16 的倍数 ⇒ 可能带自定义固定头（用 decompose）"))
     return out
+
+
+# iOS `CCCrypt(op, alg, options, key, keyLength, iv, ...)` 的枚举语义表。
+# 来源：52pojie-1752900（某茅台 iOS actParam）实测日志 + CommonCrypto 头文件。
+CCC_OP = {0: "加密(kCCEncrypt)", 1: "解密(kCCDecrypt)"}
+CCC_ALG = {0: "AES128", 1: "DES", 2: "3DES", 3: "CAST", 4: "RC4", 5: "RC2", 6: "Blowfish"}
+CCC_MODE = {0: "None(ECB)", 1: "ECB", 2: "CBC", 3: "CFB", 4: "CTR", 5: "OFB", 6: "CFB8"}
+CCC_PAD = {0x0000: "NoPadding", 0x1000: "PKCS7"}
+
+
+def parse_cccrypt_options(v: int):
+    """把 options 数字拆成 (模式, 填充)。低 4 位是模式，0x1000 位是 PKCS7。"""
+    mode = CCC_MODE.get(v & 0x0F, "未知(%d)" % (v & 0x0F))
+    pad = "PKCS7" if (v & 0x1000) else "NoPadding"
+    return mode, pad
+
+
+def cmd_cccrypt(argv):
+    """解析 iOS CCCrypt 的一次调用参数（数字或 --opt/--alg/--op 形式）。"""
+    if not argv:
+        print("用法: cccrypt <op> <alg> <options> [keyLength]")
+        print("   例: cccrypt 0 0 1 32   ⇒ 加密 / AES128 / ECB / key 32 字节")
+        return 2
+    try:
+        op, alg, opt = int(argv[0]), int(argv[1]), int(argv[2])
+    except (ValueError, IndexError):
+        print("op / alg / options 必须是整数")
+        return 2
+    klen = int(argv[3]) if len(argv) > 3 else None
+    mode, pad = parse_cccrypt_options(opt)
+    print("op       : %d → %s" % (op, CCC_OP.get(op, "未知")))
+    print("alg      : %d → %s" % (alg, CCC_ALG.get(alg, "未知")))
+    print("options  : %d → %s / %s" % (opt, mode, pad))
+    if klen is not None:
+        # CCCrypt 的 alg=kCCAlgorithmAES128 是"算法族"名，实际强度看 keyLength。
+        strength = {16: "AES-128", 24: "AES-192", 32: "AES-256"}.get(klen, "%d 字节" % klen)
+        print("keyLength: %d 字节 → %s" % (klen, strength))
+        print("iv       : 读 keyLength 个字节；**ECB 时 iv 不参与** ⇒ 判模式只看 options，别因 iv 非零就判 CBC")
+    return 0
 
 
 def cmd_shape(argv):
@@ -196,7 +237,31 @@ def _selftest():
     ck("16 字节同时命中 AES 与 DES", ("AES" in cand16) and ("DES/3DES" in cand16), True)
     ck("512 字节命中 RSA", "RSA" in {c[0] for c in candidates(512)}, True)
     ck("384 字节不命中 RSA", "RSA" in {c[0] for c in candidates(384)}, False)
-    ck("12 字节都不命中", [c[0] for c in candidates(12)], ["未知"])
+    ck("12 字节命中 XXTEA", [c[0] for c in candidates(12)], ["XXTEA"])
+    ck("13 字节都不命中", [c[0] for c in candidates(13)], ["未知"])
+
+    # ⑤ XXTEA：输出 = 4 * (ceil(n/4) + 1)（`toIntArray` 补一个长度字），
+    #    故「4 的倍数但**不是** 8 的倍数」是它的形状指纹。
+    #    换算依据 52pojie-1530981 的 XXTEA 源码：`(len & 3) == 0 ? len >>> 2 : (len >>> 2) + 1`，再 `new int[length + 1]`。
+    def _xxtea_out(n):
+        words = n // 4 if n % 4 == 0 else n // 4 + 1
+        return 4 * (words + 1)
+
+    ck("XXTEA 24 → 28", _xxtea_out(24), 28)
+    ck("XXTEA 32 → 36", _xxtea_out(32), 36)
+    ck("XXTEA 51 → 56", _xxtea_out(51), 56)
+    ck("28 命中 XXTEA", "XXTEA" in {c[0] for c in candidates(28)}, True)
+    ck("36 命中 XXTEA", "XXTEA" in {c[0] for c in candidates(36)}, True)
+    ck("40 不命中 XXTEA（8 的倍数）", "XXTEA" in {c[0] for c in candidates(40)}, False)
+
+    # ⑥ iOS CCCrypt 枚举映射（52pojie-1752900 实测：op=0, alg=0, options=1, keyLength=0x20）
+    ck("options=1 → ECB/NoPadding", parse_cccrypt_options(1), ("ECB", "NoPadding"))
+    ck("options=2 → CBC/NoPadding", parse_cccrypt_options(2), ("CBC", "NoPadding"))
+    ck("options=0x1001 → ECB/PKCS7", parse_cccrypt_options(0x1001), ("ECB", "PKCS7"))
+    ck("options=0x1003 → CFB/PKCS7", parse_cccrypt_options(0x1003), ("CFB", "PKCS7"))
+    ck("op=0 → 加密", CCC_OP[0], "加密(kCCEncrypt)")
+    ck("alg=0 → AES128 族", CCC_ALG[0], "AES128")
+    ck("alg=2 → 3DES", CCC_ALG[2], "3DES")
 
     # ⑤ PKCS#7：整块对齐时补满一整块（不是补 0）
     ck("PKCS7(64)", _pkcs7_block(64), 80)
@@ -236,6 +301,8 @@ def main(argv):
         return cmd_decompose(rest)
     if cmd == "predict":
         return cmd_predict(rest)
+    if cmd == "cccrypt":
+        return cmd_cccrypt(rest)
     print("未知子命令：%s" % cmd)
     print(__doc__)
     return 2

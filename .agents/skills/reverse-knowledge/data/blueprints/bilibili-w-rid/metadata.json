@@ -1,10 +1,10 @@
 {
   "id": "bilibili-w-rid",
-  "title": "B站 / wbi 接口 w_rid 签名（w_rid + wts）",
+  "title": "B站 签名两族：wbi 接口 w_rid（w_rid + wts）与大积分活动 task_sign",
   "category": "platform-signature",
   "status": "active",
-  "version": "1.0.0",
-  "summary": "B站 wbi 接口 w_rid = MD5(按 key 排序并 urlencode 后以 '&' 拼接的 query 串 + 32 位 mixinKey)；wts 为秒级时间戳，mixinKey 由 imgKey+subKey 按固定 64 索引表取字符得到。",
+  "version": "1.1.0",
+  "summary": "① wbi 接口 w_rid = MD5(按 key 排序并 urlencode 后以 '&' 拼接的 query 串 + 32 位 mixinKey)，wts 为秒级时间戳；② 大积分活动接口的 task_sign = MD5(timestamp + 固定盐 + token)，参数为 position / task_id / token / timestamp / task_sign。",
   "aliases": [
     "w_rid",
     "w-rid",
@@ -12,7 +12,10 @@
     "wts",
     "imgKey",
     "subKey",
-    "mixinKey"
+    "mixinKey",
+    "task_sign",
+    "completeTask",
+    "MikuFans"
   ],
   "keywords": [
     "bilibili",
@@ -21,7 +24,12 @@
     "api.bilibili.com",
     "w_rid",
     "wbi",
-    "wts"
+    "wts",
+    "task_sign",
+    "大积分",
+    "活动",
+    "OGVActivityApiService",
+    "Android"
   ],
   "algorithm": {
     "family": "hash",
@@ -96,6 +104,24 @@
       "line": 151,
       "quote": "这段代码的作用是从字符串t中按特定索引顺序提取有效字符，生成新的数组 r并取前32位，并将结果赋值给变量 a,t是由o+i生成的",
       "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1908960-静态分析逆向 B站 大积分新请求签名.md",
+      "line": 65,
+      "quote": "completeTask(@nullable @Query(\"position\") String str, @Nullable @Query(\"task_id\") String str2, @Nullable @Query(\"token\") String str3, @Nullable @Query(\"timestamp\") String str4, @Nullable @Query(\"task_sign\") String str5, @NotNull Continuation<? super c<Unit>> continuation);",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1908960-静态分析逆向 B站 大积分新请求签名.md",
+      "line": 109,
+      "quote": "task_sign = md5(timestamp + '這是固定值，我這裏不放出來了' + token).toString(",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1908960-静态分析逆向 B站 大积分新请求签名.md",
+      "line": 32,
+      "quote": "发现 `task_sign` 是名为 `completeTask` 方法的形參之一，简单观察发现，就在上面几行就有这个方法的调用。",
+      "verified_in_article": true
     }
   ],
   "entry": {
@@ -114,5 +140,6 @@
     "t = imgKey+subKey 长度 = 64，索引数组长度 = 64，最大索引 = 63（全部落在 t 内，t.charAt(e) 恒真）。",
     "用文章给的 o/i 与索引表重算 mixinKey a = 'ea1db124af3c7062474693fa704f4ff8'（32 位 hex，符合 slice(0,32)）。",
     "base64 解码两个网址，得到 bilibili.com/bangumi/play/ep1633643 与 api.bilibili.com/x/v2/reply/wbi/main —— 确认参数属 B 站（蓝图 ID 保持 bilibili-w-rid，无需改名）。"
-  ]
+  ],
+  "notes": " ⑥ 52pojie-1908960（大积分活动 `task_sign`）：**同一平台可以有第二套、更简单的签名**，与 wbi 的 `w_rid` 无关。定位法：直接搜参数名 `task_sign` ⇒ 命中 3 处 ⇒ 挑带 `activity`（活动）的那个 ⇒ 它是 `completeTask` 的形参之一 ⇒ **在形参列表里对位**（`r10 ↔ task_sign`、`r8 ↔ token`、`r9 ↔ timestamp`）⇒ 还原成 `md5(timestamp + '固定盐' + token)`。★★ 可迁移点：**形参/实参对位**（`OGVActivityApiService.b.a(r5..r13)` vs `completeTask(str..continuation)`）是 Kotlin/Java 反编译里最省事的定位手段；★★ 源文**故意不公开那个固定盐**（原话「這是固定值，我這裏不放出來了」）⇒ 本库**保留其脱敏形态，不代为还原**。"
 }

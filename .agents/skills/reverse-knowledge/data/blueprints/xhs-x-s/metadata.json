@@ -3,7 +3,7 @@
   "title": "小红书 Web 请求签名 x-s / x-s-common / x-t（mnsv2 = XXTEA + 自定义 Base64）",
   "category": "platform-signature",
   "status": "active",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "summary": "小红书 Web 的 x-s = 'XYS_' + 自定义码表 Base64(JSON{x0..x4})，其中 x3 由 window.mnsv2(XXTEA+自定义Base64) 生成；x-t 为毫秒时间戳；x-s 入口为 window._webmsxyw(url, body, a1)，a1 为常量 cookie（搜其值可命中 set 写入点）。",
   "aliases": [
     "x-s",
@@ -15,7 +15,11 @@
     "mns0301",
     "XYS_",
     "a1",
-    "_webmsxyw"
+    "_webmsxyw",
+    "x-b3-traceid",
+    "x-xray-traceid",
+    "b3-traceid",
+    "xray-traceid"
   ],
   "keywords": [
     "小红书",
@@ -28,7 +32,12 @@
     "自定义Base64",
     "a1",
     "_webmsxyw",
-    "补环境"
+    "补环境",
+    "Android",
+    "x-b3-traceid",
+    "x-xray-traceid",
+    "traceid",
+    "jadx"
   ],
   "algorithm": {
     "family": "symmetric",
@@ -41,7 +50,7 @@
     {
       "file": "docs/references/52pojie-2092725-某red书最新'x-s'ai纯算+补环境.md",
       "line": 16,
-      "quote": "某red书 Web 端的请求签名（x-s、x-s-common、x-t）依赖一个 VMP（虚拟机保护）的 JS 文件来生成 mnsv2 签名。",
+      "quote": "某red书 Web 端的请求签名（x-s、x-s-common、x-t）依赖一个 VMP（虚拟机保护）加密的 JS 文件来生成 mnsv2 签名。",
       "verified_in_article": false
     },
     {
@@ -169,6 +178,18 @@
       "line": 104,
       "quote": "x-s-common就是对v值进行了加密编码等操作，v里面又有 x1~x10等等属性。这个跟a1一样扣算法就行了，就是比较难点",
       "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1894045-Android逆向-小红书签名x-b3-traceid,x-xray-traceid.md",
+      "line": 17,
+      "quote": "可以发现相比于之前版本，签名添加了x-b3-traceid，x-xray-traceid；",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1894045-Android逆向-小红书签名x-b3-traceid,x-xray-traceid.md",
+      "line": 34,
+      "quote": "String format = String.format(\"%016x%016x\", Arrays.copyOf(new Object[]{Long.valueOf(jArr[0]), Long.valueOf(jArr[1])}, 2));",
+      "verified_in_article": true
     }
   ],
   "entry": {
@@ -176,7 +197,7 @@
     "trigger": "请求前生成；文章明确 x-t 必须在签名生成后立即生成",
     "transport": "header，参数名逐字：\"x-s\"、\"x-t\"、\"x-s-common\""
   },
-  "notes": "52pojie-1981410（2024-11）补充：① a1 是常量 cookie，其定位法是『先搜 a1（命中太多）→ 发现值是常量 → 改搜这个常量本身 → 命中 set 方法』（即『从值反查写入点』的实例）；a1 算法源文自述『很简单就一些随机数』，扣到本地与浏览器一致。② x-s 入口是 window._webmsxyw（源文写作 windos 函数，实为 window 上的函数），依赖三参数 (请求 url, body, a1)。③ 实现有『补环境』与『长链接调用』两条路线，源文两种都试过，推荐补环境（理由：长链接方式 a1 是写死，拓展性差）。④ 源文给了一份完整的最小补环境模板（见 workflow.md『最小补环境模板』一节，逐字保真），其中 document.cookie = \"a1\" 是关键桩。⑤ x-s-common 是对 v 值做加密编码，v 里含 x1~x10 等属性（仅命名，无代码）。",
+  "notes": "52pojie-1981410（2024-11）补充：① a1 是常量 cookie，其定位法是『先搜 a1（命中太多）→ 发现值是常量 → 改搜这个常量本身 → 命中 set 方法』（即『从值反查写入点』的实例）；a1 算法源文自述『很简单就一些随机数』，扣到本地与浏览器一致。② x-s 入口是 window._webmsxyw（源文写作 windos 函数，实为 window 上的函数），依赖三参数 (请求 url, body, a1)。③ 实现有『补环境』与『长链接调用』两条路线，源文两种都试过，推荐补环境（理由：长链接方式 a1 是写死，拓展性差）。④ 源文给了一份完整的最小补环境模板（见 workflow.md『最小补环境模板』一节，逐字保真），其中 document.cookie = \"a1\" 是关键桩。⑤ x-s-common 是对 v 值做加密编码，v 里含 x1~x10 等属性（仅命名，无代码）。 ⑥ 52pojie-1894045（Android 侧）：高版本 App 在原有签名之外**新增两个 trace 头** `x-b3-traceid` / `x-xray-traceid`，且**在 Java 层直接可见**（jadx 搜字段名即命中，**不需要 frida**）。生成逻辑：判断 header 里的 `x-xray-traceid` 是否为空，为空则由 `String.format(\"%016x%016x\", long0, long1)` 拼出（即**两个 64 位整数的 16 位小写 hex 直接相连**）。⇒ 与 Web 侧 `x-s` **不是同一套东西**：Web 侧是 mnsv2（XXTEA + 自定义 Base64），Android 侧这两个头是**纯格式化**。**不要把两边的难度搞混。**",
   "gaps": [
     "x-s-common 的生成算法（文章只给示例值，无代码；52pojie-1981410 也只说'对 v 值加密编码，v 里有 x1~x10 等属性'，仍无代码）。",
     "XXTEA 的 89 字节 payload 内部字段布局（magic/随机数/时间戳/URL 长度/XOR 编码的 MD5/指纹 只列了名字，未给字节偏移）。",

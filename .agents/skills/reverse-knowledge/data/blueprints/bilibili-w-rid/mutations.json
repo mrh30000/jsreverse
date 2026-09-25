@@ -24,6 +24,16 @@
       "name": "imgKey/subKey 是否固定",
       "rule": "文章实测 o/i 为固定值；代码里其实来自 localStorage 的 ct 键",
       "symptom_if_wrong": "换站点/换会话后 Key 可能变，需重新取"
+    },
+    {
+      "name": "把大积分的 task_sign 当成 w_rid 去算",
+      "rule": "同一平台的第二套签名：task_sign = MD5(timestamp + 固定盐 + token)，**不含 wbi 的 mixinKey / 排序 / urlencode**",
+      "symptom_if_wrong": "按 wbi 流程（排序 query + mixinKey）算 task_sign 永远不对；反过来也一样"
+    },
+    {
+      "name": "固定盐被源文脱敏时不要猜",
+      "rule": "源文作者自己把固定盐写成「這是固定值，我這裏不放出來了」⇒ 保留脱敏形态，登记为 gap",
+      "symptom_if_wrong": "自行猜测盐值会污染蓝图，且无法对拍"
     }
   ]
 }

@@ -81,10 +81,10 @@
     {
       "id": "bilibili-w-rid",
       "path": "bilibili-w-rid",
-      "title": "B站 / wbi 接口 w_rid 签名（w_rid + wts）",
+      "title": "B站 签名两族：wbi 接口 w_rid（w_rid + wts）与大积分活动 task_sign",
       "category": "platform-signature",
       "status": "active",
-      "summary": "B站 wbi 接口 w_rid = MD5(按 key 排序并 urlencode 后以 '&' 拼接的 query 串 + 32 位 mixinKey)；wts 为秒级时间戳，mixinKey 由 imgKey+subKey 按固定 64 索引表取字符得到。",
+      "summary": "① wbi 接口 w_rid = MD5(按 key 排序并 urlencode 后以 '&' 拼接的 query 串 + 32 位 mixinKey)，wts 为秒级时间戳；② 大积分活动接口的 task_sign = MD5(timestamp + 固定盐 + token)。",
       "aliases": [
         "w_rid",
         "w-rid",
@@ -92,7 +92,10 @@
         "wts",
         "imgKey",
         "subKey",
-        "mixinKey"
+        "mixinKey",
+        "task_sign",
+        "completeTask",
+        "MikuFans"
       ],
       "keywords": [
         "bilibili",
@@ -101,7 +104,10 @@
         "api.bilibili.com",
         "w_rid",
         "wbi",
-        "wts"
+        "wts",
+        "task_sign",
+        "大积分",
+        "活动"
       ]
     },
     {
@@ -691,7 +697,9 @@
         "mns0301",
         "XYS_",
         "a1",
-        "_webmsxyw"
+        "_webmsxyw",
+        "x-b3-traceid",
+        "x-xray-traceid"
       ],
       "keywords": [
         "小红书",
@@ -704,7 +712,10 @@
         "自定义Base64",
         "a1",
         "_webmsxyw",
-        "补环境"
+        "补环境",
+        "Android",
+        "x-b3-traceid",
+        "x-xray-traceid"
       ]
     },
     {
@@ -815,6 +826,31 @@
         "魔改base64",
         "环境检测",
         "crc32"
+      ]
+    },
+    {
+      "id": "kuaishou-ns-sig3",
+      "path": "kuaishou-ns-sig3",
+      "title": "快手 __NS_sig3 参数（sha256 变形 + 双 base64 + 时间戳异或）",
+      "category": "platform-signature",
+      "status": "partial",
+      "summary": "快手 App 请求参数 __NS_sig3：sha256 变形 → 变换 → base64 两次；前半段与时间戳异或；两处常量来自图片数据可 dump。同批还还原 sig 与 __NStokensig。",
+      "aliases": [
+        "__NS_sig3",
+        "NS_sig3",
+        "sig3",
+        "__NStokensig",
+        "kuaishou"
+      ],
+      "keywords": [
+        "快手",
+        "kuaishou",
+        "sig3",
+        "NS_sig3",
+        "doCommandNative",
+        "ollvm",
+        "unidbg",
+        "trace"
       ]
     }
   ]

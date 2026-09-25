@@ -183,8 +183,18 @@ WebSocket 逆向后建议沉淀（**这些是产出到你自己任务目录的�
   **`HashCode` 漏处理会「前多两字节、后丢两字节」**、短数据不压缩、
   以及 `cocos2djs.so` 里搜 `main.js` 定位 `jsc` 解密 key 的取巧路径与其边界）
 
-完整案例参考：本技能 `references/cases/` 下的三份站点抽象 case
-（`case-websocket-protobuf.md` / `case-ws-carried-captcha.md` / `case-cocos2djs-ws-packet.md`）；
+- `references/cases/case-discord-gateway-zstd.md`（**事件网关型 WS**：`OP` 码状态机（HELLO→IDENTIFY→READY→心跳）、
+  **Server→Client 是连续 zstd 流（不能每帧 reset）而 Client→Server 干脆不压缩**、
+  RN 桥 hook 不到要改 hook `okhttp3.WebSocket.send`、**双 TLS 栈导致一部分请求抓不到**、
+  `X-Super-Properties` 与 IDENTIFY 里的**双份指纹必须一致**、协议落成独立产物时的三个线程/header 坑）
+
+- `references/cases/case-e2ee-claim-audit.md`（**「宣称端到端加密」的实际加密审计**：
+  三问定性法（有没有密钥协商 / 密钥从哪来 / 业务数据是明是密）、取证顺序、
+  结论写成"步骤 + 每步谁能解密"、报告口径与边界）
+
+完整案例参考：本技能 `references/cases/` 下的五份站点抽象 case
+（`case-websocket-protobuf.md` / `case-ws-carried-captcha.md` / `case-cocos2djs-ws-packet.md` /
+`case-discord-gateway-zstd.md` / `case-e2ee-claim-audit.md`）；
 六阶段工作流（Observe / Capture / Rebuild / Patch / PureExtraction / Port）见项目根 `AGENTS.md`。
 
 ---

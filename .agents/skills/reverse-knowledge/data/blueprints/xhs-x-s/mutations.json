@@ -49,6 +49,16 @@
       "name": "x-s-common 是对 v 的加密编码（非 x-s 复制）",
       "rule": "x-s-common 对 v 值做加密编码，v 里含 x1~x10 等属性（52pojie-1981410）；文章未给代码",
       "symptom_if_wrong": "把 x-s-common 当成 x-s 的复制 / 明文 JSON 处理会失败（本仓仍无其生成算法，属 gap）"
+    },
+    {
+      "name": "把 Android 侧的 trace 头当成 Web 侧 x-s 去做",
+      "rule": "Android 高版本的 `x-b3-traceid` / `x-xray-traceid` 是 `String.format(\"%016x%016x\", long0, long1)` 的**纯格式化结果**，与 Web 侧 mnsv2/x-s 无关",
+      "symptom_if_wrong": "去啃 mnsv2 / XXTEA / 自定义 Base64 会完全跑偏；正确做法是 jadx 直接搜 `x-xray-traceid` 字段名（命中即在 Java 层），再按 `%016x%016x` 复现"
+    },
+    {
+      "name": "只补一个 trace 头",
+      "rule": "两个头成对出现：`x-xray-traceid` 为空时才生成新的，生成值同时用于两个头",
+      "symptom_if_wrong": "只带 `x-b3-traceid` 或两个头不一致时，服务端可能按缺失/不匹配处理"
     }
   ]
 }
