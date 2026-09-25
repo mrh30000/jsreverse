@@ -17,11 +17,12 @@
 | 目标 App 会**下载一个加密压缩包**（zip/7z），解压要密码 | **APK 内资源包 / 下发资源包** | §4 |
 | 请求体是「一长串十六进制」，解出来是 JSON | **Java 层 AES → hex 编码** | §3.4 |
 | 只有 `.so` / `lib*.so`，且 `ida` 能识别导出符号 | **native 层** | §2 |
+| 有 `.so`，但 `ida` 的 `Exports` **搜不到**那个方法名 | **动态注册**（`RegisterNatives`） | §2.5 |
 | 参数在页面 JS 里能搜到，但代码被 uglify + 字符串加密 | **不是本文件**，走 `../../ast-deobfuscation/` | — |
 
 > ★ **反向判据（省时间）**：先在页面里**全局搜参数名**（不是搜 `sign` 这个词，是搜**逐字**的那个参数名）。
 > 搜得到 ⇒ 页面里至少有一层；搜不到 ⇒ 大概率整条链都在客户端。
-> `15-call-site-locating-playbook.md` §1 的「搜参数名」动作在客户端题上**会静默失败**，不要因此判定「没有」。
+> `15-call-site-locating-playbook.md` §0 的 **J1「消失点比出现点更好用」**（跟栈找参数）在客户端题上**会静默失败**，不要因此判定「没有」。
 
 ---
 
@@ -143,7 +144,7 @@ xmmword_112C4 = 69 D2 55 B8 32 9E AC D4 0C 2A 9C 8B 68 75 87 05
 `encrypt_two` 把 `random_key` 的每个字节，按 `i = (i + v11) % (v32 + input_len) + 1`
 算出的位置**插入密文并右移后续字节**，最终输出 `ivlen + input_len` 长度。
 
-> ★★ **形态归属**：这是 `08-mixed-crypto-segmentation.md` §8「密钥包装的另外三种形态」
+> ★★ **形态归属**：这是 `08-mixed-crypto-segmentation.md` §八「密钥包装的另外四种形态」
 > 之外的**第四种**：**密钥不是被加密，而是被「插进」密文里**。
 > ⇒ 解密顺序必须**反着来**：先从密文抽出随机 key → 用 `encrypt_one` + IV 算出真实 key
 > → 再用另一个固定 IV 做 AES-CBC 解密。
@@ -189,6 +190,80 @@ malloc(0x1A)          = 26 字节缓冲
 ⇒ **不要试图在页面里纯算**，走 `../../web-reverse-hook/references/response-rewrite-and-locating-hooks.md`
 的「定位调用点」路线，或直接在客户端侧做 RPC。
 
+### §2.5 ★★ 进 so 的第一分钟：**静态注册** 还是 **动态注册**
+
+**来源** `52pojie-1238131`（快手 `sig` ← `libcore.so` 的 `CPU.getClock`）、
+`52pojie-1724211`（某免费小说 `hash2` ← `libUiControl.so`）、`52pojie-1803699`（无壳 App）。
+
+三条路线的分流（**先在 Java 侧确认，再进 `ida`**）：
+
+| 现象 | 结论 | 第一个动作 |
+| --- | --- | --- |
+| Java 里能看到 `public static native String f(...)`，且有一个 `static { System.loadLibrary("x"); }` | **静态注册** | `ida` 打开 → **`Exports` 页搜方法名** `Java_<包>_<类>_<方法>` |
+| `Exports` 里搜不到，`Functions` 里搜 `f` 也搜不到 | **动态注册**（不是「函数不存在」） | 去找 **`JNI_OnLoad`** |
+| Java 侧连 `native` 声明都没有 | 不在 so 里 | 回 §0 判据 |
+
+> ★★ **可迁移判据（本节核心）：`ida` 里搜不到函数名，第一反应必须是「静态注册还是动态注册」，
+> 不是「这个函数不存在」。** 动态注册的行为是：`JNI_OnLoad` → `GetEnv` → **`RegisterNatives`**，
+> 函数名只以**字符串常量**的形式存在于数据段，`ida` 不会给它建符号。
+
+`RegisterNatives` 的契约（源文 `1724211` 贴了定义）：
+
+```c
+jint RegisterNatives(jclass clazz, const JNINativeMethod* methods, jint nMethods);
+
+typedef struct {                 /* JNINativeMethod */
+    const char* name;            /* 函数名 */
+    const char* signature;       /* 函数签名，如 (I[B)Ljava/lang/String; */
+    void*       fnPtr;           /* 真正的实现地址 ← 这才是你要找的 */
+} JNINativeMethod;
+```
+
+`fnPtr` 就是目标函数指针（源文 `1724211` 实测：`sub_877EC` = `hash`、`sub_87324` = `hash2`）。
+
+#### 三条与 `ida` 打交道的硬判据
+
+1. **`JNIEnv*` / `JavaVM*` 的类型没设对 ⇒ `JNI` 调用全显示成「指针加偏移」，不可读。**
+   `ida` 里表现为 `(*(_DWORD*)(v9 + 0x2C))(...)` 这类形态。改类型的两个锚点：
+   - `JNI_OnLoad(JavaVM* vm, void* reserved)` 的**第一个参数是 `JavaVM*`**；
+     `GetEnv` 的**输出是 `JNIEnv*`**（源文实测：源文一开始把 `v26` 改成 `JNIEnv*` 后，
+     `GetEnv` 才显示出来）；
+   - ★★ **不要凭「名字像」就改**：源文把 `sub_78EEC` 惯性改成 `JNIEnv*` 得到的是
+     **`FindClass`**（明显不对，`FindClass` 不产出 `JNIEnv*`）——
+     **交叉引用（xref）到 `JNI_OnLoad` 才发现它其实是 `JavaVM*`**。
+     ⇒ **判据：改类型前先看 xref；得到的函数名与语义矛盾时，类型就是错的。**
+2. **`methods` 数组可能是加密数据。** 源文 `1724211` 的 `methods` 三个字段在静态视图里全是空数据，
+   要**先经 `sub_78F54` 解密**。解密逻辑（源文原话归纳）：
+   **取三位一组转成十进制数，与 `v12` 异或**；`v12` 是字符串 `"8080"`，
+   即密钥字节循环 `[56, 48]` = `ord('8') / ord('0')`；
+   `v8 - (v10 & 0xFFFFFFFC)` 等价于 `v8 & 3`（只取末两位）。
+   ⇒ **判据：`JNINativeMethod` 的 `name/signature/fnPtr` 静态全是 0 时，
+   先找「谁在 `RegisterNatives` 之前解密了它」**，别急着下「数据段被清空」的结论。
+3. ★★ **同一 App 常带多种 ABI 的 so ⇒ 反编译观感差时先换 ABI，不要硬啃。**
+   源文原话：「一开始分析的是 `arm64` 的 so 文件，反编译的结果不是很好分析，头脑有点迷糊
+   没有对上哪个函数指针对应哪个函数……后面换了 32 位的 so 文件才发现反编译效果好的太多了，
+   不仅 `methods` 数组各个参数排列的很整齐，甚至 `hash2` 函数名的符号表都还在」。
+   ⇒ 落地动作：`apk` 解开后看 `lib/arm64-v8a`、`lib/armeabi-v7a`、`lib/x86` 各有什么，
+   **优先挑反编译质量好的那一份**（源文另一例：`arm` 反编译有问题而 `x86` 非常清晰）。
+
+#### 常量池里的「地址」在运行时是「基址 + RVA」
+
+源文 `1238131` 的做法值得当作模板：`ida` 伪代码里出现 `v12` 来自 **`6074`**（即 `dword_6074`），
+`frida` 侧的动作是 **`so 基址 + 0x6074` → `Memory.readByteArray`**。
+
+> ★★ **判据**：`ida` 假名里的 `loc_` / `dword_` / `byte_` / `off_` + 十六进制，
+> **全都是 RVA（相对虚拟地址）**，frida 里必须加模块基址才能读；
+> 直接 frida 搜模块不会命中，因为那是加载后才有的绝对地址。
+> 配套：快手那条链是 `j_cpu_clock_start → j_cpu_clock_x → j_cpu_clock_end`
+> —— 三个函数的前缀 `j_` 表示 `ida` 已识别为 `JNI` 函数，**`_start/_x/_end` 三件套本身就是
+> 「初始化 → 运算 → 收尾」的路标**，源文据此直接锁定加密逻辑所在。
+
+#### 「看着像 MD5」时，最省的确认动作
+
+源文 `1238131` 原话：「结合之前的代码来看，有点 MD5 的感觉，**上代码验证下可发现**，
+确实是加 salt 之后的 md5」。⇒ **判据：伪代码像某个已知标准算法时，
+不要先去逐条比对常数，直接用同一份输入跑一遍标准实现做 diff**（成本一次调用）。
+
 ---
 
 ## §3 Java 层（`jadx`）
@@ -205,7 +280,7 @@ malloc(0x1A)          = 26 字节缓冲
 
 > ★★ **判据**：**Java 层的入口是「业务接口名」，不是加密关键字**。
 > 因为 `jadx` 里 `encrypt` 会被无数无关代码命中，而**接口名是唯一的**。
-> 这与 `15-call-site-locating-playbook.md` §1「搜参数名」是同一思路的客户端版本：
+> 这与 `15-call-site-locating-playbook.md` §0 **J1「消失点比出现点更好用」**是同一思路的客户端版本：
 > **搜一个唯一的东西，而不是搜一个常见的东西。**
 
 ### §3.2 ★★ 能整类搬走就不要还原
@@ -233,6 +308,213 @@ malloc(0x1A)          = 26 字节缓冲
 > 若长度是 4 的倍数且含 `+/=` ⇒ 按 **base64**。
 > 两者混淆的症状是「解密不报错但全是乱码」——
 > 见 `16-ciphertext-structure-diagnostics.md`。
+
+### §3.5 ★★ JNI 反向调用 Java 算法：四步固定骨架（可与 `Frida` 正交互证）
+
+**来源** `52pojie-1724211`（某免费小说 `hash2` ← `libUiControl.so`）、
+`52pojie-1803699`（无壳 App 的 `sign` ← `privateKey` + `SHA1WithRSA`）。
+
+JNI 层不自己实现密码学、而是**回调 Java 的 `java.security`** 时，`ida` 伪代码就是这四步：
+
+```text
+1. FindClass        → 拿到类对象（如 Signature / KeyFactory）
+2. NewObjectV       → 构造实例（带构造参数）
+3. GetMethodID      → 拿到要调用的 method ID
+4. CallObjectMethodV / CallVoidMethodV → 调用，取回结果
+```
+
+> ★★ **判据：看到这四步的固定节奏，就直接判「算法体在 Java 标准库里」，不用读 `sub_`。**
+> 源文 `1724211` 把它翻译回 Java 只有 8 行（`PKCS8EncodedKeySpec` → `KeyFactory("RSA")`
+> → `Signature("SHA1WithRSA")` → `initSign` → `update` → `sign`），随后 **`Base64` 一下就是 `sign` 参数**。
+> 与 §3.2 是同一成本逻辑：**算法在标准库里 ⇒ 还原成本≈0，别去扣 so。**
+
+**★★★ 本节最值钱的动作：用 `frida` 直接打印「入参 / 返回值」，一步拿到全部输入输出。**
+
+源文 `1803699` 的 `frida` 输出（**在逆向之前**就拿到了完整契约）：
+
+```text
+getRSAParams is called, params: {password=d8578edf8458ce06fbc5bb76a58c5ca4, os=android,
+                                 mobile=15536263522, version=2.2.3}
+getRSAParams ret value is {data=eyJwYXNzd29yZCI6...fQ==,
+                           sign=DmxjCCvf8aJnZNve4BQkcy6turIGzkE13DkIu9JSnJF7...,
+                           timestamp=1687264102}
+```
+
+⇒ 三个可直接抄进判据的事实：
+① `data` 是 **`Base64(JSON)`**（解开头即 `{"password":...}`），不是加密；
+② `sign` 的**签名原文是 `data=<base64>&timestamp=<秒>`**（hook `sign` 时打印 `content` 得到）；
+③ `timestamp` 是**秒级**（10 位）。
+
+> ★★ **判据（可迁移）：hook 的打印内容本身就是最强的规格说明。**
+> `called/ret value` 两条日志把「入参 → 出参」钉死，剩下的只是**用 Python 复现同一函数**
+> ——不需要扣代码、不需要补环境。源文 `1724211` 走的是同一条路
+> （先 `hash2` 的函数契约，再用 `PYTHON-RSA` 复现，最后「计算得到的 `sign` 值和抓包得到的一致」）。
+> ⚠️ **但「能调用」不等于「能交付」**：最终产物仍要落到离线复算（见 §4.1 判据 2）。
+
+**★★ 与「同型双源互证」：两份独立源文各自给出同一族算法，应当直接合并成一条模式。**
+
+`1724211`（`PKCS8EncodedKeySpec` + `SHA1WithRSA` + `Base64`）与
+`1803699`（`MD5(密码)` → `Base64(JSON)` → `SHA1WithRSA(data&timestamp)` → `Base64`）
+**是同一个模式的不同站点实例**：`SHA-1 with RSA` 签名 + Base64 传输 + 排序或定序拼串。
+⇒ **判据：看到 `SHA1WithRSA` / `SHA256WithRSA` 出现在 Java 层，就按「拼串 → RSA 签 → Base64」三件套直接落地**，
+不用再逐函数跟。
+
+**⚠️ 密钥材料的取证点**：源文 `1724211` 的私钥不是硬编码字符串，而是
+`type`（`hash2` 的第一个参数，源文实测传入固定值 **`2`**）→ `off_3BFC50 + 1 = unk_2F5477`，
+源文说其长度为 **`0x279`**。
+
+> ★★ **判据**：**`PKCS8EncodedKeySpec(key)` 的 `key` 来自「常量偏移 + 1」时，
+> `+1` 通常是在跳过 DER 的首字节**（`30 82 xx xx` 的 `0x30`）。
+> ⇒ 取证动作是「把常量偏移处的字节按长度 dump 出来，试 `base64` / 试 `latin-1`」，
+> **不要尝试去算私钥**（不可能）。
+
+### §3.6 ★★★ `RSA` 签名的长度必须现算：**`k` 是 bit，不是 byte**
+
+**来源** `52pojie-1803699` 的 Python 复现片段（源文原样）：
+
+```python
+k = 1024                    # 源文注释：「RSA 的密钥长度为 1024 位」
+em_len = k // 4             # ⚠️ 这里把「位」当成了「十六进制字符数」
+h_len  = 20                 # SHA-1 摘要 20 字节
+t_len  = 3
+s_len  = em_len - h_len - t_len - 1
+signature_value = pkcs1_15.new(key).sign(hash_value)[:s_len]
+```
+
+**本库复算（本批新增，源文未察觉）**：
+
+| 量 | 源文算法 | 正解 | 实测对照 |
+| --- | --- | --- | --- |
+| 1024 位 RSA 的模长 | — | `1024/8` = **128 字节** | 源文 hooks 出的 `sign` Base64 解出 = **128 字节** ✓ |
+| `em_len` | `k//4` = **256** | 256 **字节** 只对应 **2048 位** | ✗ |
+| `s_len` | `256-20-3-1` = **232** | 若真要截断应为 `128-20-3-1` = **104** | ✗ |
+| 输出长度 | 232 字节 ⇒ Base64 **312** 字符 | Base64 **312** 字符 | 实测 Base64 长度 = **172** 字符 ✗ |
+
+> ★★★ **判据：`k` 的单位是「位」时，第一步动作是 `/8` 得到字节；`PKCS#1 v1.5` 的
+> `s_len = k/8 - h_len - t_len - 1`，`h_len` 由摘要算法决定（SHA-1 = 20、SHA-256 = 32）。**
+> ⇒ **机械自检**：`len(base64.b64decode(sign))` 必须等于 `k/8`。
+> 源文那份代码**靠 `[:s_len]` 截断「掩盖」了单位错误**才跑出与抓包一致的结果，
+> 属于「**结果对、算式错**」——照抄到别的密钥长度上必然翻车
+> （⚠️ 同时说明：**`[:s_len]` 这种「截断以对齐」的写法必须警惕**，
+> 它会让长度断言**恒真**，是典型「**恒亮的检查等于没有检查**」，见记忆规则）。
+> 源文对外表现是「计算得到的 `sign` 和抓包得到的 `sign` 一致」——
+> **成功的复现不代表公式正确，只代表端点对齐**。
+
+### §3.7 ★ `SHA1WithRSA` 在 Python 侧的三条对应
+
+| Java | Python（`pycryptodome`） | 坑 |
+| --- | --- | --- |
+| `Signature.getInstance("SHA1WithRSA")` | `Crypto.Signature.pkcs1_15.new(key).sign(SHA.new(content))` | **`pkcs1_15` ≠ `PKCS1_v1_5`**（前者是新版模块名，后者是 `Crypto.Signature.PKCS1_v1_5` 旧名，同一算法） |
+| `KeyFactory.getInstance("RSA").generatePrivate(PKCS8EncodedKeySpec)` | `RSA.import_key(pkcs8_bytes)` | ⚠️ 源文 `1724211` 的 `private_key` 直接写 `RSA.importKey(private_key)`（**无 base64 解码**），而 `1803699` 的写 `RSA.import_key(base64.b64decode(private_key))` ⇒ **两者不可能都对，取决于排包时拿到的是 PEM 还是 DER** |
+| `signature.sign()` 返回 `byte[]` | `signer.sign(hash)` | **Java 默认 PKCS#1 v1.5**（不是 PSS） |
+
+> ★ **判据**：`import_key` 报 `RSA key format is not supported` ⇒ **先试 `base64.b64decode` 一次，
+> 再试直接喂**。这两条路覆盖 99% 的排包结果。
+
+### §3.8 ★★ 客户端 App 签名的三种落地模式（三源同型，可直接套）
+
+**来源** `52pojie-1238131`（快手 `sig`）、`52pojie-1724211`（免费小说）、
+`52pojie-1803699`（无壳 App）。三篇的算法细节不同，但**落地面是同三种**：
+
+| 模式 | 形态 | 源文实例 |
+| --- | --- | --- |
+| **模式 A · 稳态裸算** | 盐与密钥全在客户端 ⇒ **纯 Python 可复现** | `1238131`：`MD5(拼接串 + FANS_SALT)`，`FANS_SALT = "382700b563f4"` |
+| **模式 B · 挑战-应答** | 先请求接口拿 `publickey_mod/exp`（或 `token`），再算密文 ⇒ **两段式** | `1463849`：`getrsakey` 拿 `mod/exp` → `RSA.encrypt(密码, getPublicKey(mod, exp))` |
+| **模式 C · 硬编码私钥签名** | 私钥写在客户端/常量段 ⇒ **能复现，但等于拿到了一把可伪造的钥匙** | `1724211` / `1803699`：`SHA1WithRSA` |
+
+#### ★★ 模式 A 的定位轨迹：「先全体搜 → 再按引号收窄」
+
+源文 `1238131` 的逐字记录：
+
+```text
+在 jadx 中搜索 sig        → 结果非常多
+→ 换个思路：sig 很大可能是「"sig"」这样带引号的存在格式
+→ 搜 "sig"（带引号）      → 只剩 5 条：2 条跟 view 相关、3 条跟 push 服务相关
+→ 都不是 ⇒ 只剩第一条和最后一条 → 逐个进去看
+```
+
+> ★★★ **判据（零成本，优先做）：`jadx` 全局搜参数名命中过多时，改成搜「带引号的形式」。**
+> 原因：业务代码里 `sign` / `sig` 会作为**子串**出现在无数标识符中
+> （`assign`、`design`、`signal`…），而**作为字符串字面量出现的才是参数名**。
+> 与 §3.1「搜接口名而不是搜 `encrypt`」是同一条原则的**两种收窄手段**：
+> 先「搜唯一的东西」，若目标本身不唯一则「**加约束把它变唯一**」。
+> ★ 收窄后仍需**按语义排除**（源文对 5 条里的 4 条做的是「跟 view 相关」「跟 push 相关」的语义剔除），
+> 不是「留一条就是它」。
+
+#### ★★ 拼接串里必须显式带分隔符
+
+源文 `1238131` 的 `genSigSignature` 逐字：
+
+```java
+SortedMap<String,String> sortedMap = new TreeMap<>(params);   // 1. 字典升序
+for (String key : keySet) {
+    if (key.equals("sig") || key.equals("__NStokensig")) continue;   // ⚠️ 自指参数必须排除
+    sb.append(key + "=" + URLDecoder.decode(value, "UTF-8"));        // 2. 逐对拼 key=value
+}
+String uriString = sb.toString() + salt;                     // 3. 追加固定盐
+sign = md5(uriString);
+return sign.toLowerCase();                                   // 4. 统一小写
+```
+
+> ★★ **判据：`key=value` 之间「不加 `&`」时，是**逐对直接连写**（`a=1b=2c=3`），
+> 不是「漏了 `&`」**。这与 `1724211` 的 `getSortedParamStr`（`&` 连接）**是两种不同形态**，
+> 症状是**签名字符串对不上但两边都「看着合理」**。
+> ⇒ **必须去源文的示例串里数一遍分隔符**，不要按习惯默认加 `&`。
+> ★ **配套三条**：① **`sig` 自身与 `__NStokensig` 必须从签名串里排除**（自指参数）；
+> ② ⚠️ **`URLDecoder.decode(value, "UTF-8")` 是「先解码再参与签名」** ——
+> 值里带 `%XX` 时，Python 侧要补 `unquote`，漏掉的症状是「签名不对但看不出哪里不对」；
+> ③ **最后统一 `toLowerCase()`** ⇒ 拼串时的大小写**不影响结果**，不要为了大小写反复调参。
+
+#### 模式 B 的固定两跳
+
+源文 `1463849` 的链路是「**先拿公钥、再加密**」：
+
+```text
+POST getrsakey {donotcache: 毫秒时间戳, username}  →  {publickey_mod, publickey_exp}
+→ RSA.getPublicKey(modulus_hex, exponent_hex)      // 两个参数都是 hex 字符串
+→ RSA.encrypt(password, pubKey)
+```
+
+> ★ **判据**：接口名里带 `rsakey` / `getpubkey` / `challenge` 的，**几乎必然是挑战-应答**，
+> **不要去找「密码怎么加密的」**——密码的密文本来就是一次性的。
+
+#### ★★★ 模式 B 的 JS 实现只有一句：`Base64.encode(Hex.decode($data))`
+
+源文 `1463849` 抄下来的 `rsa.js` 里，最"唬人"的一行是：
+
+```js
+$data = $data.toString(16);                                  // BigInteger → hex 字符串
+if (($data.length & 1) == 1) $data = "0" + $data;            // 奇数长度前置补 0
+return Base64.encode(Hex.decode($data));                     // hex 解码 → Base64
+```
+
+**本库复算（本批新增）**：对 1 / 8 / 16 / 17 / 32 / 64 / 128 字节的随机输入逐一验证，
+`Base64.encode(Hex.decode(toString(16)))` **恒等于 `base64.b64encode(raw)`**。
+
+> ★★★ **判据（直接删掉两行转换）：`Base64.encode(Hex.decode(X.toString(16)))` ≡ `Base64(X)`。**
+> ⇒ Python 侧**不需要**写 `n.to_bytes()` → `hex()` → `bytes.fromhex()` → `b64encode()` 这一串，
+> 直接 `base64.b64encode(pow(m, e, n).to_bytes(k//8, 'big'))`。
+> ⚠️ **唯一的陷阱是「奇数长度补 0」**：`toString(16)` 丢掉前导零 ⇒
+> **Python 侧必须用定长 `k/8` 字节（`'big'`）而不是 `minimal` 长度**，
+> 否则密文会短一截、长度校验失败。这正好是 §3.6「长度必须按 `k/8` 现算」的第二个实例。
+> ★ 配套：`pkcs1pad2` 的 `keysize = (modulus.bitLength() + 7) >> 3`
+> —— **`+7 >> 3` 就是「向上取整到字节」，1024 位 → 128 字节**（同 §3.6 的 `/8`）。
+
+#### ★ 模式 B 的「缺什么补什么」顺序（源文原样）
+
+源文 `1463849` 复现时的三次报错与处置，顺序值得照抄：
+
+```text
+① 提示 BigInteger 未定义  → 搜到该函数有 100+ 处调用 ⇒ 「一个扣到啥时候」⇒ 直接全文件复制
+② 提示 navigator 未定义   → 「navigator 为 js 内置函数 → 直接定义为 navigator = this;」
+③ 普通未定义参数          → 「定义为空字典，例如 i = {}」
+```
+
+> ★ **判据**：**报错驱动补全，且按「内置对象 → 空对象 → 扣代码」的三级成本递增顺序试**。
+> 与 `15-call-site-locating-playbook.md` §6.1 是同一纪律。
+> ⚠️ 源文的 `navigator = this` 是**图省事的写法**，现代站点会检测 `navigator.userAgent`
+> 等属性 ⇒ 只适用于**不依赖指纹**的老站点（本条的 `rsa.js` 恰好不依赖）；
+> 需要指纹回放的走 `../../web-js-env-patcher/`。
 
 ---
 
@@ -310,6 +592,13 @@ Java.perform(function () {
 | 解出来「不报错但乱码」 | 编码层错（hex vs base64） | 见 `16-ciphertext-structure-diagnostics.md` |
 | 解压包要密码 | 口令由**文件名派生**（§4.1） | 搜自带同名样本 → 定位生成函数 |
 | 接口数据「有一小部分对不上」 | 另有权威来源（§4.2） | 用主键做两份数据的关联 diff |
+| `ida` 搜不到目标函数名 | **动态注册**（§2.5） | 去 `JNI_OnLoad` 找 `RegisterNatives`，别判「不存在」 |
+| `ida` 里 `JNI` 调用全是「指针 + 偏移」 | `JNIEnv*`/`JavaVM*` 类型没设（§2.5） | 用 `GetEnv`/`JNI_OnLoad` 的 xref 定类型，**不要凭名字猜** |
+| `RegisterNatives` 的 `methods` 全是空数据 | 数组被加密（§2.5） | 找 `RegisterNatives` 之前的那次解密调用 |
+| 同一 so 反编译质量差、函数指针对不上 | **ABI 选错**（§2.5） | 换 `armeabi-v7a` / `x86` 再试，别硬啃 |
+| `JNI` 里出现 `FindClass`+`GetMethodID`+`Call*Method*` | **算法在 Java 层**（§3.5） | 停止读汇编，回 `jadx` 搜那个类名 |
+| RSA 签名长度与抓包对不上 | `k` 的**单位**写错（§3.6） | `len(b64decode(sign))` 必须 `== k/8` |
+| `RSA.import_key` 报格式不支持 | PEM / DER 混淆（§3.7） | 先试 `b64decode` 再试直喂 |
 
 ---
 
@@ -322,6 +611,9 @@ Java.perform(function () {
 | 3 | `52pojie-729954` | 把 **key** 写成「密文」（「AES 加密所需要的密文跟偏移」） | 已在本文件 §3.3 显式指出，不改写源文原话 |
 | 4 | `52pojie-1492740` | 「20% 数据错误」是单站单次实测 | 只作判据、不作先验 |
 | 5 | `52pojie-2005163` | 列移位（`column_rotation`）的**精确规则**源文只给了前后值、未给公式 | 本文件给前后值样本，**不代写公式** |
+| 6 | `52pojie-1803699` | ★ **`em_len = k//4` 单位错**（把 bit 当 hex 字符数）；靠 `[:s_len]` 截断掩盖 | 已在本文件 §3.6 复算并给出「长度 = `k/8`」判据，**不照抄源文算式** |
+| 7 | `52pojie-1724211` | ① 私钥 `RSA.importKey(private_key)` 未 `b64decode`，与 `1803699` 的写法**互相矛盾**；② `private_key = b""` 是占位空值（正文里未给真值） | 已在本文件 §3.7 立「两种写法二选一」判据；**不代填密钥** |
+| 8 | `52pojie-1238131` | `SHA512/SHA` 两个方法**定义了但 `sig` 根本没用**（`genSigSignature` 用的是 `md5`）⇒ 死代码；`getMapFromStr` 在 `key` 无 `=` 时 `itemArr[1]` 越界 | 只登记 `sig` 的真实链路（§3.8 模式），**不把 SHA512 写进判据** |
 
 ---
 
@@ -346,4 +638,8 @@ Java.perform(function () {
 | `docs/references/52pojie-1610506-海外某音x-gorgon算法原理分析及算法源码公布.md` | §2.3、蓝图 `tiktok-x-gorgon` |
 | `docs/references/52pojie-729954-某App 接口数据 AES算法 实现.md` | §3.1–§3.4 |
 | `docs/references/52pojie-1492740-记录一次有趣的某题库逆向破解.md` | §4.1、§4.2 |
+| `docs/references/52pojie-1238131-快手7.5版本sig参数逆向分析.md` | §2.5（导出符号 / `j_` 三件套 / RVA+基址）、§3.8（模式 A、带引号收窄、无分隔符拼接） |
+| `docs/references/52pojie-1724211-某免费小说APP sign参数逆向分析与实现.md` | §2.5（**动态注册** / `JNIEnv*`×`JavaVM*` / 解密 `methods` / arm64↔arm32）、§3.5、§3.8（模式 C） |
+| `docs/references/52pojie-1803699-小白入门，无壳app登录算法还原并实现发包（重发）.md` | §3.5（frida 双日志当规格）、§3.6（**`k` 单位错**）、§3.7、§3.8（模式 C） |
+| `docs/references/52pojie-1463849-js逆向练手 starm ras 加密.md` | §3.8（模式 B、`Base64.encode(Hex.decode(x)) ≡ b64(x)`、补环境三级顺序） |
 | `docs/references/52pojie-1708851`（既有） | `02-algorithm-families.md` §一「得物 `newSign`」 |

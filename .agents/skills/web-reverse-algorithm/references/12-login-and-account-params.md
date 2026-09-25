@@ -98,7 +98,7 @@ x[i >> 2] |= (str.charCodeAt(i) & 0xff) << ((i % 4) * 8);   // ← 低 8 位截�
 
 - 复算时用 `--encoding latin1`（默认，对应 `& 0xff`）或 `--encoding utf8`（对应 `CryptoJS.MD5`）。
 - 本脚本自检里有一条**区分性断言**：对含中文的密码，两种口径必须给出不同结果 ——
-  否则说明实现把口径写死了（B14 `key-wrapper-families.md` §7「md5 的口径」是同一个坑）。
+  否则说明实现把口径写死了（B14 `../../stream-drm-reverse/references/key-wrapper-families.md` §7「md5 的口径」是同一个坑）。
 - 同一个页面里**两个库混用**是真实存在的：先确认**这一个字段**用的是哪个库。
 
 ### §3.4 扣 MD5 代码时必须保留的两个常量

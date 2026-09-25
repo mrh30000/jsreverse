@@ -609,7 +609,7 @@ v3 的年代统计口径（老版本更看行为分布）：
    且必须满足**单调递增**关系
    （`navigationStart ≤ redirectStart ≤ redirectEnd ≤ fetchStart ≤ domainLookupStart ≤ … ≤ loadEventEnd`）。
    整串照真实浏览器抄或按 `Date.now()` 加固定偏移生成均可，但**不能随机乱序**
-   （`web-reverse-env` 的 `03-special-cases.md` §5（`performance-module`）有同一份约束。）
+   （`../../web-reverse-env/references/03-special-cases.md` §5（`performance-module`）有同一份约束。）
    ⚠️ 来源文章给的那段 `timing()` 示例**只用来抄字段清单，本身并不单调**
    （`redirectStart=0`、`unloadEventStart=now+200` 早于 `fetchStart=now+100`）——照抄它会被时序一致性探针抓到。
 

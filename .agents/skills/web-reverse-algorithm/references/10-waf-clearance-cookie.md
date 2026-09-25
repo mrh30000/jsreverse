@@ -149,7 +149,7 @@ for i in 0..len(chars)-1:
   ⚠️ **该变体的 `go({...})` 对象原文从未打印**（只写了「JS 脚本是动态的、每次 hash 算法可能都不一样」）⇒
   上表的「同结构」是**推断**：`jsl` 无命中即说明推断不成立，别硬套。
 - 变体判定见 `../../web-js-env-patcher/scripts/classify_edge_challenge.js`（族名 `jsl-2pass-512`）与
-  `edge-waf-cookie-challenge.md` §2.1.1。
+  `../../web-js-env-patcher/references/edge-waf-cookie-challenge.md` §2.1.1。
 - **三趟必须同一 session**；第二趟 JS 的混淆数组与变量名**每次刷新都变**，`go({...})` 对象必须**每次现抽**。
 
 ---

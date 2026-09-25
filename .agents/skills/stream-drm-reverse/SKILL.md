@@ -22,6 +22,8 @@ description: 流媒体 / 视频点播 / 直播流 / 电子书的内容加密链�
 | 现象 | 层 | 先做什么 |
 | --- | --- | --- |
 | **目标是「拿到一个能直接播的地址」，还没到解开密文** | **§0 地址还原层**（视频/直播/音频站的接口链路） | `references/playback-address-interfaces.md` §1 定层 → §2/§3/§3A/§3B/§4 按站型走 |
+| **地址串是「自定义 base64」，且长度 = 明文 + 16** | **字符置换表 + 分块 XOR**（自密钥：末 16 字节既是密文又是 IV） | `references/playback-address-interfaces.md` §4.3 |
+| **同站有 Web 版与桌面/客户端版，且共用同一接口** | **先逆「更新慢」的那一端**（寿命 = 更新周期） | `../desktop-client-reverse/references/electron-asar-and-fuses.md` §9 |
 | 地址里带 `authKey` / `vf` / `ckey` / `ddCalcu` / `sign` | **§0 + 签名参数** | 同上 §2；配方查 `../reverse-knowledge` 蓝图（`iqiyi-cmd5x` / `tencent-ckey` / `migu-playurl` / `douyu-live` / `qingting-fm`） |
 | **APP 端取直播源**：请求头有 `Play-Ua` / 请求体有 `secretToken`，密钥是「前缀 + 资源 + native」拼出来的 | **§0 · APP 接口层** | 同上 §3A（三段拼接密钥 + 双端参数差异 + native 只做校验） |
 | **接口 200，但响应里的 `playUrl` / `playurl` 仍是密文** | **§0 之后还差一层（D 接口层）** | 同上 §3A：**HTTP 200 ≠ 拿到可播地址**；源文未公开算法时**不许编** |
@@ -297,7 +299,7 @@ python $S/key_wrapper.py noise-check --chars "-_! " --json
   **§3A 移动 APP 直播源**（`Play-Ua` DESede + `secretToken` HMacMD5 + 「前缀+资源+native」三段拼接密钥 +
   native 只做校验的审计判据 + iOS/Android 参数差异；HTTP 200 ≠ 拿到可播地址）、
   **§3B 短视频去水印直链三形态**（`srcNoMark` / `origin_video_download` / 易语言 COM 对照）、
-  音频站两族（字符码表 `*104*116*…` / 蜻蜓FM HMAC-MD5）、「拿到地址但播不了」总表与各级边界。
+  音频站**三族**（字符码表 `*104*116*…` / 蜻蜓FM HMAC-MD5 / **§4.3 字符置换表+分块 XOR（自密钥，末 16 字节即 IV）**）、「拿到地址但播不了」总表与各级边界。
 - `scripts/playback_address.py`：**§0 层的四个可复算 oracle** —— `charcodes`（字符码表族，含前导空段 /
   UTF-16 码元 / 越界码点三类守卫）、`qingting`（蜻蜓FM HMAC-MD5，`--ts-case` 暴露源文未证的大小写）、
   `migu-ddcalcu`（字符交织，断言结构而非具体值）、`iqiyi-authkey`（含**源文自带的两条样例 URL 对拍向量**）。

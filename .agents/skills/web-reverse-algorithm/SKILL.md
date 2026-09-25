@@ -417,9 +417,15 @@ python scripts/waf_clearance_solver.py --selftest
 - [references/18-native-layer-algorithm-restore.md](./references/18-native-layer-algorithm-restore.md)
   用途：**「算法根本不在页面 JS 里」时的载体层总纲** —— so/native、Java（`jadx`）、
   APK 内资源包、打包产物、wasm 的**五路分流判据**（★ 先全局搜**逐字参数名**：搜得到 ⇒ 页面里至少一层；搜不到 ⇒ 大概率整链在客户端）。
-  ★★ 三条最值钱的动作：① **so 里的 `sv`（签名版本选择器）要「写死随机数、只跟一个分支」**；
-  ② **用「函数调用前后打印同一块内存」反推变换语义，而不是读汇编**（本批实现在某程 `row_rotation` 上）；
-  ③ **Java 层能整类搬到 Java 工程就不要还原**（`jadx` 的入口是**业务接口名**，不是 `encrypt`）；
+  ★★★ 六条最值钱的动作：① **`ida` 里搜不到方法名 ⇒ 先判「动态注册」而不是「函数不存在」**
+  （`JNI_OnLoad` → `GetEnv` → `RegisterNatives`；`JNIEnv*`/`JavaVM*` 类型要用 xref 定，**别凭名字猜**；
+  `methods` 数组常被加密，且**同一 App 的多 ABI so 里 `arm(32)` 常比 `arm64` 好读**）；
+  ② **so 里的 `sv`（签名版本选择器）要「写死随机数、只跟一个分支」**；
+  ③ **用「函数调用前后打印同一块内存」反推变换语义，而不是读汇编**（本批实现在某程 `row_rotation` 上）；
+  ④ **Java 层能整类搬到 Java 工程就不要还原**（`jadx` 的入口是**业务接口名**，不是 `encrypt`）；
+  ⑤ **`frida` 打印「入参 / 返回值」两条日志 = 现成的接口规格说明**（拿到契约后只剩用 Python 复现）；
+  ⑥ **RSA 签名长度必须按 `k/8` 现算**（`k` 是 bit；源文用 `k//4` 靠 `[:s_len]` 截断掩盖了单位错，
+  属「**结果对、算式错**」）+ **`Base64.encode(Hex.decode(x)) ≡ b64(x)`**（hex 往返是 no-op）；
   ④ **加密资源包的密码就是「自带的同名测试样本」文件名 + 固定盐的 MD5** —— 先去 apk 里找同名 zip 当搜索词；
   ⑤ **签名种子来自 `malloc` 地址 ⇒ 每次不同、不可纯算**（判据与边界见蓝图 `tiktok-x-gorgon`）。
 - 媒体流 / DRM / ts 分片（判层、AES/SM4 内容解密、许可证体系、白盒 wasm）→ `../stream-drm-reverse/SKILL.md`：

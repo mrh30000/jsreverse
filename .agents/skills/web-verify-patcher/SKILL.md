@@ -75,6 +75,10 @@ description: "网页验证码识别、方案选择与授权验证流程分析技
      以及**正确率四因素（请求头完整性 / `callback` 随机范围 ≤10 / `fp` 必须对应站点域名 / 发送间隔）**。
      该文件同时明确"**只有结构是观测事实时只登记结构**"（`ck0.` 一例）与"本地 `verified=true` ≠ 服务端认可"。
    - 需要厂商执行注意点时读 `references/provider-execution-notes.md`（含百度旋转验证码的代际判据与三条高频坑、数美/树美的 DES-ECB 与格式化检测、同盾自有 base64 变体、aj-captcha 的 `pointJson`、腾讯六宫格 AI 图、GIF 动图验证码）。
+   - **同一厂商的「挑战页」与「注册/登录链」要分开读**：百度云加速的挑战页链路与**同厂商注册链的错误码分层**
+     都在 `references/baidu-yunjiasu-safety-check.md`（★ 后者新增一条零成本判据：
+     **参数在浏览器里对、换脚本就稳定失败时，先做「拿到参数立刻发 vs 等一会再发」的对照** ——
+     两者结果不同即说明触发条件**与参数无关**，属速率/画像类风控，继续调参数是白费）。
    - **判为 `waf-challenge` 且「无图无交互、只有准入 Cookie 链」时，先分流再动手**：定族用 `node ../web-js-env-patcher/scripts/classify_edge_challenge.js --html <页面> --status <码> --cookies <Set-Cookie> --markdown`；判层与链路读 `../web-js-env-patcher/references/edge-waf-cookie-challenge.md`，可离线求解读 `../web-reverse-algorithm/references/10-waf-clearance-cookie.md`。**这类目标不属于本技能的 Phase-2 流程**（没有图片、没有人工成功样本基线）。
    - 进入真实网页验证前，先评估用户手动成功样本基线：默认同一授权目标至少 5 次成功样本；若观察到新的验证码类型，该类型至少 2 次成功样本。基线不足时输出强提示，但用户确认后仍可继续离线分析或受控验证。
    - 同一授权目标、同一验证码类型、同一用户选择方案出现连续失败时，用 `scripts/evaluate_verification_attempts.py` 复盘 attempts JSON；连续 5 次失败且图片/坐标/轨迹/切片还原/补环境/challenge 新鲜度均无明显异常时，主动建议 `recommended_next_route: platform-control`。

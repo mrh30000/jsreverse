@@ -273,7 +273,7 @@ function patch(checkbox) {
 > 症状是**静默的**：外观不更新、值读不到、页面不报错。
 > ⇒ **凡是要 hook 的属性在「原型」上（`HTMLInputElement.prototype.checked`、
 > `HTMLVideoElement.prototype.playbackRate`、`Document.prototype.hasFocus`…），
-> 这条判据都成立**（与 `anti-hook-detection-and-bypass.md` §2「从 native 层入手」同源）。
+> 这条判据都成立**（与 `anti-hook-detection-and-bypass.md` §2「通用范式：选择性劫持」同源）。
 >
 > ★ **附带判据**：**要区分「用户操作」还是「脚本改动」，看 `event.isTrusted`**
 > （源文原话：「只需检查 Event 的 `isTrusted` 即可」）。

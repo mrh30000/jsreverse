@@ -1235,6 +1235,54 @@ python scripts/audit-corpus.py --ref <语料目录> --pool <候选池.json>
    G 表按原计划**每 3~5 轮一次**即可，且**永远先标题级收窄**（全量正文级是 ~50× 的成本换同样的结论）。
    ⚠️ 收窄正则里的短 token 仍要防坑 95（本轮首版又把 `ast` 命中 `Master`/`FastStone` 整族）。
 
+105. **「HTML 命名实体解码残留」是一族（不止 `×tamp=`），已做成固定扫描器（第三十八轮）：**
+   浏览器渲染论坛页时，`&timestamp=` / `&params=` / `&section=` / `&notify=` / `&current=` 会被 HTML 解析器
+   按 **HTML5 legacy named reference（不带分号）** 吃掉前缀，归档器抓的是渲染后文本 ⇒ 语料里**逐字**留下：
+   ```text
+   &timestamp=1  ->  ×tamp=1        (&times;  = U+00D7 乘号)
+   &params=1     ->  ¶ms=1          (&para;   = U+00B6)
+   &section=1    ->  §ion=1         (&sect;   = U+00A7)
+   &notify=1     ->  ¬ify=1         (&not;    = U+00AC)
+   &current=1    ->  ¤t=1           (&curren; = U+00A4)
+   ```
+   后果：任何「从语料抄请求串/抄签名原文」的下游步骤都会**静默**拿到错的参数名 ——
+   症状通常是「签名/校验一直不过，而两边看着都对」。**这正是坑 46（盗链签名）与 §9 类缺口的共同上游。**
+   * **扫描器**：`python scripts/scan-entity-residue.py --ref docs/references`（`--selftest` 19 项；`--json`；`--fail-on-hit` 可做门禁）
+   * **口径（两条，缺一个就会淹没在噪声里）**：
+     ① **只扫「高信号子集」**（`times / para / sect / not / curren`）——
+        判据 = 「实体名恰好是常见查询参数名的前缀」∧「该字符在正常技术文本里几乎不紧贴 ASCII 字母」。
+        **不要把整张实体表都扫**：`&quot;`(47845) / `&nbsp;`(31172) / `&amp;` / `&lt;` / `&gt;` 在语料里是**正常文本**，
+        全表扫描本轮得到 **89486 处 / 1069 文件**，等于没有信号（**恒亮的检查等于没有检查**）。
+     ② **后缀必须以字母开头**。`×16`（乘号 + 数字）是这段语料里的**高频误报**，
+        加上这一条后全量命中从 **719 → 111 处 / 23 文件**，误报只剩「二进制乱码片段」（`×g` / `¤A` / `¶iu` 等，一眼可辨）。
+   * **本轮实测（⚠️ 口径：下面是**扫描器口径**，即「按实体族统计」，不是「精确串统计」；
+     两者必须分开写，否则数字对不上 —— 这是本批自曝的第 6 类缺陷）**：
+     `times`（`×`）**42**（其中精确 `×tamp=` **30**、`×tamps=` **3**）／
+     `sect`（`§`）**38**（其中精确 `§ion=` **21**）／
+     `not`（`¬`）**16**（⚠️ **精确 `¬ify=` 为 0**，16 处全是**二进制乱码段**里的 `¬o`/`¬N`）／
+     `curren`（`¤`）**9**（其中精确 `¤t=` **2**）／
+     `para`（`¶`）**6**（其中精确 `¶ms=` **1** + `¶m2=` **4** = 5，另 1 处为二进制）；
+     文件分布：`verified.md`(22) 与 `README.md`(16) 是**在复述这个坑**（非语料缺陷），
+     语料侧集中在 `52pojie-1055932`(21)、`52pojie-1981831`(9)、`52pojie-1435118`(7)、`52pojie-1669210`(5)。
+     ★ **新发现（此前只登记过 `×tamp`）**：`¤t=`（`&current=`，`52pojie-2062977`）、
+     `¶ms=`（`&params=`，`52pojie-1634927`）、`¶m2=`（`&param2=`，`52pojie-2038686`）、
+     `md=×tamp=`（`52pojie-1070300`）⇒ **实体族是「一类」而不是「一个」**。
+   * **与既有坑的关系（消费端的三处引用，改口径时必须一起改）**：
+     `../cloud-drive-direct-link/references/multi-vendor-protocols.md` §通用判据、
+     `../reverse-knowledge/data/blueprints/migu-playurl/mutations.json` 与 `../reverse-knowledge/data/blueprints/migu-playurl/workflow.md`、
+     `../stream-drm-reverse/scripts/playback_address.py`（自带 `×tamp=` 的机器判定）。
+     ⇒ ★ **那三处都只写了 `×tamp=`**，属于**同一事实散落多处** ⇒ 已在 `references/filter-rules.md`
+     第十六层显式指定 **「以本节为准，其余只引用」**。
+   * ★★ **真机复算回灌（本批 `b38-browsercli-verify.oneline.js`，真机 Chrome 23/23）**：
+     「被吃」**由「`&` 之后的串是否以某个 HTML 实体名开头」决定（取最长匹配）**，
+     **与参数名本身无关** ⇒ 除上面五个精确名外，
+     `&param2=`→`¶m2=`、`&sectional=`→`§ional=`、`&currencx=`→`¤cx=` **同样会被吃**；
+     而 `&tamps=` / `&timeine=` / `&page=` / `&token=` / `&sig=` / `&ts=` **不会被吃**（阴性对照）。
+     ⇒ **不要只记「那五个名字」，要记「前缀规则」**（扫描器已按前缀规则实现）。
+   * ⚠️ **不要把扫描器做成 `--fail-on-hit` 门禁直接卡提交**：`verified.md` / `README.md` 自身就有命中
+     （台账在复述这个坑、README 在复述轮次统计），且语料里的命中**多数是「源文如此」**（作者自己抄错）。
+     正确用法：**每轮归档后跑一次、按文件清单人工裁决**，把「要消费这篇的请求串」列为**必须先还原实体**。
+
 ## 产物与索引
 
 - 语料：`<语料目录>/<platform>-<id>-<title>.md`

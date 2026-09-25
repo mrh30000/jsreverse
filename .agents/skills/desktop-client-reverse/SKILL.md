@@ -182,7 +182,8 @@ python $S/byte_flag_patch.py patch --in server.exe --pattern "activated:!1" \
   完整性校验的四个被校验文件与 `fs.promises.readFile` 重定向骨架、入口注入顺序（quit 拦截 /
   `browser-window-created` + `openDevTools` / `ipcMain.handle` 日志 / `electron.protocol.handle` 伪造响应）、
   **§5.2.1 激活类请求"一对端点 + 字段形状按端点分别给 + 注入别碰业务状态文件"**、
-  `Proxy(Buffer)` + `Proxy(JSON.parse)` 黑盒推导激活码结构、本地端口与 `--debug` 反调试、14 条坑表。
+  `Proxy(Buffer)` + `Proxy(JSON.parse)` 黑盒推导激活码结构、本地端口与 `--debug` 反调试、
+  **§9 同站多端三判据（先逆「更新慢」的一端 / 借壳复用它的 JS 而不重写 / 指纹头先翻 cookie）**、17 条坑表。
 - `references/jsc-and-v8-bytecode.md`：**`.jsc` 三类形态的唯一权威源** ——
   Cocos 系（`ungzip(xxtea_decrypt())`、密钥取证三处落点、网易 `netease`+`01 01 01 EF` 签名头与
   重复密钥异或、`.luac` 类比）、V8 字节码系（bytenode、`CodeSerializer.Deserialize`、
