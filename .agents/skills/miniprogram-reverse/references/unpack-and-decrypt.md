@@ -12,7 +12,7 @@
 
 | 平台 | 包格式 | 终端 | magic / 特征 | 要不要解密 |
 | --- | --- | --- | --- | --- |
-| 微信 | `.wxapkg` | **PC 微信** | 首 6 字节 `V1MMWX` | **要**（见 §1） |
+| 微信 | `.wxapkg` | **PC 微信** | 首 6 字节 `V1MMWX` | **要**（见 §1）；★ 也可以走 **§1b「不解密」路线**（hook `EncryptBufToFile` 拿未加密缓冲） |
 | 微信 | `.wxapkg` | **安卓 / 手机** | `0xBE … 0xED` | **不要**（明文；直接解包） |
 | 微信 | `.wxapkg` | PC，但站点已加固 | 解包后缺 `app.json` | 解包工具失败（见 §5） |
 | 抖音 | `.pkg` / `.ttpkg.js` | 安卓 | 首 4 字节 `TPKG` | **不要**（明文，见 §3） |
@@ -52,6 +52,51 @@ python scripts/wxapkg_tool.py list out.wxapkg        # 或 extract -o <目录>
 - PC 加密包的**最小合法尺寸** = `6 + 1024 + xorBody`。造夹具时包必须 > 1023 字节，否则"头部 1023 字节"这一刀会把整包吃掉，round-trip 必然失败（自检里有这一条）。
 - **分包**：主包 `__APP__.wxapkg` 之外的 `.wxapkg` 都是分包，**必须分别解密 + 分别解包**；只处理主包会缺页面。
 - 用户目录里 `cert.json` / `sign.json` 一类文件是**文件完整性校验**：改包放回后小程序会重新拉取该文件（见 §6）。
+
+---
+
+## 1b ★★★ 「不解密」路线：hook `EncryptBufToFile` 直接拿**未加密**的包
+
+**来源** `52pojie-1335742`（PC 微信 3.0.0.47，frida 14.2.2，30 行脚本）。
+判据：**PC 微信把"加密后的包"和"未加密的缓冲"在同一个函数里交接** ⇒
+**根本不用实现 `V1MMWX` 算法，把 `onEnter` 里的缓冲区落盘即可**。
+
+```javascript
+var baseAddr = Module.findBaseAddress('WeChatAppHost.dll');
+if (baseAddr) {
+    // ★ 不要写死偏移（前人脚本用 baseAddr.add(0x1800F)，微信一升级就失效）
+    var fn = Module.findExportByName('WeChatAppHost.dll', 'EncryptBufToFile');
+    Interceptor.attach(fn, {
+        onEnter: function (args) {
+            this.appId        = ptr(args[0]).readPointer().readAnsiString();
+            this.apkgFilePath = ptr(args[1]).readPointer().readAnsiString();
+            this.originalData = Memory.readByteArray(args[2], args[3].toInt32());
+        },
+        onLeave: function () {
+            var f = new File(this.apkgFilePath, 'wb');   // 路径已由微信算好，直接落盘
+            f.write(this.originalData); f.flush(); f.close();
+            delete this.appId; delete this.apkgFilePath; delete this.originalData;
+        }
+    });
+} else {
+    console.log('WeChatAppHost.dll 模块未加载，请先打开界面中的小程序面板');
+}
+```
+
+```bash
+frida WeChat.exe -l hook.js      # PC 微信是 32 位进程，用 x32dbg 核对地址
+```
+
+> ★★★ **四条纪律**：
+> ① **`args[1]` 是"指针的指针"**（`ptr(args[1]).readPointer().readAnsiString()`）——
+> 直接 `readAnsiString()` 会读到指针自己的字节；
+> ② **`args[2]/args[3]` 才是未加密缓冲与长度**（`Memory.readByteArray(ptr, len)`）；
+> ③ **注入前先清空 `…\WeChat Files\Applet\`**，否则分不清哪些是本次落盘的；
+> ④ **必须先把微信界面上的「小程序面板」点开**（`WeChatAppHost.dll` 此时才加载），
+> 否则 `Module.findBaseAddress` 返回 `null`（脚本已内置这条提示）。
+> ★ **与 §1 的关系**：§1 是"拿到加密包自己解"，本节是"让微信把明文交给你"——
+> **成本更低且不会因版本升级失效**（`findExportByName` 替代写死偏移）。
+> ★ Hook 得到的是 `.wxapkg`，**之后的解包流程仍走 §5**。
 
 ---
 

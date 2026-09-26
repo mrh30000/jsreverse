@@ -184,7 +184,44 @@ protobufjs 的 `decode` 也只存数字。能拿回来的只有**枚举成员名
 | C：`protobuf.roots` + `{1:["name", decoder, id]}` 描述表 | 描述表本身**就是 schema**：`eval` 掉那段代码拿到 `protobuf.roots`，递归遍历 `constructor.decode.toString()`；或直接正则扫 `(\d+):\s*\[["']([^"']+)["']` |
 | D：`{n, br, bw}` 表 | 直接正则扫 `n:\s*(\d+)` + `br:\s*\S*?read(\w+)` + `add`/`set`；子层顺着 `c:` 递归 |
 | 标识符被混淆（`reader.nextField` 都不见了） | 换 AST 级抽取：`ast-deobfuscation` 的 pass 框架；或先做字符串/控制流还原再走本脚本 |
+| **E：宿主运行时反射**（lua-protobuf / 任何**动态注册**的 pb 库，`pb.load(bytes)` 之后内存里已有完整 schema） | ★ 不抽文本，直接**从运行时把 schema 反射出来**（见 §4.1） |
 | 实在都没有（只有字节流） | 走 `blackbox-and-pitfalls.md`：先 `scripts/pb_decode_raw.py` 出 wire 结构，再人工补语义 |
 
 **不要因为脚本抽不出来就放弃**——抽不出来的最常见原因不是"没法抽"，而是"方言认错了"。
 回到 §1 的判据表重认一遍。
+
+### 4.1 ★★★ 方言 E：宿主运行时反射（`lua-protobuf` 实测全链）
+
+**来源** `52pojie-2057659`（Unity IL2CPP + XLua 手游）。这类游戏的 schema 是**预编译的 `.bytes`**
+（`Pb/base.bytes` + `Pb/CSProto.bytes`），**页面/包里没有任何可读 `.proto`**，
+但游戏**必须**在启动时 `pb.load(asset.bytes)` —— **加载完成的那一刻，schema 已经活在内存里了**。
+
+`lua-protobuf`（`pb` 库）恰好提供反射接口：
+
+| 接口 | 返回 | 用途 |
+| --- | --- | --- |
+| `pb.types()` | 迭代器：`full_typename, base_typename, type_kind` | 遍历**所有**类型（`type_kind` 为 `"enum"` / `"message"`） |
+| `pb.fields(type)` | 迭代器：`name, number, type, default, flags, oneof_name, oneof_idx` | 遍历某类型全部字段（`flags` 给 `optional`/`required`/`repeated`） |
+| `pb.type(type)` / `pb.field(type, name_or_number)` | 单条详情 | 补细节 |
+
+**三步落地**：
+
+```text
+① 反射 → JSON：for full, base, kind in pb.types() do
+                 for name, num, ftype, dflt, flags, oneof, oidx in pb.fields(full) do ... end
+               end    （把结果 dump 成 JSON；**字段按 number 排序后再输出**）
+② JSON → .proto：按 package（= full_typename 去掉最后一段）分组，
+                enum 生成 `name = number;`、message 生成
+                `[repeated ]<type> <name> = <number>;`
+③ 类型名归一化：反射给的是**绝对路径**（`.com.x.proto.Msg`）——
+                同包引用**去掉包前缀**、跨包引用**保留相对路径**，否则生成的 `.proto` 编译不过。
+```
+
+> ★★★ **两条纪律**：
+> ① **反射必须在"`pb.load` 之后"做** —— 早一步只能看到空库；晚一步（游戏退出/热重载后）可能什么都拿不到；
+> ② **`.bytes` 是"编译产物"，不是"加密产物"** —— 它的每一字节都能从反射结果重建，
+> **不要为了 `.proto` 去逆向 `.bytes` 的二进制格式**。
+> ★ **可迁移判据**：**"语言是 Lua / 打包成 `.bytes` / 代码里 `pb.load`" ⇒ 方言 E，走反射**。
+> 同样的思路适用于任何"**schema 在运行时已注册**"的宿主（C# 的 `FileDescriptorSet`、
+> Java 的 `Descriptors.FileDescriptor`、Go 的 `protoregistry.GlobalFiles`）。
+

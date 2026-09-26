@@ -1,0 +1,64 @@
+{
+  "parts": [
+    {
+      "name": "q-sign-algorithm",
+      "role": "固定值",
+      "source": "字面量 sha1",
+      "example": "sha1"
+    },
+    {
+      "name": "q-ak",
+      "role": "SecretID",
+      "source": "腾讯云控制台 API 密钥对",
+      "example": "<SecretID：控制台复制的 36 位字符串，见官方文档>"
+    },
+    {
+      "name": "q-sign-time",
+      "role": "KeyTime（起始;过期）",
+      "source": "Start + ';' + End，均为 Unix 秒",
+      "example": "1557902800;1557910000"
+    },
+    {
+      "name": "q-key-time",
+      "role": "与 q-sign-time 同值",
+      "source": "直接复用 KeyTime",
+      "example": "1557902800;1557910000"
+    },
+    {
+      "name": "q-header-list",
+      "role": "参与签名的 Header 名列表",
+      "source": "key 转小写 + UrlEncode 后按字典序排序，以 ';' 连接",
+      "example": "date;host;x-cos-acl;x-cos-grant-read"
+    },
+    {
+      "name": "q-url-param-list",
+      "role": "参与签名的 URL 参数名列表",
+      "source": "同上规则（key 小写 + UrlEncode + 字典序 + ';'）",
+      "example": "delimiter;max-keys;prefix"
+    },
+    {
+      "name": "q-signature",
+      "role": "最终签名",
+      "source": "HMAC-SHA1(key=SignKey, msg=StringToSign) 的 hex",
+      "example": "（源文未给取值样例）"
+    },
+    {
+      "name": "SignKey",
+      "role": "中间量（不进请求）",
+      "source": "HMAC-SHA1(key=SecretKey, msg=KeyTime)",
+      "example": "36bcd76dbb8c9f066472fec403df8a34cab34c77"
+    },
+    {
+      "name": "HttpString",
+      "role": "中间量（不进请求）",
+      "source": "method 小写 + \\n + UriPathname + \\n + HttpParameters + \\n + HttpHeaders + \\n",
+      "example": "（源文未给取值样例）"
+    },
+    {
+      "name": "StringToSign",
+      "role": "中间量（不进请求）",
+      "source": "'sha1\\n' + KeyTime + '\\n' + SHA1(HttpString) + '\\n'",
+      "example": "（源文未给取值样例）"
+    }
+  ]
+}

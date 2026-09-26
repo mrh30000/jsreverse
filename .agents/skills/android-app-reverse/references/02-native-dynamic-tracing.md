@@ -49,6 +49,27 @@ signature = ([BI)[B      ; [B byte[] · I int · [B byte[]  ← Java 与 native 
 > **别急着下「符号被裁光了」的结论**（同族：`52pojie-1724211` 的 `JNINativeMethod`
 > `name/signature/fnPtr` 静态全是 0，要先找「谁在 `RegisterNatives` 之前解密了它」）。
 
+### §1.1b ★★ `JNI_OnLoad` 里出现 `VX+XXX` 假指针时的两步修复
+
+**来源** `52pojie-1715751`（某 App `_sign`，`libblackBox.so`）。源文按 `Exports` 搜 `getInterfaceSign`
+**搜不到** ⇒ 进 `JNI_OnLoad` 看注册表，`F5` 后伪代码里出现大量 `vX + XXX` 形式的**非法指针表达式**：
+
+```text
+① 鼠标点上去、按 `Y` 把该位置**重新定义为指针**（IDA 的 "Force 类型"）
+② 回到 `JNINativeMethod` 表（`name / signature / fnPtr` 三列）⇒ fnPtr 指向的就是实现
+③ 用 Java 侧的名字与**参数个数**对表：源文靠「`getInterfaceSign` 只有一个参数」
+   在注册表里定到 `sub_49268`
+```
+
+> ★★ **搜入口的另一条线索：`toupper` / `tolower` 循环**。
+> 源文顺 `sub_F39A8` 看到 `while (strlen(a3) > v4) { a3[v4] = toupper(a3[v4]); ++v4; }`
+> 紧跟一个哈希调用 ⇒ **判据：输出是「32 位大写 hex」时，先找这个大小写转换循环**，
+> 它通常就贴在哈希调用的前后（本库形态 6 / 形态 10 / 形态 21 都是这一族）。
+> ★ 挂钩时注意 **arm32 要 `+1`**（Thumb）：源文的 `get_func_addr()` 里
+> `if (Process.arch == 'arm') return func_addr.add(1)`。
+> ★ **frida 特征被检测 ⇒ App 直接闪退**（源文实测）⇒ 换「去特征版 frida」；
+> 与 `52pojie-2057659` 的 `libmsaoaidsec.so` 三方案（线程暂停 / 函数 patch / 去特征工具）互相印证。
+
 ### §1.2 定位入口的其它四条路（按成本排序）
 
 | 手法 | 来源 | 备注 |
@@ -138,6 +159,40 @@ App 端签名**几乎都有初始化依赖**，表现都是「算法看起来没
 
 **来源** `52pojie-2107248`（X-Gorgon）、`2073893`（得到 App）、`2073103`（快对）。
 
+### §3b ★★★ 更省的一条路：hook「解密函数的产物」，而不是还原算法
+
+> **判据**：目标把**明文**在某个函数里**当作参数/缓冲区交付出去**（不是"算出来后加密发走"）
+> ⇒ **不用还原任何算法，直接把那一刻的缓冲区 dump 下来**。
+> 这条路的成本通常**低于**"解出格式/算法"，且**不会因为版本升级而失效**（见下面的 offset 坑）。
+
+| 载体 | hook 点 | 拿到 | 来源 |
+| --- | --- | --- | --- |
+| **PC 微信小程序包** | `WeChatAppHost.dll!EncryptBufToFile`（`onEnter` 记 `args[0]` appId、`args[1]` 落盘路径、**`args[2]/args[3]` = 未加密缓冲**） | **未加密的 `.wxapkg`**（直接落盘即得源码包，不必还原 `V1MMWX` 算法） | `52pojie-1335742` |
+| **AutoJS 加密脚本** | `com.stardust.autojs.script.StringScriptSource.$init` 的 **`(String,String)` 重载** | **解密后的 JS 源码**（第 2 个参数） | `52pojie-1189150` |
+
+> ★★★ **三条纪律（本批踩出来的，全部与"时序/重载"有关）**：
+
+```text
+① 【必须精确匹配重载】Java 类常有多个同名构造函数（源文原话："看上去有 2 个构造函数…进行了重载"）
+   ⇒ 写 `Cls.$init.overload("java.lang.String","java.lang.String").implementation = ...`
+   只写 `Cls.$init.implementation` 会**命中错的那一个**（不报错，只是不触发）。
+
+② 【解密只发生一次 ⇒ 必须 spawn 注入】源文原话：
+   "原 APK 的解密函数只在程序刚开始启动的时候调用。如果 APK 启动之后再注入脚本，
+    是获取不到解密的 StringScriptSource() 方法的"
+   ⇒ 必须 `frida -U -l hook.js -f <pkg> --no-pause`（`-f` = spawn + `--no-pause`）
+   **attach 模式在这类目标上 100% 空手而归**，且**不会报错**（表现为"hook 装了但没打印"）。
+
+③ 【别写死偏移】PC 微信的 `EncryptBufToFile` 在 `WeChatAppHost.dll` 上，
+   前人脚本用 `baseAddr.add(0x1800F)` —— **微信一升级就失效**。
+   改成 `Module.findExportByName('WeChatAppHost.dll', 'EncryptBufToFile')`
+   ⇒ **跨版本稳定**（源文原话："但升级又会失效，翻阅了 frida 的 api 发现个 findExportByName 函数"）。
+```
+
+> ★★ **可迁移判据**：**「有解密函数名可搜（且导出符号在）」优先于「有算法可还原」**；
+> **「导出名可查」优先于「写死偏移」**；**「只调用一次的解密」必须 spawn**。
+> ★ 找不到导出符号 / 是内部函数时，退回 §1（动态注册）与 §3（出口倒推）。
+
 ### §3.1 四步动作
 
 ```text
@@ -223,6 +278,24 @@ FINAL    len=118
 ```text
 输入规范化 → 记录构造 → 摘要或校验 → 块变换 → IV / nonce 生命周期 → 配置侧链 → 最终封装
 ```
+
+### §4.1 ★★★ 目标用**标准库**时的现成锚点（openssl / CommonCrypto）
+
+**来源** `52pojie-1542726`（京东到家 `signKeyV1`）。判据：**函数符号没被 strip**
+（`hmac_sha256` / `HMAC_Init_ex` / `HMAC_Update` / `HMAC_CTX_init` 都在导出表里）
+⇒ 不需要读反汇编，**按名字挂 hook 就能把 key 与消息都拿到**。
+
+| 锚点 | 参数语义（实测） | 拿到什么 |
+| --- | --- | --- |
+| `hmac_sha256` | **一步式**封装 | 对照用（可与分步结果校验） |
+| `HMAC_CTX_init` | `args[0]` = ctx | 确认进入这条链 |
+| `HMAC_Init_ex` | ★★ **`args[1]` = key**（长度 `args[2]`）、`args[4]` = 摘要算法 | **HMAC 的 key**（本例 32 字节 ⇒ 印证 SHA-256 族） |
+| `HMAC_Update` | ★★ **`args[1]` = 消息体**（长度 `args[2]`） | **参与签名的完整明文**（本例 = 请求参数） |
+
+> ★★ **配套验证**：拿 hook 到的 key + 消息喂 CyberChef / Python `hmac`，
+> 与 App 实际发出的密文**逐字节一致** ⇒ 收工。**这一步是 hook 路线的验收，不要跳。**
+> ★ 与 §4「分段 hook」的关系：**§4 是自己重新划边界，§4.1 是直接用作者已经划好的边界**
+> —— **先看符号表有没有现成的，再决定自己划**（成本从高到低）。
 
 ---
 
@@ -410,3 +483,7 @@ memcpy / memmove / strcat / strdup / hex 编码器（sub_109FB8 是「最终 hex
 | `52pojie-2127692` 海外社交签名链 | §2.4（`JNI_OnLoad` 定位） |
 | `52pojie-2014961` zcool 登录 | §1.2 按 key 打 `HashMap.put` 堆栈定登录函数 |
 | `52pojie-1691013` xx度灰 | §7.5 Go/cgo so 的栈传参与返回值落点、Go CFB 与 Python 默认不同 |
+| `52pojie-1542726` 京东到家 `signKeyV1` | §4.1 openssl HMAC 现成锚点（`HMAC_Init_ex` key / `HMAC_Update` 消息） |
+| `52pojie-1335742` PC 微信小程序包 | §3b `EncryptBufToFile` 取未加密缓冲 + `findExportByName` 替代写死偏移 |
+| `52pojie-1189150` AutoJS 脚本解密 | §3b `$init.overload` 精确匹配 + **只调用一次 ⇒ 必须 spawn 注入** |
+| `52pojie-1715751` 某 App `_sign` | §1.1b `VX+XXX` 假指针 `Y` 修复、`toupper` 循环定位、去特征 frida、arm32 `+1` |

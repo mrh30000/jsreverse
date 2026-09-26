@@ -109,6 +109,40 @@ setShopId: / setSessionId: / requestParams / ydToken / requestHeader / …
 
 ---
 
+### §3b ★★★ `CC_MD5` hook：iOS 侧「摘要类」的通用定位（本批新增）
+
+> 场景：`_sign` 与 `userpwd` **形状都是 32 位大写 hex** ⇒ 先假设是裸 MD5，再验证。
+
+```javascript
+// hook CC_MD5（keySpace = null ⇒ 系统库/所有模块）
+let cc_md5 = Module.findExportByName(null, "CC_MD5");
+Interceptor.attach(cc_md5, {
+    onEnter: function (args) {
+        const data = args[0], len = args[1], output = args[2];
+        console.log(`md5>> ${data.readCString()} | ${parseInt(len, 16)} | ${output}`);
+        console.log("
+Backtrace:
+	" + Thread.backtrace(this.context, Backtracer.ACCURATE)
+            .map(DebugSymbol.fromAddress).join("
+	") + "
+");
+    }
+});
+```
+
+> ★★★ **两个必须一起做、缺一不可的动作**：
+> ① 打印**入参明文**（这是待签串的全部内容）；② 打印 **`Thread.backtrace`（`Backtracer.ACCURATE`）**——
+> 源文原话是「在 `userpwd` 的那条 md5 日志**下面**发现了另一个 md5 日志」，靠**上下文相邻**才认出哪条是 `_sign`。
+> 堆栈同时暴露出 `+[AHLoginServicesMD5 MD5WithString:]` 与业务方法名（`accountLoginWidthUserName:PassWord:…`），
+> ⇒ **类名与方法名一次到手**，比读反汇编快一个数量级。
+
+> ★★ **`validcode` 归因纪律**：源文最初拿本地算的 `iaeh` 拼串，结果**对不上** ——
+> 因为服务端的 `validcode` 是**图片里那一个**、不是客户端随机生成的。**待签串里的每个字段都要回抓包核对原文**，
+> 不要用"我这边生成的"顶替。
+
+> ★ **`args[1]`（长度）要 `parseInt(len, 16)`**（frida 的 `NativePointer` 参数在十进制打印时要用 `toInt32()`；
+> 这里源文写的是**先转 hex 字符串再 `parseInt(...,16)`** —— 两种写法都通，但**别直接当十进制用**）。
+
 ## §4 ★★★ `CCCrypt` 参数语义表（iOS 的"一眼判算法"）
 
 ```objc
@@ -248,3 +282,4 @@ CCCrypt(op, alg, options, key, keyLength, iv, dataIn, dataInLength, dataOut, dat
 | `52pojie-2119947` Discord Android → Windows DLL | §7 请求体与签名分离（该文主战场在 `../protocol-reverse`） |
 | `52pojie-2022522` iTunes 登录 | §9 证书类响应不是签名结果（**未还原，登记为 gap**） |
 | `52pojie-817122` / `52pojie-1572670` | 前身技能已立：砸壳 + `class-dump` + MonkeyDev / CaptainHook（沿用） |
+| `52pojie-1796265` 汽车之家 iOS | §3b `CC_MD5` hook + 堆栈定位 + `validcode` 归因纪律 |

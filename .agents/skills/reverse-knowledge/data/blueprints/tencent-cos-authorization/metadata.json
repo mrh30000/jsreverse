@@ -1,0 +1,105 @@
+{
+  "id": "tencent-cos-authorization",
+  "title": "腾讯云 COS（对象存储）Authorization 签名（q-sign-algorithm=sha1）",
+  "category": "platform-signature",
+  "status": "active",
+  "version": "1.0.0",
+  "summary": "腾讯云 COS 的 Authorization 头：KeyTime -> SignKey(HMAC-SHA1) -> HttpString -> StringToSign -> Signature(HMAC-SHA1)；密钥对为 SecretID/SecretKey。",
+  "aliases": [
+    "cos-authorization",
+    "q-sign-algorithm",
+    "q-signature",
+    "tencent-cos-sign",
+    "cos-sign"
+  ],
+  "keywords": [
+    "腾讯云",
+    "COS",
+    "对象存储",
+    "Authorization",
+    "q-sign-algorithm",
+    "q-ak",
+    "q-sign-time",
+    "SignKey",
+    "HttpString",
+    "StringToSign",
+    "SecretID",
+    "SecretKey"
+  ],
+  "algorithm": {
+    "family": "hmac",
+    "detail": "两步 HMAC-SHA1 链：① SignKey = HMAC-SHA1(key=SecretKey, msg=KeyTime)，KeyTime 形如 '<Start>;<End>'（Unix 秒）；② Signature = HMAC-SHA1(key=SignKey, msg=StringToSign)，StringToSign 形如 'sha1\\n<KeyTime>\\n<SHA1(HttpString)>\\n'；HttpString 形如 '<method 小写>\\n<UriPathname>\\n<HttpParameters>\\n<HttpHeaders>\\n'。UrlParamList/HeaderList = key 转小写 + UrlEncode 后按字典序排序、以 ';' 连接；HttpParameters/HttpHeaders 按同一顺序拼 'k=v&k=v'。",
+    "key_material": "SecretID（公开，进 q-ak）+ SecretKey（保密，只当 HMAC 的 key）",
+    "output_encoding": "hex（小写，40 字符）",
+    "output_length": "Signature 40 字符 hex；SignKey 同为 40 字符 hex"
+  },
+  "sources": [
+    {
+      "file": "docs/references/52pojie-1178741-TX云Authorization签名算法，更详细的说明，请求改写JS.md",
+      "line": 15,
+      "quote": "步骤1：生成 KeyTime",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1178741-TX云Authorization签名算法，更详细的说明，请求改写JS.md",
+      "line": 22,
+      "quote": "步骤2：生成 SignKey",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1178741-TX云Authorization签名算法，更详细的说明，请求改写JS.md",
+      "line": 27,
+      "quote": "步骤3：生成 UrlParamList 和 HttpParameters",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1178741-TX云Authorization签名算法，更详细的说明，请求改写JS.md",
+      "line": 49,
+      "quote": "请求路径中的请求参数在实际发送请求时也会进行 UrlEncode，因此要注意不要重复执行 UrlEncode。",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1178741-TX云Authorization签名算法，更详细的说明，请求改写JS.md",
+      "line": 56,
+      "quote": "步骤4：生成 HeaderList 和 HttpHeaders",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1178741-TX云Authorization签名算法，更详细的说明，请求改写JS.md",
+      "line": 73,
+      "quote": "步骤5：生成 HttpString",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1178741-TX云Authorization签名算法，更详细的说明，请求改写JS.md",
+      "line": 83,
+      "quote": "步骤6：生成 StringToSign",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1178741-TX云Authorization签名算法，更详细的说明，请求改写JS.md",
+      "line": 92,
+      "quote": "步骤7：生成 Signature",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1178741-TX云Authorization签名算法，更详细的说明，请求改写JS.md",
+      "line": 99,
+      "quote": "q-sign-algorithm=sha1",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1178741-TX云Authorization签名算法，更详细的说明，请求改写JS.md",
+      "line": 125,
+      "quote": "KeyTime = [Now];[Expires]",
+      "verified_in_article": true
+    },
+    {
+      "file": "docs/references/52pojie-1178741-TX云Authorization签名算法，更详细的说明，请求改写JS.md",
+      "line": 128,
+      "quote": "StringToSign = sha1\\nKeyTime\\nSHA1(HttpString)\\n",
+      "verified_in_article": true
+    }
+  ],
+  "notes": "【B44 新增】本条是**公开文档型**蓝图：腾讯云 COS 官方签名规范，源文直接抄了官方步骤并给出在线测试页 https://cos5.cloud.tencent.com/static/cos-sign/ 。与 douyin-a-bogus 那类「靠逆向还原」的蓝图不同，本蓝图**算法无魔改、无环境依赖、可离线纯算**。适用面比 COS 本身更宽：**q-sign-* 家族的腾讯云签名（COS / CDN / 部分云 API）共用这套骨架**，换的只是 HeaderList / UrlParamList 的取法。跨技能关联：这种「先派生 SignKey、再对 StringToSign 做第二次 HMAC」的两段式结构，与 ../web-reverse-algorithm/references/02-algorithm-families.md 的 HMAC 家族同源；若 SecretKey 需要从客户端里扣，走 ../android-app-reverse 或 ../miniprogram-reverse。 【安全纪律】本蓝图**不存放任何真实凭证**：`q-ak` 的 example 只写占位说明、SecretKey 由使用者自备；所有示例值均来自公开文档或本库自造（`testsecretkey…`），绝不可用于真实账号。"
+}

@@ -124,10 +124,35 @@ _enPackage(e, t, i) {
 | base64 整段 | 全 ASCII、`=` 结尾、`[A-Za-z0-9+/_-]` | `--frame base64`（宽容模式处理 URL-safe / 换行 / 缺填充） |
 | **WS 自定义信封（长度 = 帧总长 − 6）** | **`msgId`(2B) + 长度字段(2B)，且 `6 + 长度字段 == 帧长`** | `--frame ws-env`（见 §1b） |
 | WebSocket 单帧 | 每条消息一个 WS frame | 直接对每条 frame 的 payload 解码（见 `websocket-reverse`） |
+| **固定头 + 变长体（自研 socket 帧）** | 头里**长度字段与协议/命令号并存**，且**收发两侧头宽可能不同** | 见 §2b：**先分别量收发两侧头长**，再按 `[len][cmd][body]` 切；**发送 2 字节 / 接收 4 字节**实测存在 |
+| **私有二进制封包（非 protobuf 载荷）** | 头里有**偏移/排序表**、或密钥经过**变换**（`+1` 再 `^4`） | 转 `../../protocol-reverse/references/private-binary-packet-families.md`（本技能只管载荷是 protobuf 的场景） |
 | TCP 长连接多消息 | 帧头 + 消息交替 | 循环剥离，不要一次全喂给解码器 |
 
 **不要相信"看起来像长度"的数字。** 判据只有一条：**剥离后剩余字节能被完整解析成至少一个合法字段**
 （字段号 ≠ 0、长度不越界、恰好消耗完）。`--frame auto` 就是按这条判据依次试。
+
+### §2b ★★ 自研 socket 帧：收发两侧头宽**可以不同**
+
+**来源** `52pojie-2057659`（Unity+XLua 手游，`LunJianSocketManager.lua`）。
+**载荷确实是 protobuf**（所以归本技能），但外面那层帧是自研的：
+
+```text
+发送：[包长度:2 字节] + [协议ID:2 字节] + [消息数据:变长, 可能 AES-ECB 加密]
+        msgLen = PackSendHeaderLength + #protoData
+接收：[包长度:4 字节] + [协议ID:2 字节] + [消息数据:变长, 明文 Protobuf]
+        dataLength = totalLength - PackRecvHeaderLength
+```
+
+> ★★★ **三条可迁移判据**：
+> ① **收发两侧头长度是不同的两个常量**（`PackSendHeaderLength` vs `PackRecvHeaderLength`）
+> —— **不要用同一个 `HEAD_LEN` 去切两侧**；
+> ② **只有"需要加密的那些协议"才加密**（源文里由 `EncryptFilter:needEncrypt(cmd)` 控制）
+> ⇒ 同一连接里**明文帧与密文帧混流**，"有的帧解得开有的解不开"是设计如此；
+> ③ **解密后必须校验 `len(payload) == totalLength - HEAD_LEN`** ——
+> 源文自己就是靠这条断言发现错位的（`协议数据长度不匹配` 会打印 expected/actual）。
+> ★ 判据：**"长度字段读出来总是差几个字节"** ⇒ 先怀疑**头宽取错**，再怀疑字节序。
+
+---
 
 ## 3. 包装层：base64 / URL-safe / 转义
 

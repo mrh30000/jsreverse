@@ -607,6 +607,35 @@
       ]
     },
     {
+      "id": "tencent-cos-authorization",
+      "path": "tencent-cos-authorization",
+      "title": "腾讯云 COS（对象存储）Authorization 签名（q-sign-algorithm=sha1）",
+      "category": "platform-signature",
+      "status": "active",
+      "summary": "腾讯云 COS 的 Authorization 头：KeyTime -> SignKey(HMAC-SHA1) -> HttpString -> StringToSign -> Signature(HMAC-SHA1)；密钥对为 SecretID/SecretKey。",
+      "aliases": [
+        "cos-authorization",
+        "q-sign-algorithm",
+        "q-signature",
+        "tencent-cos-sign",
+        "cos-sign"
+      ],
+      "keywords": [
+        "腾讯云",
+        "COS",
+        "对象存储",
+        "Authorization",
+        "q-sign-algorithm",
+        "q-ak",
+        "q-sign-time",
+        "SignKey",
+        "HttpString",
+        "StringToSign",
+        "SecretID",
+        "SecretKey"
+      ]
+    },
+    {
       "id": "tiktok-x-gorgon",
       "path": "tiktok-x-gorgon",
       "title": "海外版抖音 / TikTok x-gorgon 签名（1474 版，26 字节，种子来自 malloc 地址）",

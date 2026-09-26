@@ -1,0 +1,39 @@
+{
+  "mutations": [
+    {
+      "name": "URL 参数被重复 UrlEncode",
+      "rule": "HttpParameters 里的 value 只做一次 UrlEncode；实际发送时请求行还会再编码一次，签名侧不要跟着再编",
+      "symptom_if_wrong": "403 SignatureDoesNotMatch，且「不带任何 query 的请求」反而成功"
+    },
+    {
+      "name": "无 value 的参数当成不存在",
+      "rule": "形如 /?acl 的参数，value 视为空字符串：HttpParameters 写 'acl='、UrlParamList 写 'acl'",
+      "symptom_if_wrong": "带 acl 这类开关参数的请求签名恒错"
+    },
+    {
+      "name": "大小写口径",
+      "rule": "HTTP 方法转小写；Header/Param 的 key 转小写 -> 排序 -> UrlEncode -> 再转一次小写",
+      "symptom_if_wrong": "签名恒错；看上去「只是大小写」，自查很难发现"
+    },
+    {
+      "name": "HttpString 末尾的换行不能省",
+      "rule": "HttpString 结尾必须有一个 \\n；某段为空时前后换行仍要保留（如 'get\\n/exampleobject\\n\\n\\n'）",
+      "symptom_if_wrong": "拼接看似正确但 Signature 恒错，对照官方示例才发现少一个换行"
+    },
+    {
+      "name": "两步 HMAC 的顺序反了",
+      "rule": "必须先用 SecretKey 对 KeyTime 派生 SignKey，再用 SignKey 对 StringToSign 签名；不能拿 SecretKey 直接签 StringToSign",
+      "symptom_if_wrong": "签名恒错，且 SecretKey 直签也会得到「看起来也是 40 位 hex」的假结果，容易误判成编码问题"
+    },
+    {
+      "name": "KeyTime 时间戳单位",
+      "rule": "Unix 秒（10 位），不是毫秒",
+      "symptom_if_wrong": "服务端报签名过期或 Signature 不匹配"
+    },
+    {
+      "name": "q-key-time 漏填",
+      "rule": "q-sign-time 与 q-key-time 值相同、两个字段都必须出现",
+      "symptom_if_wrong": "服务端报参数缺失（不是签名不匹配），容易误判成算法错"
+    }
+  ]
+}

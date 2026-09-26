@@ -1,6 +1,6 @@
 ---
 name: protobuf-reverse
-description: "Protobuf / gRPC-Web 二进制协议逆向技能。当目标是 protobuf、protobufjs、google-protobuf、jspb、gRPC、gRPC-Web、序列化二进制协议，或遇到「响应是一堆乱码二进制」「请求参数是一长串 base64」「application/grpc-web+proto」「application/x-protobuf」「没有 .proto 文件怎么解析」「protoc --decode_raw 解出来只有数字没有字段名」「字段号/字段类型怎么确定」「生成 JS 里 deserializeBinaryFromReader / reader.readString / switch (tag >>> 3) 是什么意思」「wire type / varint / length-delimited 怎么读」「怎么把请求体造回去」「map 字段解不出来」「repeated 判断不了」「int32 解成了巨大数字」这类问题时使用。覆盖四种方言（jspb、protobufjs full、protobufjs 静态描述表、厂商自研轻量实现）的判据与类型映射、gRPC-Web 5 字节帧头与长度前缀剥离、从生成 JS 机械抽取 .proto、无描述表时的零依赖 wire-format 解码与误判清单，并强制要求「解码→重编码逐字节一致」与「自造请求体与浏览器请求体逐字节一致」两级验收。"
+description: "Protobuf / gRPC-Web 二进制协议逆向技能。当目标是 protobuf、protobufjs、google-protobuf、jspb、gRPC、gRPC-Web、序列化二进制协议，或遇到「响应是一堆乱码二进制」「请求参数是一长串 base64」「application/grpc-web+proto」「application/x-protobuf」「没有 .proto 文件怎么解析」「protoc --decode_raw 解出来只有数字没有字段名」「字段号/字段类型怎么确定」「生成 JS 里 deserializeBinaryFromReader / reader.readString / switch (tag >>> 3) 是什么意思」「wire type / varint / length-delimited 怎么读」「怎么把请求体造回去」「map 字段解不出来」「repeated 判断不了」「int32 解成了巨大数字」这类问题时使用。覆盖五种方言（jspb、protobufjs full、protobufjs 静态描述表、厂商自研轻量实现、**lua-protobuf 等宿主运行时注册**）的判据与类型映射（方言 E 走 `pb.types()`/`pb.fields()` **运行时反射**重建 `.proto`）、gRPC-Web 5 字节帧头与长度前缀剥离、从生成 JS 机械抽取 .proto、无描述表时的零依赖 wire-format 解码与误判清单，并强制要求「解码→重编码逐字节一致」与「自造请求体与浏览器请求体逐字节一致」两级验收。"
 ---
 
 # Protobuf 逆向

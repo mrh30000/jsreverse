@@ -102,6 +102,7 @@ MUST 产出：
   SIMD(NEON) 批量异或翻译、**连续流压缩（zstd-stream / permessage-deflate）不能每帧 reset**、
   **双 TLS 栈导致一部分请求抓不到**、TLV 固定字段表、字节集反转、CRC "对谁算"、
   PC 端条件断点定位、地址池/抗拦截结构
+- `references/private-binary-packet-families.md` — **客户端自研二进制封包族**：「长度字段是唯一允许明文的一段」、「传输密钥 +1 再 ^4」这类**密钥变换**、**会话中换钥**（种子在包尾定长字段）、**资源体 XOR 密钥 = 文件名**、封包头里的**偏移/排序表**、逐字段标注法（`长度前缀+数据`）、**「倒着逆」**、**CrossBridge/FlasCC 产物判据**（AS 里是 C 编译出来的 ⇒ 读解密侧求逆）
 - 相关技能（本仓库内）：`protobuf-reverse`（protobuf / gRPC-Web）、`websocket-reverse`（WS 帧与分组）、
   `wsam-reverse`（Wasm）、`ast-deobfuscation`（生成 JS 被混淆时）、
   `android-app-reverse`（协议实现在 App/so 里时）

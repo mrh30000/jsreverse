@@ -33,7 +33,7 @@ node scripts/blueprint-lint.js                 # 结构 + 来源溯源校验（e
 已收录平台（准确口径以 `--list` 为准）：抖音/头条 `a_bogus` · 京东 `h5st` / 第 8 段环境段 /
 `request_algo` token · 知乎 `x-zse-96` / `__zse_ck` · 小红书 `x-s` · B 站 `w_rid` · 美团 `mtgsig` ·
 BOSS `__zp_stoken__` · 淘宝 `isg`/`cna` · 网易云 `weapi` · QQ 音乐 `sign`/`zzc` · 酷狗 `signature` ·
-百度翻译 `sign` · 同花顺 `hexin-v` · 得物/拉勾/拼多多/CSDN/问卷星/12306/羊了个羊。
+百度翻译 `sign` · 同花顺 `hexin-v` · 得物/拉勾/拼多多/CSDN/问卷星/12306/羊了个羊。 ★ 另有**公开文档型**一条：腾讯云 COS `Authorization`（`q-sign-algorithm=sha1`，蓝图 id `tencent-cos-authorization`）—— 无需逆向、可离线纯算。
 
 **四条质量红线**（新增蓝图必须满足，否则 `blueprint-lint.js` 会拦或告警）：
 
