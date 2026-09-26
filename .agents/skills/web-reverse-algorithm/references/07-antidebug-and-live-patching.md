@@ -38,6 +38,49 @@
 
 处置必须走响应改写（见下节）。**每拆一层都要刷新页面重新观察**，因为上一层的失败分支可能激活下一层。
 
+### 2.1 ★★ 两个「搜不到 `debugger` 字面量」的构造（B43 新增）
+
+`debugger` 只要被拆成字符串拼接，**全文搜 `debugger` 就搜不到** —— 这时要改搜拼接片段或构造点。
+
+| 构造 | 原码形态 | 搜什么 |
+| --- | --- | --- |
+| ① **`setInterval` + 字符串拼接** | `setInterval(function(){ Function("Function(arguments[0]+\"bugger\")()")("de") }, 2000)` —— `"de"` + `"bugger"` = `debugger`，**每 2 秒触发一次** | 搜 **`bugger`**（片段）/ 搜 **`setInterval`** 的调用点；`Function` 里再套 `Function` 是强信号 |
+| ② **把 `debugger` 当参数传给构造方法** | `check(debugger)` 一类，`debugger` **不是语句而是实参**，由被调方构造执行 | 只能 hook **`Function.prototype.constructor`**（在页面脚本**之前**注入），见下 |
+
+**hook 写法（`52pojie-1590803` 原码，Fiddler / 响应改写 / 早期注入三处都适用）**：
+
+```js
+Function.prototype.constructor_ = Function.prototype.constructor;
+Function.prototype.constructor = function (a) {
+  if (a == "debugger") { return function () {}; }   // 把 debugger 换成空函数
+  return Function.prototype.constructor_(a);
+};
+```
+
+★ 两条纪律：
+
+1. **必须在页面脚本之前注入**（后注入等于没注入 —— 反调试逻辑已经跑过一遍）。
+2. 与「DevTools 里点 Deactivate breakpoints」**不等价**：那只让当前会话不断，页面仍能检测到并走别的分支。
+
+### 2.2 ★★★ 环境守卫：让「本地复现值」静默错（B43 新增）
+
+**触发信号：扣出来的函数在本地算出的值和服务端不一样，而且不报错。**
+这是「扣代码」路线最容易白干一天的地方 —— **先怀疑守卫，再怀疑算法**。
+
+| # | 写法 | 现象 | 处置 |
+| --- | --- | --- | --- |
+| ① | **整段函数定义**包在 `if (location.host 命中白名单) {…defs…} else { top.location.href = "…" }` | 在 Node 里跑 ⇒ **函数根本不存在**（`ReferenceError`，不是静默） | 搜 `top.location.href`；补 `location.host` 或在浏览器里跑 |
+| ② | **函数体内**先判白名单，**非白名单就把形参替换成硬编码假值** | **算法照跑、不报错、结果全错**（实测假值形如 `"dwvzv142x454fe54sa"` / `"asdsad541sdsa1"`） | 用正则搜「**给形参直接赋字符串常量**」这一形态；或**在浏览器里对拍入参** |
+| ③ | 「**反格式化**」：检测自身是否被 pretty-print，命中就进死循环 / 内存爆破 | 一格式化就卡死、浏览器崩溃 | **不要格式化**（DevTools 的 pretty-print 也算）；改在压缩态下打条件/日志断点；或**只扣需要的片段** |
+
+- ★ 写法② 的判据可机械化：把「`形参名 = "字面量"`」当一条正则在扣出来的源码里扫一遍，
+  **命中的函数一律先在浏览器里对拍一次入参**再采信。
+  ⚠️ 与「`btoa` 前给形参赋默认值」**形态相同、意图相反**（那处是兜底、这处是投毒）⇒ **不能只看形状**。
+- ⚠️ 写法③ 是**单源**（`52pojie-1590803`）：源文只说「会检测你是否格式化」，**未给出检测代码**
+  ⇒ 只登记现象与处置纪律，**不声称已知其检测机制**。
+- ★ 真机验证（B43，`b43-browsercli-validate.js` G8 组）：`location.host` 在真实浏览器里可读，
+  且「非白名单 ⇒ 静默替换入参」的产物**仍是合法 base64**，调用方看不出错。
+
 ---
 
 ## 3. 为什么优先用响应改写而不是 DevTools 的 Overrides

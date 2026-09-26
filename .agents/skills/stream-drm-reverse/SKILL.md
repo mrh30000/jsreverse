@@ -1,6 +1,6 @@
 ---
 name: stream-drm-reverse
-description: 流媒体/视频点播/直播流/电子书的内容加密链路逆向技能：先定位「加密发生在哪一层」，再逐层解密。触发词：`m3u8`、`ts`、`EXT-X-KEY`、`METHOD=AES-128`、`SAMPLE-AES`、`AES-128-PES`、`AES-128-ECB`、`decryptdata.key`、`qiniuDRMKey`、`encrypt_info`、`protectedLicenses`、`GetLicense`、`GetProvision`、`service_name=mdcm`、`KID`、`CEK`、`CENC`、`cenc:pssh`、`cbcs`、`enca`、`cdm`、`widevine`、`playready`、`FairPlay`、`skd://`、`tokenVideoKey`、`h5e`、`liveLineUrl`、`streamName`、`bilidrm`、`data-keys`、`mp4decrypt`、`pywidevine`、`.wvd`、`KeyDive`、`MediaKeys.createSession`、`requestMediaKeySystemAccess`、`generateRequest`、`videojs-contrib-eme`、`SampleAesDecrypter`、`getAvcEncryptedData`、`funcNN_TEA`、`PES`、`NALU`、`HEAPU8`、`_emscripten_run_script`、`importObject`、`ffmpeg -decryption_key`、`EPUB`、`upgcxcode`、`upsig`、`itemId`、`aweme`。用户说「m3u8 解密/ts 解密/视频解析/去水印/无水印/直播源/切片解密/DRM/数字版权/白盒密码/白盒 AES/加密播放器/ffmpeg 重封装/电子书章节解密/下载器提示 key 错误/key 长度不是 16 字节/页面能播但网络面板看不到 m3u8 只能看到一堆 png/m3u8 地址解出来 403/播放器是 canvas/视频能下载但不能播放/花屏/只有前几帧正常/拿到播放地址/authKey/ddCalcu/蜻蜓FM/解析接口/player_aaaa」时都应使用本技能。
+description: 流媒体/视频点播/直播流/电子书的内容加密链路逆向技能：先定位「加密发生在哪一层」，再逐层解密。触发词：`m3u8`、`ts`、`EXT-X-KEY`、`METHOD=AES-128`、`SAMPLE-AES`、`AES-128-PES`、`AES-128-ECB`、`decryptdata.key`、`qiniuDRMKey`、`encrypt_info`、`protectedLicenses`、`GetLicense`、`GetProvision`、`service_name=mdcm`、`KID`、`CEK`、`CENC`、`cenc:pssh`、`cbcs`、`enca`、`cdm`、`widevine`、`playready`、`FairPlay`、`skd://`、`tokenVideoKey`、`h5e`、`liveLineUrl`、`streamName`、`bilidrm`、`data-keys`、`mp4decrypt`、`pywidevine`、`.wvd`、`KeyDive`、`MediaKeys.createSession`、`requestMediaKeySystemAccess`、`generateRequest`、`videojs-contrib-eme`、`SampleAesDecrypter`、`getAvcEncryptedData`、`funcNN_TEA`、`PES`、`NALU`、`HEAPU8`、`_emscripten_run_script`、`play_licenses`、`ffmpeg -decryption_key`、`EPUB`、`upgcxcode`、`upsig`、`itemId`、`aweme`。用户说「m3u8 解密/ts 解密/视频解析/去水印/无水印/直播源/切片解密/DRM/数字版权/白盒密码/白盒 AES/加密播放器/ffmpeg 重封装/电子书章节解密/下载器提示 key 错误/key 长度不是 16 字节/页面能播但网络面板看不到 m3u8 只能看到一堆 png/m3u8 地址解出来 403/播放器是 canvas/视频能下载但不能播放/花屏/只有前几帧正常/拿到播放地址/authKey/ddCalcu/蜻蜓FM/解析接口/player_aaaa」时都应使用本技能。
 ---
 
 # 流媒体 / 视频内容保护逆向
@@ -30,7 +30,8 @@ description: 流媒体/视频点播/直播流/电子书的内容加密链路逆�
 | **分享短链（`v.kuaishou.com/s/…` 一类）要 mp4「无水印直链」** | **§0 地址还原层（直链）** | 同上 §3B（落点是 `srcNoMark` / `origin_video_download` 这类**另一个字段**） |
 | **抖音/抖音系**：拿到的是「分享文本」，或看到 `itemId: "` / `aweme/v1/aweme/detail` / `play_addr.url_list` | **§0 · APP 协议直链** | 同上 §3B.4（五步链；`as`/`cp` 是**设备指纹**不可复算、`ts` 与 `_rticket` 秒/毫秒配对、`long_video` → `video` 两分支回落） |
 | **哔哩哔哩**：要 `.m4s` 直链，或 URL 里有 `upgcxcode` / `upsig` / `uparams` | **§0 · DASH 分流** | 同上 §2.5（**`-1-` 视频 / `-2-` 音频必须各拿一条**；`uparams` 是签名白名单、`mid`/`logo` 不在内） |
-| **免费影视/动漫站**：HTML 里捞到 `aaa=` / `player_aaaa=` 的密文，或地址要经**第三方解析 API**（路径含 `jiexi`）才给 | **§0 · 解析接口族（三层串接）** | 同上 §3C（`%XX` 全字节编码 + Base64 双层 → 解析 API 两跳拿 `key`/`time` → AES-CBC 常量 `ARTPLAYER…`/`Artplayer…`；★ 二层**禁用 `unescape`**） |
+| **免费影视/动漫站**：HTML 里捞到 `aaa=` / `player_aaaa=` 的密文，或地址要经**第三方解析 API**（路径含 `jiexi`）才给 | **§0 · 解析接口族（三层串接）** | 同上 §3C（`%XX` 全字节编码 + Base64 双层 → 解析 API 两跳拿 `key`/`time` → AES-CBC 常量 `ARTPLAYER…`/`Artplayer…`；★ 二层**禁用 `unescape`**）；**更早的一代**见 §3C.7（一次 POST 送五个派生参数 + JS 私有进制 `Number.toString(32)`）；四站形态对照与「直链一次性」纪律见 §3C.8；★ **扣出来的函数本地对不上又不报错 ⇒ 先看 §3C.9「环境守卫三写法」** |
+| **想要地址但不想还原算法**（自己用 / 授权链路很长） | **§0 · 注入式（故意不还原）** | 同上 §3D：hook XHR 改写响应、把第三方接口结果塞进页面 JSON；★ 回填字段**不止 `url`**（`code`/`br`/`level`/`type` 缺一即静默失败） |
 | **播放页 HTML 里捞到好几条 m3u8，不知哪条在播** | **A 层前置：挑选** | `references/hls-and-ts-structure.md` §1.5（「重复出现次数最多」只当第一猜想） |
 | **试看只有 N 秒 / m3u8 路径带 `_preview` / 拿不到完整 playlist** | **预览门控层**（§0 与 A 层之间） | `references/preview-gating-and-segment-enumeration.md` §1 二分判据 → §3 分片枚举补齐 |
 | **地址里有 `z` / `s1ig` 这类「短、看不出含义、按天变」的查询参数**（不是 `authKey`/`sign` 那一族） | **§0 · 按日期算的自定义参数** | `references/playback-url-shapes-and-page-carriers.md` §3（先确认 `+` 优先于 `^`、`^` 是 XOR，再用 §3.3 锚点对拍） |
@@ -96,7 +97,8 @@ description: 流媒体/视频点播/直播流/电子书的内容加密链路逆�
    | 首字符 + 末 3 字符「不参与」解码；末 3 的中间位是个位数 | W2 字符表滚动 + 噪声 | `key_wrapper.py xiaoe` |
    | 整个响应是 hex，还原后含固定标记串与前后各 13 位数字 | W3 定长正文 | `key_wrapper.py xm` |
    | 响应同时给两段等长串 | W4 两半异或 | `key_wrapper.py xor-halves` |
-   | **许可接口（如 `play_licenses`）下发的带 `1-` 前缀 base64 文本** | W7 前缀剥离 + 隔 2 异或 | 见 `references/key-wrapper-families.md` §6.6 复算 |
+   | **许可接口（如 `play_licenses`）下发的带 `1-` 前缀 base64 文本** | W7 前缀剥离 + 隔 2 异或 | `key_wrapper.py w7 --input "<接口串>" --prefix "" --enforce` |
+  | 页面里 `urls = 密文`，JS 是 `urls.slice(8)` → base64 → 明文 `[8:-8]` | W8 双段剥离（**字符**级） | `key_wrapper.py w8 --input "<密文>"`（剥离长度必须 ≡ 0 mod 4） |
 
 4. **🔴 CHECKPOINT · 单分片闭环（必做）**：先只解**一个**分片，用 `ffmpeg` 试播：
    ```bash
@@ -217,6 +219,13 @@ python $S/container_disguise.py strip  <伪分片> -o out.ts [--offset N]
 python $S/key_wrapper.py dataview-xor --input 80f5f48bd4a6d7ffd0e26a04f0d90e86 \
        --mask 3854078970,2917115795,3887476043,3350876132 --raw
 python $S/key_wrapper.py dataview-xor --input-hex <32位hex> --mask-file masks.txt --allow-search
+
+# 0.9) ★ W7 接口下发族（许可接口 base64 → 16/32 字节 key；3 样本全绿）
+python $S/key_wrapper.py w7 --input "1-yuYeqlPlHMU85XD+UOdM+QHmG8/P" --detail      # → abdef786c28046f5
+python $S/key_wrapper.py w7 --input "muZOqFO3H6hTiHKVa9t3xGvYcZub" --prefix "" --enforce
+# 0.10) ★ W8 双段剥离（dplayer 系播放地址；无真实样本，往返 + 对齐律自证）
+python $S/key_wrapper.py w8 --input "https://cdn.x.com/a/index.m3u8" --encode
+python $S/key_wrapper.py w8 --input "<encoded>"
 
 # 0.6) ★ C 层帧加密三件套（EBSP / SAMPLE-AES 粒度 / key 派生与内联）
 python $S/nalu_frame_crypto.py ebsp-unescape payload.bin -o payload.clear.bin --loose

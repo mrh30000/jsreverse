@@ -339,7 +339,7 @@ python scripts/waf_clearance_solver.py --selftest
 - [references/06-engineering-maintenance.md](./references/06-engineering-maintenance.md)
   用途：GitHub 项目怎么吸收、接口如何设计、扩库时怎么记主落点/补充落点/标签，以及 **§11「扣 JS → Node CLI 桥接」、§12「先拿抓包密文做解密 oracle 再写加密」（密文长度反推明文/`Content-Length` 反推字段数/URL 编码/JSON `separators` 对齐/固定 IV 逐字节复现）与 §13「JS 侧编码库与 Python 标准库的字节级差异」（fflate gzip 头尾拼装、base64url 无填充、浮点数格式对齐）**。
 - [references/07-antidebug-and-live-patching.md](./references/07-antidebug-and-live-patching.md)
-  用途：无限 debugger 三层定位、mitmproxy 响应改写与在线补丁、**「解密 → 反混淆 → 再加密」回写**、每次访问都变的 JS 如何还原成 Python、两层 eval（VM 内代码）的获取流程、参数溯源三分类法。
+  用途：无限 debugger 三层定位、mitmproxy 响应改写与在线补丁、**「解密 → 反混淆 → 再加密」回写**、每次访问都变的 JS 如何还原成 Python、两层 eval（VM 内代码）的获取流程、参数溯源三分类法；**§2.1 两个「搜不到 `debugger` 字面量」的构造（`setInterval` + 字符串拼接 / `debugger` 当实参 ⇒ 只能 hook `Function.prototype.constructor`）**、**§2.2 环境守卫三写法（整段定义包白名单 / 函数体内把形参静默换成硬编码假值 / 反格式化「格式化即内存爆破」）** —— 「本地复现值对不上又不报错」时先看这一节。
 - [references/09-antidebug-and-automation-fingerprint.md](./references/09-antidebug-and-automation-fingerprint.md)
   用途：**反调试完整分类表（10 类，含判据与处置）**、不受 hook 影响的检测（隐藏 iframe 取原生 API、
   `[native code]` 完整性校验与 `toString` 联动 patch）、`location` 不可重写 / `console.log` 与定时器不能无条件置空、
@@ -400,6 +400,10 @@ python scripts/waf_clearance_solver.py --selftest
   内置编解码函数的**形态指纹表**（能从产物形状反查用了 `escape` / `encodeURI` / `btoa` / `fromCharCode` / `CryptoJS`）；
   「形态像 ≠ 就是它」的四个陷阱（32 位 hex 未必是 MD5、末尾 `==` 未必是 AES、**前 16 字节乱是 IV 错不是算法错**）；
   以及**求助帖式任务（原文没有结论）的登记纪律**——只登记可复现的结构观察，一条结论都不许往外推。
+  **B43 新增两节**：**§2.5 JS 私有进制 `Number.prototype.toString(radix)`**（字符集是 `0-9a-v` 而非 RFC 4648；
+  不定宽 ⇒ 只有差值域 ⊂ `[radix, radix²)` 才能按定宽切；编码与解码**可能用不同的 K**）、
+  **§4.5 CryptoJS 的 key 三形态**（字符串口令 ⇒ 走 `EVP_BytesToKey` 且产物带 `U2FsdGVkX`；`Utf8.parse`/`Hex.parse`/`Base64.parse`
+  对同一串给出**不同字节数**；`MD5(x).toString()` 是 32 个字符可切两半当 IV+key；`ZeroPadding` 与 `Pkcs7` 在明文恰为块整数倍时**密文长度不同**）。
 - [references/17-yuanrenxue-match-playbook.md](./references/17-yuanrenxue-match-playbook.md)
   用途：**「比赛题 / 靶场题」的题型索引与可迁移判据集**（以猿人学 1–9 / 16 题为样本）——
   **题型 → 定位手法 → 算法 → 可迁移判据**主表，以及逐条判据：

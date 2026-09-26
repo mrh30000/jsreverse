@@ -8,7 +8,7 @@ key_wrapper.py —— 「key 二次构造 / 包装层」辨识与还原（B 层�
     站点会在服务端先做一层「包装」，浏览器里再由播放器 JS 还原。
     只抓 URI 就往下解，现象是「下载器报填充错误 / 解出来是垃圾 / ffmpeg 打不开」。
 
-    本脚本覆盖 6 个已实测的包装族，并对每个族给出**机械判据**而不是「大概像」：
+    本脚本覆盖 8 个包装族（W1–W6 已实测；W7 三样本全绿；W8 为「实现 + 判据」），并对每个族给出**机械判据**而不是「大概像」：
 
     W1  单字节 / 重复密钥 XOR        （`strdecode` 家族：b64 → xor → b64）
     W2  字符表滚动变换 + 前缀标记    （xiaoe `Strdecode`：前缀 1 字符 + 末 3 字符 + 噪声插入）
@@ -16,6 +16,12 @@ key_wrapper.py —— 「key 二次构造 / 包装层」辨识与还原（B 层�
     W4  两半异或 / 定长截取          （`a ^ b` 逐字节，常见于「前后各 16 字节」）
     W5  字母表守卫                   （覆盖性 / 单射性 / 越界下标机械校验）
     W6  外部掩码异或（int32）        （`DataView.setInt32(getInt32() ^ m)`，掩码在 DOM 属性 / 常量数组）
+    W7  接口下发 + 前缀剥离 + 隔 2 异或（`play_licenses` 类许可接口下发的 base64 文本 → 16/32 字节 key）
+    W8  双段剥离（前 N 字符 → base64 → 再去前/后 M 字符）（dplayer 系播放地址，按【字符】剥离）
+
+    ★ B43 把 W7 从「单样本、暂无脚本入口」升级为 **3 个实测样本全绿的实现**（B34 起挂了九批的遗留），
+      并由此反推出本族的通用式：**key 长度由输入长度决定（`len(key) = len(atob) - 5`）**，
+      而不是源文口径的「取中间 16」；两次实测为 16 字节（AES-128）与 **32 字节（AES-256）**。
 
     另有 `--enforce` 开关：把「静默出错」变成「报错退出」，见 §坑表。
 
@@ -59,6 +65,25 @@ NOISE_SILENT_NODE = "-_"          # Node 吃进产物：不抛错、不忽略，
 NOISE_THROW_BROWSER = "!*.~%$#@&"  # 浏览器 atob 抛错
 NOISE_EATEN_ALL = "+/="           # 任何一侧都会当成有效 base64 字符吃掉
 UNSAFE_NOISE = NOISE_SILENT_NODE + NOISE_THROW_BROWSER + NOISE_EATEN_ALL
+
+# ---- W7（B43 定稿）：接口下发 + 前缀剥离 + 隔 2 异或 + popcount 修正 ----
+# 三个常量（前缀 / 种子 / 偏移）都是**源文实测的厂商私有值**，换站必须重新认定；种子来源源文未解出。
+W7_PREFIX = "1-"          # `play_licenses` 响应自带的分流前缀，atob 前必须剥掉
+W7_SEED = (250, 85)       # 补在 qq 最前面的两个「种子数字」（来源源文未解出，不可跨站迁移）
+W7_OFFSET = 21            # 隔 2 异或后的固定加法偏移
+W7_RAW_HEAD_DROP = 1      # 掐头去尾：atob 产物去首 1 字节
+W7_RAW_TAIL_DROP = 2      #             去尾 2 字节
+W7_OUT_HEAD_DROP = 1      # 输出数组再掐首 1 / 末 1 —— ★ 这才是「取中间」的真实口径
+W7_OUT_TAIL_DROP = 1
+# 本族最锐利的 oracle：真 key 是 16 / 32 个 **hex 字符的 ASCII**（不是「任意可打印 ASCII」）。
+W7_HEX_ASCII = b"0123456789abcdefABCDEF"
+
+# ---- W8（B43 新增）：双段剥离（按【字符】剥 base64，再按【字符】剥明文） ----
+# 实测形态：`urls = 密文` → `urls.slice(8)` → base64 → `[8:-8]`（dplayer.php 系）。
+# ⚠️ 两处都是**字符**剥离，不是字节剥离；且第一段长度必须 ≡ 0 (mod 4) 才不破坏 base64 对齐。
+W8_STRIP_CHARS = 8        # 外层：base64 文本剥掉的字符数（8 % 4 == 0 ⇒ 3 字节对齐）
+W8_INNER_HEAD_CHARS = 8   # 内层：解码后明文剥掉的头部字符数
+W8_INNER_TAIL_CHARS = 8   # 内层：解码后明文剥掉的尾部字符数
 
 
 def md5hex(s, codec="latin-1"):
@@ -519,6 +544,155 @@ def w6_looks_like_key(data):
 
 
 # ----------------------------------------------------------------------------
+# W7 接口下发 + 前缀剥离 + 隔 2 异或 + popcount 修正（B43 定稿：3 样本全绿）
+# ----------------------------------------------------------------------------
+
+def w7_popcount(n):
+    """`bin(j).count('1')` —— 本族修正项，位置语义 = **输出数组下标 j**（不是输入索引）。"""
+    return bin(int(n)).count("1")
+
+
+def w7_looks_like_hex_key(data):
+    """W7 专属 oracle：真 key 是 **16 / 32 个 hex 字符的 ASCII**。
+
+    ⚠️ 比 W6 的「可打印 ASCII」锐利得多：少加 `+offset` 或少加 `popcount` 仍会得到
+    *可打印* 但**不是全 hex** 的字节 ⇒ 用「可打印」当判据会**放行错 key**（本族最典型的假绿）。
+    """
+    return len(data) in (16, 32) and all(c in W7_HEX_ASCII for c in data)
+
+
+def w7_key_from_interface(wire, prefix=W7_PREFIX, seed=W7_SEED, offset=W7_OFFSET,
+                          raw_head_drop=W7_RAW_HEAD_DROP, raw_tail_drop=W7_RAW_TAIL_DROP,
+                          out_head_drop=W7_OUT_HEAD_DROP, out_tail_drop=W7_OUT_TAIL_DROP,
+                          use_popcount=True, use_offset=True, popcount_shift=0,
+                          enforce=False):
+    """把许可接口（`play_licenses` 类）下发的 base64 文本还原成 AES key。
+
+    链条：
+        wire（带前缀的 base64 文本）
+          └ 剥前缀                          → 纯 base64 文本
+             └ atob                         → raw（长度**不是** 16 的倍数）
+                └ 掐头去尾（去首 1 / 去尾 2） → core
+                   └ 前面补两个「种子数字」   → q  （比 core 长 2）
+                      └ q[j] ^ q[j+2] + offset + popcount(j) → out
+                         └ 再掐首 1 / 末 1  → **key**
+
+    ★ B43 的通用式（源文没给出，是从第 2、3 个样本反推出来的）：
+
+        len(out) = len(raw) - 3
+        len(key) = len(out) - 2 = **len(raw) - 5**
+
+    实测 `len(raw)=21 → 16 字节 key`（AES-128）、`len(raw)=37 → 32 字节 key`（AES-256）。
+    ⇒ 源文「取中间 16 位」是**样本特化**的写法；通用口径是「**掐掉输出数组的首 1 与末 1**」。
+    这也顺带解释了 §6.6 登记的那处矛盾（源文 18 位数组末位是 27、公式算 49）：
+    **末位永远被丢弃，本就不参与取 key** —— 该矛盾对还原无影响。
+
+    返回 `(key_bytes, detail)`；`detail` 里带全链中间值，用于与浏览器/源文逐项对拍。
+    """
+    text = wire.strip()
+    stripped = None
+    if prefix:
+        if text.startswith(prefix):
+            stripped = text[len(prefix):]
+        else:
+            # ★ 与 W1 的 `--mode b64-xor-b64` 同一条纪律：前缀缺失不静默放过，也不静默剥错。
+            if enforce:
+                raise ValueError("W7 前缀 %r 缺失（本族前缀用于分流识别；确实没有请显式传 --prefix ''）"
+                                 % prefix)
+    core_text = stripped if stripped is not None else text
+
+    raw = b64_decode_lenient(core_text)
+    if len(raw) <= (raw_head_drop + raw_tail_drop):
+        raise ValueError("atob 后只有 %d 字节，掐头去尾（%d/%d）后为空"
+                         % (len(raw), raw_head_drop, raw_tail_drop))
+    core = list(raw[raw_head_drop:len(raw) - raw_tail_drop])
+    q = list(seed) + core
+    if len(q) < 3:
+        raise ValueError("种子 + core 长度不足，无法做「隔 2 异或」")
+
+    out = []
+    for j in range(len(q) - 2):
+        v = q[j] ^ q[j + 2]
+        if use_offset:
+            v += offset
+        if use_popcount:
+            v += w7_popcount(j + popcount_shift)
+        out.append(v)
+
+    lo = out_head_drop
+    hi = len(out) - out_tail_drop if out_tail_drop else len(out)
+    key = bytes((x % 256) for x in out[lo:hi])
+
+    detail = {
+        "wire": text,
+        "prefix_stripped": stripped is not None,
+        "raw_len": len(raw),
+        "raw": list(raw),
+        "core": core,
+        "q": q,
+        "out": out,
+        "out_len": len(out),
+        "key_len": len(key),
+        "key_ascii": key.decode("latin-1"),
+        "hex_oracle": w7_looks_like_hex_key(key),
+    }
+    if enforce and not detail["hex_oracle"]:
+        raise ValueError("W7 产物不满足「16/32 个 hex 字符 ASCII」判据 ⇒ 配方（前缀/种子/偏移/口径）"
+                         "与本样本不匹配，拒绝返回看起来像 key 的错值")
+    return key, detail
+
+
+# ----------------------------------------------------------------------------
+# W8 双段剥离：base64 文本按【字符】剥前缀，解码后明文再按【字符】剥首尾
+# ----------------------------------------------------------------------------
+
+def w8_strip_align_ok(strip_chars):
+    """★ W8 的前提判据：外层按字符剥离 **必须 ≡ 0 (mod 4)**。
+
+    base64 每 4 字符 = 3 字节；只有剥掉的字符数是 4 的倍数，剩余串才**保持三字节对齐**。
+    取 8 恰好等于「6 字节前缀」的 base64 长度（6 是 3 的倍数 ⇒ 前缀的 base64 无填充、可直接拼接）。
+    剥 1~3 个字符会**整体移位**，解出来是乱码但**不报错**（本族最阴的一处）。
+    """
+    return strip_chars % 4 == 0
+
+
+def w8_decode(wire, strip_chars=W8_STRIP_CHARS, inner_head=W8_INNER_HEAD_CHARS,
+              inner_tail=W8_INNER_TAIL_CHARS, encoding="utf-8", enforce=False):
+    """还原「前 8 字符 → base64 → 去前/后 8 字符」这一族（dplayer 系播放地址）。
+
+    ⚠️ **两处剥离的口径不同且都是「字符」不是「字节」**：
+      ① 外层在 **base64 文本**上剥（ASCII，1 字符 = 1 字节，无歧义）；
+      ② 内层在 **解码后的明文**上剥 —— 源文 Python 写的是 `str(decoded,'utf-8')[8:-8]`，
+         即 **8 个 Unicode 字符**。明文是 URL（纯 ASCII）时 8 字符 == 8 字节 ⇒ **恰好相同是巧合**；
+         明文一旦含 CJK，两种口径立刻分叉。
+    """
+    if not w8_strip_align_ok(strip_chars) and enforce:
+        raise ValueError("外层剥离 %d 字符不是 4 的倍数 ⇒ 会破坏 base64 三字节对齐（错值静默）"
+                         % strip_chars)
+    if len(wire) <= strip_chars:
+        raise ValueError("输入长度 %d 不足以剥离 %d 个字符" % (len(wire), strip_chars))
+    raw = b64_decode_lenient(wire[strip_chars:])
+    text = raw.decode(encoding)
+    if inner_head + inner_tail and len(text) <= inner_head + inner_tail:
+        raise ValueError("解码后仅 %d 个字符，不足以剥掉首 %d / 尾 %d"
+                         % (len(text), inner_head, inner_tail))
+    hi = len(text) - inner_tail if inner_tail else len(text)
+    out = text[inner_head:hi]
+    return out, {"raw_len": len(raw), "text_len": len(text), "strip_chars": strip_chars,
+                 "inner": [inner_head, inner_tail], "result": out}
+
+
+def w8_encode(payload, strip_chars=W8_STRIP_CHARS, inner_head=W8_INNER_HEAD_CHARS,
+              inner_tail=W8_INNER_TAIL_CHARS, filler="X", prefix="PADBYTES", encoding="utf-8"):
+    """W8 的逆（造夹具 / 造可复现样本）。外层前缀用 `strip_chars` 个 ASCII 填充字符。"""
+    head = (filler * inner_head)
+    tail = (filler * inner_tail)
+    inner = (head + payload + tail).encode(encoding)
+    body = b64_encode(inner)
+    return (prefix[:strip_chars].ljust(strip_chars, filler)) + body
+
+
+# ----------------------------------------------------------------------------
 # CLI
 # ----------------------------------------------------------------------------
 
@@ -661,6 +835,68 @@ def cmd_dataview_xor(args):
                           "endian": args.endian}, ensure_ascii=False, indent=2))
         return 0
     _emit(out, args)
+    return 0
+
+
+def cmd_w7(args):
+    """W7：许可接口 base64 → AES key（16/32 字节）。"""
+    wire = args.input
+    if wire is None:
+        if args.input_b64 is not None:
+            wire = args.input_b64
+        elif not sys.stdin.isatty():
+            wire = sys.stdin.read().strip()
+        else:
+            raise SystemExit("需要 --input / --input-b64 之一，或从标准输入喂接口串")
+    seed = tuple(int(x) for x in args.seed.split(",")) if args.seed else W7_SEED
+    key, detail = w7_key_from_interface(
+        wire, prefix=args.prefix, seed=seed, offset=args.offset,
+        raw_head_drop=args.raw_head_drop, raw_tail_drop=args.raw_tail_drop,
+        out_head_drop=args.out_head_drop, out_tail_drop=args.out_tail_drop,
+        use_popcount=not args.no_popcount, use_offset=not args.no_offset,
+        popcount_shift=args.popcount_shift, enforce=args.enforce)
+    if args.raw:
+        sys.stdout.buffer.write(key)
+        if sys.stdout.isatty():
+            sys.stdout.buffer.write(b"\n")
+        return 0
+    if args.out:
+        with open(args.out, "wb") as f:
+            f.write(key)
+        detail["written"] = args.out
+    detail["key_hex"] = binascii.hexlify(key).decode()
+    if not args.detail:
+        detail = {k: v for k, v in detail.items() if k not in ("raw", "core", "q", "out")}
+    print(json.dumps(detail, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_w8(args):
+    """W8：双段剥离 → 真实播放地址。"""
+    wire = args.input
+    if wire is None:
+        if args.input_b64 is not None:
+            wire = args.input_b64
+        elif not sys.stdin.isatty():
+            wire = sys.stdin.read().strip()
+        else:
+            raise SystemExit("需要 --input / --input-b64 之一，或从标准输入喂密文")
+    if args.encode:
+        print(json.dumps({"payload": wire,
+                          "encoded": w8_encode(wire, strip_chars=args.strip_chars,
+                                               inner_head=args.inner_head,
+                                               inner_tail=args.inner_tail,
+                                               filler=args.filler)},
+                         ensure_ascii=False, indent=2))
+        return 0
+    out, detail = w8_decode(wire, strip_chars=args.strip_chars, inner_head=args.inner_head,
+                            inner_tail=args.inner_tail, encoding=args.encoding,
+                            enforce=args.enforce)
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as f:
+            f.write(out)
+        detail["written"] = args.out
+    print(json.dumps(detail, ensure_ascii=False, indent=2))
     return 0
 
 
@@ -877,6 +1113,70 @@ def _selftest():
     chk("xiaoe 已知样本对拍（salt=appbgzjnopv1917, prefix=5, noise=2）",
         xiaoe_decode(xiaoe_encode("hello", prefix_idx=5, noise=2)) == b"hello")
 
+    # --- 9) W7 接口下发族（B43：3 个实测样本全绿，遗留「暂无脚本入口」在此消掉） ---
+    #     样本①52pojie-1749758（带 '1-' 前缀，30 字符）；样本②③52pojie-1753800（28 / 52 字符）。
+    W7_S1 = ("1-yuYeqlPlHMU85XD+UOdM+QHmG8/P", "abdef786c28046f5", 21)
+    W7_S2 = ("muZOqFO3H6hTiHKVa9t3xGvYcZub", "1d45c6d6841e4752", 21)
+    W7_S3 = ("ouZ2xWyJTcYA5R2rAIoclAHESuYE+RnYAJcetgmpFOBYsELAwA==",
+             "991b8fe94e58466fb9f6592f69076bff", 37)
+    for tag, (wire, exp, rawlen) in (("样本①", W7_S1), ("样本②", W7_S2), ("样本③", W7_S3)):
+        k, d = w7_key_from_interface(wire)
+        chk("W7 %s 逐字节复现 %s" % (tag, exp), k.decode("latin-1") == exp, d["key_ascii"])
+        chk("W7 %s atob 长度 = %d" % (tag, rawlen), d["raw_len"] == rawlen, str(d["raw_len"]))
+        chk("W7 %s 命中「hex 字符 ASCII」oracle" % tag, w7_looks_like_hex_key(k))
+    # ★ 通用式：len(key) = len(atob) - 5（源文只有 16 字节样本，看不出这条）
+    chk("W7 长度律 len(key) == len(atob) - 5 在两个长度上都成立",
+        all(len(w7_key_from_interface(w)[0]) == len(w7_key_from_interface(w)[1]["raw"]) - 5
+            for w in (W7_S1[0], W7_S2[0], W7_S3[0])))
+    chk("W7 输出可以是 16 字节（AES-128）", len(w7_key_from_interface(W7_S2[0])[0]) == 16)
+    chk("W7 输出可以是 32 字节（AES-256）", len(w7_key_from_interface(W7_S3[0])[0]) == 32)
+    # ★ 负面对照：三个静默错路径都必须被「hex oracle」抓住，而不是靠人眼
+    k_nopc, _ = w7_key_from_interface(W7_S2[0], use_popcount=False)
+    chk("W7 负面对照：漏 popcount ⇒ 与真 key 不同", k_nopc != b"1d45c6d6841e4752")
+    chk("W7 负面对照：漏 popcount 仍「可打印」⇒ 用可打印当判据会放行错 key",
+        all(0x20 <= c < 0x7F for c in k_nopc))
+    chk("W7 负面对照：但「hex 字符 ASCII」oracle 能抓住它", not w7_looks_like_hex_key(k_nopc))
+    k_nooff, _ = w7_key_from_interface(W7_S2[0], use_offset=False)
+    chk("W7 负面对照：漏 +offset 被 hex oracle 抓住", not w7_looks_like_hex_key(k_nooff))
+    k_shift, _ = w7_key_from_interface(W7_S2[0], popcount_shift=2)
+    chk("W7 负面对照：popcount 位置取错（j+2）与真 key 不同（静默错）",
+        k_shift != b"1d45c6d6841e4752")
+    chk("W7 负面对照：popcount 位置取错后长度仍是 16（长度不是判据）", len(k_shift) == 16)
+    raises("W7 --enforce 在前缀缺失时必须拒绝（不静默按无前缀解）",
+           lambda: w7_key_from_interface("muZOqFO3H6hTiHKVa9t3xGvYcZub", enforce=True), "前缀")
+    raises("W7 --enforce 在产物不满足 hex oracle 时必须拒绝",
+           lambda: w7_key_from_interface(W7_S2[0], prefix="", use_popcount=False, enforce=True),
+           "hex")
+    chk("W7 无前缀样本显式传 --prefix '' 可解",
+        w7_key_from_interface(W7_S2[0], prefix="")[0].decode("latin-1") == W7_S2[1])
+
+    # --- 9.5) W8 双段剥离族（无真实样本，用往返 + 对齐律自证） ---
+    W8_URL = "https://cdn.example.com/hls/abc/index.m3u8?sign=deadbeef"
+    enc = w8_encode(W8_URL)
+    dec, wd = w8_decode(enc)
+    chk("W8 往返：encode → decode 还原 URL", dec == W8_URL, dec)
+    chk("W8 外层剥离长度 8 保持 base64 三字节对齐", w8_strip_align_ok(8))
+    chk("W8 剥离 1/2/3 字符会破坏对齐（工具必须能判定）",
+        not any(w8_strip_align_ok(n) for n in (1, 2, 3)))
+    # ★ 「8 字符」的两种口径在 ASCII 明文上恰好相同 —— 是巧合不是等价
+    chk("W8 明文为 ASCII 时「8 字符」与「8 字节」恰好相同（巧合，不可当等价）",
+        w8_decode(w8_encode("A" * 40))[0] == "A" * 40)
+    cjk = "中文视频地址" * 3
+    dec_cjk, _ = w8_decode(w8_encode(cjk))
+    chk("W8 明文含 CJK 时「按字符剥」与「按字节剥」分叉（源文口径 = 按字符）", dec_cjk == cjk)
+    chk("W8 含 CJK 时按字符剥正确、按字节剥必然错",
+        dec_cjk != cjk.encode("utf-8")[8:-8].decode("utf-8", "ignore"))
+    # 负面对照：剥错长度（4 的倍数但值不对）必须【解出乱码而不报错】—— 本族最阴的静默错
+    # ⚠️ 变量名**绝不能叫 `bad`**：`bad` 是本自检的失败收集列表，一旦被覆盖，
+    #    `len(bad)` 与 `for b in bad` 会退化成「按字符遍历乱码串」，
+    #    表现为「打印几十条单字符 FAIL、PASS 数却接近全绿」的假失败（B43 实测踩到）。
+    bad_strip, _ = w8_decode(enc, strip_chars=4)
+    chk("W8 负面对照：剥 4 字符（对齐但值错）解出乱码且不报错（静默错）", bad_strip != W8_URL)
+    chk("W8 负面对照：该乱码长度与原文不同（说明确实错位，不是碰巧）",
+        len(bad_strip) != len(W8_URL))
+    raises("W8 --enforce 在未对齐剥离时必须拒绝",
+           lambda: w8_decode(enc, strip_chars=3, enforce=True), "对齐")
+
     total = ok[0] + len(bad)
     print("key_wrapper.py --selftest")
     print("  PASS %d / %d" % (ok[0], total))
@@ -890,7 +1190,7 @@ def _selftest():
 
 def main(argv=None):
     ap = argparse.ArgumentParser(
-        description="key 二次构造 / 包装层辨识与还原（B14 蒸馏：5 个包装族）",
+        description="key 二次构造 / 包装层辨识与还原（B14 蒸馏；B43 扩到 8 族，含 W7/W8）",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="示例：\n"
                "  python key_wrapper.py alpha-check --table \"ABC...-=+\"\n"
@@ -971,6 +1271,42 @@ def main(argv=None):
     p.add_argument("--allow-search", action="store_true",
                    help="掩码个数多于所需时，滑动窗口找「能解出可打印 ASCII」的那一段")
     p.set_defaults(func=cmd_dataview_xor)
+
+    p = sub.add_parser("w7", help="W7：许可接口下发 base64 → AES key（16/32 字节）")
+    p.add_argument("--input", help="接口下发的原始文本（如 '1-yuYeqlPlHMU85XD+UOdM+QHmG8/P'）")
+    p.add_argument("--input-b64", help="同上（别名，方便与其它子命令对齐）")
+    p.add_argument("--prefix", default=W7_PREFIX,
+                   help="分流前缀，默认 %r；确实没有前缀时显式传 --prefix ''" % W7_PREFIX)
+    p.add_argument("--seed", help="逗号分隔的种子数字，默认 %s" % ",".join(map(str, W7_SEED)))
+    p.add_argument("--offset", type=int, default=W7_OFFSET)
+    p.add_argument("--raw-head-drop", type=int, default=W7_RAW_HEAD_DROP)
+    p.add_argument("--raw-tail-drop", type=int, default=W7_RAW_TAIL_DROP)
+    p.add_argument("--out-head-drop", type=int, default=W7_OUT_HEAD_DROP)
+    p.add_argument("--out-tail-drop", type=int, default=W7_OUT_TAIL_DROP)
+    p.add_argument("--no-popcount", action="store_true", help="关掉 popcount 修正（用于复现错 key）")
+    p.add_argument("--no-offset", action="store_true", help="关掉 +offset（用于复现错 key）")
+    p.add_argument("--popcount-shift", type=int, default=0,
+                   help="故意错位用（如 2 复现「按输入索引算」的静默错）")
+    p.add_argument("--detail", action="store_true", help="输出全链中间值（对拍用）")
+    p.add_argument("--enforce", action="store_true",
+                   help="产物不满足「16/32 个 hex 字符 ASCII」时以非零码拒绝")
+    p.add_argument("--out")
+    p.add_argument("--raw", action="store_true")
+    p.set_defaults(func=cmd_w7)
+
+    p = sub.add_parser("w8", help="W8：双段剥离（前 N 字符 → base64 → 去前/后 M 字符）")
+    p.add_argument("--input", help="密文（页面里 urls 变量的值）")
+    p.add_argument("--input-b64", help="同上（别名）")
+    p.add_argument("--strip-chars", type=int, default=W8_STRIP_CHARS,
+                   help="外层剥掉的字符数，必须 ≡ 0 (mod 4)")
+    p.add_argument("--inner-head", type=int, default=W8_INNER_HEAD_CHARS)
+    p.add_argument("--inner-tail", type=int, default=W8_INNER_TAIL_CHARS)
+    p.add_argument("--encoding", default="utf-8")
+    p.add_argument("--encode", action="store_true", help="反向：由明文造密文（造夹具）")
+    p.add_argument("--filler", default="X", help="--encode 时内外填充字符")
+    p.add_argument("--enforce", action="store_true", help="剥离长度不对齐时以非零码拒绝")
+    p.add_argument("--out")
+    p.set_defaults(func=cmd_w8)
 
     p = sub.add_parser("noise-check", help="噪声字符三侧宽容度矩阵")
     p.add_argument("--chars", help="要检查的字符（默认一组代表样本）")

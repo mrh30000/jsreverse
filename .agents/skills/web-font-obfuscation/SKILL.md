@@ -95,17 +95,24 @@ python $S/css_obfuscation_reverse.py --selftest                                 
 python $S/css_obfuscation_reverse.py pseudo --css <站点.css> --html <页面.html> -o fixed.html
 python $S/font_template_diff.py template <官方原版.ttf> -o tmpl.json
 python $S/font_template_diff.py apply <站点字体.ttf> --template tmpl.json -o map.json
+python $S/font_name_table_check.py --table <手工校准表.json> --expect-digits        # ★ 落码前先跑
+python $S/font_name_table_check.py index --name glyph00010 --offset 1               # 单算一个索引名
 ```
 
 ## 资源
 
 - `references/font-cmap-decode.md`：两层映射四类模板、**glyphName 四种形态判据**、gid 顺序表、
+  **§8（B43 新增）「名字带索引」族的换算公式（`glyphNNNNN` ⇒ `int(尾2位) - 1`，含 2019→2020 跨版本 delta 与三个静默坑）、
+  「轮廓被改写」时的三级回退阶梯（逐点哈希 → 边界盒(~90%) → 归一化点集 DTW(实测 0.9757)，含 DTW 必须并行的理由）、
+  手工校准表的双射/值域/基数三项校验（源文那张表真的把 `one` 抄成了 `8`）**、
   稳定性判定、轮廓指纹自动化、渲染+OCR 兜底、真实案例（抖音 / 58 同城 / 起点 / 快手）。
 - `references/css-and-sprite-obfuscation.md`：**B/C/D/E/F 五族分流判据、还原算法、oracle 清单、排错速查**。
 - `references/glyph-ocr-and-rotation.md`：**cmap 查表走不通时的字形 OCR 路线**（三步判定 / OCR 选型实测 / 替换顺序自我污染与单趟逐位置映射 / 字体按请求动态下发 / ★ **§9 多 `@font-face` 分片：一张字典装不下多款字体** —— `@font-face` 按 `unicode-range` 分区 ⇒ 必须**逐块建表**、**以「码位」为主键**并断言 `len(table) == len(cmap)`，与 §5 的「自我污染」是**不同根因的两种错**）。
 - `scripts/font_cmap_dump.py`：零依赖 cmap 导出/比对/替换 CLI（sfnt / WOFF1 / TTC），自带 `--selftest`。
 - `scripts/font_glyph_fingerprint.py`：轮廓指纹与**跨版本**对齐（同一站点 A 版 ↔ B 版字体）。
 - `scripts/font_template_diff.py`：**官方字体模板 → 伪造字体反推**（F 族），歧义不猜、未命中显式报告。
+- `scripts/font_name_table_check.py`：**手工校准表（`字形名 → 真值`）的机械校验**（单射 / 值域 / 基数 / 索引换算），
+  `index` 子命令可单算一个 `glyphNNNNN` 的真值；`--selftest` 里把源文那份含 `one:'8'` 的表当**负面夹具**。
 - `scripts/css_obfuscation_reverse.py`：CSS/雪碧图/伪元素/打包编码四族还原，六路规则含拒绝路径自检。
 - 相关技能：参数签名 → `web-reverse-algorithm`；验证码字形题 → `web-verify-patcher`；
   常量串被 OB 混淆导致检索命不中 → `ast-deobfuscation`。

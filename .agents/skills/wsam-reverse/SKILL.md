@@ -326,7 +326,10 @@ browsercli jobs cancel <job-id>
   胶水层家族指纹、通用四步、Node 骨架（`delete process/global` 的取舍）、
   Go-wasm（`wasm_exec.js` + Proxy 环境探针 + `global` 不能自赋值）、wasm-bindgen 导入表与 retptr 二级取值、
   cargo-web/stdweb 引用表桥、Emscripten 导入表、wasmer/pywasm、**环境识别开关 `try/catch + eval('process')`**、
-  浏览器内内存视图注入与全内存搜索、排错表。
+  浏览器内内存视图注入与全内存搜索、排错表；
+  **§10.5（B43 新增）不反编译也能定算法的「黑盒探针五步」**（正常参数⇒无随机/无公钥 · 删字段找无关项 ·
+  改顺序无影响⇒内部有格式化 · 改 key 报错⇒按固定键名取值 · ★★★ **整数数组入参 = 算法选择器 ⇒ 用 0..N 枚举**，
+  再用 **§10.5.2 的 HMAC 输出长度反查表**（32/40/56/64/96/128 hex ⇒ MD5/SHA1/SHA224/SHA256/SHA384/SHA512）确认算法名）。
 - `references/wasm2c-and-memory-semantics.md`：wasm2c 完整路线、内存语义与地址推演、字节流密钥反推、Itanium 符号解码表、调试注入。
 - **内存取证（先做这个）**：`references/wasm2c-and-memory-semantics.md` §7 —— HEAPU8 dump 搜常量、
   「结果地址 + 固定偏移」取 key、`_emscripten_run_script` 打桩、Go 产物符号名与流对象状态、
